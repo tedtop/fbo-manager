@@ -22,6 +22,8 @@ services:
       - "3000"
     ports:
       - "3000:3000"
+    environment:
+      - CI=true
     env_file:
       - .env.frontend
     depends_on:

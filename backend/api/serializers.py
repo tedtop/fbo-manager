@@ -328,11 +328,15 @@ class ParkingLocationSerializer(serializers.ModelSerializer):
         model = ParkingLocation
         fields = [
             "id",
-            "location_name",
-            "location_type",
+            "location_code",
+            "description",
+            "latitude",
+            "longitude",
+            "polygon",
+            "airport",
+            "terminal",
+            "gate",
             "display_order",
-            "is_active",
-            "notes",
             "created_at",
             "modified_at",
         ]
@@ -386,7 +390,7 @@ class FlightListSerializer(serializers.ModelSerializer):
 
     def get_location_display(self, obj):
         if obj.location:
-            return obj.location.location_name
+            return obj.location.location_code
         return None
 
 

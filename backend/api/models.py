@@ -64,7 +64,7 @@ class FuelTank(models.Model):
     tank_name = models.CharField(_("Tank Name"), max_length=100)
     fuel_type = models.CharField(_("Fuel Type"), max_length=10, choices=FUEL_TYPE_CHOICES)
     capacity_gallons = models.DecimalField(
-        _("Capacity (Gallons)"), max_digits=10, decimal_places=2
+        _("Capacity (Gallons)"), max_digits=10, decimal_places=0
     )
     min_level_inches = models.DecimalField(
         _("Minimum Level (Inches)"), max_digits=6, decimal_places=2
@@ -154,21 +154,15 @@ class TerminalGate(models.Model):
 class ParkingLocation(models.Model):
     """Parking locations for aircraft (hangars, terminal, ramps, tie-downs)"""
 
-    LOCATION_TYPE_CHOICES = [
-        ("hangar", "Hangar"),
-        ("terminal", "Terminal"),
-        ("ramp", "Ramp"),
-        ("tiedown", "Tie-Down"),
-        ("other", "Other"),
-    ]
-
-    location_name = models.CharField(_("Location Name"), max_length=100, unique=True)
-    location_type = models.CharField(
-        _("Location Type"), max_length=50, choices=LOCATION_TYPE_CHOICES
-    )
+    location_code = models.CharField(_("Location Code"), max_length=100, unique=True)
+    description = models.TextField(_("Description"), blank=True)
+    latitude = models.DecimalField(_("Latitude"), max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(_("Longitude"), max_digits=9, decimal_places=6, null=True, blank=True)
+    polygon = models.JSONField(_("Polygon"), null=True, blank=True)
+    airport = models.CharField(_("Airport"), max_length=100, blank=True)
+    terminal = models.CharField(_("Terminal"), max_length=100, blank=True)
+    gate = models.CharField(_("Gate"), max_length=100, blank=True)
     display_order = models.IntegerField(_("Display Order"), default=0)
-    is_active = models.BooleanField(_("Is Active"), default=True)
-    notes = models.TextField(_("Notes"), blank=True)
     created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
     modified_at = models.DateTimeField(_("Modified At"), auto_now=True)
 
@@ -176,10 +170,10 @@ class ParkingLocation(models.Model):
         db_table = "parking_location"
         verbose_name = _("Parking Location")
         verbose_name_plural = _("Parking Locations")
-        ordering = ["display_order", "location_name"]
+        ordering = ["display_order", "location_code"]
 
     def __str__(self):
-        return self.location_name
+        return self.location_code
 
 
 class Flight(models.Model):
