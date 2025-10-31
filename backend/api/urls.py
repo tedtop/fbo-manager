@@ -8,11 +8,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .api import UserViewSet
 from .viewsets import (
     AircraftViewSet,
+    EquipmentViewSet,
     FlightViewSet,
-    FuelTankViewSet,
-    FuelTransactionViewSet,
     FuelerTrainingViewSet,
     FuelerViewSet,
+    FuelTankViewSet,
+    FuelTransactionViewSet,
+    LineScheduleViewSet,
+    ParkingLocationViewSet,
     TankLevelReadingViewSet,
     TerminalGateViewSet,
     TrainingViewSet,
@@ -30,10 +33,13 @@ router.register("admin/users", UserManagementViewSet, basename="admin-users")
 router.register("tanks", FuelTankViewSet, basename="tanks")
 router.register("tank-readings", TankLevelReadingViewSet, basename="tank-readings")
 
-# Flights & Gates
+# Flights & Parking
 router.register("flights", FlightViewSet, basename="flights")
 router.register("aircraft", AircraftViewSet, basename="aircraft")
-router.register("gates", TerminalGateViewSet, basename="gates")
+router.register(
+    "parking-locations", ParkingLocationViewSet, basename="parking-locations"
+)
+router.register("gates", TerminalGateViewSet, basename="gates")  # DEPRECATED
 
 # Fuel Dispatch
 router.register("transactions", FuelTransactionViewSet, basename="transactions")
@@ -44,6 +50,10 @@ router.register("trainings", TrainingViewSet, basename="trainings")
 router.register(
     "fueler-certifications", FuelerTrainingViewSet, basename="fueler-certifications"
 )
+
+# Equipment & Line Schedule
+router.register("equipment", EquipmentViewSet, basename="equipment")
+router.register("line-schedules", LineScheduleViewSet, basename="line-schedules")
 
 urlpatterns = [
     # API Documentation

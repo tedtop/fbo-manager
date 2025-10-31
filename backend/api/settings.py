@@ -1,3 +1,4 @@
+from datetime import timedelta
 from os import environ
 from pathlib import Path
 
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
@@ -45,6 +47,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -88,13 +91,13 @@ TEMPLATES = [
 #     }
 # }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': environ.get('SUPABASE_DB_NAME', 'postgres'),
-        'USER': environ.get('SUPABASE_DB_USER', 'postgres'),
-        'PASSWORD': environ.get('SUPABASE_DB_PASSWORD'),
-        'HOST': environ.get('SUPABASE_DB_HOST'),
-        'PORT': environ.get('SUPABASE_DB_PORT', '5432'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": environ.get("SUPABASE_DB_NAME", "postgres"),
+        "USER": environ.get("SUPABASE_DB_USER", "postgres"),
+        "PASSWORD": environ.get("SUPABASE_DB_PASSWORD"),
+        "HOST": environ.get("SUPABASE_DB_HOST"),
+        "PORT": environ.get("SUPABASE_DB_PORT", "5432"),
     }
 }
 
@@ -151,6 +154,25 @@ REST_FRAMEWORK = {
 }
 
 ######################################################################
+# JWT Settings
+######################################################################
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),  # 24 hours
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),  # 30 days
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+}
+
+######################################################################
 # DRF Spectacular (OpenAPI/Swagger)
 ######################################################################
 SPECTACULAR_SETTINGS = {
@@ -195,3 +217,13 @@ UNFOLD = {
         ],
     },
 }
+
+######################################################################
+# CORS
+######################################################################
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+CORS_ALLOW_CREDENTIALS = True

@@ -15,7 +15,8 @@ function decodeToken(token: string): {
 
 const authOptions: AuthOptions = {
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60 // 30 days (matches refresh token lifetime)
   },
   pages: {
     signIn: '/login'
@@ -46,18 +47,31 @@ const authOptions: AuthOptions = {
         return { ...token, ...user }
       }
 
-      // Refresh token
-      if (Date.now() / 1000 > decodeToken(token.access).exp) {
-        const apiClient = await getApiClient()
-        const res = await apiClient.token.tokenRefreshCreate({
-          access: token.access,
-          refresh: token.refresh
-        })
+      // Refresh token only if access token is expired (with 5 min buffer)
+      const accessToken = decodeToken(token.access)
+      const nowSeconds = Date.now() / 1000
+      const bufferSeconds = 5 * 60 // 5 minutes before expiry
 
-        token.access = res.access
+      if (nowSeconds > accessToken.exp - bufferSeconds) {
+        try {
+          const apiClient = await getApiClient()
+          const res = await apiClient.auth.authRefreshCreate({
+            refresh: token.refresh
+          })
+
+          token.access = res.access
+          // Update refresh token if it was rotated
+          if (res.refresh) {
+            token.refresh = res.refresh
+          }
+        } catch (error) {
+          console.error('NextAuth: Token refresh failed', error)
+          // Return the token as-is to let the session callback handle expiry
+          return token
+        }
       }
 
-      return { ...token, ...user }
+      return token
     }
   },
   providers: [
@@ -72,28 +86,45 @@ const authOptions: AuthOptions = {
       },
       async authorize(credentials) {
         if (credentials === undefined) {
+          console.log('NextAuth: credentials undefined')
           return null
         }
 
         try {
+          console.log('NextAuth: calling auth token API')
           const apiClient = await getApiClient()
-          const res = await apiClient.token.tokenCreate({
+          const res = await apiClient.auth.authTokenCreate({
             username: credentials.username,
-            password: credentials.password,
-            access: '',
-            refresh: ''
+            password: credentials.password
           })
 
-          return {
-            id: decodeToken(res.access).user_id,
+          console.log('NextAuth: got tokens from API', {
+            hasAccess: !!res.access,
+            hasRefresh: !!res.refresh
+          })
+
+          const decoded = decodeToken(res.access)
+          console.log('NextAuth: decoded token', { userId: decoded.user_id })
+
+          const result = {
+            id: String(decoded.user_id),
             username: credentials.username,
             access: res.access,
             refresh: res.refresh
           }
+
+          console.log('NextAuth: returning user object', {
+            id: result.id,
+            username: result.username
+          })
+          return result
         } catch (error) {
+          console.error('NextAuth: auth error', error)
           if (error instanceof ApiError) {
+            console.error('NextAuth: API error', error.status, error.body)
             return null
           }
+          console.error('NextAuth: unknown error', error)
         }
 
         return null

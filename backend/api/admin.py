@@ -8,11 +8,12 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 from .models import (
     Aircraft,
     Flight,
-    FuelTank,
-    FuelTransaction,
     Fueler,
     FuelerAssignment,
     FuelerTraining,
+    FuelTank,
+    FuelTransaction,
+    ParkingLocation,
     TankLevelReading,
     TerminalGate,
     Training,
@@ -82,13 +83,26 @@ class TankLevelReadingAdmin(ModelAdmin):
 
 @admin.register(Aircraft)
 class AircraftAdmin(ModelAdmin):
-    list_display = ["tail_number", "aircraft_type", "airline_icao", "fleet_id"]
-    list_filter = ["aircraft_type", "airline_icao"]
-    search_fields = ["tail_number", "aircraft_type", "airline_icao"]
+    list_display = [
+        "tail_number",
+        "aircraft_type_display",
+        "aircraft_type_icao",
+        "airline_icao",
+        "fleet_id",
+    ]
+    list_filter = ["aircraft_type_icao", "airline_icao"]
+    search_fields = [
+        "tail_number",
+        "aircraft_type_display",
+        "aircraft_type_icao",
+        "airline_icao",
+    ]
 
 
 @admin.register(TerminalGate)
 class TerminalGateAdmin(ModelAdmin):
+    """DEPRECATED - Use ParkingLocationAdmin instead"""
+
     list_display = [
         "terminal_num",
         "gate_number",
@@ -101,20 +115,59 @@ class TerminalGateAdmin(ModelAdmin):
     ordering = ["display_order", "terminal_num", "gate_number"]
 
 
+@admin.register(ParkingLocation)
+class ParkingLocationAdmin(ModelAdmin):
+    list_display = [
+        "location_code",
+        "description",
+        "airport",
+        "terminal",
+        "gate",
+        "display_order",
+        "is_active",
+    ]
+    list_filter = ["airport", "terminal", "display_order"]
+    search_fields = ["location_code", "description", "terminal", "gate"]
+    ordering = ["-display_order", "location_code"]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {"fields": ("location_code", "description", "display_order")},
+        ),
+        ("Location Details", {"fields": ("airport", "terminal", "gate")}),
+        (
+            "Geographic Data",
+            {
+                "fields": ("latitude", "longitude", "polygon"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "modified_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+    readonly_fields = ["created_at", "modified_at"]
+
+
 @admin.register(Flight)
 class FlightAdmin(ModelAdmin):
     list_display = [
-        "flight_number",
+        "call_sign",
         "aircraft",
-        "gate",
+        "location",
         "departure_time",
         "arrival_time",
         "flight_status",
         "destination",
     ]
     list_filter = ["flight_status", "departure_time"]
-    search_fields = ["flight_number", "destination"]
-    raw_id_fields = ["aircraft", "gate"]
+    search_fields = ["call_sign", "destination"]
+    raw_id_fields = ["aircraft", "location"]
 
 
 @admin.register(Fueler)
@@ -162,7 +215,7 @@ class FuelTransactionAdmin(ModelAdmin):
         "created_at",
     ]
     list_filter = ["progress", "qt_sync_status", "created_at"]
-    search_fields = ["ticket_number", "flight__flight_number"]
+    search_fields = ["ticket_number", "flight__call_sign"]
     raw_id_fields = ["flight"]
 
 

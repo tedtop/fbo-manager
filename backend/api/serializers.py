@@ -9,12 +9,15 @@ from rest_framework import exceptions, serializers
 
 from .models import (
     Aircraft,
+    Equipment,
     Flight,
-    FuelTank,
-    FuelTransaction,
     Fueler,
     FuelerAssignment,
     FuelerTraining,
+    FuelTank,
+    FuelTransaction,
+    LineSchedule,
+    ParkingLocation,
     TankLevelReading,
     TerminalGate,
     Training,
@@ -286,7 +289,8 @@ class AircraftSerializer(serializers.ModelSerializer):
         model = Aircraft
         fields = [
             "tail_number",
-            "aircraft_type",
+            "aircraft_type_icao",
+            "aircraft_type_display",
             "airline_icao",
             "fleet_id",
             "created_at",
@@ -317,6 +321,41 @@ class TerminalGateSerializer(serializers.ModelSerializer):
         return f"Terminal {obj.terminal_num} - Gate {obj.gate_number}"
 
 
+class ParkingLocationSerializer(serializers.ModelSerializer):
+    """Serializer for parking locations (hangars, terminal, ramps, tie-downs)"""
+
+    is_active = serializers.ReadOnlyField()
+
+    class Meta:
+        model = ParkingLocation
+        fields = [
+            "id",
+            "location_code",
+            "description",
+            "latitude",
+            "longitude",
+            "polygon",
+            "airport",
+            "terminal",
+            "gate",
+            "display_order",
+            "is_active",
+            "created_at",
+            "modified_at",
+        ]
+        read_only_fields = ["id", "created_at", "modified_at", "is_active"]
+
+    def validate_location_code(self, value):
+        """Ensure location_code is uppercase and properly formatted"""
+        import re
+
+        if not re.match(r"^[A-Z0-9\-]+$", value):
+            raise serializers.ValidationError(
+                "Location code must be uppercase alphanumeric with hyphens only (no spaces)"
+            )
+        return value
+
+
 # ============================================================================
 # Flight Serializers
 # ============================================================================
@@ -325,29 +364,66 @@ class TerminalGateSerializer(serializers.ModelSerializer):
 class FlightListSerializer(serializers.ModelSerializer):
     """Serializer for flight list view with nested data"""
 
-    aircraft_display = serializers.CharField(source="aircraft.tail_number", read_only=True)
-    gate_display = serializers.SerializerMethodField()
+    aircraft_type_icao = serializers.CharField(
+        source="aircraft.aircraft_type_icao", read_only=True
+    )
+    aircraft_type_display = serializers.CharField(
+        source="aircraft.aircraft_type_display", read_only=True
+    )
+    location_display = serializers.SerializerMethodField()
+    created_by_initials = serializers.CharField(
+        source="created_by.get_initials", read_only=True
+    )
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True
+    )
+    created_by_department = serializers.CharField(
+        source="created_by.get_department", read_only=True
+    )
 
     class Meta:
         model = Flight
         fields = [
             "id",
-            "flight_number",
+            "call_sign",
             "aircraft",
-            "aircraft_display",
-            "gate",
-            "gate_display",
+            "aircraft_type_icao",
+            "aircraft_type_display",
+            "origin",
+            "destination",
             "arrival_time",
             "departure_time",
             "flight_status",
-            "destination",
+            "location",
+            "location_display",
+            "services",
+            "fuel_order_notes",
+            "passenger_count",
+            "notes",
+            "contact_name",
+            "contact_notes",
+            "created_by_source",
+            "created_by_initials",
+            "created_by_name",
+            "created_by_department",
             "created_at",
+            "modified_at",
         ]
-        read_only_fields = ["id", "created_at", "aircraft_display", "gate_display"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "modified_at",
+            "aircraft_type_icao",
+            "aircraft_type_display",
+            "location_display",
+            "created_by_initials",
+            "created_by_name",
+            "created_by_department",
+        ]
 
-    def get_gate_display(self, obj):
-        if obj.gate:
-            return f"T{obj.gate.terminal_num}-G{obj.gate.gate_number}"
+    def get_location_display(self, obj):
+        if obj.location:
+            return obj.location.location_name
         return None
 
 
@@ -355,22 +431,33 @@ class FlightDetailSerializer(serializers.ModelSerializer):
     """Detailed flight serializer with full nested objects"""
 
     aircraft_details = AircraftSerializer(source="aircraft", read_only=True)
-    gate_details = TerminalGateSerializer(source="gate", read_only=True)
+    location_details = ParkingLocationSerializer(source="location", read_only=True)
+    created_by_details = UserCurrentSerializer(source="created_by", read_only=True)
     fuel_transactions_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Flight
         fields = [
             "id",
-            "flight_number",
+            "call_sign",
             "aircraft",
             "aircraft_details",
-            "gate",
-            "gate_details",
+            "origin",
+            "destination",
             "arrival_time",
             "departure_time",
             "flight_status",
-            "destination",
+            "location",
+            "location_details",
+            "services",
+            "fuel_order_notes",
+            "passenger_count",
+            "notes",
+            "contact_name",
+            "contact_notes",
+            "created_by",
+            "created_by_details",
+            "created_by_source",
             "fuel_transactions_count",
             "created_at",
             "modified_at",
@@ -380,7 +467,7 @@ class FlightDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "modified_at",
             "aircraft_details",
-            "gate_details",
+            "location_details",
             "fuel_transactions_count",
         ]
 
@@ -432,7 +519,9 @@ class FuelerTrainingSerializer(serializers.ModelSerializer):
     """Fueler training certification with expiry warnings"""
 
     fueler_name = serializers.CharField(source="fueler.fueler_name", read_only=True)
-    training_name = serializers.CharField(source="training.training_name", read_only=True)
+    training_name = serializers.CharField(
+        source="training.training_name", read_only=True
+    )
     certified_by_name = serializers.CharField(
         source="certified_by.get_full_name", read_only=True
     )
@@ -615,3 +704,118 @@ class FuelTransactionCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["progress"] = "started"
         return super().create(validated_data)
+
+
+# ============================================================================
+# Equipment Serializers
+# ============================================================================
+
+
+class EquipmentSerializer(serializers.ModelSerializer):
+    """Serializer for equipment inventory"""
+
+    maintenance_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Equipment
+        fields = [
+            "id",
+            "equipment_id",
+            "equipment_name",
+            "equipment_type",
+            "manufacturer",
+            "model",
+            "serial_number",
+            "status",
+            "location",
+            "notes",
+            "last_maintenance_date",
+            "next_maintenance_date",
+            "maintenance_status",
+            "created_at",
+            "modified_at",
+        ]
+        read_only_fields = ["id", "created_at", "modified_at", "maintenance_status"]
+
+    def get_maintenance_status(self, obj):
+        """Return maintenance status based on next maintenance date"""
+        if not obj.next_maintenance_date:
+            return "unknown"
+        days = (obj.next_maintenance_date - date.today()).days
+        if days < 0:
+            return "overdue"
+        if days <= 7:
+            return "due_soon"
+        return "ok"
+
+
+# ============================================================================
+# Line Schedule Serializers
+# ============================================================================
+
+
+class LineScheduleSerializer(serializers.ModelSerializer):
+    """Serializer for line service schedules"""
+
+    flight_number = serializers.CharField(source="flight.flight_number", read_only=True)
+    gate_display = serializers.SerializerMethodField()
+    assigned_personnel_names = serializers.SerializerMethodField()
+    equipment_used_names = serializers.SerializerMethodField()
+    duration = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LineSchedule
+        fields = [
+            "id",
+            "flight",
+            "flight_number",
+            "service_type",
+            "scheduled_time",
+            "actual_start_time",
+            "actual_end_time",
+            "status",
+            "assigned_personnel",
+            "assigned_personnel_names",
+            "equipment_used",
+            "equipment_used_names",
+            "gate",
+            "gate_display",
+            "notes",
+            "duration",
+            "created_at",
+            "modified_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "modified_at",
+            "flight_number",
+            "gate_display",
+            "assigned_personnel_names",
+            "equipment_used_names",
+            "duration",
+        ]
+
+    def get_gate_display(self, obj):
+        if obj.gate:
+            return f"T{obj.gate.terminal_num}-G{obj.gate.gate_number}"
+        return None
+
+    def get_assigned_personnel_names(self, obj):
+        return [
+            user.get_full_name() or user.username
+            for user in obj.assigned_personnel.all()
+        ]
+
+    def get_equipment_used_names(self, obj):
+        return [
+            f"{eq.equipment_id} - {eq.equipment_name}"
+            for eq in obj.equipment_used.all()
+        ]
+
+    def get_duration(self, obj):
+        """Calculate duration in minutes if both start and end times are set"""
+        if obj.actual_start_time and obj.actual_end_time:
+            delta = obj.actual_end_time - obj.actual_start_time
+            return int(delta.total_seconds() / 60)
+        return None

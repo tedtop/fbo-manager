@@ -1,16 +1,26 @@
+'use client'
+
+import { NavigationWrapper } from '@/components/navigation-wrapper'
 import { AuthProvider } from '@/providers/auth-provider'
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { twMerge } from 'tailwind-merge'
+import { Geist, Geist_Mono, Source_Serif_4 } from 'next/font/google'
 
 import '@frontend/ui/styles/globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'FBO Manager - Airport Fuel Operations Management',
-  description: 'Manage fuel farm operations, flight scheduling, and fueler training'
-}
+const geist = Geist({
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-sans'
+})
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-mono'
+})
+const sourceSerif4 = Source_Serif_4({
+  subsets: ['latin'],
+  weight: ['200', '300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-serif'
+})
 
 export default function RootLayout({
   children
@@ -18,13 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={twMerge(
-          'bg-gray-50 text-sm text-gray-700 antialiased',
-          inter.className
-        )}
+        className={`${geist.variable} ${geistMono.variable} ${sourceSerif4.variable} font-sans antialiased`}
       >
         <AuthProvider>
-          {children}
+          <NavigationWrapper>{children}</NavigationWrapper>
         </AuthProvider>
       </body>
     </html>

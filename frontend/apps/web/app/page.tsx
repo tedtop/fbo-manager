@@ -1,49 +1,199 @@
-import Link from 'next/link'
+'use client'
 
-export default function Home() {
-  const pages = [
-    { name: 'Dashboard', href: '/dashboard', description: 'Overview and key metrics' },
-    { name: 'Fuel Farm', href: '/fuel-farm', description: 'Monitor fuel tank levels' },
-    { name: 'Dispatch', href: '/dispatch', description: 'Manage fuel transactions' },
-    { name: 'Flights', href: '/flights', description: 'View and manage flight schedule' },
-    { name: 'Training', href: '/training', description: 'Track certifications and training' },
-  ]
+import { CalendarWeekView } from '@/components/flight-operations/calendar-week-view'
+import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
+import { FlightBoard } from '@/components/flight-operations/flight-board'
+import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
+import type {
+  Flight,
+  FlightFilters
+} from '@/components/flight-operations/types'
+import { useTheme } from '@/components/navigation-wrapper'
+import { useFlights } from '@/hooks/use-flights'
+import { ErrorMessage } from '@frontend/ui/messages/error-message'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
+export default function FlightOperationsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [view, setView] = useState<
+    'split' | 'calendar' | 'arrivals' | 'departures'
+  >('split')
+
+  // Calculate date range based on view
+  const dateParams =
+    view === 'calendar'
+      ? (() => {
+          const today = new Date()
+          const startDate = new Date(today)
+          startDate.setDate(today.getDate() - 14) // 2 weeks back
+          const endDate = new Date(today)
+          endDate.setDate(today.getDate() + 14) // 2 weeks forward
+          return {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0]
+          }
+        })()
+      : undefined // Don't filter by date for split view - show all flights
+
+  const { flights, loading, error, createFlight, updateFlight, deleteFlight } =
+    useFlights(dateParams)
+  const { theme } = useTheme()
+  const [filters, setFilters] = useState<FlightFilters>({
+    search: '',
+    status: 'all',
+    dateRange: 'today',
+    services: []
+  })
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login')
+    }
+  }, [status, router])
+
+  // Load view preference from localStorage on mount
+  useEffect(() => {
+    const savedView = localStorage.getItem('flightViewPreference')
+    if (
+      savedView === 'split' ||
+      savedView === 'calendar' ||
+      savedView === 'arrivals' ||
+      savedView === 'departures'
+    ) {
+      setView(savedView as 'split' | 'calendar' | 'arrivals' | 'departures')
+    }
+  }, [])
+
+  // Save view preference to localStorage when it changes
+  const handleViewChange = (newView: string) => {
+    const validView = newView as
+      | 'split'
+      | 'calendar'
+      | 'arrivals'
+      | 'departures'
+    setView(validView)
+    localStorage.setItem('flightViewPreference', validView)
+  }
+
+  const handleAddFlight = async (flight: Flight) => {
+    try {
+      await createFlight(flight)
+    } catch (err) {
+      console.error('Failed to create flight:', err)
+    }
+  }
+
+  const handleEditFlight = async (flight: Flight) => {
+    console.log('handleEditFlight called with:', flight)
+    try {
+      console.log('Calling updateFlight API with id:', flight.id)
+      const result = await updateFlight(flight.id, flight)
+      console.log('Update result:', result)
+    } catch (err) {
+      console.error('Failed to update flight:', err)
+    }
+  }
+
+  const handleDeleteFlight = async (id: string) => {
+    try {
+      await deleteFlight(id)
+    } catch (err) {
+      console.error('Failed to delete flight:', err)
+    }
+  }
+
+  // Show loading while checking auth
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (status === 'unauthenticated') {
+    return null
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-muted-foreground">Loading flights...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return <ErrorMessage>{error.message}</ErrorMessage>
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
-            FBO Manager
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-300">
-            Airport Fuel Operations Management System
-          </p>
-        </div>
+    <div className="space-y-4">
+      <CompactToolbar
+        view={view}
+        theme={theme}
+        onViewChange={handleViewChange}
+        onThemeChange={() => {}}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onAddFlight={() => setIsAddDialogOpen(true)}
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {pages.map((page) => (
-            <Link
-              key={page.href}
-              href={page.href}
-              className="block p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-slate-200 dark:border-slate-700"
-            >
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
-                {page.name}
-              </h2>
-              <p className="text-slate-600 dark:text-slate-300">
-                {page.description}
-              </p>
-            </Link>
-          ))}
-        </div>
+      {view === 'split' && (
+        <FlightBoard
+          mode="split"
+          theme={theme}
+          flights={flights}
+          onAddFlight={handleAddFlight}
+          onEditFlight={handleEditFlight}
+          onDeleteFlight={handleDeleteFlight}
+          filters={filters}
+        />
+      )}
+      {view === 'arrivals' && (
+        <FlightBoard
+          mode="arrivals"
+          theme={theme}
+          flights={flights}
+          onAddFlight={handleAddFlight}
+          onEditFlight={handleEditFlight}
+          onDeleteFlight={handleDeleteFlight}
+          filters={filters}
+        />
+      )}
+      {view === 'departures' && (
+        <FlightBoard
+          mode="departures"
+          theme={theme}
+          flights={flights}
+          onAddFlight={handleAddFlight}
+          onEditFlight={handleEditFlight}
+          onDeleteFlight={handleDeleteFlight}
+          filters={filters}
+        />
+      )}
+      {view === 'calendar' && (
+        <CalendarWeekView
+          theme={theme}
+          flights={flights}
+          onEditFlight={handleEditFlight}
+          onDeleteFlight={handleDeleteFlight}
+          filters={filters}
+        />
+      )}
 
-        <div className="mt-12 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            API Status: <a href="http://localhost:8000/api/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">http://localhost:8000/api/</a>
-          </p>
-        </div>
-      </div>
+      <FlightFormDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onSubmit={handleAddFlight}
+        theme={theme}
+      />
     </div>
   )
 }
