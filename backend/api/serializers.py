@@ -423,7 +423,7 @@ class FlightListSerializer(serializers.ModelSerializer):
 
     def get_location_display(self, obj):
         if obj.location:
-            return obj.location.location_name
+            return obj.location.location_code
         return None
 
 
