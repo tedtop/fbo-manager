@@ -1,280 +1,498 @@
-# Turbo - Django & Next.js boilerplate <!-- omit from toc -->
+# FBO Manager
 
-Turbo is a simple bootstrap template for Django and Next.js, combining both frameworks under one monorepository, including best practices.
+**Comprehensive Fixed-Base Operator (FBO) Management System**
 
-## Features <!-- omit from toc -->
+FBO Manager streamlines aircraft fueling operations, crew training certification tracking, flight dispatch management, and fuel farm monitoring for FBO operations at airports.
 
-- **Microsites**: supports several front ends connected to API backend
-- **API typesafety**: exported types from backend stored in shared front end package
-- **Server actions**: handling form submissions in server part of Next project
-- **Tailwind CSS**: built-in support for all front end packages and sites
-- **Docker Compose**: start both front end and backend by running `docker compose up`
-- **Auth system**: incorporated user authentication based on JWT tokens
-- **Profile management**: update profile information from the front end
-- **Registrations**: creation of new user accounts (activation not included)
-- **Admin theme**: Unfold admin theme with user & group management
-- **Custom user model**: extended default Django user model
-- **Visual Studio Code**: project already constains VS Code containers and tasks
+---
 
-## Table of contents <!-- omit from toc -->
+## Features
 
-- [Quickstart](#quickstart)
-  - [Environment files configuration](#environment-files-configuration)
-  - [Running docker compose](#running-docker-compose)
-- [Included dependencies](#included-dependencies)
-  - [Backend dependencies](#backend-dependencies)
-  - [Front end dependencies](#front-end-dependencies)
-- [Front end project structure](#front-end-project-structure)
-  - [Adding microsite to docker-compose.yaml](#adding-microsite-to-docker-composeyaml)
-- [Authentication](#authentication)
-  - [Configuring env variables](#configuring-env-variables)
-  - [User accounts on the backend](#user-accounts-on-the-backend)
-  - [Authenticated paths on frontend](#authenticated-paths-on-frontend)
-- [API calls to backend](#api-calls-to-backend)
-  - [API Client](#api-client)
-  - [Updating OpenAPI schema](#updating-openapi-schema)
-  - [Swagger](#swagger)
-  - [Client side requests](#client-side-requests)
-- [Test suite](#test-suite)
-- [Developing in VS Code](#developing-in-vs-code)
+- **Fuel Farm Management** - Real-time tank level monitoring, capacity tracking, and alerts
+- **Flight Tracking** - Track inbound/outbound flights with aircraft and gate assignments
+- **Fuel Dispatch** - Manage fuel service orders with fueler assignments and progress tracking
+- **Training & Certifications** - Track fueler certifications with automated expiry notifications
+- **User Management** - Role-based access control with JWT authentication
+- **API-First Architecture** - Comprehensive REST API with OpenAPI documentation
+- **Type Safety** - End-to-end type safety with OpenAPI-generated TypeScript types
+- **Modern Tech Stack** - Django 5.1 + Next.js 15 with React 19
+- **Docker Development** - Start both frontend and backend with `docker-compose up`
+- **Admin Dashboard** - Django Unfold theme for operations management
 
-## Quickstart
+---
 
-To start using Turbo, it is needed to clone the repository to your local machine and then run `docker compose`, which will take care about the installation process. The only prerequisite for starting Turbo template is to have `docker compose` installed and preconfiguring files with environment variables.
+## Quick Start
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/) 20.10+
+- [Docker Compose](https://docs.docker.com/compose/) 2.0+
+- [Git](https://git-scm.com/) 2.30+
+
+### 1. Clone Repository
 
 ```bash
-git clone https://github.com/unfoldadmin/turbo.git
-cd turbo
+git clone https://github.com/yourusername/fbo-manager.git
+cd fbo-manager
 ```
 
-### Environment files configuration
-
-Before you can run `docker compose up`, you have to set up two files with environment variables. Both files are loaded via `docker compose` and variables are available within docker containers.
+### 2. Configure Environment Variables
 
 ```bash
-cp .env.backend.template .env.backend # set SECRET_KEY and DEBUG=1 for debug mode on
-cp .env.frontend.template .env.frontend # set NEXTAUTH_SECRET to a value "openssl rand -base64 32"
+# Backend environment
+cp .env.backend.template .env.backend
+# Edit .env.backend - set DEBUG, SECRET_KEY, and database credentials
+
+# Frontend environment
+cp .env.frontend.template .env.frontend
+# Edit .env.frontend - set NEXTAUTH_SECRET (generate with: openssl rand -base64 32)
 ```
 
-For more advanced environment variables configuration for the front end, it is recommended to read official [Next.js documentation](https://nextjs.org/docs/pages/building-your-application/configuring/environment-variables) about environment variables where it is possible to configure specific variables for each microsite.
-
-On the backend it is possible to use third party libraries for loading environment variables. In case that loading variables through `os.environ` is not fulfilling the requriements, we recommend using [django-environ](https://github.com/joke2k/django-environ) application.
-
-### Running docker compose
+### 3. Start Development Environment
 
 ```bash
-docker compose up
+docker-compose up
 ```
 
-After successful installation, it will be possible to access both front end (http://localhost:3000) and backend (http://localhost:8000) part of the system from the browsers.
+This starts:
+- **Backend API** at http://localhost:8000
+- **Frontend** at http://localhost:3000
 
-**NOTE**: Don't forget to change database credentials in docker-compose.yaml and in .env.backend by configuring `DATABASE_PASSWORD`.
-
-## Included dependencies
-
-The general rule when it comes to dependencies is to have minimum of third party applications or plugins to avoid future problems updating the project and keep the maintenance of applications is minimal.
-
-### Backend dependencies
-
-For dependency management in Django application we are using `uv`. When starting the project through the `docker compose` command, it is checked for new dependencies as well. In the case they are not installed, docker will install them before running development server.
-
-- **[djangorestframework](https://github.com/encode/django-rest-framework)** - REST API support
-- **[djangorestframework-simplejwt](https://github.com/jazzband/djangorestframework-simplejwt)** - JWT auth for REST API
-- **[drf-spectacular](https://github.com/tfranzel/drf-spectacular)** - OpenAPI schema generator
-- **[django-unfold](https://github.com/unfoldadmin/django-unfold)** - Admin theme for Django admin panel
-
-Below, you can find a command to install new dependency into backend project.
+### 4. Run Database Migrations
 
 ```bash
-docker compose exec api uv add djangorestframework
+docker-compose exec api uv run python manage.py migrate
 ```
 
-### Front end dependencies
-
-For the frontend project, it is bit more complicated to maintain front end dependencies than in backend part. Dependencies, can be split into two parts. First part are general dependencies available for all projects under packages and apps folders. The second part are dependencies, which are project specific.
-
-- **[next-auth](https://github.com/nextauthjs/next-auth)** - Next.js authentication
-- **[react-hook-form](https://github.com/react-hook-form/react-hook-form)** - Handling of React forms
-- **[tailwind-merge](https://github.com/dcastil/tailwind-merge)** - Tailwind CSS class names helper
-- **[zod](https://github.com/colinhacks/zod)** - Schema validation
-
-To install a global dependency for all packages and apps, use `-w` parameter. In case of development package, add `-D` argument to install it into development dependencies.
+### 5. Create Superuser
 
 ```bash
-docker compose exec web pnpm add react-hook-form -w
+docker-compose exec api uv run python manage.py createsuperuser
 ```
 
-To install a dependency for specific app or package, use `--filter` to specify particular package.
+### 6. Access Services
+
+- **Frontend Application:** http://localhost:3000
+- **Backend API:** http://localhost:8000/api/
+- **API Documentation (Swagger):** http://localhost:8000/api/schema/swagger-ui/
+- **Django Admin:** http://localhost:8000/admin/
+
+---
+
+## Documentation
+
+Comprehensive documentation is available in the `/docs` directory:
+
+### Getting Started
+
+- **[Project Overview](./docs/PROJECT_OVERVIEW.md)** - Complete project proposal, technology stack, features, and roadmap
+- **[Developer Guide](./docs/DEVELOPER_GUIDE.md)** - Setup instructions, development workflow, testing, and troubleshooting
+
+### Technical Documentation
+
+- **[Architecture](./docs/ARCHITECTURE.md)** - System design, component details, data flow, and deployment architecture
+- **[Database Schema](./docs/DATABASE_SCHEMA.md)** - Complete data model with ER diagrams and relationships
+- **[API Reference](./docs/API_REFERENCE.md)** - All API endpoints with request/response examples
+- **[File Structure](./docs/FILE_STRUCTURE.md)** - Annotated codebase guide for developer onboarding
+
+---
+
+## Technology Stack
+
+### Backend
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Django | 5.1+ | Web framework with ORM and admin |
+| Django REST Framework | 3.15+ | RESTful API framework |
+| PostgreSQL | 15+ | Relational database (Supabase) |
+| JWT | 5.4+ | Stateless authentication |
+| drf-spectacular | 0.28+ | OpenAPI schema generation |
+| uv | latest | Fast Python package manager |
+
+### Frontend
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Next.js | 15.2+ | React framework with App Router |
+| React | 19.0+ | UI library |
+| TypeScript | 5.0+ | Type safety |
+| Tailwind CSS | 3.4+ | Utility-first CSS |
+| NextAuth.js | 4.24+ | Authentication for Next.js |
+| pnpm | latest | Fast package manager |
+
+### DevOps
+
+| Technology | Purpose |
+|------------|---------|
+| Docker + Docker Compose | Development environment |
+| GitHub Actions | CI/CD pipelines |
+| Pre-commit | Code quality checks |
+| pytest | Backend testing |
+
+---
+
+## Project Structure
+
+```
+fbo-manager/
+├── backend/              # Django REST API
+│   ├── api/              # Main Django app
+│   │   ├── models.py     # Database models (11 models)
+│   │   ├── serializers.py # DRF serializers
+│   │   ├── viewsets.py   # API viewsets
+│   │   ├── urls.py       # URL routing
+│   │   └── tests/        # Test suite
+│   ├── manage.py
+│   └── pyproject.toml    # Python dependencies (uv)
+├── frontend/             # Next.js monorepo
+│   ├── apps/
+│   │   └── web/          # Main Next.js app
+│   │       ├── app/      # Next.js App Router
+│   │       ├── lib/      # API client & utilities
+│   │       ├── actions/  # Server actions
+│   │       └── components/ # React components
+│   └── packages/
+│       ├── types/        # OpenAPI-generated types
+│       └── ui/           # Shared UI components
+├── docs/                 # Comprehensive documentation
+└── docker-compose.yaml   # Development orchestration
+```
+
+For detailed file structure with annotations, see [File Structure Guide](./docs/FILE_STRUCTURE.md).
+
+---
+
+## Core Features
+
+### 1. Fuel Farm Management
+
+Monitor fuel tank levels, track capacity, and receive alerts:
+
+- Tank configuration (Jet A, Avgas)
+- Real-time level readings
+- Historical data tracking
+- Status indicators (low, normal, high, critical)
+
+**API Endpoints:** `/api/tanks/`, `/api/tank-readings/`
+
+---
+
+### 2. Flight Management
+
+Track flights with aircraft and gate assignments:
+
+- Flight status tracking (scheduled, arrived, departed, cancelled, delayed)
+- Aircraft assignment (tail number, type, airline)
+- Terminal gate assignment
+- Date range filtering
+
+**API Endpoints:** `/api/flights/`, `/api/aircraft/`, `/api/gates/`
+
+---
+
+### 3. Fuel Dispatch Management
+
+Manage fuel service orders and assignments:
+
+- Create fuel transactions
+- Assign fuelers to transactions
+- Track progress (started → in_progress → completed)
+- QT Technologies integration fields
+
+**API Endpoints:** `/api/transactions/`
+
+---
+
+### 4. Training & Certifications
+
+Track fueler certifications with expiry monitoring:
+
+- Training course definitions
+- Certification records with expiry dates
+- "Expiring Soon" alerts
+- Certified-by tracking
+
+**API Endpoints:** `/api/trainings/`, `/api/fuelers/`, `/api/fueler-certifications/`
+
+---
+
+### 5. User Management
+
+Role-based access control:
+
+- Custom user model with roles (admin, user)
+- JWT authentication
+- Profile management
+- Password change and account deletion
+
+**API Endpoints:** `/api/users/`, `/api/auth/token/`
+
+---
+
+## Development Workflow
+
+### Common Tasks
+
+**Run Tests:**
+```bash
+docker-compose exec api uv run pytest .
+```
+
+**Create Migration:**
+```bash
+docker-compose exec api uv run python manage.py makemigrations
+```
+
+**Apply Migrations:**
+```bash
+docker-compose exec api uv run python manage.py migrate
+```
+
+**Regenerate API Types:**
+```bash
+cd frontend
+pnpm run generate-api-types
+```
+
+**View Logs:**
+```bash
+docker-compose logs -f
+```
+
+For complete development guide, see [Developer Guide](./docs/DEVELOPER_GUIDE.md).
+
+---
+
+## API Documentation
+
+Interactive API documentation is available at:
+
+**Swagger UI:** http://localhost:8000/api/schema/swagger-ui/
+
+**OpenAPI Schema:** http://localhost:8000/api/schema/
+
+For detailed API reference with examples, see [API Reference](./docs/API_REFERENCE.md).
+
+---
+
+## Testing
+
+### Backend Tests (pytest)
 
 ```bash
-docker compose exec web pnpm --filter web add react-hook-form
+# Run all tests
+docker-compose exec api uv run pytest .
+
+# Run with coverage
+docker-compose exec api uv run pytest --cov=api .
+
+# Run specific test
+docker-compose exec api uv run pytest api/tests/test_api.py -k "test_name"
 ```
 
-## Front end project structure
+**Test Infrastructure:**
+- pytest + pytest-django
+- Factory Boy for test data
+- APIClient for endpoint testing
 
-Project structure on the front end, it is quite different from the directory hierarchy in the backend. Turbo counts with an option that front end have multiple front ends available on various domains or ports.
+---
 
-```text
-frontend
-| - apps       // available sites
-|   - web      // available next.js project
-| - packages   // shared packages between sites
-|   - types    // exported types from backend - api
-|   - ui       // general ui components
-```
+## Code Quality
 
-The general rule here is, if you want to have some shared code, create new package under packages/ folder. After adding new package and making it available for your website, it is needed to install the new package into website project by running a command below.
+Pre-commit hooks run automatically on commit:
 
+- **Ruff** - Python linting and formatting
+- **Biome** - JavaScript/TypeScript formatting
+- **Conventional Commits** - Commit message validation
+
+**Run manually:**
 ```bash
-docker compose exec web pnpm --filter web add @frontend/ui
+pre-commit run --all-files
 ```
 
-### Adding microsite to docker-compose.yaml
+---
 
-If you want to have new website facing customers, create new project under apps/ directory. Keep in mind that `docker-compose.yaml` file must be adjusted to start a new project with appropriate new port.
+## Contributing
 
-```yaml
-new_microsite:
-  command: bash -c "pnpm install -r && pnpm --filter new_microsite dev"
-  build:
-    context: frontend # Dockerfile can be same
-  volumes:
-    - ./frontend:/app
-  expose:
-    - "3001" # different port
-  ports:
-    - "3001:3001" # different port
-  env_file:
-    - .env.frontend
-  depends_on:
-    - api
+### Git Workflow
+
+1. Create feature branch: `git checkout -b feature/my-feature`
+2. Make changes and commit: `git commit -m "feat: add my feature"`
+3. Push to origin: `git push -u origin feature/my-feature`
+4. Create Pull Request on GitHub
+5. Wait for CI checks and code review
+6. Merge after approval
+
+### Commit Message Format
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <subject>
+
+[body]
+
+[footer]
 ```
 
-## Authentication
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
-For the authentication, Turbo uses **django-simplejwt** and **next-auth** package to provide simple REST based JWT authentication. On the backend, there is no configuraton related to django-simplejwt so everything is set to default values.
+**Examples:**
+```
+feat(api): add fuel tank level alerts
+fix(frontend): correct date formatting in dashboard
+docs: update API reference with new endpoints
+```
 
-On the front end, next-auth is used to provide credentials authentication. The most important file on the front end related to authentication is `frontend/web/lib/auth.ts` which is containing whole business logic behind authentication.
+---
 
-### Configuring env variables
+## Deployment
 
-Before starting using authentication, it is crucial to configure environment variable `NEXTAUTH_SECRET` in .env.frontend file. You can set the value to the output of the command below.
+### Development (Current)
 
+```
+Docker Compose
+├── api (Django) - Port 8000
+└── web (Next.js) - Port 3000
+```
+
+### Production (Planned)
+
+- **Frontend:** Next.js on Vercel or containerized
+- **Backend:** Django API on Cloud Run / ECS
+- **Database:** Managed PostgreSQL (Supabase)
+- **Cache:** Redis (planned)
+- **Workers:** Celery (planned)
+
+For deployment guide, see [Architecture Documentation](./docs/ARCHITECTURE.md).
+
+---
+
+## Roadmap
+
+### Current Status: MVP ✅
+
+- ✅ Core data models (11 models)
+- ✅ REST API endpoints (30+ endpoints)
+- ✅ Frontend dashboard with 5 pages
+- ✅ JWT authentication
+- ✅ Docker development environment
+- ✅ Comprehensive documentation
+
+### Next: Production Readiness
+
+- [ ] Comprehensive test coverage (80%+ backend, 70%+ frontend)
+- [ ] Production-ready permissions
+- [ ] Rate limiting
+- [ ] Error tracking (Sentry)
+- [ ] Monitoring and logging
+
+### Future Phases
+
+- [ ] Redis caching + Celery tasks
+- [ ] Email notifications
+- [ ] QT Technologies API integration
+- [ ] Mobile app
+- [ ] Real-time updates (WebSockets)
+
+For complete roadmap, see [Project Overview](./docs/PROJECT_OVERVIEW.md).
+
+---
+
+## Database Schema
+
+**11 Models:**
+
+- `User` - Custom user with role and employee ID
+- `Fueler` - Employee profile (OneToOne with User)
+- `Training` - Training course definitions
+- `FuelerTraining` - Certification records
+- `FuelTank` - Tank configuration
+- `TankLevelReading` - Historical readings (read-only)
+- `Aircraft` - Aircraft registry
+- `TerminalGate` - Terminal gates
+- `Flight` - Flight tracking
+- `FuelTransaction` - Fuel dispatch orders
+- `FuelerAssignment` - Transaction-to-fueler mapping
+
+For complete schema with ER diagrams, see [Database Schema](./docs/DATABASE_SCHEMA.md).
+
+---
+
+## VS Code Development
+
+The project includes Dev Container configuration for seamless development:
+
+1. Open project in VS Code
+2. Click "Reopen in Container" when prompted
+3. Select `backend` or `frontend` container
+4. Start coding with full IDE integration
+
+**Switch containers:** Command Palette → "Dev Containers: Switch Container"
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Problem:** Port 8000 already in use
+
+**Solution:**
 ```bash
-openssl rand -base64 32
+# Find and kill process
+lsof -i :8000
+kill -9 <PID>
 ```
 
-### User accounts on the backend
+---
 
-There are two ways how to create new user account in the backend. First option is to run managed command responsible for creating superuser. It is more or less required, if you want to have an access to the Django admin. After running the command below, it will be possible to log in on the front end part of the application.
+**Problem:** Database connection error
 
+**Solution:**
+1. Check `.env.backend` credentials
+2. Verify Supabase database is running
+3. Test connection: `docker-compose exec api uv run python manage.py dbshell`
+
+---
+
+**Problem:** API types not found
+
+**Solution:**
 ```bash
-docker compose exec api uv run -- python manage.py createsuperuser
+cd frontend
+pnpm run generate-api-types
 ```
 
-The second option how to create new user account is to register it on the front end. Turbo provides simple registration form. After account registration, it will be not possible to log in because account is inactive. Superuser needs to access Django admin and activate an account. This is a default behavior provided by Turbo, implementation of special way of account activation is currently out the scope of the project.
+For more troubleshooting, see [Developer Guide](./docs/DEVELOPER_GUIDE.md#troubleshooting).
 
-### Authenticated paths on frontend
+---
 
-To ensure path is only for authenticated users, it is possible to use `getServerSession` to check the status of user.
+## Support
 
-This function accepts an argument with authentication options, which can be imported from `@/lib/auth` and contains credentials authentication business logic.
+- **Documentation:** [/docs](./docs/)
+- **Issues:** https://github.com/yourusername/fbo-manager/issues
+- **Discussions:** https://github.com/yourusername/fbo-manager/discussions
+- **Email:** stelliosbonadurer@gmail.com
 
-```tsx
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+---
 
-const SomePageForAuthenticatedUsers = async () => {
-  const session = await getServerSession(authOptions);
+## License
 
-  if (session === null) {
-    return redirect("/");
-  }
+See [LICENSE.md](./LICENSE.md)
 
-  return <>content</>;
-};
-```
+---
 
-To require authenticated user account on multiple pages, similar business logic can be applied in `layouts.tsx`.
+## Acknowledgments
 
-```tsx
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+Built with:
+- [Django](https://www.djangoproject.com/) - Web framework
+- [Next.js](https://nextjs.org/) - React framework
+- [Django REST Framework](https://www.django-rest-framework.org/) - API framework
+- [Django Unfold](https://github.com/unfoldadmin/django-unfold) - Admin theme
+- [Turbo Template](https://github.com/unfoldadmin/turbo) - Initial boilerplate
 
-const AuthenticatedLayout = async ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const session = await getServerSession(authOptions);
+---
 
-  if (session === null) {
-    return redirect("/");
-  }
-
-  return <>{children}</>;
-};
-
-export default AuthenticatedLayout;
-```
-
-## API calls to backend
-
-Currently Turbo implements Next.js server actions in folder `frontend/apps/web/actions/` responsible for communication with the backend. When the server action is hit from the client, it fetches required data from Django API backend.
-
-### API Client
-
-The query between server action and Django backend is handled by using an API client generated by `openapi-typescript-codegen` package. In Turbo, there is a function `getApiClient` available in `frontend/apps/web/lib/api.ts` which already implements default options and authentication tokens.
-
-### Updating OpenAPI schema
-
-After changes on the backend, for example adding new fields into serializers, it is required to update typescript schema on the frontend. The schema can be updated by running command below. In VS Code, there is prepared task which will update definition.
-
-```bash
-docker compose exec web pnpm openapi:generate
-```
-
-### Swagger
-
-By default, Turbo includes Swagger for API schema which is available here `http://localhost:8000/api/schema/swagger-ui/`. Swagger can be disabled by editing `urls.py` and removing `SpectacularSwaggerView`.
-
-### Client side requests
-
-At the moment, Turbo does not contain any examples of client side requests towards the backend. All the requests are handled by server actions. For client side requests, it is recommended to use [react-query](https://github.com/TanStack/query).
-
-## Test suite
-
-Project contains test suite for backend part. For testing it was used library called [pytest](https://docs.pytest.org/en/latest/) along with some additinal libraries extending functionality of pytest:
-
-- [pytest-django](https://pytest-django.readthedocs.io/en/latest/) - for testing django applications
-- [pytest-factoryboy](https://pytest-factoryboy.readthedocs.io/en/latest/) - for creating test data
-
-All these libraries mentioned above are already preconfigured in `backend/api/tests` directory.
-
-- `conftest.py` - for configuring pytest
-- `factories.py` - for generating reusable test objects using factory_boy, which creates model instances with default values that can be customized as needed
-- `fixtures.py` - for creating pytest fixtures that provide test data or resources that can be shared and reused across multiple tests
-
-To run tests, use the command below which will collect all the tests available in backend/api/tests folder:
-
-```bash
-docker compose exec api uv run -- pytest .
-```
-
-Tu run tests available only in one specific file run:
-
-```bash
-docker compose exec api uv run -- pytest api/tests/test_api.py
-```
-
-To run one specific test, use the command below:
-
-```bash
-docker compose exec api uv run -- pytest api/tests/test_api.py -k "test_api_users_me_authorized"
-```
-
-## Developing in VS Code
-
-The project contains configuration files for devcontainers so it is possible to directly work inside the container within VS Code. When the project opens in the VS Code the popup will appear to reopen the project in container. An action **Dev Containers: Reopen in Container** is available as well. Click on the reopen button and select the container which you want to work on. When you want to switch from the frontend to the backend project run **Dev Containers: Switch container** action. In case you are done and you want to work in the parent folder run **Dev Containers: Reopen Folder Locally** action
+**Last Updated:** October 31, 2025
