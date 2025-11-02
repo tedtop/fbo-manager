@@ -102,8 +102,10 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -140,7 +142,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-serif: "Source Serif 4", "Source Serif 4 Fallback";
   /* Adding success and warning to theme inline */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -181,4 +182,10 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Smooth dark mode transition using View Transitions API */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 6s;
 }
