@@ -176,6 +176,8 @@ class ParkingLocation(models.Model):
         _("Location Code"),
         max_length=50,
         unique=True,
+        null=True,
+        blank=True,
         validators=[location_code_validator],
         help_text="Unique code: CAPS, alphanumeric, hyphens only. Examples: T-A1, D-1, BRETZ",
     )
