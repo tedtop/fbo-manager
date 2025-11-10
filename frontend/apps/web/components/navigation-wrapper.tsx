@@ -32,8 +32,16 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
   // Save theme to localStorage when it changes
   const handleThemeChange = (newTheme: 'dark' | 'light') => {
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
+    // Use View Transitions API for smooth theme change if available
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      (document as any).startViewTransition(() => {
+        setTheme(newTheme)
+        localStorage.setItem('theme', newTheme)
+      })
+    } else {
+      setTheme(newTheme)
+      localStorage.setItem('theme', newTheme)
+    }
   }
 
   // Hide navigation on auth pages
