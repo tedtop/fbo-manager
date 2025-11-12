@@ -21,6 +21,7 @@ Turbo is a simple bootstrap template for Django and Next.js, combining both fram
 - [Quickstart](#quickstart)
   - [Environment files configuration](#environment-files-configuration)
   - [Running docker compose](#running-docker-compose)
+- [Tech stack and architecture](docs/tech-stack.md)
 - [Included dependencies](#included-dependencies)
   - [Backend dependencies](#backend-dependencies)
   - [Front end dependencies](#front-end-dependencies)
@@ -37,6 +38,7 @@ Turbo is a simple bootstrap template for Django and Next.js, combining both fram
   - [Client side requests](#client-side-requests)
 - [Test suite](#test-suite)
 - [Developing in VS Code](#developing-in-vs-code)
+  - [Documentation](#documentation)
 
 ## Quickstart
 
@@ -278,3 +280,17 @@ docker compose exec api uv run -- pytest api/tests/test_api.py -k "test_api_user
 ## Developing in VS Code
 
 The project contains configuration files for devcontainers so it is possible to directly work inside the container within VS Code. When the project opens in the VS Code the popup will appear to reopen the project in container. An action **Dev Containers: Reopen in Container** is available as well. Click on the reopen button and select the container which you want to work on. When you want to switch from the frontend to the backend project run **Dev Containers: Switch container** action. In case you are done and you want to work in the parent folder run **Dev Containers: Reopen Folder Locally** action
+
+## Documentation
+
+Comprehensive project documentation is available under `docs/`:
+
+- [Technology Stack](docs/tech-stack.md)
+- [Architecture Overview](docs/architecture.md)
+- [API Documentation](docs/api.md) (Swagger UI: `/api/schema/swagger-ui/`)
+- [Database Schema](docs/database.md)
+- [Development Guide](docs/development.md)
+- [Deployment Guide](docs/deployment.md)
+- [User Guide](docs/user-guide.md)
+
+All diagrams use Mermaid in Markdown; API types are generated from OpenAPI using `openapi-typescript-codegen`.
