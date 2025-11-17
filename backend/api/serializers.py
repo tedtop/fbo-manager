@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -14,6 +14,7 @@ from .models import (
     Fueler,
     FuelerAssignment,
     FuelerTraining,
+    FuelerTrainingHistory,
     FuelTank,
     FuelTransaction,
     LineSchedule,
@@ -554,6 +555,23 @@ class FuelerTrainingSerializer(serializers.ModelSerializer):
             "expiry_status",
         ]
 
+    def create(self, validated_data):
+        # Auto-calculate expiry_date from training validity if not provided
+        if not validated_data.get("expiry_date") and validated_data.get("completed_date"):
+            training = validated_data["training"]
+            validity = training.validity_period_days or 0
+            validated_data["expiry_date"] = validated_data["completed_date"] + timedelta(days=validity)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # Auto-calculate expiry_date when updating if not provided
+        completed_date = validated_data.get("completed_date") or instance.completed_date
+        if not validated_data.get("expiry_date") and completed_date:
+            training = validated_data.get("training") or instance.training
+            validity = training.validity_period_days or 0
+            validated_data["expiry_date"] = completed_date + timedelta(days=validity)
+        return super().update(instance, validated_data)
+
     def get_days_until_expiry(self, obj):
         if obj.expiry_date:
             delta = obj.expiry_date - date.today()
@@ -607,6 +625,29 @@ class FuelerWithCertificationsSerializer(serializers.ModelSerializer):
 
     def get_expired_certifications_count(self, obj):
         return obj.certifications.filter(expiry_date__lt=date.today()).count()
+
+
+class FuelerTrainingHistorySerializer(serializers.ModelSerializer):
+    fueler_name = serializers.CharField(source="fueler.fueler_name", read_only=True)
+    training_name = serializers.CharField(source="training.training_name", read_only=True)
+    certified_by_name = serializers.CharField(source="certified_by.get_full_name", read_only=True)
+
+    class Meta:
+        model = FuelerTrainingHistory
+        fields = [
+            "id",
+            "fueler",
+            "fueler_name",
+            "training",
+            "training_name",
+            "completed_date",
+            "expiry_date",
+            "certified_by",
+            "certified_by_name",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at", "fueler_name", "training_name", "certified_by_name"]
 
 
 # ============================================================================

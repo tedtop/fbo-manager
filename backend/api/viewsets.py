@@ -14,6 +14,7 @@ from .models import (
     Fueler,
     FuelerAssignment,
     FuelerTraining,
+    FuelerTrainingHistory,
     FuelTank,
     FuelTransaction,
     LineSchedule,
@@ -31,6 +32,7 @@ from .serializers import (
     FuelerAssignmentSerializer,
     FuelerSerializer,
     FuelerTrainingSerializer,
+    FuelerTrainingHistorySerializer,
     FuelerWithCertificationsSerializer,
     FuelTankSerializer,
     FuelTankWithLatestReadingSerializer,
@@ -372,6 +374,151 @@ class FuelerTrainingViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(expiry_date__gte=date.today())
 
         return queryset
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve"]:
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def complete(self, request):
+        """Assign and/or complete a training for a fueler, computing expiry as needed.
+
+        Expects: fueler (id), training (id), completed_date (YYYY-MM-DD, optional),
+        expiry_date (optional), notes (optional). Uses request.user as certified_by.
+        """
+        from datetime import datetime
+
+        fueler_id = request.data.get("fueler")
+        training_id = request.data.get("training")
+        completed_date_str = request.data.get("completed_date")
+        expiry_date_str = request.data.get("expiry_date")
+        notes = request.data.get("notes", "")
+
+        if not fueler_id or not training_id:
+            return Response({"error": "fueler and training are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            fueler = Fueler.objects.get(pk=fueler_id)
+            training = Training.objects.get(pk=training_id)
+        except (Fueler.DoesNotExist, Training.DoesNotExist):
+            return Response({"error": "Fueler or Training not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Parse dates
+        if completed_date_str:
+            try:
+                completed_date = date.fromisoformat(completed_date_str)
+            except ValueError:
+                return Response({"error": "Invalid completed_date format"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            completed_date = date.today()
+
+        if expiry_date_str:
+            try:
+                expiry_date = date.fromisoformat(expiry_date_str)
+            except ValueError:
+                return Response({"error": "Invalid expiry_date format"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            validity = training.validity_period_days or 0
+            expiry_date = completed_date + timedelta(days=validity)
+
+        # Upsert current certification
+        cert, _created = FuelerTraining.objects.get_or_create(
+            fueler=fueler, training=training,
+            defaults={
+                "completed_date": completed_date,
+                "expiry_date": expiry_date,
+                "certified_by": request.user,
+            },
+        )
+        if not _created:
+            cert.completed_date = completed_date
+            cert.expiry_date = expiry_date
+            cert.certified_by = request.user
+            cert.save()
+
+        # Record history
+        FuelerTrainingHistory.objects.create(
+            fueler=fueler,
+            training=training,
+            completed_date=completed_date,
+            expiry_date=expiry_date,
+            certified_by=request.user,
+            notes=notes or "",
+        )
+
+        serializer = FuelerTrainingSerializer(cert)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def calendar(self, request):
+        """Return calendar events for training completions and upcoming expiries in a date range.
+
+        Query params: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD)
+        Defaults to today to +30 days for expiries and last 30 days for completions if omitted.
+        """
+        from datetime import datetime
+
+        start_str = request.query_params.get("start_date")
+        end_str = request.query_params.get("end_date")
+
+        today = date.today()
+        default_end = today + timedelta(days=30)
+        default_start = today - timedelta(days=30)
+
+        try:
+            start_date = date.fromisoformat(start_str) if start_str else default_start
+            end_date = date.fromisoformat(end_str) if end_str else default_end
+        except ValueError:
+            return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Completions from history
+        history = FuelerTrainingHistory.objects.select_related("fueler", "training").filter(
+            completed_date__gte=start_date, completed_date__lte=end_date
+        )
+        history_events = [
+            {
+                "type": "completed",
+                "date": h.completed_date,
+                "fueler": h.fueler_id,
+                "fueler_name": h.fueler.fueler_name,
+                "training": h.training_id,
+                "training_name": h.training.training_name,
+                "history_id": h.id,
+            }
+            for h in history
+        ]
+
+        # Upcoming expiries from current certifications
+        expiries = FuelerTraining.objects.select_related("fueler", "training").filter(
+            expiry_date__gte=start_date, expiry_date__lte=end_date
+        )
+        expiry_events = [
+            {
+                "type": "expiry",
+                "date": c.expiry_date,
+                "fueler_training_id": c.id,
+                "fueler": c.fueler_id,
+                "fueler_name": c.fueler.fueler_name,
+                "training": c.training_id,
+                "training_name": c.training.training_name,
+            }
+            for c in expiries
+        ]
+
+        return Response(history_events + expiry_events)
+
+
+class FuelerTrainingHistoryViewSet(viewsets.ModelViewSet):
+    """ViewSet for training completion history"""
+
+    queryset = FuelerTrainingHistory.objects.select_related("fueler", "training", "certified_by").all()
+    serializer_class = FuelerTrainingHistorySerializer
+    permission_classes = [AllowAnyReadOnly]
+    filter_backends = [filters.OrderingFilter]
+    filterset_fields = ["fueler", "training", "certified_by"]
+    ordering_fields = ["completed_date", "expiry_date", "created_at"]
+    ordering = ["-completed_date"]
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:

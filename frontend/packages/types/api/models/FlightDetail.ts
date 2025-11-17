@@ -35,3 +35,4 @@ export type FlightDetail = {
     readonly created_at: string;
     readonly modified_at: string;
 };
+

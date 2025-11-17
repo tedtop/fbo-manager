@@ -9,3 +9,4 @@ export type PaginatedParkingLocationList = {
     previous?: string | null;
     results: Array<ParkingLocation>;
 };
+

@@ -21,3 +21,4 @@ export type PatchedUserListRequest = {
      */
     is_active?: boolean;
 };
+

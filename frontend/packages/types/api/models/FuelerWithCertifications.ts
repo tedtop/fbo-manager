@@ -23,3 +23,4 @@ export type FuelerWithCertifications = {
     readonly created_at: string;
     readonly modified_at: string;
 };
+

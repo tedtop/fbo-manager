@@ -52,7 +52,7 @@ export class ParkingLocationsService {
      * @throws ApiError
      */
     public parkingLocationsCreate(
-        requestBody: ParkingLocationRequest,
+        requestBody?: ParkingLocationRequest,
     ): CancelablePromise<ParkingLocation> {
         return this.httpRequest.request({
             method: 'POST',
@@ -99,7 +99,7 @@ export class ParkingLocationsService {
      */
     public parkingLocationsUpdate(
         id: number,
-        requestBody: ParkingLocationRequest,
+        requestBody?: ParkingLocationRequest,
     ): CancelablePromise<ParkingLocation> {
         return this.httpRequest.request({
             method: 'PUT',

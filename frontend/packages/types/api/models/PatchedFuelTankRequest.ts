@@ -16,3 +16,4 @@ export type PatchedFuelTankRequest = {
     usable_min_inches?: string;
     usable_max_inches?: string;
 };
+

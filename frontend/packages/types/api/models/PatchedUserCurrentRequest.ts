@@ -16,3 +16,4 @@ export type PatchedUserCurrentRequest = {
     employee_id?: string | null;
     is_active_fueler?: boolean;
 };
+

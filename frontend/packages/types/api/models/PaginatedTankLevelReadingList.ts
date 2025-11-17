@@ -9,3 +9,4 @@ export type PaginatedTankLevelReadingList = {
     previous?: string | null;
     results: Array<TankLevelReading>;
 };
+

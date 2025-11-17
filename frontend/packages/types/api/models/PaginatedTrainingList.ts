@@ -9,3 +9,4 @@ export type PaginatedTrainingList = {
     previous?: string | null;
     results: Array<Training>;
 };
+

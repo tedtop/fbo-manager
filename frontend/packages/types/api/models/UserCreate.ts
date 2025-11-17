@@ -8,3 +8,4 @@ export type UserCreate = {
      */
     username: string;
 };
+

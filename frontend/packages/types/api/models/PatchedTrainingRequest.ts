@@ -14,3 +14,4 @@ export type PatchedTrainingRequest = {
      */
     aircraft_type?: string | null;
 };
+

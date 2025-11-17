@@ -12,6 +12,7 @@ import { EquipmentService } from './services/EquipmentService';
 import { FlightsService } from './services/FlightsService';
 import { FuelerCertificationsService } from './services/FuelerCertificationsService';
 import { FuelersService } from './services/FuelersService';
+import { FuelerTrainingHistoryService } from './services/FuelerTrainingHistoryService';
 import { GatesService } from './services/GatesService';
 import { LineSchedulesService } from './services/LineSchedulesService';
 import { ParkingLocationsService } from './services/ParkingLocationsService';
@@ -29,6 +30,7 @@ export class ApiClient {
     public readonly flights: FlightsService;
     public readonly fuelerCertifications: FuelerCertificationsService;
     public readonly fuelers: FuelersService;
+    public readonly fuelerTrainingHistory: FuelerTrainingHistoryService;
     public readonly gates: GatesService;
     public readonly lineSchedules: LineSchedulesService;
     public readonly parkingLocations: ParkingLocationsService;
@@ -57,6 +59,7 @@ export class ApiClient {
         this.flights = new FlightsService(this.request);
         this.fuelerCertifications = new FuelerCertificationsService(this.request);
         this.fuelers = new FuelersService(this.request);
+        this.fuelerTrainingHistory = new FuelerTrainingHistoryService(this.request);
         this.gates = new GatesService(this.request);
         this.lineSchedules = new LineSchedulesService(this.request);
         this.parkingLocations = new ParkingLocationsService(this.request);
@@ -67,3 +70,4 @@ export class ApiClient {
         this.users = new UsersService(this.request);
     }
 }
+

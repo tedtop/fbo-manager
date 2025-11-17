@@ -10,7 +10,7 @@ export type ParkingLocation = {
     /**
      * Unique code: CAPS, alphanumeric, hyphens only. Examples: T-A1, D-1, BRETZ
      */
-    location_code: string;
+    location_code?: string | null;
     description?: string;
     /**
      * Latitude coordinate for map display
@@ -44,3 +44,4 @@ export type ParkingLocation = {
     readonly created_at: string;
     readonly modified_at: string;
 };
+

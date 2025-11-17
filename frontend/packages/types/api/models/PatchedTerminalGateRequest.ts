@@ -9,3 +9,4 @@ export type PatchedTerminalGateRequest = {
     location_id?: string;
     display_order?: number;
 };
+

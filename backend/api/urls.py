@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.permissions import AllowAny
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -14,6 +15,7 @@ from .viewsets import (
     FuelerViewSet,
     FuelTankViewSet,
     FuelTransactionViewSet,
+    FuelerTrainingHistoryViewSet,
     LineScheduleViewSet,
     ParkingLocationViewSet,
     TankLevelReadingViewSet,
@@ -21,6 +23,10 @@ from .viewsets import (
     TrainingViewSet,
     UserManagementViewSet,
 )
+
+# Public schema view (no auth required for codegen)
+class PublicSchemaView(SpectacularAPIView):
+    permission_classes = [AllowAny]
 
 # API Router
 router = routers.DefaultRouter()
@@ -50,6 +56,11 @@ router.register("trainings", TrainingViewSet, basename="trainings")
 router.register(
     "fueler-certifications", FuelerTrainingViewSet, basename="fueler-certifications"
 )
+router.register(
+    "fueler-training-history",
+    FuelerTrainingHistoryViewSet,
+    basename="fueler-training-history",
+)
 
 # Equipment & Line Schedule
 router.register("equipment", EquipmentViewSet, basename="equipment")
@@ -61,7 +72,7 @@ urlpatterns = [
         "api/schema/swagger-ui/",
         SpectacularSwaggerView.as_view(url_name="schema"),
     ),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/schema/", PublicSchemaView.as_view(), name="schema"),
     # Authentication
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

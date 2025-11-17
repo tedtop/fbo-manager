@@ -19,3 +19,4 @@ export type FuelTransactionList = {
     qt_sync_status?: QtSyncStatusEnum;
     readonly created_at: string;
 };
+

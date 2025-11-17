@@ -12,3 +12,4 @@ export type PatchedFuelerRequest = {
     handheld_name?: string;
     status?: StatusA3eEnum;
 };
+

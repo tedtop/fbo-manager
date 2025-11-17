@@ -30,3 +30,4 @@ export type FuelTransactionDetail = {
     readonly created_at: string;
     readonly modified_at: string;
 };
+

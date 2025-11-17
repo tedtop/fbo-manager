@@ -7,3 +7,4 @@ export type UserChangePasswordError = {
     password_new?: Array<string>;
     password_retype?: Array<string>;
 };
+

@@ -10,3 +10,4 @@ export type UserCreateRequest = {
     password: string;
     password_retype: string;
 };
+

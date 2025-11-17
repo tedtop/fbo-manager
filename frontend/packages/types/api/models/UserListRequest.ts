@@ -21,3 +21,4 @@ export type UserListRequest = {
      */
     is_active?: boolean;
 };
+

@@ -15,3 +15,4 @@ export type FuelTransactionListRequest = {
     progress?: ProgressEnum;
     qt_sync_status?: QtSyncStatusEnum;
 };
+

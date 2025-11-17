@@ -13,3 +13,4 @@ export type FuelTransactionCreate = {
     density: string;
     charge_flags?: any;
 };
+

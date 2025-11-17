@@ -8,3 +8,4 @@ export type FuelerAssignment = {
     readonly fueler_name: string;
     readonly assigned_at: string;
 };
+

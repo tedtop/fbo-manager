@@ -9,3 +9,4 @@ export type PaginatedLineScheduleList = {
     previous?: string | null;
     results: Array<LineSchedule>;
 };
+

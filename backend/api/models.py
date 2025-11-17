@@ -453,6 +453,44 @@ class FuelerTraining(models.Model):
         return f"{self.fueler.fueler_name} - {self.training.training_name}"
 
 
+class FuelerTrainingHistory(models.Model):
+    """Historical record of training completions for fuelers"""
+
+    fueler = models.ForeignKey(
+        Fueler,
+        on_delete=models.CASCADE,
+        related_name="training_history",
+        verbose_name=_("Fueler"),
+    )
+    training = models.ForeignKey(
+        Training,
+        on_delete=models.CASCADE,
+        related_name="training_history",
+        verbose_name=_("Training"),
+    )
+    completed_date = models.DateField(_("Completed Date"))
+    expiry_date = models.DateField(_("Expiry Date"))
+    certified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="training_history_issued",
+        verbose_name=_("Certified By"),
+    )
+    notes = models.TextField(_("Notes"), blank=True, default="")
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+
+    class Meta:
+        db_table = "fueler_training_history"
+        verbose_name = _("Fueler Training History")
+        verbose_name_plural = _("Fueler Training History")
+        ordering = ["-completed_date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.fueler.fueler_name} - {self.training.training_name} @ {self.completed_date}"
+
+
 class FuelTransaction(models.Model):
     """Fuel dispatch transactions"""
 

@@ -17,3 +17,4 @@ export type FuelTankWithLatestReading = {
     readonly current_level_percentage: string;
     readonly status: string;
 };
+

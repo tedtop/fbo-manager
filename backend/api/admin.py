@@ -11,6 +11,7 @@ from .models import (
     Fueler,
     FuelerAssignment,
     FuelerTraining,
+    FuelerTrainingHistory,
     FuelTank,
     FuelTransaction,
     ParkingLocation,
@@ -200,6 +201,21 @@ class FuelerTrainingAdmin(ModelAdmin):
         "certified_by",
     ]
     list_filter = ["expiry_date", "completed_date"]
+    search_fields = ["fueler__fueler_name", "training__training_name"]
+    raw_id_fields = ["fueler", "training", "certified_by"]
+
+
+@admin.register(FuelerTrainingHistory)
+class FuelerTrainingHistoryAdmin(ModelAdmin):
+    list_display = [
+        "fueler",
+        "training",
+        "completed_date",
+        "expiry_date",
+        "certified_by",
+        "created_at",
+    ]
+    list_filter = ["completed_date", "expiry_date", "created_at"]
     search_fields = ["fueler__fueler_name", "training__training_name"]
     raw_id_fields = ["fueler", "training", "certified_by"]
 
