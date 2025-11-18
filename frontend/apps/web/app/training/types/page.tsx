@@ -5,6 +5,7 @@ import type { Training, TrainingRequest } from '@frontend/types/api'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@frontend/ui/components/ui/dialog'
+import { AssignTrainingDialog } from '@/components/training/assign-training-dialog'
 import { Input } from '@frontend/ui/components/ui/input'
 import { Label } from '@frontend/ui/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@frontend/ui/components/ui/table'
@@ -21,6 +22,8 @@ export default function TrainingTypesPage() {
     const [loading, setLoading] = useState(true)
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editing, setEditing] = useState<Training | null>(null)
+    const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+    const [assignTraining, setAssignTraining] = useState<Training | null>(null)
     const [form, setForm] = useState<TrainingRequest>({
         training_name: '',
         description: '',
@@ -64,6 +67,11 @@ export default function TrainingTypesPage() {
             aircraft_type: t.aircraft_type
         })
         setDialogOpen(true)
+    }
+
+    const openAssign = (t: Training) => {
+        setAssignTraining(t)
+        setAssignDialogOpen(true)
     }
 
     const save = async (e: React.FormEvent) => {
@@ -120,6 +128,7 @@ export default function TrainingTypesPage() {
                                 <TableCell>{t.aircraft_type || '—'}</TableCell>
                                 <TableCell className="text-right space-x-2">
                                     <Button variant="outline" size="sm" onClick={() => openEdit(t)}>Edit</Button>
+                                    <Button variant="outline" size="sm" onClick={() => openAssign(t)}>Assign</Button>
                                     <Button variant="destructive" size="sm" onClick={() => remove(t.id!)}>Delete</Button>
                                 </TableCell>
                             </TableRow>
@@ -168,6 +177,15 @@ export default function TrainingTypesPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            <AssignTrainingDialog
+                open={assignDialogOpen}
+                onOpenChange={setAssignDialogOpen}
+                training={assignTraining}
+                onAssigned={() => {
+                    setAssignDialogOpen(false)
+                }}
+            />
         </div>
     )
 }

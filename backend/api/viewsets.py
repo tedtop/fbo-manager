@@ -311,6 +311,19 @@ class FuelerViewSet(viewsets.ModelViewSet):
         serializer = FuelerTrainingSerializer(certifications, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path="my-certifications", permission_classes=[IsAuthenticated])
+    def my_certifications(self, request):
+        """Return certifications for the logged-in user's fueler profile.
+
+        If the user has no associated fueler profile, return an empty list.
+        """
+        fueler = Fueler.objects.filter(user=request.user).first()
+        if not fueler:
+            return Response([])
+        certs = fueler.certifications.select_related("training", "certified_by")
+        serializer = FuelerTrainingSerializer(certs, many=True)
+        return Response(serializer.data)
+
     @action(detail=False, methods=["get"])
     def expiring_soon(self, request):
         """Get fuelers with certifications expiring within 7 days"""

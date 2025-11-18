@@ -38,11 +38,10 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`text-sm font-medium ${
-                    isActive
-                      ? 'text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                  className={`text-sm font-medium ${isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                    }`}
                 >
                   {item.name}
                 </Link>
