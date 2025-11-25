@@ -74,22 +74,11 @@ class Migration(migrations.Migration):
             model_name='flight',
             name='gate',
         ),
-        migrations.RemoveField(
-            model_name='parkinglocation',
-            name='is_active',
-        ),
-        migrations.RemoveField(
-            model_name='parkinglocation',
-            name='location_name',
-        ),
-        migrations.RemoveField(
-            model_name='parkinglocation',
-            name='location_type',
-        ),
-        migrations.RemoveField(
-            model_name='parkinglocation',
-            name='notes',
-        ),
+        # Use conditional SQL drops to avoid failures if column already absent (e.g. on Supabase)
+        migrations.RunSQL("ALTER TABLE parking_location DROP COLUMN IF EXISTS is_active CASCADE;"),
+        migrations.RunSQL("ALTER TABLE parking_location DROP COLUMN IF EXISTS location_name CASCADE;"),
+        migrations.RunSQL("ALTER TABLE parking_location DROP COLUMN IF EXISTS location_type CASCADE;"),
+        migrations.RunSQL("ALTER TABLE parking_location DROP COLUMN IF EXISTS notes CASCADE;"),
         migrations.AddField(
             model_name='aircraft',
             name='aircraft_type_display',
@@ -155,41 +144,14 @@ class Migration(migrations.Migration):
             name='airport',
             field=models.CharField(default='MSO', help_text='Airport code: MSO, USFS, etc.', max_length=10, verbose_name='Airport'),
         ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='description',
-            field=models.TextField(blank=True, default='', verbose_name='Description'),
-        ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='gate',
-            field=models.CharField(blank=True, help_text='Gate number: A1, A2, B1, B2, etc.', max_length=10, null=True, verbose_name='Gate'),
-        ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='latitude',
-            field=models.DecimalField(blank=True, decimal_places=6, help_text='Latitude coordinate for map display', max_digits=9, null=True, verbose_name='Latitude'),
-        ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='location_code',
-            field=models.CharField(blank=True, help_text='Unique code: CAPS, alphanumeric, hyphens only. Examples: T-A1, D-1, BRETZ', max_length=50, null=True, unique=True, validators=[django.core.validators.RegexValidator(code='invalid_location_code', message='Location code must be uppercase alphanumeric with hyphens only (no spaces)', regex='^[A-Z0-9\\-]+$')], verbose_name='Location Code'),
-        ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='longitude',
-            field=models.DecimalField(blank=True, decimal_places=6, help_text='Longitude coordinate for map display', max_digits=9, null=True, verbose_name='Longitude'),
-        ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='polygon',
-            field=models.JSONField(blank=True, help_text='Array of [lat, lon] coordinates defining hangar boundaries', null=True, verbose_name='Polygon'),
-        ),
-        migrations.AddField(
-            model_name='parkinglocation',
-            name='terminal',
-            field=models.CharField(blank=True, help_text='Terminal identifier: T, MIN, MAINT, etc.', max_length=50, null=True, verbose_name='Terminal'),
-        ),
+        # Replace duplicate column adds with conditional raw SQL to avoid ProgrammingError
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';"),
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS gate VARCHAR(10);"),
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS latitude DECIMAL(9,6);"),
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS location_code VARCHAR(50);"),
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS longitude DECIMAL(9,6);"),
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS polygon JSONB;"),
+        migrations.RunSQL("ALTER TABLE parking_location ADD COLUMN IF NOT EXISTS terminal VARCHAR(50);"),
         migrations.AlterField(
             model_name='flight',
             name='aircraft',

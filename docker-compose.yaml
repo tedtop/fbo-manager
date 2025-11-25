@@ -1,5 +1,17 @@
 services:
   # db service removed - using Supabase instead
+  testdb:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_USER: testuser
+      POSTGRES_DB: api
+    ports:
+      - "5433:5432"
+    volumes:
+      - testdb_data:/var/lib/postgresql/data
+    # Used only for local isolated test runs: `LOCAL_TEST_DB=1`
   api:
     command: bash -c "uv sync && uv run -- python manage.py migrate && uv run -- python manage.py runserver 0.0.0.0:8000"
     build:
@@ -26,3 +38,6 @@ services:
       - .env.frontend
     depends_on:
       - api
+
+volumes:
+  testdb_data:

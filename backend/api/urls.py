@@ -73,6 +73,12 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
     ),
     path("api/schema/", PublicSchemaView.as_view(), name="schema"),
+    # Explicit name for users me action to satisfy existing tests expecting 'api-users-me'
+    path(
+        "api/users/me/",
+        UserViewSet.as_view({"get": "me", "put": "me", "patch": "me"}),
+        name="api-users-me",
+    ),
     # Authentication
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
