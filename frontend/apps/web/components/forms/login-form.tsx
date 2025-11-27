@@ -57,7 +57,12 @@ export function LoginForm() {
 
         {search.has('error') && search.get('error') === 'CredentialsSignin' && (
           <div className="px-6">
-            <ErrorMessage>Provided account does not exist.</ErrorMessage>
+            <ErrorMessage>
+              That account doesn't exist.{' '}
+              <Link href="/register" className="underline font-medium">
+                Sign up
+              </Link>
+            </ErrorMessage>
           </div>
         )}
 
