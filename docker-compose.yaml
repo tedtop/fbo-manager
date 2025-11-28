@@ -19,13 +19,16 @@ services:
       context: frontend
     volumes:
       - ./frontend:/app
-      - ./.env:/app/.env
-      - ./.env:/.env
+      # - ./.env:/app/.env
+
+      # - ./.env:/.env
     expose:
       - "3000"
     ports:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      - CI=true
     depends_on:
       - api
