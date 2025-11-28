@@ -16,6 +16,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@tanstack/react-query": "^5.90.7",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.469.0",
     "mapbox-gl": "^3.16.0",
     "next": "^16.0.1",
