@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Parking', href: '/parking' },
   { name: 'Fuel Dispatch', href: '/dispatch' },
   { name: 'Fuel Farm', href: '/fuel-farm' },
+  { name: 'Invoicing', href: '/invoicing' },
   { name: 'Equipment', href: '/equipment' },
   { name: 'Line Schedule', href: '/line-schedule' },
   { name: 'Training', href: '/training' }

@@ -705,3 +705,149 @@ class LineSchedule(models.Model):
     def __str__(self):
         flight_info = f" - {self.flight.flight_number}" if self.flight else ""
         return f"{self.service_type} @ {self.scheduled_time}{flight_info}"
+
+
+class Customer(models.Model):
+    """Customer for invoicing"""
+
+    CUSTOMER_TYPE_CHOICES = [
+        ("private", "Private Jet"),
+        ("military", "Military"),
+        ("usfs", "US Forest Service"),
+        ("ga", "General Aviation"),
+    ]
+
+    name = models.CharField(_("Name"), max_length=200)
+    email = models.EmailField(_("Email"), blank=True)
+    phone = models.CharField(_("Phone"), max_length=20, blank=True)
+    customer_type = models.CharField(
+        _("Type"), max_length=20, choices=CUSTOMER_TYPE_CHOICES, default="ga"
+    )
+    address = models.TextField(_("Billing Address"), blank=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    modified_at = models.DateTimeField(_("Modified At"), auto_now=True)
+
+    class Meta:
+        db_table = "customer"
+        verbose_name = _("Customer")
+        verbose_name_plural = _("Customers")
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    """Product or service for invoicing"""
+
+    PRODUCT_TYPE_CHOICES = [
+        ("fuel", "Fuel"),
+        ("service", "Service"),
+        ("fee", "Fee"),
+        ("product", "Product"),
+    ]
+
+    name = models.CharField(_("Name"), max_length=200)
+    description = models.TextField(_("Description"), blank=True)
+    sku = models.CharField(_("SKU"), max_length=50, unique=True)
+    price = models.DecimalField(_("Price"), max_digits=10, decimal_places=2)
+    product_type = models.CharField(
+        _("Type"), max_length=20, choices=PRODUCT_TYPE_CHOICES, default="product"
+    )
+    is_active = models.BooleanField(_("Is Active"), default=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    modified_at = models.DateTimeField(_("Modified At"), auto_now=True)
+
+    class Meta:
+        db_table = "product"
+        verbose_name = _("Product")
+        verbose_name_plural = _("Products")
+
+    def __str__(self):
+        return f"{self.name} (${self.price})"
+
+
+class Invoice(models.Model):
+    """Invoice record"""
+
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("issued", "Issued"),
+        ("paid", "Paid"),
+        ("void", "Void"),
+    ]
+
+    PAYMENT_METHOD_CHOICES = [
+        ("credit_card", "Credit Card"),
+        ("cash", "Cash"),
+        ("check", "Check"),
+        ("account", "On Account"),
+    ]
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="invoices",
+        verbose_name=_("Customer"),
+    )
+    status = models.CharField(
+        _("Status"), max_length=20, choices=STATUS_CHOICES, default="draft"
+    )
+    total_amount = models.DecimalField(
+        _("Total Amount"), max_digits=12, decimal_places=2, default=0
+    )
+    payment_method = models.CharField(
+        _("Payment Method"),
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        blank=True,
+        null=True,
+    )
+    due_date = models.DateField(_("Due Date"), null=True, blank=True)
+    notes = models.TextField(_("Notes"), blank=True)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+    modified_at = models.DateTimeField(_("Modified At"), auto_now=True)
+
+    class Meta:
+        db_table = "invoice"
+        verbose_name = _("Invoice")
+        verbose_name_plural = _("Invoices")
+
+    def __str__(self):
+        return f"Invoice #{self.id} - {self.customer.name}"
+
+
+class InvoiceItem(models.Model):
+    """Line item for an invoice"""
+
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name=_("Invoice"),
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="invoice_items",
+        verbose_name=_("Product"),
+    )
+    description = models.CharField(_("Description"), max_length=255)
+    quantity = models.DecimalField(
+        _("Quantity"), max_digits=10, decimal_places=2, default=1
+    )
+    unit_price = models.DecimalField(_("Unit Price"), max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(_("Total Price"), max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True)
+
+    class Meta:
+        db_table = "invoice_item"
+        verbose_name = _("Invoice Item")
+        verbose_name_plural = _("Invoice Items")
+
+    def save(self, *args, **kwargs):
+        self.total_price = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.quantity}x {self.description}"
