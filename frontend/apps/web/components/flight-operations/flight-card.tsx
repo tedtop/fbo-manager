@@ -120,7 +120,7 @@ const serviceConfig = {
   hangar: {
     label: 'Hangar',
     icon: Warehouse,
-    color: 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+    color: 'bg-violet-500/10 text-violet-500 border-violet-500/20'
   },
   catering: {
     label: 'Catering',

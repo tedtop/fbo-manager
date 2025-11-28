@@ -10,19 +10,22 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./.env:/.env
     env_file:
-      - .env.backend
+      - .env
   web:
     command: bash -c "pnpm install -r && pnpm --filter web dev"
     build:
       context: frontend
     volumes:
       - ./frontend:/app
+      - ./.env:/app/.env
+      - ./.env:/.env
     expose:
       - "3000"
     ports:
       - "3000:3000"
     env_file:
-      - .env.frontend
+      - .env
     depends_on:
       - api

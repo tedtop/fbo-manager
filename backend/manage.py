@@ -7,6 +7,20 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    # Load environment variables from root .env file
+    try:
+        import dotenv
+        from pathlib import Path
+        
+        # Build paths inside the project like this: BASE_DIR / 'subdir'.
+        BASE_DIR = Path(__file__).resolve().parent
+        ROOT_ENV = BASE_DIR.parent / '.env'
+        
+        if ROOT_ENV.exists():
+            dotenv.load_dotenv(ROOT_ENV)
+    except ImportError:
+        pass
+
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "api.settings")
     try:
         from django.core.management import execute_from_command_line

@@ -10,6 +10,7 @@ dependencies = [
     "drf-spectacular>=0.28",
     "django-unfold>=0.43.0",
     "django-cors-headers>=4.3.0",
+    "python-dotenv>=1.0.1",
 ]
 
 [dependency-groups]
