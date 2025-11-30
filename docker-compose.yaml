@@ -30,5 +30,6 @@ services:
       - .env
     environment:
       - CI=true
+      - API_URL=http://api:8000
     depends_on:
       - api
