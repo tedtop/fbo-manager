@@ -5,11 +5,14 @@ import { Moon, Sun } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 
 const navigation = [
   { name: 'Flight Ops', href: '/' },
-  { name: 'Fuel Dispatch', href: '/dispatch' },
+  { name: 'Parking', href: '/parking' },
+  { name: 'Fuel Dispatch', href: '/fuel-dispatch' },
   { name: 'Fuel Farm', href: '/fuel-farm' },
+  { name: 'Invoicing', href: '/invoicing' },
   { name: 'Equipment', href: '/equipment' },
   { name: 'Line Schedule', href: '/line-schedule' },
   { name: 'Training', href: '/training' }
@@ -29,7 +32,14 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-12 items-center justify-between">
           <div className="flex items-center space-x-6">
-            <Link href="/" className="text-lg font-bold text-foreground">
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
+              <img
+                src="/fbo-manager-logo.png"
+                alt="Logo"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
               FBO Manager
             </Link>
             {navigation.map((item) => {

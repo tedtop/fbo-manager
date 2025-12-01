@@ -21,12 +21,19 @@ interface CalendarWeekViewProps {
   onEditFlight: (flight: Flight) => void
   onDeleteFlight: (id: string) => void
   filters: FilterType
+  weekOffset: number
+  onWeekChange: (offset: number) => void
 }
 
 // Helper to get the primary timestamp for a flight (arrival for arrivals, departure for departures)
 function getPrimaryTimestamp(flight: Flight): string {
   if (flight.type === 'departure') {
-    return flight.departureTime
+    // For departures, the block should END at departure time
+    // So start time = departure time - duration
+    const departure = new Date(flight.departureTime)
+    const durationMinutes = flight.duration || 45
+    departure.setMinutes(departure.getMinutes() - durationMinutes)
+    return departure.toISOString()
   }
   return flight.arrivalTime || flight.departureTime
 }
@@ -52,13 +59,15 @@ export function CalendarWeekView({
   theme,
   flights,
   onEditFlight,
-  filters
+  filters,
+  weekOffset,
+  onWeekChange
 }: CalendarWeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
-  const [weekOffset, setWeekOffset] = useState(0) // 0 = current week, -1 = last week, 1 = next week, etc.
+  // weekOffset is now a prop
   const MIN_WEEK_OFFSET = -2 // Can go back 2 weeks
   const MAX_WEEK_OFFSET = 2 // Can go forward 2 weeks
 
@@ -278,34 +287,38 @@ export function CalendarWeekView({
       draggedFlight &&
       (tempDragTime !== dragStartTime || tempDragDate !== dragStartDate)
     ) {
-      // Only save to DB if position actually changed
-      // Construct new timestamp from date and time
-      const newTimestamp = `${tempDragDate}T${tempDragTime}:00`
+      // Calculate the time difference (delta)
+      const oldPrimaryTimestamp = getPrimaryTimestamp(draggedFlight)
+      // Construct new timestamp from temp drag values
+      // Note: tempDragTime is HH:mm, tempDragDate is YYYY-MM-DD
+      const newPrimaryTimestamp = `${tempDragDate}T${tempDragTime}:00`
+
+      const oldTime = new Date(oldPrimaryTimestamp).getTime()
+      const newTime = new Date(newPrimaryTimestamp).getTime()
+      const deltaMs = newTime - oldTime
 
       const updatedFlight = {
         ...draggedFlight
       }
 
-      // Update the appropriate timestamp based on flight type
-      if (
-        draggedFlight.type === 'arrival' ||
-        draggedFlight.type === 'quick_turn'
-      ) {
-        updatedFlight.arrivalTime = newTimestamp
+      // Apply delta to arrival time if it exists
+      if (updatedFlight.arrivalTime) {
+        const oldArrival = new Date(updatedFlight.arrivalTime).getTime()
+        updatedFlight.arrivalTime = new Date(oldArrival + deltaMs).toISOString()
       }
-      if (
-        draggedFlight.type === 'departure' ||
-        draggedFlight.type === 'quick_turn'
-      ) {
-        updatedFlight.departureTime = newTimestamp
+
+      // Apply delta to departure time if it exists
+      if (updatedFlight.departureTime) {
+        const oldDeparture = new Date(updatedFlight.departureTime).getTime()
+        updatedFlight.departureTime = new Date(
+          oldDeparture + deltaMs
+        ).toISOString()
       }
 
       console.log('Calling onEditFlight with:', updatedFlight)
-      console.log('onEditFlight function:', onEditFlight)
 
       try {
         onEditFlight(updatedFlight)
-        console.log('onEditFlight call completed (not awaited)')
       } catch (error) {
         console.error('Error calling onEditFlight:', error)
       }
@@ -414,7 +427,7 @@ export function CalendarWeekView({
             size="sm"
             className="gap-2 text-muted-foreground"
             onClick={() =>
-              setWeekOffset(Math.max(MIN_WEEK_OFFSET, weekOffset - 1))
+              onWeekChange(Math.max(MIN_WEEK_OFFSET, weekOffset - 1))
             }
             disabled={weekOffset <= MIN_WEEK_OFFSET}
           >
@@ -439,7 +452,7 @@ export function CalendarWeekView({
                 variant="ghost"
                 size="sm"
                 className="text-xs text-primary"
-                onClick={() => setWeekOffset(0)}
+                onClick={() => onWeekChange(0)}
               >
                 Back to Current Week
               </Button>
@@ -450,7 +463,7 @@ export function CalendarWeekView({
             size="sm"
             className="gap-2 text-muted-foreground"
             onClick={() =>
-              setWeekOffset(Math.min(MAX_WEEK_OFFSET, weekOffset + 1))
+              onWeekChange(Math.min(MAX_WEEK_OFFSET, weekOffset + 1))
             }
             disabled={weekOffset >= MAX_WEEK_OFFSET}
           >

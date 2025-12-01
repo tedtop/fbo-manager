@@ -2,9 +2,11 @@
 
 import { NavigationWrapper } from '@/components/navigation-wrapper'
 import { AuthProvider } from '@/providers/auth-provider'
+import { QueryProvider } from '@/providers/query-provider'
 import { Geist, Geist_Mono, Source_Serif_4 } from 'next/font/google'
 
 import '@frontend/ui/styles/globals.css'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 const geist = Geist({
   subsets: ['latin'],
@@ -30,9 +32,11 @@ export default function RootLayout({
       <body
         className={`${geist.variable} ${geistMono.variable} ${sourceSerif4.variable} font-sans antialiased`}
       >
-        <AuthProvider>
-          <NavigationWrapper>{children}</NavigationWrapper>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <NavigationWrapper>{children}</NavigationWrapper>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   )

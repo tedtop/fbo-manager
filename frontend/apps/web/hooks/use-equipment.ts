@@ -23,7 +23,7 @@ export function useEquipment() {
       const client = await getApiClient(session)
 
       // Note: Adjust this endpoint based on actual API
-      const response = await client.admin.equipmentList()
+      const response = await client.equipment.equipmentList()
       setEquipment(response.results || [])
     } catch (err) {
       console.error('Failed to fetch equipment:', err)
@@ -46,7 +46,7 @@ export function useEquipment() {
   const createEquipment = useCallback(
     async (equipmentData: any) => {
       const client = await getApiClient(session)
-      const newEquipment = await client.admin.equipmentCreate(equipmentData)
+      const newEquipment = await client.equipment.equipmentCreate(equipmentData)
       setEquipment((prev) => [...prev, newEquipment])
       return newEquipment
     },
@@ -56,7 +56,7 @@ export function useEquipment() {
   const updateEquipment = useCallback(
     async (id: number, updates: any) => {
       const client = await getApiClient(session)
-      const updatedEquipment = await client.admin.equipmentPartialUpdate(
+      const updatedEquipment = await client.equipment.equipmentPartialUpdate(
         id,
         updates
       )
@@ -71,7 +71,7 @@ export function useEquipment() {
   const deleteEquipment = useCallback(
     async (id: number) => {
       const client = await getApiClient(session)
-      await client.admin.equipmentDestroy(id)
+      await client.equipment.equipmentDestroy(id)
       setEquipment((prev) => prev.filter((e) => e.id !== id))
     },
     [session]

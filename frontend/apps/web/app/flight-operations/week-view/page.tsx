@@ -9,9 +9,26 @@ import { useFlights } from '@/hooks/use-flights'
 import { useState } from 'react'
 
 export default function WeekViewPage() {
+  const [weekOffset, setWeekOffset] = useState(0)
+
+  // Calculate date range for the visible week
+  // CalendarWeekView logic: starts from today + offset * 7
+  const today = new Date()
+  const start = new Date(today)
+  start.setDate(today.getDate() + weekOffset * 7)
+
+  // End date is start + 7 days
+  const end = new Date(start)
+  end.setDate(start.getDate() + 7)
+
+  const startDate = start.toISOString().split('T')[0]
+  const endDate = end.toISOString().split('T')[0]
+
   const { flights, loading, error, updateFlight, deleteFlight } = useFlights({
-    today: true
+    startDate,
+    endDate
   })
+
   const [filters, setFilters] = useState<FlightFilters>({
     search: '',
     status: 'all',
@@ -63,6 +80,8 @@ export default function WeekViewPage() {
         onEditFlight={handleEditFlight}
         onDeleteFlight={handleDeleteFlight}
         filters={filters}
+        weekOffset={weekOffset}
+        onWeekChange={setWeekOffset}
       />
     </div>
   )
