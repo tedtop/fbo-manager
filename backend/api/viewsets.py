@@ -23,7 +23,7 @@ from .models import (
     TerminalGate,
     Training,
 )
-from .permissions import AllowAnyReadOnly, IsAdminUser
+from .permissions import AllowAnyReadOnly, IsAdminUser, IsAuthenticatedOrReadOnly
 from .serializers import (
     AircraftSerializer,
     EquipmentSerializer,
@@ -683,7 +683,7 @@ class EquipmentViewSet(viewsets.ModelViewSet):
 
     queryset = Equipment.objects.all()
     serializer_class = EquipmentSerializer
-    permission_classes = [AllowAnyReadOnly]  # DEV: Allow unauthenticated reads
+    permission_classes = [IsAuthenticatedOrReadOnly]  # DEV: Allow unauthenticated reads
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         "equipment_id",
@@ -716,11 +716,6 @@ class EquipmentViewSet(viewsets.ModelViewSet):
             )
 
         return queryset
-
-    def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAdminUser()]
-        return super().get_permissions()
 
 
 # ============================================================================
