@@ -1,4 +1,20 @@
 from rest_framework import permissions
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+
+class IsAuthenticatedOrReadOnly(BasePermission):
+    """
+    Allow read-only access for anyone.
+    Allow write access (POST/PUT/PATCH/DELETE) for any authenticated user.
+    """
+
+    def has_permission(self, request, view):
+        # Allow anyone to read
+        if request.method in SAFE_METHODS:
+            return True
+
+        # Write requires authentication
+        return request.user and request.user.is_authenticated
 
 
 class IsAdminUser(permissions.BasePermission):
