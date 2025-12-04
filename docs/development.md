@@ -28,6 +28,24 @@ docker compose up
 docker compose exec api uv run -- python manage.py createsuperuser
 ```
 
+5. Seed demo fueler accounts (optional):
+
+```bash
+docker compose exec api uv run -- python manage.py seed_fuelers
+```
+
+Use a custom password if desired:
+
+```bash
+docker compose exec api uv run -- python manage.py seed_fuelers --password 'MySecurePass!'
+```
+
+6. Seed common training types (optional):
+
+```bash
+docker compose exec api uv run -- python manage.py seed_training
+```
+
 4. Access:
    - Frontend: http://localhost:3000
    - Backend: http://localhost:8000
