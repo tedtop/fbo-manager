@@ -1,17 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
 import { Badge } from '@frontend/ui/components/ui/badge'
 import { useCertifications } from '@/hooks/use-certifications'
-import type { FuelerTraining, FuelerTrainingRequest } from '@frontend/types/api'
+import type { Fueler, FuelerTraining, FuelerTrainingRequest, Training } from '@frontend/types/api'
 import { CertificationFormDialog } from '@/components/training/certification-form-dialog'
+import { useSession } from 'next-auth/react'
+import { getApiClient } from '@/lib/api'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from '@frontend/ui/components/ui/select'
 
 export default function ManageCertificationsPage() {
     const { user } = useCurrentUser()
     const isAdmin = user?.role === 'admin'
+    const { data: session } = useSession()
 
     const {
         certifications,
@@ -26,6 +36,40 @@ export default function ManageCertificationsPage() {
     const [editing, setEditing] = useState<FuelerTraining | null>(null)
     const [submitting, setSubmitting] = useState(false)
     const [actionError, setActionError] = useState<string>('')
+
+    // Filter state and dropdown data
+    const [fuelers, setFuelers] = useState<Fueler[]>([])
+    const [trainingsList, setTrainingsList] = useState<Training[]>([])
+    const [filterFueler, setFilterFueler] = useState<string>('all')
+    const [filterTraining, setFilterTraining] = useState<string>('all')
+    const [filterStatus, setFilterStatus] = useState<string>('all')
+
+    useEffect(() => {
+        const load = async () => {
+            if (!session) return
+            try {
+                const client = await getApiClient(session)
+                const [fRes, tRes] = await Promise.all([
+                    client.fuelers.fuelersList(),
+                    client.trainings.trainingsList()
+                ])
+                setFuelers(fRes.results || [])
+                setTrainingsList(tRes.results || [])
+            } catch (e) {
+                // ignore silently for filters
+            }
+        }
+        load()
+    }, [session])
+
+    const filteredCertifications = useMemo(() => {
+        return certifications.filter((c: any) => {
+            if (filterFueler !== 'all' && String(c.fueler) !== filterFueler) return false
+            if (filterTraining !== 'all' && String(c.training) !== filterTraining) return false
+            if (filterStatus !== 'all' && String(c.expiry_status) !== filterStatus) return false
+            return true
+        })
+    }, [certifications, filterFueler, filterTraining, filterStatus])
 
     if (!isAdmin) {
         return <div className="p-6">You do not have access to this page.</div>
@@ -47,10 +91,16 @@ export default function ManageCertificationsPage() {
         setSubmitting(true)
         setActionError('')
         try {
+            const uid = (session as any)?.user?.id
+            const certifiedBy = uid ? Number(uid) : undefined
+            const payload: FuelerTrainingRequest = {
+                ...data,
+                certified_by: certifiedBy ?? data.certified_by ?? null
+            }
             if (editing) {
-                await updateCertification(editing.id, data)
+                await updateCertification(editing.id, payload)
             } else {
-                await createCertification(data)
+                await createCertification(payload)
             }
         } catch (e: any) {
             setActionError(e?.message || 'Failed to save certification')
@@ -98,7 +148,7 @@ export default function ManageCertificationsPage() {
             <Card className="p-4">
                 <div className="mb-3 flex items-center gap-3">
                     <div className="text-sm text-muted-foreground">
-                        {loading ? 'Loading...' : `${certifications.length} total`}
+                        {loading ? 'Loading...' : `${filteredCertifications.length} shown (${certifications.length} total)`}
                     </div>
                     {(error || actionError) && (
                         <div className="text-sm text-destructive">
@@ -107,13 +157,65 @@ export default function ManageCertificationsPage() {
                     )}
                 </div>
 
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <div className="text-xs text-muted-foreground mb-1">Fueler</div>
+                        <Select value={filterFueler} onValueChange={setFilterFueler}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="All fuelers" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All fuelers</SelectItem>
+                                {fuelers.map((f) => (
+                                    <SelectItem key={f.id} value={String(f.id)}>
+                                        {f.fueler_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <div className="text-xs text-muted-foreground mb-1">Training</div>
+                        <Select value={filterTraining} onValueChange={setFilterTraining}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="All trainings" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All trainings</SelectItem>
+                                {trainingsList.map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>
+                                        {t.training_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <div className="text-xs text-muted-foreground mb-1">Status</div>
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="All statuses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All statuses</SelectItem>
+                                <SelectItem value="expired">expired</SelectItem>
+                                <SelectItem value="critical">critical</SelectItem>
+                                <SelectItem value="warning">warning</SelectItem>
+                                <SelectItem value="caution">caution</SelectItem>
+                                <SelectItem value="valid">valid</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
                 {loading ? (
                     <div className="text-sm text-muted-foreground">Loading...</div>
                 ) : certifications.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No certifications found.</div>
                 ) : (
                     <div className="space-y-2">
-                        {certifications.map((c) => (
+                        {filteredCertifications.map((c) => (
                             <div key={c.id} className="flex items-center justify-between border rounded p-3">
                                 <div className="space-y-1">
                                     <div className="font-medium text-foreground">
