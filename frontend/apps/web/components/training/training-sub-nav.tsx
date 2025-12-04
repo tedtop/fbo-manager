@@ -16,7 +16,10 @@ interface NavItem {
 
 const baseItems: NavItem[] = [
     { name: 'Overview', href: '/training' },
-    { name: 'My Trainings', href: '/training/my' },
+    { name: 'My Trainings', href: '/training/assigned' },
+    { name: 'My Certifications', href: '/training/my' },
+    { name: 'Manage Certifications', href: '/training/manage-certifications', admin: true },
+    { name: 'Manage Trainings', href: '/training/manage', admin: true },
     { name: 'Types', href: '/training/types', admin: true },
     { name: 'Fuelers', href: '/training/fuelers', admin: true },
     { name: 'Calendar', href: '/training/calendar', admin: true }
@@ -60,7 +63,10 @@ export function TrainingSubNav() {
                 <div className="flex h-12 items-center gap-6 overflow-x-auto">
                     {baseItems
                         .filter(i => {
-                            if (i.name === 'My Trainings' && !isFueler) return false
+                            // Show personal tabs only for fuelers (non-admins)
+                            if (i.name === 'My Trainings' || i.name === 'My Certifications') {
+                                return isFueler && !isAdmin
+                            }
                             return !i.admin || isAdmin
                         })
                         .map((item) => {
