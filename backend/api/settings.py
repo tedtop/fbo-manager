@@ -1,6 +1,7 @@
 from datetime import timedelta
 from os import environ
 from pathlib import Path
+from uuid import uuid4
 
 from django.core.management.utils import get_random_secret_key
 from django.urls import reverse_lazy
@@ -100,6 +101,26 @@ DATABASES = {
         "PORT": environ.get("SUPABASE_DB_PORT", "5432"),
     }
 }
+
+# Dynamic test DB naming to avoid collisions when using managed Postgres (Supabase).
+# If tests are running, we cannot create/drop databases on Supabase; reuse the same
+# physical database but isolate via a unique test schema name.
+if environ.get("LOCAL_TEST_DB") == "1":
+    # Use local docker-compose Postgres service for tests to allow CREATE/DROP test DB
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "api",
+        "USER": "testuser",
+        "PASSWORD": "testpass",
+        "HOST": "testdb",
+        "PORT": "5432",
+        "TEST": {
+            "NAME": f"api_test_{uuid4().hex[:6]}",
+        },
+    }
+    # Use squashed test-only migrations to avoid legacy duplication issues
+    MIGRATION_MODULES = {"api": "api.test_migrations"}
+
 
 ######################################################################
 # Authentication

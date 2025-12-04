@@ -18,6 +18,7 @@ dev = [
     "pytest>=8.3.4",
     "pytest-django>=4.9.0",
     "pytest-factoryboy>=2.7.0",
+    "pytest-cov>=5.0.0",
 ]
 
 [tool.ruff]
@@ -42,4 +43,4 @@ ignore = [
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore"
-addopts = "--strict-config --strict-markers --ds=api.settings"
+addopts = "--strict-config --strict-markers --ds=api.settings --cov=api --cov-report=term-missing --cov-report=xml"

@@ -39,9 +39,9 @@ export default function FuelersTrainingPage() {
             // fetch certifications per fueler to compute status badges
             const entries = await Promise.all(
                 rows.map(async (f) => {
-                    const c = await client.fboApi.getFuelerCertifications(f.id!)
-                    // getFuelerCertifications from lib/fbo-api uses fetch; fallback to types client if needed
-                    return [f.id!, c.results || c || []] as [number, FuelerTraining[]]
+                    const resp: any = await client.fuelers.fuelersCertificationsRetrieve(f.id!)
+                    const list = (resp?.results || resp || []) as FuelerTraining[]
+                    return [f.id!, list] as [number, FuelerTraining[]]
                 })
             )
             const map: Record<number, FuelerTraining[]> = {}

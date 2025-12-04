@@ -162,8 +162,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             user = User.objects.create_user(**validated_data)
 
-            # By default newly registered accounts are inactive.
-            user.is_active = False
+            # Activate newly registered accounts so they can sign in immediately.
+            # If an approval flow is desired later, move this logic to require admin activation.
+            user.is_active = True
             user.save(update_fields=["is_active"])
 
         return user
