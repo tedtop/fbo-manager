@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type {
   RegisterFormSchema,
   registerAction
@@ -26,6 +27,8 @@ import { useForm } from 'react-hook-form'
 export function RegisterForm({
   onSubmitHandler
 }: { onSubmitHandler: typeof registerAction }) {
+  const [formError, setFormError] = useState<string | null>(null)
+
   const { formState, handleSubmit, register, setError } =
     useForm<RegisterFormSchema>({
       resolver: zodResolver(registerFormSchema)
@@ -50,18 +53,44 @@ export function RegisterForm({
 
         <form
           onSubmit={handleSubmit(async (data) => {
+            setFormError(null) // reset previous banner error
+
             const res = await onSubmitHandler(data)
 
             if (res === true) {
               signIn()
-            } else if (typeof res !== 'boolean') {
+              return
+            }
+
+            if (typeof res !== 'boolean') {
+              const nfe = (res as any)?.non_field_errors
+              if (Array.isArray(nfe) && nfe.length > 0) {
+                setFormError(nfe.join(' '))
+              } else {
+                setFormError('Registration failed. Please check your details.')
+              }
+
+              // existing field-level mapping
               fieldApiError('username', 'username', res, setError)
+              fieldApiError('email', 'email', res, setError)
               fieldApiError('password', 'password', res, setError)
               fieldApiError('password_retype', 'passwordRetype', res, setError)
+              return
             }
+
+            // boolean false fallback
+            setFormError('Registration failed. Please try again.')
           })}
         >
           <CardContent className="space-y-4">
+            {/* Global error banner */}
+            {formError && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2">
+                <p className="text-sm text-destructive">{formError}</p>
+              </div>
+            )}
+
+            {/* Username */}
             <div className="space-y-2">
               <Label htmlFor="username" className="text-card-foreground">
                 Username
@@ -69,7 +98,8 @@ export function RegisterForm({
               <Input
                 id="username"
                 type="text"
-                placeholder="Unique username or email"
+                placeholder="Unique username"
+                autoComplete="username"
                 {...register('username')}
                 className="bg-background border-border text-foreground"
               />
@@ -79,6 +109,28 @@ export function RegisterForm({
                 </p>
               )}
             </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-card-foreground">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                {...register('email')}
+                className="bg-background border-border text-foreground"
+              />
+              {formState.errors.email && (
+                <p className="text-sm text-destructive">
+                  {formState.errors.email.message}
+                </p>
+              )}
+            </div>
+
+            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password" className="text-card-foreground">
                 Password
@@ -87,6 +139,7 @@ export function RegisterForm({
                 id="password"
                 type="password"
                 placeholder="Your new password"
+                autoComplete="new-password"
                 {...register('password')}
                 className="bg-background border-border text-foreground"
               />
@@ -96,6 +149,8 @@ export function RegisterForm({
                 </p>
               )}
             </div>
+
+            {/* Confirm Password */}
             <div className="space-y-2">
               <Label htmlFor="passwordRetype" className="text-card-foreground">
                 Confirm Password
@@ -104,6 +159,7 @@ export function RegisterForm({
                 id="passwordRetype"
                 type="password"
                 placeholder="Verify password"
+                autoComplete="new-password"
                 {...register('passwordRetype')}
                 className="bg-background border-border text-foreground"
               />
@@ -114,6 +170,7 @@ export function RegisterForm({
               )}
             </div>
           </CardContent>
+
           <CardFooter className="flex flex-col space-y-4 pt-6">
             <Button
               type="submit"
@@ -136,3 +193,4 @@ export function RegisterForm({
     </div>
   )
 }
+

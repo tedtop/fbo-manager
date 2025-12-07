@@ -16,12 +16,14 @@ export async function registerAction(
     await apiClient.users.usersCreate({
       username: data.username,
       password: data.password,
+      email: data.email,
       password_retype: data.passwordRetype
     })
 
     return true
   } catch (error) {
     if (error instanceof ApiError) {
+      console.log("REGISTER ERROR BODY:", error.body)
       return error.body as UserCreateError
     }
   }
