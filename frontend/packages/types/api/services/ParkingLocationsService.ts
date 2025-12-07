@@ -28,7 +28,6 @@ export class ParkingLocationsService {
         ordering?: string,
         page?: number,
         search?: string,
-        page_size?: number,
     ): CancelablePromise<PaginatedParkingLocationList> {
         return this.httpRequest.request({
             method: 'GET',
@@ -37,7 +36,6 @@ export class ParkingLocationsService {
                 'ordering': ordering,
                 'page': page,
                 'search': search,
-                'page_size': page_size,
             },
         });
     }

@@ -154,4 +154,17 @@ export class FuelersService {
             url: '/api/fuelers/expiring_soon/',
         });
     }
+    /**
+     * Return certifications for the logged-in user's fueler profile.
+     *
+     * If the user has no associated fueler profile, return an empty list.
+     * @returns Fueler
+     * @throws ApiError
+     */
+    public fuelersMyCertificationsRetrieve(): CancelablePromise<Fueler> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/api/fuelers/my-certifications/',
+        });
+    }
 }
