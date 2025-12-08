@@ -23,7 +23,12 @@ from .models import (
     TerminalGate,
     Training,
 )
-from .permissions import AllowAnyReadOnly, IsAdminUser, IsAuthenticatedOrReadOnly
+from .permissions import (
+    AllowAnyReadOnly,
+    IsAdminUser,
+    IsAuthenticatedOrReadOnly,
+    IsStaffOrReadOnly,
+)
 from .serializers import (
     AircraftSerializer,
     EquipmentSerializer,
@@ -209,7 +214,7 @@ class FlightViewSet(viewsets.ModelViewSet):
     """ViewSet for flights with filtering by status and date"""
 
     queryset = Flight.objects.select_related("aircraft", "location").all()
-    permission_classes = [AllowAnyReadOnly]  # DEV: Allow unauthenticated reads
+    permission_classes = [IsStaffOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["call_sign", "destination"]
     filterset_fields = ["flight_status", "aircraft", "location"]
@@ -311,7 +316,12 @@ class FuelerViewSet(viewsets.ModelViewSet):
         serializer = FuelerTrainingSerializer(certifications, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["get"], url_path="my-certifications", permission_classes=[IsAuthenticated])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="my-certifications",
+        permission_classes=[IsAuthenticated],
+    )
     def my_certifications(self, request):
         """Return certifications for the logged-in user's fueler profile.
 
@@ -409,20 +419,29 @@ class FuelerTrainingViewSet(viewsets.ModelViewSet):
         notes = request.data.get("notes", "")
 
         if not fueler_id or not training_id:
-            return Response({"error": "fueler and training are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "fueler and training are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             fueler = Fueler.objects.get(pk=fueler_id)
             training = Training.objects.get(pk=training_id)
         except (Fueler.DoesNotExist, Training.DoesNotExist):
-            return Response({"error": "Fueler or Training not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Fueler or Training not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         # Parse dates
         if completed_date_str:
             try:
                 completed_date = date.fromisoformat(completed_date_str)
             except ValueError:
-                return Response({"error": "Invalid completed_date format"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid completed_date format"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             completed_date = date.today()
 
@@ -430,14 +449,18 @@ class FuelerTrainingViewSet(viewsets.ModelViewSet):
             try:
                 expiry_date = date.fromisoformat(expiry_date_str)
             except ValueError:
-                return Response({"error": "Invalid expiry_date format"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid expiry_date format"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             validity = training.validity_period_days or 0
             expiry_date = completed_date + timedelta(days=validity)
 
         # Upsert current certification
         cert, _created = FuelerTraining.objects.get_or_create(
-            fueler=fueler, training=training,
+            fueler=fueler,
+            training=training,
             defaults={
                 "completed_date": completed_date,
                 "expiry_date": expiry_date,
@@ -483,12 +506,14 @@ class FuelerTrainingViewSet(viewsets.ModelViewSet):
             start_date = date.fromisoformat(start_str) if start_str else default_start
             end_date = date.fromisoformat(end_str) if end_str else default_end
         except ValueError:
-            return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Completions from history
-        history = FuelerTrainingHistory.objects.select_related("fueler", "training").filter(
-            completed_date__gte=start_date, completed_date__lte=end_date
-        )
+        history = FuelerTrainingHistory.objects.select_related(
+            "fueler", "training"
+        ).filter(completed_date__gte=start_date, completed_date__lte=end_date)
         history_events = [
             {
                 "type": "completed",
@@ -525,7 +550,9 @@ class FuelerTrainingViewSet(viewsets.ModelViewSet):
 class FuelerTrainingHistoryViewSet(viewsets.ModelViewSet):
     """ViewSet for training completion history"""
 
-    queryset = FuelerTrainingHistory.objects.select_related("fueler", "training", "certified_by").all()
+    queryset = FuelerTrainingHistory.objects.select_related(
+        "fueler", "training", "certified_by"
+    ).all()
     serializer_class = FuelerTrainingHistorySerializer
     permission_classes = [AllowAnyReadOnly]
     filter_backends = [filters.OrderingFilter]

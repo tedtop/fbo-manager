@@ -2,6 +2,13 @@ from rest_framework import permissions
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
+class IsStaffOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return super().has_permission(request, view)
+        return super().has_permission(request, view) and request.user.is_staff
+
+
 class IsAuthenticatedOrReadOnly(BasePermission):
     """
     Allow read-only access for anyone.
