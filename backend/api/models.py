@@ -491,6 +491,54 @@ class FuelerTrainingHistory(models.Model):
         return f"{self.fueler.fueler_name} - {self.training.training_name} @ {self.completed_date}"
 
 
+class AssignedTraining(models.Model):
+    """Assigned trainings for fuelers to complete"""
+
+    STATUS_CHOICES = [
+        ("assigned", "Assigned"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    fueler = models.ForeignKey(
+        Fueler,
+        on_delete=models.CASCADE,
+        related_name="assigned_trainings",
+        verbose_name=_("Fueler"),
+    )
+    training = models.ForeignKey(
+        Training,
+        on_delete=models.CASCADE,
+        related_name="assigned_trainings",
+        verbose_name=_("Training"),
+    )
+    status = models.CharField(
+        _("Status"), max_length=20, choices=STATUS_CHOICES, default="assigned"
+    )
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trainings_assigned",
+        verbose_name=_("Assigned By"),
+    )
+    assigned_at = models.DateTimeField(_("Assigned At"), auto_now_add=True)
+    due_date = models.DateField(_("Due Date"), null=True, blank=True)
+    notes = models.TextField(_("Notes"), blank=True, default="")
+    completed_at = models.DateTimeField(_("Completed At"), null=True, blank=True)
+
+    class Meta:
+        db_table = "assigned_training"
+        verbose_name = _("Assigned Training")
+        verbose_name_plural = _("Assigned Trainings")
+        unique_together = [["fueler", "training", "status"]]
+        ordering = ["-assigned_at"]
+
+    def __str__(self):
+        return f"{self.training.training_name} -> {self.fueler.fueler_name} ({self.status})"
+
+
 class FuelTransaction(models.Model):
     """Fuel dispatch transactions"""
 

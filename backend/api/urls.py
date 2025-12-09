@@ -22,6 +22,7 @@ from .viewsets import (
     TerminalGateViewSet,
     TrainingViewSet,
     UserManagementViewSet,
+    AssignedTrainingViewSet,
 )
 
 # Public schema view (no auth required for codegen)
@@ -56,6 +57,7 @@ router.register("trainings", TrainingViewSet, basename="trainings")
 router.register(
     "fueler-certifications", FuelerTrainingViewSet, basename="fueler-certifications"
 )
+router.register(r"assigned-training", AssignedTrainingViewSet, basename="assigned-training")
 router.register(
     "fueler-training-history",
     FuelerTrainingHistoryViewSet,

@@ -41,7 +41,7 @@ export default function MyTrainingsPage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-semibold">My Trainings</h1>
+                <h1 className="text-2xl font-semibold">My Certifications</h1>
                 <p className="text-sm text-muted-foreground">Your current certifications and statuses</p>
             </div>
 
@@ -77,7 +77,7 @@ export default function MyTrainingsPage() {
                     </tbody>
                 </table>
                 {certifications.length === 0 && !error && (
-                    <div className="text-sm text-muted-foreground py-4">No trainings assigned yet.</div>
+                    <div className="text-sm text-muted-foreground py-4">No certifications yet.</div>
                 )}
                 {error && (
                     <div className="text-sm text-destructive py-4">Failed to load certifications.</div>

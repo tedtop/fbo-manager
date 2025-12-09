@@ -39,6 +39,14 @@ DEFAULT_FUELERS = [
     },
 ]
 
+ADMIN_USER = {
+    "username": "fueleradmin",
+    "email": "fueleradmin@example.com",
+    "first_name": "Fueler",
+    "last_name": "Admin",
+    "employee_id": "F000",
+}
+
 
 class Command(BaseCommand):
     help = "Create 4 demo fueler accounts with Fueler profiles"
@@ -100,3 +108,31 @@ class Command(BaseCommand):
                 f"Fueler seeding complete. Users created: {created_count}. Default password: '{password}'"
             )
         )
+
+        # Create or update admin user
+        admin_user, admin_created = User.objects.get_or_create(
+            username=ADMIN_USER["username"],
+            defaults={
+                "email": ADMIN_USER["email"],
+                "first_name": ADMIN_USER["first_name"],
+                "last_name": ADMIN_USER["last_name"],
+                "role": "admin",
+                "employee_id": ADMIN_USER["employee_id"],
+                "is_active_fueler": True,
+                "is_active": True,
+                "is_staff": True,
+                "is_superuser": True,
+            },
+        )
+        if admin_created:
+            admin_user.set_password(password)
+            admin_user.save()
+            self.stdout.write(self.style.SUCCESS("Created admin user: fueleradmin"))
+        else:
+            # Ensure admin flags and role
+            admin_user.role = "admin"
+            admin_user.is_staff = True
+            admin_user.is_superuser = True
+            admin_user.is_active_fueler = True
+            admin_user.save(update_fields=["role", "is_staff", "is_superuser", "is_active_fueler"])
+            self.stdout.write(self.style.WARNING("Updated admin user: fueleradmin"))

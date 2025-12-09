@@ -10,9 +10,15 @@ import Image from 'next/image'
 const navigation = [
   { name: 'Flight Ops', href: '/' },
   { name: 'Parking', href: '/parking' },
+<<<<<<< Updated upstream
   //{ name: 'Fuel Dispatch', href: '/fuel-dispatch' },
   //{ name: 'Fuel Farm', href: '/fuel-farm' },
   //{ name: 'Invoicing', href: '/invoicing' },
+=======
+  { name: 'Fuel Dispatch', href: '/fuel-dispatch' },
+  { name: 'Fuel Farm', href: '/fuel-farm' },
+  // Invoicing removed due to broken page
+>>>>>>> Stashed changes
   { name: 'Equipment', href: '/equipment' },
   { name: 'Line Schedule', href: '/line-schedule' },
   { name: 'Training', href: '/training' }
