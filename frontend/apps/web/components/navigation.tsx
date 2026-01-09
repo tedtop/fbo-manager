@@ -12,7 +12,7 @@ const navigation = [
   { name: 'Parking', href: '/parking' },
   { name: 'Fuel Dispatch', href: '/fuel-dispatch' },
   { name: 'Fuel Farm', href: '/fuel-farm' },
-  // Invoicing removed due to broken page
+  { name: 'Invoicing', href: '/invoicing' },
   { name: 'Equipment', href: '/equipment' },
   { name: 'Line Schedule', href: '/line-schedule' },
   { name: 'Training', href: '/training' }
