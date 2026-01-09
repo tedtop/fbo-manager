@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
+from django.utils.timezone import now
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -15,6 +16,7 @@ from .models import (
     FuelerAssignment,
     FuelerTraining,
     FuelerTrainingHistory,
+    AssignedTraining,
     FuelTank,
     FuelTransaction,
     LineSchedule,
@@ -38,6 +40,7 @@ from .serializers import (
     FuelerSerializer,
     FuelerTrainingSerializer,
     FuelerTrainingHistorySerializer,
+    AssignedTrainingSerializer,
     FuelerWithCertificationsSerializer,
     FuelTankSerializer,
     FuelTankWithLatestReadingSerializer,
@@ -564,6 +567,45 @@ class FuelerTrainingHistoryViewSet(viewsets.ModelViewSet):
         if self.action in ["list", "retrieve"]:
             return [IsAuthenticated()]
         return [IsAdminUser()]
+
+
+class AssignedTrainingViewSet(viewsets.ModelViewSet):
+    """ViewSet for trainings assigned to fuelers with completion action"""
+
+    queryset = AssignedTraining.objects.select_related("fueler", "training", "assigned_by").all()
+    serializer_class = AssignedTrainingSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    filterset_fields = ["fueler", "training", "status"]
+    ordering_fields = ["assigned_at", "due_date", "status"]
+    ordering = ["-assigned_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Allow fuelers to see only their assignments via `my=true`
+        if self.request.query_params.get("my") == "true":
+            fueler = Fueler.objects.filter(user=self.request.user).first()
+            if fueler:
+                qs = qs.filter(fueler=fueler)
+            else:
+                qs = qs.none()
+        return qs
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete(self, request, pk=None):
+        """Mark an assigned training as completed by the current user fueler"""
+        assigned = self.get_object()
+
+        # Only allow the owning fueler or admins to complete
+        is_admin = request.user.role == "admin"
+        my_fueler = Fueler.objects.filter(user=request.user).first()
+        if not is_admin and (not my_fueler or assigned.fueler_id != my_fueler.id):
+            return Response({"error": "Not authorized to complete this assignment"}, status=status.HTTP_403_FORBIDDEN)
+
+        assigned.status = "completed"
+        assigned.completed_at = now()
+        assigned.save(update_fields=["status", "completed_at"])
+        return Response(self.get_serializer(assigned).data, status=status.HTTP_200_OK)
 
 
 # ============================================================================

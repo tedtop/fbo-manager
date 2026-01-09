@@ -15,6 +15,7 @@ from .models import (
     FuelerAssignment,
     FuelerTraining,
     FuelerTrainingHistory,
+    AssignedTraining,
     FuelTank,
     FuelTransaction,
     LineSchedule,
@@ -649,6 +650,36 @@ class FuelerTrainingHistorySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "created_at", "fueler_name", "training_name", "certified_by_name"]
+
+
+class AssignedTrainingSerializer(serializers.ModelSerializer):
+    fueler_name = serializers.CharField(source="fueler.fueler_name", read_only=True)
+    training_name = serializers.CharField(source="training.training_name", read_only=True)
+    assigned_by_name = serializers.CharField(source="assigned_by.get_full_name", read_only=True)
+
+    class Meta:
+        model = AssignedTraining
+        fields = [
+            "id",
+            "fueler",
+            "fueler_name",
+            "training",
+            "training_name",
+            "status",
+            "assigned_by",
+            "assigned_by_name",
+            "assigned_at",
+            "due_date",
+            "notes",
+            "completed_at",
+        ]
+        read_only_fields = [
+            "id",
+            "assigned_at",
+            "fueler_name",
+            "training_name",
+            "assigned_by_name",
+        ]
 
 
 # ============================================================================

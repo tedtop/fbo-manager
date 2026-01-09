@@ -1,4 +1,6 @@
-'use client'
+"use client";
+import Link from "next/link";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 import { useTheme } from '@/components/navigation-wrapper'
 import { CertificationFormDialog } from '@/components/training/certification-form-dialog'
@@ -14,6 +16,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export default function TrainingPage() {
+  const { user } = useCurrentUser();
+  const isAdmin = user?.role === "admin";
   const { data: session, status } = useSession()
   const router = useRouter()
   const { theme } = useTheme()
@@ -149,12 +153,14 @@ export default function TrainingPage() {
             Track fueler certifications and training status
           </p>
         </div>
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={handleOpenDialog}
-        >
-          Add Certification
-        </Button>
+        {!isAdmin && (
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={handleOpenDialog}
+          >
+            Add Certification
+          </Button>
+        )}
       </div>
 
       {successMessage && <SuccessMessage message={successMessage} />}
