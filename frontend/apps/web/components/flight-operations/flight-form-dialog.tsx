@@ -143,20 +143,11 @@ export function FlightFormDialog({
     }
   }
 
-  const handleAircraftTypeChange = async (newType: string) => {
+  const handleAircraftTypeChange = (newType: string) => {
     setFormData({ ...formData, aircraftType: newType })
-
-    // If we have a tail number, update the aircraft record
-    if (formData.tailNumber) {
-      try {
-        await updateAircraft(formData.tailNumber, newType)
-      } catch (error) {
-        console.error('Failed to update aircraft type:', error)
-      }
-    }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Construct timestamps from date and time values
@@ -171,6 +162,33 @@ export function FlightFormDialog({
     if (!departureTimestamp && !arrivalTimestamp) {
       alert('Please provide at least one time (arrival or departure)')
       return
+    }
+
+    // Ensure aircraft exists or update it
+    if (formData.tailNumber) {
+      const existingAircraft = aircraft.find(
+        (a) => a.tail_number.toLowerCase() === formData.tailNumber!.toLowerCase()
+      )
+
+      try {
+        if (!existingAircraft) {
+          // Create new aircraft if it doesn't exist
+          await createAircraft(
+            formData.tailNumber,
+            formData.aircraftType || 'Unknown'
+          )
+        } else if (
+          formData.aircraftType &&
+          existingAircraft.aircraft_type_display !== formData.aircraftType
+        ) {
+          // Update existing aircraft if type changed
+          await updateAircraft(formData.tailNumber, formData.aircraftType)
+        }
+      } catch (err) {
+        console.error('Failed to ensure aircraft exists:', err)
+        // We continue anyway; if it failed because it exists, the flight creation might still work.
+        // If it failed because of network, flight creation will likely fail too.
+      }
     }
 
     // For arrivals without departure time, set departure 45 minutes after arrival (required by DB)

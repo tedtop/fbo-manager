@@ -1,7 +1,6 @@
 'use client'
 
-import type React from 'react'
-
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@frontend/ui/components/ui/button'
 import {
   ChevronLeft,
@@ -11,9 +10,23 @@ import {
   PlaneTakeoff,
   Plus
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { FlightFilters as FilterType, Flight } from './types'
+
+// --- Types ---
+type BlockType = 'arrival' | 'departure' | 'quick_turn' | 'stay'
+
+interface CalendarBlock {
+  id: string // composite id: flightId-dayIndex
+  flightId: string
+  flight: Flight
+  type: BlockType
+  startTime: string // ISO timestamp of block start (for positioning)
+  endTime: string // ISO timestamp of block end (for height)
+  day: string // YYYY-MM-DD
+  isStart: boolean
+  isEnd: boolean
+}
 
 interface CalendarWeekViewProps {
   theme: 'dark' | 'light'
@@ -25,35 +38,30 @@ interface CalendarWeekViewProps {
   onWeekChange: (offset: number) => void
 }
 
-// Helper to get the primary timestamp for a flight (arrival for arrivals, departure for departures)
-function getPrimaryTimestamp(flight: Flight): string {
-  if (flight.type === 'departure') {
-    // For departures, the block should END at departure time
-    // So start time = departure time - duration
-    const departure = new Date(flight.departureTime)
-    const durationMinutes = flight.duration || 45
-    departure.setMinutes(departure.getMinutes() - durationMinutes)
-    return departure.toISOString()
-  }
-  return flight.arrivalTime || flight.departureTime
-}
+// --- Helpers ---
 
-// Helper to extract date from timestamp in YYYY-MM-DD format (local timezone)
-function getDateFromTimestamp(timestamp: string): string {
-  const date = new Date(timestamp)
+function getDateStr(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
-// Helper to extract time from timestamp in HH:mm format (local timezone)
-function getTimeFromTimestamp(timestamp: string): string {
-  const date = new Date(timestamp)
+function getTimeStr(date: Date): string {
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
 }
+
+function parseLocalTimestamp(timestamp: string): Date {
+  // Parsing ISO string in local context is tricky if strictly using new Date(iso) which parses as key. 
+  // But our timestamps from backend are full ISO8601 with offset or Z.
+  // The backend script generates with timezone.make_aware. 
+  // If we want to display them in LOCAL browser time, new Date(iso) is correct.
+  return new Date(timestamp)
+}
+
+// --- Component ---
 
 export function CalendarWeekView({
   theme,
@@ -64,71 +72,51 @@ export function CalendarWeekView({
   onWeekChange
 }: CalendarWeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Drag State
   const [isDragging, setIsDragging] = useState(false)
+  const [draggedBlock, setDraggedBlock] = useState<CalendarBlock | null>(null)
+
+  // Mouse tracking for drag
+  const [dragStartY, setDragStartY] = useState(0)
+  const [dragStartX, setDragStartX] = useState(0)
+  const [dragStartBlockTime, setDragStartBlockTime] = useState('') // HH:mm
+  const [dragStartBlockDate, setDragStartBlockDate] = useState('') // YYYY-MM-DD
+
+  // Visual feedback during drag
+  const [tempDragTime, setTempDragTime] = useState('') // HH:mm
+  const [tempDragDate, setTempDragDate] = useState('') // YYYY-MM-DD
+
+  // Scroll Drag
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
-  // weekOffset is now a prop
-  const MIN_WEEK_OFFSET = -2 // Can go back 2 weeks
-  const MAX_WEEK_OFFSET = 2 // Can go forward 2 weeks
 
+  // Dialogs
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingFlight, setEditingFlight] = useState<Flight | null>(null)
 
-  const [draggedFlight, setDraggedFlight] = useState<Flight | null>(null)
-  const [dragStartY, setDragStartY] = useState(0)
-  const [dragStartX, setDragStartX] = useState(0)
-  const [dragStartTime, setDragStartTime] = useState('')
-  const [dragStartDate, setDragStartDate] = useState('')
-  const [tempDragTime, setTempDragTime] = useState('')
-  const [tempDragDate, setTempDragDate] = useState('')
-
-  // Removed resize functionality since we no longer have duration field
-
-  const [hoveredSlot, setHoveredSlot] = useState<{
-    day: string
-    time: string
-  } | null>(null)
+  // Hover interact
+  const [hoveredSlot, setHoveredSlot] = useState<{ day: string; time: string } | null>(null)
   const [showAddButton, setShowAddButton] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!scrollContainerRef.current) return
-    setIsDragging(true)
-    setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
-    setScrollLeft(scrollContainerRef.current.scrollLeft)
-  }
+  const MIN_WEEK_OFFSET = -2
+  const MAX_WEEK_OFFSET = 2
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !scrollContainerRef.current) return
-    e.preventDefault()
-    const x = e.pageX - scrollContainerRef.current.offsetLeft
-    const walk = (x - startX) * 2
-    scrollContainerRef.current.scrollLeft = scrollLeft - walk
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
-
-  const handleMouseLeave = () => {
-    setIsDragging(false)
-  }
-
-  useEffect(() => {
-    const handleGlobalMouseUp = () => setIsDragging(false)
-    window.addEventListener('mouseup', handleGlobalMouseUp)
-    return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
-  }, [])
+  // --- Date / Grid Calculation ---
 
   const weekDays = useMemo(() => {
     const days = []
     const today = new Date()
-    const startDate = new Date(today)
-    startDate.setDate(today.getDate() + weekOffset * 7)
+    const currentDay = today.getDay() // 0 = Sunday
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - currentDay + weekOffset * 7)
+    // Normalize to start of day
+    startOfWeek.setHours(0, 0, 0, 0)
 
     for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate)
-      date.setDate(startDate.getDate() + i)
+      const date = new Date(startOfWeek)
+      date.setDate(startOfWeek.getDate() + i)
       days.push(date)
     }
     return days
@@ -142,510 +130,490 @@ export function CalendarWeekView({
     return slots
   }, [])
 
-  const filteredFlights = useMemo(() => {
-    return flights.filter((flight) => {
+  // --- Flight -> Block Transformation ---
+
+  const blocks = useMemo(() => {
+    const result: CalendarBlock[] = []
+
+    // Helper to check day overlap
+    // Iterate over flights, then for each flight, iterate over Visible Week Days
+    // This handles multi-day splitting naturally.
+
+    flights.forEach(flight => {
+      // Filter
       if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        const matchesSearch =
-          flight.tailNumber.toLowerCase().includes(searchLower) ||
-          flight.aircraftType.toLowerCase().includes(searchLower) ||
-          flight.origin?.toLowerCase().includes(searchLower) ||
-          flight.destination?.toLowerCase().includes(searchLower) ||
-          flight.contactName?.toLowerCase().includes(searchLower)
-
-        if (!matchesSearch) return false
+        const s = filters.search.toLowerCase()
+        const matches =
+          flight.tailNumber.toLowerCase().includes(s) ||
+          flight.aircraftType.toLowerCase().includes(s) ||
+          flight.origin?.toLowerCase().includes(s) ||
+          flight.destination?.toLowerCase().includes(s)
+        if (!matches) return
       }
-
-      if (filters.status !== 'all' && flight.status !== filters.status) {
-        return false
-      }
-
+      if (filters.status !== 'all' && flight.status !== filters.status) return
       if (filters.services.length > 0) {
-        const hasAllServices = filters.services.every((service) =>
-          flight.services.includes(service)
-        )
-        if (!hasAllServices) return false
+        const hasAll = filters.services.every(svc => flight.services.includes(svc))
+        if (!hasAll) return
       }
 
-      return true
-    })
-  }, [filters, flights])
+      // Define Flight Interval [Start, End]
+      // If flight is arrival only (no dep), end is... ? 1h later.
+      // If dep only, start is... ? 1h earlier.
+      // If both, interval is Arr -> Dep.
 
-  const getStatusColor = (status: Flight['status']) => {
-    switch (status) {
-      case 'arrived':
-        return theme === 'dark'
-          ? 'bg-green-600/20 border-green-500 text-green-300'
-          : 'bg-green-100 border-green-600 text-green-900'
-      case 'departed':
-        return theme === 'dark'
-          ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300'
-          : 'bg-cyan-100 border-cyan-600 text-cyan-900'
-      case 'en-route':
-        return theme === 'dark'
-          ? 'bg-sky-600/20 border-sky-500 text-sky-300'
-          : 'bg-sky-100 border-sky-600 text-sky-900'
-      case 'scheduled':
-        return theme === 'dark'
-          ? 'bg-slate-600/20 border-slate-500 text-slate-300'
-          : 'bg-slate-100 border-slate-600 text-slate-900'
-      case 'delayed':
-        return theme === 'dark'
-          ? 'bg-yellow-600/20 border-yellow-500 text-yellow-300'
-          : 'bg-yellow-100 border-yellow-600 text-yellow-900'
-      case 'cancelled':
-        return theme === 'dark'
-          ? 'bg-red-600/20 border-red-500 text-red-300'
-          : 'bg-red-100 border-red-600 text-red-900'
+      let intervalStart: Date | null = null
+      let intervalEnd: Date | null = null
+
+      if (flight.arrivalTime) {
+        intervalStart = parseLocalTimestamp(flight.arrivalTime)
+        if (flight.departureTime) {
+          intervalEnd = parseLocalTimestamp(flight.departureTime)
+        } else {
+          // Should not happen in generated data, but fallback
+          intervalEnd = new Date(intervalStart.getTime() + 60 * 60 * 1000)
+        }
+      } else if (flight.departureTime) {
+        intervalEnd = parseLocalTimestamp(flight.departureTime)
+        // Default start 1h before dep
+        intervalStart = new Date(intervalEnd.getTime() - 60 * 60 * 1000)
+      }
+
+      if (!intervalStart || !intervalEnd) return
+
+      // Iterate Week Days to intersect
+      weekDays.forEach((dayDate) => {
+        const dayStart = new Date(dayDate) // 00:00
+        const dayEnd = new Date(dayDate)
+        dayEnd.setHours(23, 59, 59, 999)
+
+        // Check intersection
+        // Flight Interval: [intervalStart, intervalEnd]
+        // Day Interval: [dayStart, dayEnd]
+        // Overlap if (StartA <= EndB) and (EndA >= StartB)
+
+        if (intervalStart! <= dayEnd && intervalEnd! >= dayStart) {
+          // Calculate block for this day
+          // BlockStart = Max(intervalStart, dayStart)
+          // BlockEnd = Min(intervalEnd, dayEnd)
+
+          const blockStart = intervalStart! > dayStart ? intervalStart! : dayStart
+          const blockEnd = intervalEnd! < dayEnd ? intervalEnd! : dayEnd
+
+          // Determine type
+          let type: BlockType = 'stay'
+          const isStart = blockStart.getTime() === intervalStart!.getTime()
+          const isEnd = blockEnd.getTime() === intervalEnd!.getTime()
+
+          if (isStart && isEnd) {
+            // Fully contained in day -> check if it's visually a quick turn
+            type = 'quick_turn' // Or just call it 'single_block'
+          } else if (isStart) {
+            type = 'arrival'
+          } else if (isEnd) {
+            type = 'departure'
+          } else {
+            type = 'stay'
+          }
+
+          result.push({
+            id: `${flight.id}-${getDateStr(dayDate)}`,
+            flightId: flight.id,
+            flight: flight,
+            type,
+            startTime: blockStart.toISOString(),
+            endTime: blockEnd.toISOString(),
+            day: getDateStr(dayDate),
+            isStart,
+            isEnd
+          })
+        }
+      })
+    })
+
+    return result
+  }, [flights, filters, weekDays])
+
+  // --- Handlers ---
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only drag scroll if not clicking a block
+    if ((e.target as HTMLElement).closest('.flight-block')) return
+
+    if (!scrollContainerRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
+    setScrollLeft(scrollContainerRef.current.scrollLeft)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && !draggedBlock && scrollContainerRef.current) {
+      e.preventDefault()
+      const x = e.pageX - scrollContainerRef.current.offsetLeft
+      const walk = (x - startX) * 2
+      scrollContainerRef.current.scrollLeft = scrollLeft - walk
     }
   }
 
-  const getFlightPosition = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number)
-    const totalMinutes = hours * 60 + minutes
-    const startMinutes = 6 * 60
-    const pixelsPerMinute = 80 / 60
-    return (totalMinutes - startMinutes) * pixelsPerMinute
+  const handleMouseUp = () => setIsDragging(false)
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (draggedBlock) handleBlockDragEnd()
+      setIsDragging(false)
+    }
+    window.addEventListener('mouseup', handleGlobalMouseUp)
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (draggedBlock) handleBlockDragMove(e as any)
+    }
+    window.addEventListener('mousemove', handleGlobalMouseMove)
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp)
+      window.removeEventListener('mousemove', handleGlobalMouseMove)
+    }
+  }, [draggedBlock, tempDragTime, tempDragDate])
+
+
+  // Block Dragging
+
+  const getPositionFromTime = (time: string) => {
+    const [h, m] = time.split(':').map(Number)
+    const mins = h * 60 + m
+    const startMins = 0 // Start at 00:00 for full day support?
+    // Current layout seems to start at 00:00 based on timeSlots.
+    // CSS grid: 80px per hour means 80/60 px per min.
+    return mins * (80 / 60)
   }
 
-  const snapToQuarterHour = (minutes: number) => {
-    return Math.round(minutes / 15) * 15
+  const getTimeFromPosition = (y: number) => {
+    const pxPerMin = 80 / 60
+    const mins = y / pxPerMin
+    // Snap to 15
+    const snapped = Math.round(mins / 15) * 15
+    const h = Math.floor(snapped / 60)
+    const m = snapped % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
 
-  const getTimeFromPosition = (yPosition: number) => {
-    const pixelsPerMinute = 80 / 60
-    const minutesFromStart = yPosition / pixelsPerMinute
-    const totalMinutes = 6 * 60 + snapToQuarterHour(minutesFromStart)
-    const hours = Math.floor(totalMinutes / 60)
-    const minutes = totalMinutes % 60
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-  }
-
-  const getDayIndexFromPosition = (clientX: number) => {
+  const getDayIndexFromX = (x: number) => {
     if (!scrollContainerRef.current) return 0
     const rect = scrollContainerRef.current.getBoundingClientRect()
-    const relativeX =
-      clientX - rect.left + scrollContainerRef.current.scrollLeft
-    const timeColumnWidth = 80
-    const dayColumnWidth =
-      (scrollContainerRef.current.scrollWidth - timeColumnWidth) / 7
-    const dayIndex = Math.floor((relativeX - timeColumnWidth) / dayColumnWidth)
-    return Math.max(0, Math.min(6, dayIndex))
+    const relativeX = x - rect.left + scrollContainerRef.current.scrollLeft
+    const timeColWidth = 80
+    const dayColWidth = (scrollContainerRef.current.scrollWidth - timeColWidth) / 7
+    return Math.max(0, Math.min(6, Math.floor((relativeX - timeColWidth) / dayColWidth)))
   }
 
-  const handleFlightDragStart = (e: React.MouseEvent, flight: Flight) => {
+  const handleBlockDragStart = (e: React.MouseEvent, block: CalendarBlock) => {
+    e.preventDefault()
     e.stopPropagation()
-    setDraggedFlight(flight)
+    setDraggedBlock(block)
     setDragStartY(e.clientY)
     setDragStartX(e.clientX)
 
-    // Extract time and date from the primary timestamp
-    const primaryTimestamp = getPrimaryTimestamp(flight)
-    const startTime = getTimeFromTimestamp(primaryTimestamp)
-    const startDate = getDateFromTimestamp(primaryTimestamp)
+    const start = new Date(block.startTime)
+    const dStr = getDateStr(start)
+    const tStr = getTimeStr(start)
 
-    setDragStartTime(startTime)
-    setDragStartDate(startDate)
-    setTempDragTime(startTime)
-    setTempDragDate(startDate)
+    setDragStartBlockDate(dStr)
+    setDragStartBlockTime(tStr)
+    setTempDragDate(dStr)
+    setTempDragTime(tStr)
   }
 
-  const handleFlightDragMove = (e: React.MouseEvent) => {
-    if (!draggedFlight || !scrollContainerRef.current) return
+  const handleBlockDragMove = (e: React.MouseEvent) => {
+    if (!draggedBlock) return
     e.preventDefault()
 
-    const deltaY = e.clientY - dragStartY
-    const currentPosition = getFlightPosition(dragStartTime)
-    const newPosition = Math.max(0, currentPosition + deltaY)
-    const newTime = getTimeFromPosition(newPosition)
+    // Y Axis -> Time
+    const startYPos = getPositionFromTime(dragStartBlockTime)
+    const currentYPos = startYPos + (e.clientY - dragStartY)
+    // Clamp to 0 - 24h (24*80 = 1920)
+    const clampedY = Math.max(0, Math.min(1920, currentYPos))
+    const newTime = getTimeFromPosition(clampedY)
 
-    const newDayIndex = getDayIndexFromPosition(e.clientX)
-    const originalDayIndex = getDayIndexFromPosition(dragStartX)
-    const dayDelta = newDayIndex - originalDayIndex
+    // X Axis -> Day
+    const startDayIdx = getDayIndexFromX(dragStartX)
+    const currentDayIdx = getDayIndexFromX(e.clientX)
+    const dayDelta = currentDayIdx - startDayIdx
 
-    const originalDate = new Date(dragStartDate)
-    const newDate = new Date(originalDate)
-    newDate.setDate(originalDate.getDate() + dayDelta)
-    const newDateString = newDate.toISOString().split('T')[0]
+    // Calc new date
+    const baseDate = new Date(dragStartBlockDate) // YYYY-MM-DD local
+    // Add delta
+    // Use simple date math
+    const newDate = new Date(baseDate)
+    newDate.setDate(baseDate.getDate() + dayDelta)
+    const newDateStr = getDateStr(newDate)
 
-    // Store temporary position for rendering, don't save to DB yet
     setTempDragTime(newTime)
-    setTempDragDate(newDateString)
+    setTempDragDate(newDateStr)
   }
 
-  const handleFlightDragEnd = () => {
-    console.log('handleFlightDragEnd called', {
-      draggedFlight,
-      tempDragTime,
-      dragStartTime,
-      tempDragDate,
-      dragStartDate,
-      changed: tempDragTime !== dragStartTime || tempDragDate !== dragStartDate
-    })
+  const handleBlockDragEnd = () => {
+    if (!draggedBlock) return
 
-    if (
-      draggedFlight &&
-      (tempDragTime !== dragStartTime || tempDragDate !== dragStartDate)
-    ) {
-      // Calculate the time difference (delta)
-      const oldPrimaryTimestamp = getPrimaryTimestamp(draggedFlight)
-      // Construct new timestamp from temp drag values
-      // Note: tempDragTime is HH:mm, tempDragDate is YYYY-MM-DD
-      const newPrimaryTimestamp = `${tempDragDate}T${tempDragTime}:00`
-
-      const oldTime = new Date(oldPrimaryTimestamp).getTime()
-      const newTime = new Date(newPrimaryTimestamp).getTime()
-      const deltaMs = newTime - oldTime
-
-      const updatedFlight = {
-        ...draggedFlight
-      }
-
-      // Apply delta to arrival time if it exists
-      if (updatedFlight.arrivalTime) {
-        const oldArrival = new Date(updatedFlight.arrivalTime).getTime()
-        updatedFlight.arrivalTime = new Date(oldArrival + deltaMs).toISOString()
-      }
-
-      // Apply delta to departure time if it exists
-      if (updatedFlight.departureTime) {
-        const oldDeparture = new Date(updatedFlight.departureTime).getTime()
-        updatedFlight.departureTime = new Date(
-          oldDeparture + deltaMs
-        ).toISOString()
-      }
-
-      console.log('Calling onEditFlight with:', updatedFlight)
-
-      try {
-        onEditFlight(updatedFlight)
-      } catch (error) {
-        console.error('Error calling onEditFlight:', error)
-      }
+    // Did it change?
+    if (tempDragTime === dragStartBlockTime && tempDragDate === dragStartBlockDate) {
+      setDraggedBlock(null)
+      return
     }
-    setDraggedFlight(null)
+
+    // Apply change
+    // We need to construct the NEW timestamps relative to the move
+    // We only update the 'startTime' of the block effectively, 
+    // but we need to map that back to the FLIGHT fields (Arrival vs Departure).
+
+    const flight = draggedBlock.flight
+    const updatedFlight = { ...flight }
+
+    // Logic:
+    // 1. Calculate the 'Delta' applied to the block's start time
+    // 2. Apply that delta to the relevant flight fields.
+
+    // OLD Start (Block)
+    const [oldY, oldM, oldD] = dragStartBlockDate.split('-').map(Number)
+    const [oldH, oldMin] = dragStartBlockTime.split(':').map(Number)
+    const oldStartObj = new Date(oldY, oldM - 1, oldD, oldH, oldMin)
+
+    // NEW Start (Block)
+    const [newY, newM, newD] = tempDragDate.split('-').map(Number)
+    const [newH, newMin] = tempDragTime.split(':').map(Number)
+    const newStartObj = new Date(newY, newM - 1, newD, newH, newMin)
+
+    const deltaMs = newStartObj.getTime() - oldStartObj.getTime()
+
+    if (draggedBlock.type === 'arrival') {
+      // Moving arrival block -> Update Arrival Time
+      // Keep departure time relative? Or fixed? 
+      // Context: "Move flight". Usually shifts the whole schedule.
+      // But if split details, maybe just arrival?
+      // Let's shift BOTH if it's an arrival move, to maintain turnaround time?
+      // User said "move flights around". Implies shifting the whole thing.
+
+      if (flight.arrivalTime) {
+        const oldArr = new Date(flight.arrivalTime).getTime()
+        updatedFlight.arrivalTime = new Date(oldArr + deltaMs).toISOString()
+      }
+      // Also shift departure to keep ground time constant? 
+      // Yes, usually desired behavior in drag-drop unless specified otherwise.
+      const oldDep = new Date(flight.departureTime).getTime()
+      updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+
+    } else if (draggedBlock.type === 'departure') {
+      // Moving departure block -> Update Departure Time
+      // If we move departure, do we move arrival?
+      // Maybe not? Maybe we are just delaying departure.
+      // Let's assume moving departure ONLY changes departure.
+      const oldDep = new Date(flight.departureTime).getTime()
+      updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+
+    } else if (draggedBlock.type === 'quick_turn' || draggedBlock.type === 'stay') {
+      // QT/Stay -> Shift both
+      if (flight.arrivalTime) {
+        const oldArr = new Date(flight.arrivalTime).getTime()
+        updatedFlight.arrivalTime = new Date(oldArr + deltaMs).toISOString()
+      }
+      const oldDep = new Date(flight.departureTime).getTime()
+      updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+    }
+
+    onEditFlight(updatedFlight)
+    setDraggedBlock(null)
     setTempDragTime('')
     setTempDragDate('')
   }
 
-  // Resize handlers removed - no longer needed without duration field
+  // --- Slot Interactions ---
 
   const handleSlotHover = (day: string, time: string) => {
-    // Clear any existing timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-    }
-
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     setHoveredSlot({ day, time })
     setShowAddButton(false)
-
-    // Show + button after 200ms
-    hoverTimeoutRef.current = setTimeout(() => {
-      setShowAddButton(true)
-    }, 200)
+    hoverTimeoutRef.current = setTimeout(() => setShowAddButton(true), 200)
   }
 
   const handleSlotLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current)
-    }
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
     setHoveredSlot(null)
     setShowAddButton(false)
   }
 
-  const handleCreateFlightAtSlot = (
-    day: string,
-    time: string,
-    type: 'arrival' | 'departure'
-  ) => {
-    // Create a new flight object with the clicked time and date
-    const timestamp = `${day}T${time}:00`
+  const handleCreate = (day: string, time: string, type: 'arrival' | 'departure') => {
+    const ts = `${day}T${time}:00`
+    const baseDate = new Date(ts)
 
-    const newFlight: Partial<Flight> = {
-      type,
+    const newF: Partial<Flight> = {
+      type: type === 'arrival' ? 'arrival' : 'departure',
+      status: 'scheduled',
       tailNumber: '',
-      aircraftType: '',
-      status: 'scheduled'
+      aircraftType: ''
     }
 
-    // Set the appropriate timestamp based on type
     if (type === 'arrival') {
-      newFlight.arrivalTime = timestamp
-      // For arrivals, we still need a departure_time (required by DB), set it 45 min after arrival
-      const arrivalDate = new Date(timestamp)
-      arrivalDate.setMinutes(arrivalDate.getMinutes() + 45)
-      newFlight.departureTime = arrivalDate.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
+      newF.arrivalTime = ts
+      // Default 1h later dep
+      const dep = new Date(baseDate.getTime() + 3600000)
+      newF.departureTime = dep.toISOString().slice(0, 16)
     } else {
-      newFlight.departureTime = timestamp
+      newF.departureTime = ts
     }
 
-    // Open the edit dialog with this new flight
-    setEditingFlight(newFlight as Flight)
+    setEditingFlight(newF as Flight)
     setEditDialogOpen(true)
     handleSlotLeave()
   }
 
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (draggedFlight) {
-        handleFlightDragMove(e as any)
-      }
-    }
+  // --- Render ---
 
-    const handleGlobalMouseUpForDrag = () => {
-      if (draggedFlight) handleFlightDragEnd()
+  const getStatusColor = (status: Flight['status']) => {
+    switch (status) {
+      case 'arrived': return theme === 'dark' ? 'bg-green-900/40 border-green-700 text-green-100' : 'bg-green-100 border-green-300 text-green-900'
+      case 'departed': return theme === 'dark' ? 'bg-blue-900/40 border-blue-700 text-blue-100' : 'bg-blue-100 border-blue-300 text-blue-900'
+      default: return theme === 'dark' ? 'bg-slate-800 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-900'
     }
-
-    window.addEventListener('mousemove', handleGlobalMouseMove)
-    window.addEventListener('mouseup', handleGlobalMouseUpForDrag)
-
-    return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove)
-      window.removeEventListener('mouseup', handleGlobalMouseUpForDrag)
-    }
-  }, [
-    draggedFlight,
-    dragStartY,
-    dragStartTime,
-    dragStartX,
-    dragStartDate,
-    tempDragTime,
-    tempDragDate,
-    onEditFlight
-  ])
+  }
 
   return (
-    <div className="space-y-6">
-      <div
-        className={`rounded-lg border overflow-hidden ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-300'}`}
-      >
-        <div
-          className={`flex items-center justify-between p-4 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-muted-foreground"
-            onClick={() =>
-              onWeekChange(Math.max(MIN_WEEK_OFFSET, weekOffset - 1))
-            }
-            disabled={weekOffset <= MIN_WEEK_OFFSET}
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous Week
+    <div className="space-y-6 select-none">
+      {/* Height constraint/overflow handled by parent properly? check. */}
+      <div className={`rounded-lg border overflow-hidden flex flex-col h-[800px] ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+          <Button variant="ghost" onClick={() => onWeekChange(weekOffset - 1)}>
+            <ChevronLeft className="w-4 h-4 mr-2" /> Prev
           </Button>
-          <div className="flex flex-col items-center">
-            <h3 className="text-lg font-semibold text-foreground">
-              {weekDays[0].toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric'
-              })}{' '}
-              -{' '}
-              {weekDays[6].toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
-              })}
-            </h3>
-            {weekOffset !== 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs text-primary"
-                onClick={() => onWeekChange(0)}
-              >
-                Back to Current Week
-              </Button>
+          <div className="text-center font-bold text-lg">
+            {weekDays[0] && weekDays[6] && (
+              `${weekDays[0].toLocaleDateString()} - ${weekDays[6].toLocaleDateString()}`
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-muted-foreground"
-            onClick={() =>
-              onWeekChange(Math.min(MAX_WEEK_OFFSET, weekOffset + 1))
-            }
-            disabled={weekOffset >= MAX_WEEK_OFFSET}
-          >
-            Next Week
-            <ChevronRight className="w-4 h-4" />
+          <Button variant="ghost" onClick={() => onWeekChange(weekOffset + 1)}>
+            Next <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
 
+        {/* Grid Scroller */}
         <div
           ref={scrollContainerRef}
-          className={`overflow-x-auto ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} select-none`}
+          className={`flex-1 overflow-auto relative ${isDragging ? 'cursor-grabbing' : 'cursor-default'}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
         >
-          <div className="min-w-[1400px]">
-            <div
-              className={`grid grid-cols-[80px_repeat(7,1fr)] border-b ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-            >
-              <div
-                className={`p-4 border-r ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-              />
-              {weekDays.map((day, index) => (
-                <div
-                  key={index}
-                  className={`p-4 text-center border-r last:border-r-0 ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-                >
-                  <div className="text-sm text-muted-foreground">
-                    {day.toLocaleDateString('en-US', { weekday: 'short' })}
-                  </div>
-                  <div className="text-lg font-semibold text-foreground">
-                    {day.toLocaleDateString('en-US', { day: 'numeric' })}
-                  </div>
+          <div className="min-w-[1000px] relative">
+            {/* Header Row (Days) */}
+            <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-20 bg-inherit border-b">
+              <div className="p-4 border-r"></div>
+              {weekDays.map(d => (
+                <div key={d.toString()} className="p-2 text-center border-r font-semibold">
+                  {d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-[80px_repeat(7,1fr)]">
-              <div
-                className={`border-r ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-              >
-                {timeSlots.map((time) => (
-                  <div
-                    key={time}
-                    className={`h-20 p-2 border-b text-xs text-muted-foreground ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-                  >
-                    {time}
+            {/* Body */}
+            <div className="grid grid-cols-[80px_repeat(7,1fr)] relative">
+              {/* Time Col */}
+              <div className="border-r">
+                {timeSlots.map(t => (
+                  <div key={t} className="h-20 border-b text-xs p-1 text-right text-muted-foreground mr-1">
+                    {t}
                   </div>
                 ))}
               </div>
 
-              {weekDays.map((day, dayIndex) => {
-                // Get day string in local timezone to match flight dates
-                const year = day.getFullYear()
-                const month = String(day.getMonth() + 1).padStart(2, '0')
-                const dayNum = String(day.getDate()).padStart(2, '0')
-                const dayString = `${year}-${month}-${dayNum}`
-
-                const dayFlights = filteredFlights.filter((flight) => {
-                  // If this flight is being dragged, use the temp drag date, otherwise extract from timestamp
-                  const flightDate =
-                    draggedFlight?.id === flight.id
-                      ? tempDragDate
-                      : getDateFromTimestamp(getPrimaryTimestamp(flight))
-
-                  return flightDate === dayString
+              {/* Days Cols */}
+              {weekDays.map((date, idx) => {
+                const dStr = getDateStr(date)
+                // Find blocks for this day
+                const dayBlocks = blocks.filter(b => {
+                  // Interactive drag override
+                  if (draggedBlock && draggedBlock.id === b.id) {
+                    return tempDragDate === dStr
+                  }
+                  return b.day === dStr
                 })
 
                 return (
-                  <div
-                    key={dayIndex}
-                    className={`relative border-r last:border-r-0 ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'}`}
-                  >
-                    {timeSlots.map((time, slotIndex) => {
-                      const isHovered =
-                        hoveredSlot?.day === dayString &&
-                        hoveredSlot?.time === time
+                  <div key={dStr} className="relative border-r min-h-[1920px]">
+                    {/* Grid Lines */}
+                    {timeSlots.map(t => (
+                      <div
+                        key={t}
+                        className="h-20 border-b border-slate-200/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors"
+                        onMouseEnter={() => handleSlotHover(dStr, t)}
+                        onMouseLeave={handleSlotLeave}
+                      >
+                        {/* Add Buttons */}
+                        {hoveredSlot?.day === dStr && hoveredSlot?.time === t && showAddButton && (
+                          <div className="absolute ml-2 mt-2 flex gap-1 z-30">
+                            <button onClick={() => handleCreate(dStr, t, 'arrival')} className="p-1 bg-green-500 rounded text-white shadow hover:scale-110 transition"><PlaneLanding size={14} /></button>
+                            <button onClick={() => handleCreate(dStr, t, 'departure')} className="p-1 bg-blue-500 rounded text-white shadow hover:scale-110 transition"><PlaneTakeoff size={14} /></button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {/* Blocks */}
+                    {dayBlocks.map(block => {
+                      const isDrag = draggedBlock?.id === block.id
+                      const time = isDrag ? tempDragTime : getTimeStr(new Date(block.startTime))
+                      const top = getPositionFromTime(time)
+
+                      // Calculate duration from start/end times
+                      const startMs = new Date(block.startTime).getTime()
+                      const endMs = new Date(block.endTime).getTime()
+                      const durationMins = (endMs - startMs) / 60000
+                      const height = (durationMins / 60) * 80
+
+                      const isStay = block.type === 'stay'
+
                       return (
                         <div
-                          key={time}
-                          className={`h-20 border-b relative ${theme === 'dark' ? 'border-slate-800' : 'border-slate-300'} ${slotIndex % 2 === 0 ? (theme === 'dark' ? 'bg-slate-900/30' : 'bg-slate-50') : ''}`}
-                          onMouseEnter={() => handleSlotHover(dayString, time)}
-                          onMouseLeave={handleSlotLeave}
+                          key={block.id}
+                          className={`absolute left-1 right-1 rounded p-2 text-xs border shadow-sm flight-block cursor-move overflow-hidden 
+                                      ${getStatusColor(block.flight.status)} 
+                                      ${isStay ? 'opacity-80' : ''}`}
+                          style={{
+                            top,
+                            height: Math.max(height, 40),
+                            zIndex: isDrag ? 50 : 10,
+                            opacity: isDrag ? 0.9 : 1
+                          }}
+                          onMouseDown={(e) => handleBlockDragStart(e, block)}
                         >
-                          {isHovered && showAddButton && (
-                            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-primary/10 z-20 pointer-events-auto">
-                              <button
-                                onClick={() =>
-                                  handleCreateFlightAtSlot(
-                                    dayString,
-                                    time,
-                                    'arrival'
-                                  )
-                                }
-                                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
-                                title="Add Arrival"
-                              >
-                                <PlaneLanding className="w-3 h-3" />
-                                <Plus className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleCreateFlightAtSlot(
-                                    dayString,
-                                    time,
-                                    'departure'
-                                  )
-                                }
-                                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
-                                title="Add Departure"
-                              >
-                                <PlaneTakeoff className="w-3 h-3" />
-                                <Plus className="w-3 h-3" />
-                              </button>
+                          <div className="flex gap-1 font-bold">
+                            {block.type === 'arrival' && <PlaneLanding size={12} />}
+                            {block.type === 'departure' && <PlaneTakeoff size={12} />}
+                            {block.type === 'quick_turn' && (
+                              <span className="flex"><PlaneLanding size={12} />/<PlaneTakeoff size={12} /></span>
+                            )}
+                            {block.type === 'stay' && (
+                              <span className="text-[10px] uppercase font-mono bg-black/20 px-1 rounded">STAY</span>
+                            )}
+                            <span>{block.flight.tailNumber}</span>
+                          </div>
+                          <div className="truncate opacity-75">
+                            {block.flight.aircraftType}
+                          </div>
+                          {block.type !== 'stay' && (
+                            <div className="truncate opacity-75">
+                              {block.type === 'arrival' ? `Arr: ${block.flight.origin}` : `Dep: ${block.flight.destination}`}
                             </div>
                           )}
+
+                          <button
+                            className="absolute top-1 right-1 p-1 hover:bg-black/10 rounded"
+                            onMouseDown={(e) => {
+                              e.stopPropagation()
+                              setEditingFlight(block.flight)
+                              setEditDialogOpen(true)
+                            }}
+                          >
+                            <Pencil size={10} />
+                          </button>
                         </div>
                       )
                     })}
-
-                    <div className="absolute inset-0 p-1 pointer-events-none">
-                      {dayFlights.map((flight) => {
-                        // Use temp values during drag, otherwise use actual values
-                        const isDragging = draggedFlight?.id === flight.id
-
-                        const displayTime = isDragging
-                          ? tempDragTime
-                          : getTimeFromTimestamp(getPrimaryTimestamp(flight))
-
-                        const topPosition = getFlightPosition(displayTime)
-                        const pixelsPerMinute = 80 / 60
-                        const height =
-                          Math.max(45, flight.duration) * pixelsPerMinute // Use calculated duration with 45 min minimum
-
-                        return (
-                          <div
-                            key={flight.id}
-                            className={`absolute left-1 right-1 rounded border p-2 pointer-events-auto cursor-move group ${getStatusColor(flight.status)}`}
-                            style={{
-                              top: `${topPosition}px`,
-                              height: `${height}px`,
-                              zIndex: isDragging ? 50 : 10
-                            }}
-                            onMouseDown={(e) =>
-                              handleFlightDragStart(e, flight)
-                            }
-                          >
-                            <div className="flex items-start gap-2 h-full">
-                              {flight.type === 'arrival' ? (
-                                <PlaneLanding className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                              ) : (
-                                <PlaneTakeoff className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-xs truncate">
-                                  {flight.tailNumber}
-                                </div>
-                                <div className="text-[10px] opacity-80 truncate">
-                                  {flight.aircraftType}
-                                </div>
-                                <div className="text-[10px] opacity-70 truncate">
-                                  {flight.type === 'arrival'
-                                    ? flight.origin
-                                    : flight.destination}
-                                </div>
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setEditingFlight(flight)
-                                  setEditDialogOpen(true)
-                                }}
-                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 rounded transition-opacity"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
                   </div>
                 )
               })}
@@ -658,10 +626,7 @@ export function CalendarWeekView({
         <FlightFormDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          onSubmit={(updatedFlight) => {
-            onEditFlight(updatedFlight)
-            setEditDialogOpen(false)
-          }}
+          onSubmit={(f) => { onEditFlight(f); setEditDialogOpen(false) }}
           initialData={editingFlight}
           theme={theme}
         />

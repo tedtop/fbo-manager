@@ -21,21 +21,22 @@ export default function FlightOperationsPage() {
   const [view, setView] = useState<
     'split' | 'calendar' | 'arrivals' | 'departures'
   >('split')
+  const [weekOffset, setWeekOffset] = useState(0)
 
   // Calculate date range based on view
   const dateParams =
     view === 'calendar'
       ? (() => {
-          const today = new Date()
-          const startDate = new Date(today)
-          startDate.setDate(today.getDate() - 14) // 2 weeks back
-          const endDate = new Date(today)
-          endDate.setDate(today.getDate() + 14) // 2 weeks forward
-          return {
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0]
-          }
-        })()
+        const today = new Date()
+        const startDate = new Date(today)
+        startDate.setDate(today.getDate() - 28) // 4 weeks back
+        const endDate = new Date(today)
+        endDate.setDate(today.getDate() + 28) // 4 weeks forward
+        return {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        }
+      })()
       : undefined // Don't filter by date for split view - show all flights
 
   const { flights, loading, error, createFlight, updateFlight, deleteFlight } =
@@ -133,13 +134,28 @@ export default function FlightOperationsPage() {
     return <ErrorMessage>{error.message}</ErrorMessage>
   }
 
+  // Filter flights for Split View to match the selected week
+  const weekInternalFlights = flights.filter((flight) => {
+    const flightDate = new Date(flight.departureTime)
+    const today = new Date()
+    const currentDay = today.getDay() // 0 = Sunday
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - currentDay + weekOffset * 7)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 7)
+
+    return flightDate >= startOfWeek && flightDate < endOfWeek
+  })
+
   return (
     <div className="space-y-4">
       <CompactToolbar
         view={view}
         theme={theme}
         onViewChange={handleViewChange}
-        onThemeChange={() => {}}
+        onThemeChange={() => { }}
         filters={filters}
         onFiltersChange={setFilters}
         onAddFlight={() => setIsAddDialogOpen(true)}
@@ -149,7 +165,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode="split"
           theme={theme}
-          flights={flights}
+          flights={weekInternalFlights}
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
@@ -160,7 +176,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode="arrivals"
           theme={theme}
-          flights={flights}
+          flights={weekInternalFlights}
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
@@ -171,7 +187,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode="departures"
           theme={theme}
-          flights={flights}
+          flights={weekInternalFlights}
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
@@ -185,6 +201,8 @@ export default function FlightOperationsPage() {
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
           filters={filters}
+          weekOffset={weekOffset}
+          onWeekChange={setWeekOffset}
         />
       )}
 
