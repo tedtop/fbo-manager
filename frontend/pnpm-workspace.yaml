@@ -1,6 +1,3 @@
-packages:
-  - 'apps/*'
-  - 'packages/*'
 allowBuilds:
   '@biomejs/biome': true
   sharp: true
