@@ -1,54 +1,39 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '@/lib/api'
-import type { FuelerTraining } from '@frontend/types/api'
+import { createClient } from '@/lib/supabase/client'
+import { findAllCertifications } from '@/repositories/certifications.repo'
+import { findAllFuelers } from '@/repositories/fuelers.repo'
+import { toCertificationDomain, type CertificationDomain } from '@/types/domain/certifications'
+import { useQuery } from '@tanstack/react-query'
 
-interface UseMyFuelerCertificationsResult {
-  certifications: FuelerTraining[]
-  loading: boolean
-  error: Error | null
-  fuelerId: number | null
-  refetch: () => void
-}
+export function useMyFuelerCertifications() {
+  const db = createClient()
 
-export function useMyFuelerCertifications(): UseMyFuelerCertificationsResult {
-  const { data: session } = useSession()
-  const [fuelerId] = useState<number | null>(null)
-  const [certifications, setCertifications] = useState<FuelerTraining[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const query = useQuery({
+    queryKey: ['my-fueler-certifications'],
+    queryFn: async () => {
+      const { data: { user } } = await db.auth.getUser()
+      if (!user?.email) return { certifications: [], fuelerId: null }
 
-  const fetchCerts = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
+      // Find the fueler record linked to the current user by email
+      const fuelers = await findAllFuelers(db)
+      const fueler = fuelers.find((f) => f.user?.email === user.email) ?? null
+
+      if (!fueler) return { certifications: [], fuelerId: null }
+
+      const rows = await findAllCertifications(db, { fuelerId: fueler.id })
+      return {
+        certifications: rows.map(toCertificationDomain),
+        fuelerId: fueler.id
+      }
     }
-    setLoading(true)
-    setError(null)
-    try {
-      const client = await getApiClient(session)
-      const base = client["BASE"] || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const res = await fetch(`${base}/api/fuelers/my-certifications/`, {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`
-        }
-      })
-      if (!res.ok) throw new Error('Failed to fetch my certifications')
-      const data = await res.json()
-      setCertifications(Array.isArray(data) ? data : [])
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error('Failed to load certifications'))
-    } finally {
-      setLoading(false)
-    }
-  }, [session])
+  })
 
-  useEffect(() => {
-    if (session) fetchCerts()
-    else setLoading(false)
-  }, [session, fetchCerts])
-
-  return { certifications, loading, error, fuelerId, refetch: fetchCerts }
+  return {
+    certifications: query.data?.certifications ?? [] as CertificationDomain[],
+    fuelerId: query.data?.fuelerId ?? null,
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch
+  }
 }

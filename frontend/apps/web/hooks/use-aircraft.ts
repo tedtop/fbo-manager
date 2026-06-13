@@ -1,122 +1,82 @@
 'use client'
 
-import type { Aircraft, AircraftRequest } from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { createClient } from '@/lib/supabase/client'
+import {
+  createAircraft,
+  deleteAircraft,
+  findAllAircraft,
+  updateAircraft,
+  type AircraftInsert,
+  type AircraftRow,
+  type AircraftUpdate
+} from '@/repositories/aircraft.repo'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+export const aircraftKeys = {
+  all: ['aircraft'] as const,
+  lists: () => [...aircraftKeys.all, 'list'] as const
+}
 
 export function useAircraft() {
-  const { data: session } = useSession()
-  const [aircraft, setAircraft] = useState<Aircraft[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const qc = useQueryClient()
+  const db = createClient()
 
-  const fetchAircraft = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
-    }
+  const query = useQuery({
+    queryKey: aircraftKeys.lists(),
+    queryFn: () => findAllAircraft(db)
+  })
 
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
+  const createMutation = useMutation({
+    mutationFn: (aircraft: AircraftInsert) => createAircraft(db, aircraft),
+    onSuccess: () => qc.invalidateQueries({ queryKey: aircraftKeys.all })
+  })
 
-      const response = await client.aircraft.aircraftList()
-      setAircraft(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch aircraft:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch aircraft')
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [session])
+  const updateMutation = useMutation({
+    mutationFn: ({ tailNumber, updates }: { tailNumber: string; updates: AircraftUpdate }) =>
+      updateAircraft(db, tailNumber, updates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: aircraftKeys.all })
+  })
 
-  useEffect(() => {
-    if (session) {
-      fetchAircraft()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchAircraft])
+  const deleteMutation = useMutation({
+    mutationFn: (tailNumber: string) => deleteAircraft(db, tailNumber),
+    onSuccess: () => qc.invalidateQueries({ queryKey: aircraftKeys.all })
+  })
 
-  const createAircraft = useCallback(
-    async (
+  const findByTailNumber = (tailNumber: string): AircraftRow | undefined =>
+    query.data?.find((a) => a.tail_number.toLowerCase() === tailNumber.toLowerCase())
+
+  return {
+    aircraft: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error,
+    createAircraft: (
       tailNumber: string,
       aircraftTypeDisplay: string,
-      aircraftTypeIcao?: string
-    ) => {
-      const client = await getApiClient(session)
-      const newAircraft = await client.aircraft.aircraftCreate({
+      aircraftTypeIcao = 'UNKN'
+    ) =>
+      createMutation.mutateAsync({
         tail_number: tailNumber,
         aircraft_type_display: aircraftTypeDisplay,
-        aircraft_type_icao: aircraftTypeIcao || 'UNKN',
+        aircraft_type_icao: aircraftTypeIcao,
         airline_icao: '',
         fleet_id: ''
-      })
-      setAircraft((prev) => [...prev, newAircraft])
-      return newAircraft
-    },
-    [session]
-  )
-
-  const updateAircraft = useCallback(
-    async (
+      }),
+    updateAircraft: (
       tailNumber: string,
       aircraftTypeDisplay: string,
       aircraftTypeIcao?: string
-    ) => {
-      const client = await getApiClient(session)
-      const updatedAircraft = await client.aircraft.aircraftPartialUpdate(
+    ) =>
+      updateMutation.mutateAsync({
         tailNumber,
-        {
-          tail_number: tailNumber,
+        updates: {
           aircraft_type_display: aircraftTypeDisplay,
           aircraft_type_icao: aircraftTypeIcao,
           airline_icao: '',
           fleet_id: ''
         }
-      )
-      setAircraft((prev) =>
-        prev.map((a) => (a.tail_number === tailNumber ? updatedAircraft : a))
-      )
-      return updatedAircraft
-    },
-    [session]
-  )
-
-  const deleteAircraft = useCallback(
-    async (tailNumber: string) => {
-      const client = await getApiClient(session)
-      await client.aircraft.aircraftDestroy(tailNumber)
-      setAircraft((prev) => prev.filter((a) => a.tail_number !== tailNumber))
-    },
-    [session]
-  )
-
-  const findByTailNumber = useCallback(
-    (tailNumber: string) => {
-      return aircraft.find(
-        (a) => a.tail_number.toLowerCase() === tailNumber.toLowerCase()
-      )
-    },
-    [aircraft]
-  )
-
-  const refetch = useCallback(() => {
-    fetchAircraft()
-  }, [fetchAircraft])
-
-  return {
-    aircraft,
-    loading,
-    error,
-    createAircraft,
-    updateAircraft,
-    deleteAircraft,
+      }),
+    deleteAircraft: (tailNumber: string) => deleteMutation.mutateAsync(tailNumber),
     findByTailNumber,
-    refetch
+    refetch: query.refetch
   }
 }

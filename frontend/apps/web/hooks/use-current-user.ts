@@ -1,38 +1,27 @@
 'use client'
 
-import type { UserCurrent } from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { useAuth } from '@/providers/auth-provider'
+import { createClient } from '@/lib/supabase/client'
+import { findUserByEmail } from '@/repositories/users.repo'
+import { useQuery } from '@tanstack/react-query'
 
 export function useCurrentUser() {
-  const { data: session } = useSession()
-  const [user, setUser] = useState<UserCurrent | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const { session } = useAuth()
+  const db = createClient()
 
-  const fetchUser = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
-    }
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
-      const me = await client.users.usersMeRetrieve()
-      setUser(me)
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load user'))
-    } finally {
-      setLoading(false)
-    }
-  }, [session])
+  const query = useQuery({
+    queryKey: ['current-user', session?.user?.email],
+    queryFn: async () => {
+      if (!session?.user?.email) return null
+      return findUserByEmail(db, session.user.email)
+    },
+    enabled: !!session?.user?.email
+  })
 
-  useEffect(() => {
-    if (session) fetchUser()
-    else setLoading(false)
-  }, [session, fetchUser])
-
-  return { user, loading, error, refetch: fetchUser }
+  return {
+    user: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch
+  }
 }

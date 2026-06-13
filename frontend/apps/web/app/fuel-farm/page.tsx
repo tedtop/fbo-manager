@@ -3,133 +3,103 @@
 import { TankFormDialog } from '@/components/fuel-farm/tank-form-dialog'
 import { TankVisualCard } from '@/components/fuel-farm/tank-visual-card'
 import { useTheme } from '@/components/navigation-wrapper'
-import { useTankReadings } from '@/hooks/use-tank-readings'
 import { useTanks } from '@/hooks/use-tanks'
-import type {
-  FuelTankRequest,
-  FuelTankWithLatestReading
-} from '@frontend/types/api'
+import type { TankInsert, TankWithLatestReading } from '@/repositories/tanks.repo'
+import { createTankReading } from '@/repositories/tank-readings.repo'
+import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@frontend/ui/components/ui/badge'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
 import { ErrorMessage } from '@frontend/ui/messages/error-message'
 import { SuccessMessage } from '@frontend/ui/messages/success-message'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export default function FuelFarmPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
   const { theme } = useTheme()
-  const { tanks, loading, error, createTank, updateTank, deleteTank, refetch } =
-    useTanks()
-  const { createReading } = useTankReadings()
+  const { tanks, loading, error, createTank, updateTank, deleteTank, refetch } = useTanks()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingTank, setEditingTank] =
-    useState<FuelTankWithLatestReading | null>(null)
+  const [editingTank, setEditingTank] = useState<TankWithLatestReading | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-    }
-  }, [status, router])
+  const showSuccess = (msg: string) => {
+    setSuccessMessage(msg)
+    setTimeout(() => setSuccessMessage(''), 3000)
+  }
+  const showError = (msg: string) => {
+    setErrorMessage(msg)
+    setTimeout(() => setErrorMessage(''), 3000)
+  }
 
   const handleUpdateLevel = async (tankId: string, level: number) => {
     try {
-      await createReading(tankId, level)
-      setSuccessMessage(`${tankId} updated to ${level.toFixed(1)}"`)
-      setTimeout(() => setSuccessMessage(''), 3000)
-      // Refetch tanks to get updated readings
+      const db = createClient()
+      await createTankReading(db, {
+        tank_id: tankId,
+        level,
+        recorded_at: new Date().toISOString()
+      })
+      showSuccess(`${tankId} updated to ${level.toFixed(1)}"`)
       await refetch()
     } catch (err) {
-      setErrorMessage(`Failed to update ${tankId}`)
-      setTimeout(() => setErrorMessage(''), 3000)
+      showError(`Failed to update ${tankId}`)
       throw err
     }
   }
 
-  const handleCreateTank = async (data: FuelTankRequest) => {
+  const handleCreateTank = async (data: TankInsert) => {
     try {
       await createTank(data)
-      setSuccessMessage('Tank created successfully')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      showSuccess('Tank created successfully')
     } catch (err) {
-      setErrorMessage('Failed to create tank')
-      setTimeout(() => setErrorMessage(''), 3000)
+      showError('Failed to create tank')
       throw err
     }
   }
 
-  const handleEditTank = (tank: FuelTankWithLatestReading) => {
+  const handleEditTank = (tank: TankWithLatestReading) => {
     setEditingTank(tank)
     setDialogOpen(true)
   }
 
-  const handleUpdateTank = async (data: FuelTankRequest) => {
+  const handleUpdateTank = async (data: TankInsert) => {
     if (!editingTank) return
     try {
-      await updateTank(editingTank.id, data)
-      setSuccessMessage('Tank updated successfully')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      await updateTank(editingTank.tank_id, {
+        tank_name: data.tank_name as string,
+        fuel_type: data.fuel_type as 'jet_a' | 'avgas',
+        capacity_gallons: data.capacity_gallons,
+        min_level_inches: data.min_level_inches,
+        max_level_inches: data.max_level_inches,
+        usable_min_inches: data.usable_min_inches,
+        usable_max_inches: data.usable_max_inches
+      })
+      showSuccess('Tank updated successfully')
       setEditingTank(null)
     } catch (err) {
-      setErrorMessage('Failed to update tank')
-      setTimeout(() => setErrorMessage(''), 3000)
+      showError('Failed to update tank')
       throw err
     }
   }
 
-  const handleDeleteTank = async (id: number) => {
+  const handleDeleteTank = async (tankId: string) => {
     if (!confirm('Are you sure you want to delete this tank?')) return
     try {
-      await deleteTank(id)
-      setSuccessMessage('Tank deleted successfully')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      await deleteTank(tankId)
+      showSuccess('Tank deleted successfully')
     } catch (err) {
-      setErrorMessage('Failed to delete tank')
-      setTimeout(() => setErrorMessage(''), 3000)
+      showError('Failed to delete tank')
     }
   }
 
-  const handleOpenDialog = () => {
-    setEditingTank(null)
-    setDialogOpen(true)
-  }
-
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-muted-foreground">
-          Loading fuel farm...
-        </div>
+        <div className="text-lg text-muted-foreground">Loading fuel farm...</div>
       </div>
     )
   }
 
-  const getTankStatus = (
-    tank: FuelTankWithLatestReading
-  ): 'good' | 'warning' | 'critical' => {
-    if (!tank.latest_reading) return 'warning'
-    const level = Number.parseFloat(tank.latest_reading.level)
-    const usableMin = Number.parseFloat(tank.usable_min_inches)
-    const usableMax = Number.parseFloat(tank.usable_max_inches)
-    const capacity = Number.parseFloat(tank.capacity_gallons)
-
-    const percentFull = (level / usableMax) * 100
-
-    if (percentFull < 20) return 'critical'
-    if (percentFull < 40) return 'warning'
-    return 'good'
-  }
-
-  if (status === 'unauthenticated') {
-    return null
-  }
-
-  // Sort tanks: T1-T6 first, then T7 (outside containment)
   const sortedTanks = [...tanks].sort((a, b) => {
     const aNum = Number.parseInt(a.tank_id.replace('T', ''))
     const bNum = Number.parseInt(b.tank_id.replace('T', ''))
@@ -140,28 +110,19 @@ export default function FuelFarmPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            ⛽ Fuel Farm Levels
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Real-time tank level monitoring
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">⛽ Fuel Farm Levels</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Real-time tank level monitoring</p>
         </div>
-        <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={handleOpenDialog}
-        >
+        <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setEditingTank(null); setDialogOpen(true) }}>
           New Tank
         </Button>
       </div>
 
-      {successMessage && <SuccessMessage message={successMessage} />}
-      {errorMessage && <ErrorMessage message={errorMessage} />}
+      {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
+      {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
       {error && (
         <Card className="bg-destructive/10 border-destructive/20 p-4">
-          <p className="text-sm text-destructive">
-            Failed to load fuel tank data
-          </p>
+          <p className="text-sm text-destructive">Failed to load fuel tank data</p>
         </Card>
       )}
 
@@ -172,15 +133,10 @@ export default function FuelFarmPage() {
         onSubmit={editingTank ? handleUpdateTank : handleCreateTank}
       />
 
-      {/* Horizontal Scrollable Tank Container */}
       <div className="relative">
         <div className="flex gap-5 overflow-x-auto pb-4 px-2 scroll-smooth snap-x snap-proximity">
           {sortedTanks.map((tank, index) => (
-            <div
-              key={tank.tank_id}
-              className="flex gap-5 items-center snap-start"
-            >
-              {/* Add visual divider before T7 */}
+            <div key={tank.tank_id} className="flex gap-5 items-center snap-start">
               {tank.tank_id === 'T7' && index > 0 && (
                 <div className="flex-shrink-0 w-1 h-48 bg-gradient-to-b from-transparent via-yellow-400 to-transparent rounded" />
               )}
@@ -194,9 +150,7 @@ export default function FuelFarmPage() {
 
       {tanks.length === 0 && !error && (
         <Card className="p-8 text-center bg-card border-border">
-          <div className="text-muted-foreground">
-            No tanks found. Create a tank to get started.
-          </div>
+          <div className="text-muted-foreground">No tanks found. Create a tank to get started.</div>
         </Card>
       )}
     </div>

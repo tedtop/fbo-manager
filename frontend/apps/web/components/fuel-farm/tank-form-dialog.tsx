@@ -1,10 +1,6 @@
 'use client'
 
-import type {
-  FuelTankRequest,
-  FuelTankWithLatestReading
-} from '@frontend/types/api'
-import { FuelTypeEnum } from '@frontend/types/api'
+import type { TankWithLatestReading, TankInsert } from '@/repositories/tanks.repo'
 import { Button } from '@frontend/ui/components/ui/button'
 import {
   Dialog,
@@ -26,8 +22,8 @@ import { useEffect, useState } from 'react'
 interface TankFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  tank?: FuelTankWithLatestReading | null
-  onSubmit: (data: FuelTankRequest) => Promise<void>
+  tank?: TankWithLatestReading | null
+  onSubmit: (data: TankInsert) => Promise<void>
 }
 
 export function TankFormDialog({
@@ -37,10 +33,10 @@ export function TankFormDialog({
   onSubmit
 }: TankFormDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<FuelTankRequest>({
+  const [formData, setFormData] = useState<TankInsert>({
     tank_id: '',
     tank_name: '',
-    fuel_type: FuelTypeEnum.JET_A,
+    fuel_type: 'jet_a',
     capacity_gallons: '',
     min_level_inches: '',
     max_level_inches: '',
@@ -64,7 +60,7 @@ export function TankFormDialog({
       setFormData({
         tank_id: '',
         tank_name: '',
-        fuel_type: FuelTypeEnum.JET_A,
+        fuel_type: 'jet_a',
         capacity_gallons: '',
         min_level_inches: '',
         max_level_inches: '',
@@ -97,152 +93,70 @@ export function TankFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tank_id">Tank ID *</Label>
-              <Input
-                id="tank_id"
-                value={formData.tank_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, tank_id: e.target.value })
-                }
-                required
-                placeholder="e.g., TANK-1"
-                disabled={!!tank}
-              />
-              {tank && (
-                <p className="text-xs text-muted-foreground">
-                  Tank ID cannot be changed
-                </p>
-              )}
+              <Input id="tank_id" value={formData.tank_id as string}
+                onChange={(e) => setFormData({ ...formData, tank_id: e.target.value })}
+                required placeholder="e.g., TANK-1" disabled={!!tank} />
+              {tank && <p className="text-xs text-muted-foreground">Tank ID cannot be changed</p>}
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="tank_name">Tank Name *</Label>
-              <Input
-                id="tank_name"
-                value={formData.tank_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, tank_name: e.target.value })
-                }
-                required
-                placeholder="e.g., Jet A Main"
-              />
+              <Input id="tank_name" value={formData.tank_name as string}
+                onChange={(e) => setFormData({ ...formData, tank_name: e.target.value })}
+                required placeholder="e.g., Jet A Main" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fuel_type">Fuel Type *</Label>
-            <Select
-              value={formData.fuel_type}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  fuel_type: value as FuelTypeEnum
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select fuel type" />
-              </SelectTrigger>
+            <Label>Fuel Type *</Label>
+            <Select value={formData.fuel_type as string}
+              onValueChange={(v) => setFormData({ ...formData, fuel_type: v as 'jet_a' | 'avgas' })}>
+              <SelectTrigger><SelectValue placeholder="Select fuel type" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={FuelTypeEnum.JET_A}>Jet A</SelectItem>
-                <SelectItem value={FuelTypeEnum.AVGAS}>Avgas</SelectItem>
+                <SelectItem value="jet_a">Jet A</SelectItem>
+                <SelectItem value="avgas">Avgas</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="capacity_gallons">Capacity (Gallons) *</Label>
-            <Input
-              id="capacity_gallons"
-              type="number"
-              step="0.01"
-              value={formData.capacity_gallons}
-              onChange={(e) =>
-                setFormData({ ...formData, capacity_gallons: e.target.value })
-              }
-              required
-              placeholder="0.00"
-            />
+            <Label htmlFor="capacity">Capacity (Gallons) *</Label>
+            <Input id="capacity" type="number" step="0.01" value={formData.capacity_gallons as string}
+              onChange={(e) => setFormData({ ...formData, capacity_gallons: e.target.value })}
+              required placeholder="0.00" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="min_level_inches">Min Level (inches) *</Label>
-              <Input
-                id="min_level_inches"
-                type="number"
-                step="0.01"
-                value={formData.min_level_inches}
-                onChange={(e) =>
-                  setFormData({ ...formData, min_level_inches: e.target.value })
-                }
-                required
-                placeholder="0.00"
-              />
+              <Label>Min Level (inches) *</Label>
+              <Input type="number" step="0.01" value={formData.min_level_inches as string}
+                onChange={(e) => setFormData({ ...formData, min_level_inches: e.target.value })}
+                required placeholder="0.00" />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="max_level_inches">Max Level (inches) *</Label>
-              <Input
-                id="max_level_inches"
-                type="number"
-                step="0.01"
-                value={formData.max_level_inches}
-                onChange={(e) =>
-                  setFormData({ ...formData, max_level_inches: e.target.value })
-                }
-                required
-                placeholder="0.00"
-              />
+              <Label>Max Level (inches) *</Label>
+              <Input type="number" step="0.01" value={formData.max_level_inches as string}
+                onChange={(e) => setFormData({ ...formData, max_level_inches: e.target.value })}
+                required placeholder="0.00" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="usable_min_inches">Usable Min (inches) *</Label>
-              <Input
-                id="usable_min_inches"
-                type="number"
-                step="0.01"
-                value={formData.usable_min_inches}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    usable_min_inches: e.target.value
-                  })
-                }
-                required
-                placeholder="0.00"
-              />
+              <Label>Usable Min (inches) *</Label>
+              <Input type="number" step="0.01" value={formData.usable_min_inches as string}
+                onChange={(e) => setFormData({ ...formData, usable_min_inches: e.target.value })}
+                required placeholder="0.00" />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="usable_max_inches">Usable Max (inches) *</Label>
-              <Input
-                id="usable_max_inches"
-                type="number"
-                step="0.01"
-                value={formData.usable_max_inches}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    usable_max_inches: e.target.value
-                  })
-                }
-                required
-                placeholder="0.00"
-              />
+              <Label>Usable Max (inches) *</Label>
+              <Input type="number" step="0.01" value={formData.usable_max_inches as string}
+                onChange={(e) => setFormData({ ...formData, usable_max_inches: e.target.value })}
+                required placeholder="0.00" />
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
             <Button type="submit" disabled={loading}>
               {loading ? 'Saving...' : tank ? 'Update' : 'Create'}
             </Button>

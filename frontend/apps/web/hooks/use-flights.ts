@@ -1,122 +1,146 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import {
+  createFlight as createFlightRepo,
+  deleteFlight as deleteFlightRepo,
+  findAllFlights,
+  updateFlight as updateFlightRepo,
+  type FlightFilters
+} from '@/repositories/flights.repo'
 import {
   type Flight,
   apiFlightToComponentFlight,
   componentFlightToApiRequest
-} from '../components/flight-operations/types'
-import { getApiClient } from '../lib/api'
+} from '@/components/flight-operations/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+export const flightKeys = {
+  all: ['flights'] as const,
+  lists: () => [...flightKeys.all, 'list'] as const,
+  list: (filters?: FlightFilters) => [...flightKeys.lists(), filters] as const
+}
+
+function rowToFlight(row: any): Flight {
+  return apiFlightToComponentFlight({
+    id: row.id,
+    aircraft: row.aircraft_id,
+    aircraft_type_display: row.aircraft?.aircraft_type_display,
+    call_sign: row.call_sign,
+    arrival_time: row.arrival_time,
+    departure_time: row.departure_time,
+    flight_status: row.flight_status as any,
+    origin: row.origin,
+    destination: row.destination,
+    contact_name: row.contact_name,
+    contact_notes: row.contact_notes,
+    services: row.services,
+    fuel_order_notes: row.fuel_order_notes,
+    passenger_count: row.passenger_count,
+    notes: row.notes,
+    created_by_source: row.created_by_source,
+    created_by_initials: row.created_by
+      ? `${row.created_by.first_name?.[0] ?? ''}${row.created_by.last_name?.[0] ?? ''}`.toUpperCase() || 'ADM'
+      : 'ADM',
+    created_by_name: row.created_by
+      ? `${row.created_by.first_name} ${row.created_by.last_name}`.trim() || row.created_by.username
+      : 'Admin',
+    created_by_department: row.created_by?.role === 'line'
+      ? 'Line Department'
+      : row.created_by?.role === 'frontdesk'
+        ? 'Front Desk'
+        : 'Administration',
+    created_at: row.created_at,
+    modified_at: row.modified_at
+  } as any)
+}
 
 export function useFlights(params?: {
   today?: boolean
   startDate?: string
   endDate?: string
 }) {
-  const { data: session } = useSession()
-  const [flights, setFlights] = useState<Flight[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const qc = useQueryClient()
+  const db = createClient()
 
-  const fetchFlights = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
-
-      // Build query params for date filtering
-      const queryParams: Record<string, string> = {}
-
-      if (params?.startDate || params?.endDate) {
-        if (params.startDate) queryParams.start_date = params.startDate
-        if (params.endDate) queryParams.end_date = params.endDate
+  const filters: FlightFilters | undefined = params
+    ? {
+        today: params.today,
+        startDate: params.startDate,
+        endDate: params.endDate
       }
-      // If no params, don't add any date filtering - will return all flights
+    : undefined
 
-      // Use the raw HTTP request to support custom date filtering
-      const response = await (client.flights as any).httpRequest.request({
-        method: 'GET',
-        url: '/api/flights/',
-        query: Object.keys(queryParams).length > 0 ? queryParams : undefined
-      })
-      const convertedFlights = (response.results || []).map(
-        apiFlightToComponentFlight
-      )
-      setFlights(convertedFlights)
-    } catch (err) {
-      console.error('Failed to fetch flights:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch flights')
-      )
-    } finally {
-      setLoading(false)
+  const query = useQuery({
+    queryKey: flightKeys.list(filters),
+    queryFn: async () => {
+      const rows = await findAllFlights(db, filters)
+      return rows.map(rowToFlight)
     }
-  }, [session, params?.startDate, params?.endDate])
+  })
 
-  useEffect(() => {
-    if (session) {
-      fetchFlights()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchFlights])
-
-  const createFlight = useCallback(
-    async (flight: Partial<Flight>) => {
-      const client = await getApiClient(session)
+  const createMutation = useMutation({
+    mutationFn: async (flight: Partial<Flight>) => {
       const requestData = componentFlightToApiRequest(flight)
-      const apiFlight = await client.flights.flightsCreate(requestData)
-      const newFlight = apiFlightToComponentFlight(apiFlight)
-      setFlights((prev) => [...prev, newFlight])
-      return newFlight
+      const row = await createFlightRepo(db, {
+        aircraft_id: requestData.aircraft,
+        call_sign: requestData.call_sign,
+        arrival_time: requestData.arrival_time,
+        departure_time: requestData.departure_time,
+        flight_status: requestData.flight_status ?? 'scheduled',
+        origin: requestData.origin ?? '',
+        destination: requestData.destination ?? '',
+        contact_name: requestData.contact_name ?? '',
+        contact_notes: requestData.contact_notes ?? '',
+        services: requestData.services ?? [],
+        fuel_order_notes: requestData.fuel_order_notes ?? '',
+        passenger_count: requestData.passenger_count,
+        notes: requestData.notes ?? '',
+        created_by_source: requestData.created_by_source ?? 'line-department'
+      })
+      return rowToFlight(row)
     },
-    [session]
-  )
+    onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
+  })
 
-  const updateFlight = useCallback(
-    async (id: string, updates: Partial<Flight>) => {
-      console.log('useFlights.updateFlight called', { id, updates })
-      const client = await getApiClient(session)
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Flight> }) => {
       const requestData = componentFlightToApiRequest(updates)
-      console.log('API request data:', requestData)
-      const apiFlight = await client.flights.flightsPartialUpdate(
-        Number(id),
-        requestData
-      )
-      console.log('API response:', apiFlight)
-      const updatedFlight = apiFlightToComponentFlight(apiFlight)
-      setFlights((prev) => prev.map((f) => (f.id === id ? updatedFlight : f)))
-      return updatedFlight
-    },
-    [session]
-  )
+      const dbUpdates: Record<string, any> = {}
+      if (requestData.aircraft !== undefined) dbUpdates.aircraft_id = requestData.aircraft
+      if (requestData.call_sign !== undefined) dbUpdates.call_sign = requestData.call_sign
+      if (requestData.arrival_time !== undefined) dbUpdates.arrival_time = requestData.arrival_time
+      if (requestData.departure_time !== undefined) dbUpdates.departure_time = requestData.departure_time
+      if (requestData.flight_status !== undefined) dbUpdates.flight_status = requestData.flight_status
+      if (requestData.origin !== undefined) dbUpdates.origin = requestData.origin
+      if (requestData.destination !== undefined) dbUpdates.destination = requestData.destination
+      if (requestData.contact_name !== undefined) dbUpdates.contact_name = requestData.contact_name
+      if (requestData.contact_notes !== undefined) dbUpdates.contact_notes = requestData.contact_notes
+      if (requestData.services !== undefined) dbUpdates.services = requestData.services
+      if (requestData.fuel_order_notes !== undefined) dbUpdates.fuel_order_notes = requestData.fuel_order_notes
+      if (requestData.passenger_count !== undefined) dbUpdates.passenger_count = requestData.passenger_count
+      if (requestData.notes !== undefined) dbUpdates.notes = requestData.notes
+      if (requestData.created_by_source !== undefined) dbUpdates.created_by_source = requestData.created_by_source
 
-  const deleteFlight = useCallback(
-    async (id: string) => {
-      const client = await getApiClient(session)
-      await client.flights.flightsDestroy(Number(id))
-      setFlights((prev) => prev.filter((f) => f.id !== id))
+      const row = await updateFlightRepo(db, Number(id), dbUpdates)
+      return rowToFlight(row)
     },
-    [session]
-  )
+    onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
+  })
 
-  const refetch = useCallback(() => {
-    fetchFlights()
-  }, [fetchFlights])
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteFlightRepo(db, Number(id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
+  })
 
   return {
-    flights,
-    loading,
-    error,
-    createFlight,
-    updateFlight,
-    deleteFlight,
-    refetch
+    flights: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error,
+    createFlight: (flight: Partial<Flight>) => createMutation.mutateAsync(flight),
+    updateFlight: (id: string, updates: Partial<Flight>) =>
+      updateMutation.mutateAsync({ id, updates }),
+    deleteFlight: (id: string) => deleteMutation.mutateAsync(id),
+    refetch: query.refetch
   }
 }

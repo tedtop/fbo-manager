@@ -1,6 +1,7 @@
 'use client'
 
 import { loginFormSchema } from '@/lib/validation'
+import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@frontend/ui/components/ui/button'
 import {
   Card,
@@ -15,9 +16,9 @@ import { Label } from '@frontend/ui/components/ui/label'
 import { ErrorMessage } from '@frontend/ui/messages/error-message'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plane } from 'lucide-react'
-import { signIn } from 'next-auth/react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 
@@ -25,17 +26,27 @@ type LoginFormSchema = z.infer<typeof loginFormSchema>
 
 export function LoginForm() {
   const search = useSearchParams()
+  const router = useRouter()
+  const { supabase } = useAuth()
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const { register, handleSubmit, formState } = useForm<LoginFormSchema>({
     resolver: zodResolver(loginFormSchema)
   })
 
+  const signIn = async (email: string, password: string) => {
+    setAuthError(null)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setAuthError(error.message)
+    } else {
+      router.push('/')
+      router.refresh()
+    }
+  }
+
   const onSubmitHandler = handleSubmit((data) => {
-    signIn('credentials', {
-      username: data.username,
-      password: data.password,
-      callbackUrl: '/'
-    })
+    signIn(data.email, data.password)
   })
 
   return (
@@ -55,10 +66,10 @@ export function LoginForm() {
           </CardDescription>
         </CardHeader>
 
-        {search.has('error') && search.get('error') === 'CredentialsSignin' && (
+        {(authError || search.has('error')) && (
           <div className="px-6">
             <ErrorMessage>
-              That account doesn't exist.{' '}
+              {authError || "That account doesn't exist."}{' '}
               <Link href="/register" className="underline font-medium">
                 Sign up
               </Link>
@@ -69,19 +80,19 @@ export function LoginForm() {
         <form onSubmit={onSubmitHandler}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-card-foreground">
-                Username
+              <Label htmlFor="email" className="text-card-foreground">
+                Email
               </Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="Email address or username"
-                {...register('username')}
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                {...register('email')}
                 className="bg-background border-border text-foreground"
               />
-              {formState.errors.username && (
+              {formState.errors.email && (
                 <p className="text-sm text-destructive">
-                  {formState.errors.username.message}
+                  {formState.errors.email.message}
                 </p>
               )}
             </div>
@@ -135,13 +146,7 @@ export function LoginForm() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() =>
-                  signIn('credentials', {
-                    username: 'admin',
-                    password: 'admin',
-                    callbackUrl: '/'
-                  })
-                }
+                onClick={() => signIn('admin@fbo.local', 'admin')}
               >
                 Log in as Admin
               </Button>
@@ -149,13 +154,7 @@ export function LoginForm() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() =>
-                  signIn('credentials', {
-                    username: 'user',
-                    password: 'user',
-                    callbackUrl: '/'
-                  })
-                }
+                onClick={() => signIn('user@fbo.local', 'user')}
               >
                 Log in as User
               </Button>

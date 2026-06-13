@@ -1,65 +1,44 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
-import { getApiClient } from '@/lib/api'
+import { useCertifications } from '@/hooks/use-certifications'
 import { Card } from '@frontend/ui/components/ui/card'
 import { Badge } from '@frontend/ui/components/ui/badge'
+import { useMemo } from 'react'
+import type { CertificationDomain } from '@/types/domain/certifications'
 
 type CalendarEvent = {
     type: 'completed' | 'expiry'
     date: string
-    fueler_name: string
-    training_name: string
+    fuelerName: string
+    trainingName: string
 }
 
 export default function TrainingCalendarPage() {
-    const { data: session, status } = useSession()
-    const router = useRouter()
-    const [events, setEvents] = useState<CalendarEvent[]>([])
-    const [loading, setLoading] = useState(true)
+    const { certifications, loading } = useCertifications()
 
-    useEffect(() => {
-        if (status === 'unauthenticated') router.push('/login')
-    }, [status, router])
-
-    useEffect(() => {
-        if (session) fetchEvents()
-    }, [session])
-
-    const fetchEvents = async () => {
-        try {
-            setLoading(true)
-            const client = await getApiClient(session)
-            // @ts-ignore generated signature returns FuelerTraining but API returns array
-            const res = await client.fuelerCertifications.fuelerCertificationsCalendarRetrieve()
-            const list: any[] = Array.isArray(res) ? res : res?.results || []
-            const mapped: CalendarEvent[] = list.map((e: any) => ({
-                type: e.type,
-                date: e.date,
-                fueler_name: e.fueler_name,
-                training_name: e.training_name
-            }))
-            setEvents(mapped)
-        } finally {
-            setLoading(false)
+    const events = useMemo<CalendarEvent[]>(() => {
+        const result: CalendarEvent[] = []
+        for (const c of certifications) {
+            result.push({ type: 'completed', date: c.completedDate, fuelerName: c.fuelerName, trainingName: c.trainingName })
+            result.push({ type: 'expiry', date: c.expiryDate, fuelerName: c.fuelerName, trainingName: c.trainingName })
         }
-    }
+        return result
+    }, [certifications])
 
     const groups = useMemo(() => {
         const g: Record<string, CalendarEvent[]> = {}
         for (const e of events) {
-            const d = new Date(e.date).toISOString().slice(0, 10)
+            const d = e.date.slice(0, 10)
             g[d] = g[d] || []
             g[d].push(e)
         }
         return Object.entries(g).sort(([a], [b]) => (a < b ? -1 : 1))
     }, [events])
 
-    const badgeClass = (t: string) => (t === 'expiry' ? 'bg-warning/10 text-warning border-warning/20' : 'bg-success/10 text-success border-success/20')
+    const badgeClass = (t: string) =>
+        t === 'expiry' ? 'bg-warning/10 text-warning border-warning/20' : 'bg-success/10 text-success border-success/20'
 
-    if (status === 'loading' || loading) {
+    if (loading) {
         return <div className="p-6 text-muted-foreground">Loading...</div>
     }
 
@@ -76,8 +55,8 @@ export default function TrainingCalendarPage() {
                     <ul className="space-y-2">
                         {list.map((e, idx) => (
                             <li key={idx} className="flex items-center justify-between">
-                                <div className="font-medium text-foreground">{e.training_name}</div>
-                                <div className="text-sm text-muted-foreground">{e.fueler_name}</div>
+                                <div className="font-medium text-foreground">{e.trainingName}</div>
+                                <div className="text-sm text-muted-foreground">{e.fuelerName}</div>
                                 <Badge className={badgeClass(e.type)}>{e.type}</Badge>
                             </li>
                         ))}

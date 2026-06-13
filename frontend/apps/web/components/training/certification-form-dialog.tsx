@@ -1,11 +1,9 @@
 'use client'
 
-import type {
-  Fueler,
-  FuelerTraining,
-  FuelerTrainingRequest,
-  Training
-} from '@frontend/types/api'
+import { useFuelers } from '@/hooks/use-fuelers'
+import { useTrainings } from '@/hooks/use-trainings'
+import type { CertificationDomain } from '@/types/domain/certifications'
+import type { CertificationInsert } from '@/repositories/certifications.repo'
 import { Button } from '@frontend/ui/components/ui/button'
 import {
   Dialog,
@@ -22,15 +20,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '@frontend/ui/components/ui/select'
-import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { getApiClient } from '../../lib/api'
 
 interface CertificationFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  certification?: FuelerTraining | null
-  onSubmit: (data: FuelerTrainingRequest) => Promise<void>
+  certification?: CertificationDomain | null
+  onSubmit: (data: CertificationInsert) => Promise<void>
 }
 
 export function CertificationFormDialog({
@@ -39,56 +35,28 @@ export function CertificationFormDialog({
   certification,
   onSubmit
 }: CertificationFormDialogProps) {
-  const { data: session } = useSession()
+  const { fuelers } = useFuelers()
+  const { trainings } = useTrainings()
   const [loading, setLoading] = useState(false)
-  const [fuelers, setFuelers] = useState<Fueler[]>([])
-  const [trainings, setTrainings] = useState<Training[]>([])
-  const [formData, setFormData] = useState<FuelerTrainingRequest>({
-    fueler: 0,
-    training: 0,
+  const [formData, setFormData] = useState<CertificationInsert>({
+    fueler_id: 0,
+    training_id: 0,
     completed_date: '',
     expiry_date: '',
-    certified_by: null
+    certified_by_id: null
   })
-
-  // Fetch fuelers and training types when dialog opens
-  useEffect(() => {
-    if (open && session) {
-      fetchDropdownData()
-    }
-  }, [open, session])
-
-  const fetchDropdownData = async () => {
-    try {
-      const client = await getApiClient(session)
-      const [fuelersResponse, trainingsResponse] = await Promise.all([
-        client.fuelers.fuelersList(),
-        client.trainings.trainingsList()
-      ])
-      setFuelers(fuelersResponse.results || [])
-      setTrainings(trainingsResponse.results || [])
-    } catch (err) {
-      console.error('Failed to fetch dropdown data:', err)
-    }
-  }
 
   useEffect(() => {
     if (certification) {
       setFormData({
-        fueler: certification.fueler,
-        training: certification.training,
-        completed_date: certification.completed_date,
-        expiry_date: certification.expiry_date,
-        certified_by: certification.certified_by
+        fueler_id: certification.fuelerId,
+        training_id: certification.trainingId,
+        completed_date: certification.completedDate,
+        expiry_date: certification.expiryDate,
+        certified_by_id: certification.certifiedById
       })
     } else {
-      setFormData({
-        fueler: 0,
-        training: 0,
-        completed_date: '',
-        expiry_date: '',
-        certified_by: null
-      })
+      setFormData({ fueler_id: 0, training_id: 0, completed_date: '', expiry_date: '', certified_by_id: null })
     }
   }, [certification, open])
 
@@ -115,20 +83,18 @@ export function CertificationFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fueler">Fueler *</Label>
+            <Label>Fueler *</Label>
             <Select
-              value={formData.fueler.toString()}
-              onValueChange={(value) =>
-                setFormData({ ...formData, fueler: Number.parseInt(value) })
-              }
+              value={formData.fueler_id.toString()}
+              onValueChange={(v) => setFormData({ ...formData, fueler_id: Number.parseInt(v) })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a fueler" />
               </SelectTrigger>
               <SelectContent>
-                {fuelers.map((fueler) => (
-                  <SelectItem key={fueler.id} value={fueler.id.toString()}>
-                    {fueler.fueler_name}
+                {fuelers.map((f) => (
+                  <SelectItem key={f.id} value={f.id.toString()}>
+                    {f.fueler_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -136,20 +102,18 @@ export function CertificationFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="training">Training Type *</Label>
+            <Label>Training Type *</Label>
             <Select
-              value={formData.training.toString()}
-              onValueChange={(value) =>
-                setFormData({ ...formData, training: Number.parseInt(value) })
-              }
+              value={formData.training_id.toString()}
+              onValueChange={(v) => setFormData({ ...formData, training_id: Number.parseInt(v) })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select training type" />
               </SelectTrigger>
               <SelectContent>
-                {trainings.map((training) => (
-                  <SelectItem key={training.id} value={training.id.toString()}>
-                    {training.training_name}
+                {trainings.map((t) => (
+                  <SelectItem key={t.id} value={t.id.toString()}>
+                    {t.training_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -158,47 +122,22 @@ export function CertificationFormDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="completed_date">Completed Date *</Label>
-              <Input
-                id="completed_date"
-                type="date"
-                value={formData.completed_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, completed_date: e.target.value })
-                }
-                required
-              />
+              <Label>Completed Date *</Label>
+              <Input type="date" value={formData.completed_date}
+                onChange={(e) => setFormData({ ...formData, completed_date: e.target.value })} required />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="expiry_date">Expiry Date *</Label>
-              <Input
-                id="expiry_date"
-                type="date"
-                value={formData.expiry_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, expiry_date: e.target.value })
-                }
-                required
-              />
+              <Label>Expiry Date *</Label>
+              <Input type="date" value={formData.expiry_date}
+                onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })} required />
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                loading || formData.fueler === 0 || formData.training === 0
-              }
-            >
+            <Button type="submit" disabled={loading || !formData.fueler_id || !formData.training_id}>
               {loading ? 'Saving...' : certification ? 'Update' : 'Create'}
             </Button>
           </div>

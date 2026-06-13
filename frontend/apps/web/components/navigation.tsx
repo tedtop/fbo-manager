@@ -2,10 +2,9 @@
 
 import { Button } from '@frontend/ui/components/ui/button'
 import { Moon, Sun } from 'lucide-react'
-import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import Image from 'next/image'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/providers/auth-provider'
 
 const navigation = [
   { name: 'Flight Ops', href: '/' },
@@ -25,7 +24,13 @@ interface NavigationProps {
 
 export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const router = useRouter()
+  const { supabase } = useAuth()
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <nav className="border-b border-border bg-background">
@@ -76,7 +81,7 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
             )}
             <Button
               variant="outline"
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               className="text-foreground"
             >
               Sign out

@@ -1,32 +1,22 @@
 'use server'
 
-import { getApiClient } from '@/lib/api'
+import { createClient } from '@/lib/supabase/server'
 import type { registerFormSchema } from '@/lib/validation'
-import { ApiError, type UserCreateError } from '@frontend/types/api'
 import type { z } from 'zod'
 
 export type RegisterFormSchema = z.infer<typeof registerFormSchema>
 
-export async function registerAction(
-  data: RegisterFormSchema
-): Promise<UserCreateError | boolean> {
-  try {
-    const apiClient = await getApiClient()
+export async function registerAction(data: RegisterFormSchema): Promise<boolean | string> {
+  const supabase = await createClient()
 
-    await apiClient.users.usersCreate({
-      username: data.username,
-      password: data.password,
-      email: data.email,
-      password_retype: data.passwordRetype
-    })
-
-    return true
-  } catch (error) {
-    if (error instanceof ApiError) {
-      console.log("REGISTER ERROR BODY:", error.body)
-      return error.body as UserCreateError
+  const { error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: { username: data.username }
     }
-  }
+  })
 
-  return false
+  if (error) return error.message
+  return true
 }

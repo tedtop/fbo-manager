@@ -34,7 +34,7 @@ export function FlightBoard({
           flight.aircraftType.toLowerCase().includes(searchLower) ||
           flight.origin?.toLowerCase().includes(searchLower) ||
           flight.destination?.toLowerCase().includes(searchLower) ||
-          flight.pilot?.toLowerCase().includes(searchLower)
+          flight.contactName?.toLowerCase().includes(searchLower)
 
         if (!matchesSearch) return false
       }

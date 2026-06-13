@@ -5,18 +5,20 @@ import type {
   deleteAccountAction
 } from '@/actions/delete-account-action'
 import { deleteAccountFormSchema } from '@/lib/validation'
+import { useAuth } from '@/providers/auth-provider'
 import { FormHeader } from '@frontend/ui/forms/form-header'
 import { SubmitField } from '@frontend/ui/forms/submit-field'
 import { TextField } from '@frontend/ui/forms/text-field'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { signOut, useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 
 export function DeleteAccountForm({
   onSubmitHandler
 }: { onSubmitHandler: typeof deleteAccountAction }) {
-  const session = useSession()
+  const { session, supabase } = useAuth()
+  const router = useRouter()
 
   const { formState, handleSubmit, register, reset, setValue } =
     useForm<DeleteAccountFormSchema>({
@@ -24,10 +26,10 @@ export function DeleteAccountForm({
     })
 
   useEffect(() => {
-    if (session.data?.user.username) {
-      setValue('usernameCurrent', session.data?.user.username)
+    if (session?.user?.email) {
+      setValue('usernameCurrent', session.user.email)
     }
-  }, [setValue, session.data?.user.username])
+  }, [setValue, session?.user?.email])
 
   return (
     <>
@@ -43,14 +45,15 @@ export function DeleteAccountForm({
 
           if (res) {
             reset()
-            signOut()
+            await supabase.auth.signOut()
+            router.push('/login')
           }
         })}
       >
         <TextField
           type="text"
           register={register('username')}
-          label="Username"
+          label="Email"
           formState={formState}
         />
 

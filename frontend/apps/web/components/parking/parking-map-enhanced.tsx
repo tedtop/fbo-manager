@@ -13,7 +13,7 @@ import { ParkingLocationPanel } from './parking-location-panel'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Plus, Trash2 } from 'lucide-react'
 import { AircraftSheet } from './aircraft-sheet'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/hooks/use-session'
 import { AIRCRAFT_TYPES, getAircraftDefinition, DEFAULT_AIRCRAFT_TYPE } from '@/lib/aircraft-types'
 
 // Minuteman Aviation Ramp - Optimal view for day-to-day operations

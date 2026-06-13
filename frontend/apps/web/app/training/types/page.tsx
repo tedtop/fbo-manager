@@ -1,7 +1,8 @@
 'use client'
 
 import { useCurrentUser } from '@/hooks/use-current-user'
-import type { Training, TrainingRequest } from '@frontend/types/api'
+import { useTrainings } from '@/hooks/use-trainings'
+import type { TrainingRow } from '@/repositories/trainings.repo'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@frontend/ui/components/ui/dialog'
@@ -9,48 +10,23 @@ import { AssignTrainingDialog } from '@/components/training/assign-training-dial
 import { Input } from '@frontend/ui/components/ui/input'
 import { Label } from '@frontend/ui/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@frontend/ui/components/ui/table'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
-import { getApiClient } from '@/lib/api'
+import { useMemo, useState } from 'react'
 
 export default function TrainingTypesPage() {
-    const { data: session, status } = useSession()
     const { user, loading: userLoading } = useCurrentUser()
-    const router = useRouter()
-    const [trainings, setTrainings] = useState<Training[]>([])
-    const [loading, setLoading] = useState(true)
+    const { trainings, loading, createTraining, updateTraining, deleteTraining } = useTrainings()
     const [dialogOpen, setDialogOpen] = useState(false)
-    const [editing, setEditing] = useState<Training | null>(null)
+    const [editing, setEditing] = useState<TrainingRow | null>(null)
     const [assignDialogOpen, setAssignDialogOpen] = useState(false)
-    const [assignTraining, setAssignTraining] = useState<Training | null>(null)
-    const [form, setForm] = useState<TrainingRequest>({
+    const [assignTraining, setAssignTraining] = useState<TrainingRow | null>(null)
+    const [form, setForm] = useState({
         training_name: '',
         description: '',
         validity_period_days: 0,
-        aircraft_type: null
+        aircraft_type: null as string | null
     })
 
     const isAdmin = useMemo(() => user?.role === 'admin', [user])
-
-    useEffect(() => {
-        if (status === 'unauthenticated') router.push('/login')
-    }, [status, router])
-
-    useEffect(() => {
-        if (session) fetchTrainings()
-    }, [session])
-
-    const fetchTrainings = async () => {
-        try {
-            setLoading(true)
-            const client = await getApiClient(session)
-            const res = await client.trainings.trainingsList()
-            setTrainings(res.results || [])
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const openCreate = () => {
         setEditing(null)
@@ -58,7 +34,7 @@ export default function TrainingTypesPage() {
         setDialogOpen(true)
     }
 
-    const openEdit = (t: Training) => {
+    const openEdit = (t: TrainingRow) => {
         setEditing(t)
         setForm({
             training_name: t.training_name,
@@ -69,31 +45,27 @@ export default function TrainingTypesPage() {
         setDialogOpen(true)
     }
 
-    const openAssign = (t: Training) => {
+    const openAssign = (t: TrainingRow) => {
         setAssignTraining(t)
         setAssignDialogOpen(true)
     }
 
     const save = async (e: React.FormEvent) => {
         e.preventDefault()
-        const client = await getApiClient(session)
         if (editing) {
-            await client.trainings.trainingsUpdate(editing.id!, form)
+            await updateTraining(editing.id, form)
         } else {
-            await client.trainings.trainingsCreate(form)
+            await createTraining(form)
         }
         setDialogOpen(false)
-        fetchTrainings()
     }
 
     const remove = async (id: number) => {
         if (!confirm('Delete this training type?')) return
-        const client = await getApiClient(session)
-        await client.trainings.trainingsDestroy(id)
-        fetchTrainings()
+        await deleteTraining(id)
     }
 
-    if (status === 'loading' || userLoading || loading) {
+    if (userLoading || loading) {
         return <div className="p-6 text-muted-foreground">Loading...</div>
     }
     if (!isAdmin) {
@@ -129,7 +101,7 @@ export default function TrainingTypesPage() {
                                 <TableCell className="text-right space-x-2">
                                     <Button variant="outline" size="sm" onClick={() => openEdit(t)}>Edit</Button>
                                     <Button variant="outline" size="sm" onClick={() => openAssign(t)}>Assign</Button>
-                                    <Button variant="destructive" size="sm" onClick={() => remove(t.id!)}>Delete</Button>
+                                    <Button variant="destructive" size="sm" onClick={() => remove(t.id)}>Delete</Button>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -182,9 +154,7 @@ export default function TrainingTypesPage() {
                 open={assignDialogOpen}
                 onOpenChange={setAssignDialogOpen}
                 training={assignTraining}
-                onAssigned={() => {
-                    setAssignDialogOpen(false)
-                }}
+                onAssigned={() => setAssignDialogOpen(false)}
             />
         </div>
     )

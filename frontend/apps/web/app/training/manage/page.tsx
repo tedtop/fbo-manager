@@ -1,115 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { useSession } from "next-auth/react";
-import { getApiClient } from "@/lib/api";
+import { useTrainings } from "@/hooks/use-trainings";
+import { useFuelers } from "@/hooks/use-fuelers";
+import { createClient } from "@/lib/supabase/client";
+import { createAssignedTraining } from "@/repositories/assigned-training.repo";
 import { Card } from "@frontend/ui/components/ui/card";
 import { Button } from "@frontend/ui/components/ui/button";
 import { Input } from "@frontend/ui/components/ui/input";
 import { Textarea } from "@frontend/ui/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@frontend/ui/components/ui/dialog";
-
-type Training = {
-    id: number;
-    training_name: string;
-    description?: string;
-    validity_period_days: number;
-    aircraft_type?: string | null;
-};
-
-type Fueler = { id: number; fueler_name: string };
+import { useMemo, useState } from "react";
+import type { TrainingRow } from "@/repositories/trainings.repo";
 
 export default function ManageTrainingsPage() {
     const { user } = useCurrentUser();
     const isAdmin = user?.role === "admin";
-    const { data: session } = useSession();
 
-    const [trainings, setTrainings] = useState<Training[]>([]);
-    const [fuelers, setFuelers] = useState<Fueler[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string>("");
+    const { trainings, loading, error: trainingsError, createTraining } = useTrainings();
+    const { fuelers } = useFuelers();
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [validity, setValidity] = useState<number>(365);
     const [aircraftType, setAircraftType] = useState<string>("");
     const [submitting, setSubmitting] = useState(false);
-
-    useEffect(() => {
-        const load = async () => {
-            if (!session) return;
-            try {
-                const client = await getApiClient(session);
-                const res = await client.trainings.trainingsList();
-                setTrainings(res.results || []);
-                const fuelersRes = await client.fuelers.fuelersList();
-                setFuelers(fuelersRes.results || []);
-            } catch (e) {
-                setError("Failed to load trainings");
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, [session]);
+    const [error, setError] = useState<string>("");
 
     const handleCreate = async () => {
-        if (!session) return;
         setSubmitting(true);
         setError("");
         try {
-            const client = await getApiClient(session);
-            const payload = {
+            await createTraining({
                 training_name: name,
                 description,
                 validity_period_days: validity,
-                aircraft_type: aircraftType || null,
-            } as any;
-            const created = await client.trainings.trainingsCreate({ requestBody: payload });
-            setTrainings((prev) => [created, ...prev]);
+                aircraft_type: aircraftType || null
+            });
             setName("");
             setDescription("");
             setValidity(365);
             setAircraftType("");
         } catch (e: any) {
-            // Fallback to direct fetch in case OpenAPI client auth/config is missing
-            try {
-                const token = (session as any)?.accessToken || (session as any)?.user?.accessToken || (session as any)?.user?.token;
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/trainings/`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    body: JSON.stringify({
-                        training_name: name,
-                        description,
-                        validity_period_days: validity,
-                        aircraft_type: aircraftType || null,
-                    }),
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    setError(data?.detail || data?.error || `Failed (${res.status})`);
-                } else {
-                    setTrainings((prev) => [data, ...prev]);
-                    setName("");
-                    setDescription("");
-                    setValidity(365);
-                    setAircraftType("");
-                }
-            } catch (fetchErr: any) {
-                setError(fetchErr?.message || "Failed to create training");
-            }
+            setError(e?.message || "Failed to create training");
         } finally {
             setSubmitting(false);
         }
     };
 
-    // Assign dialog state
     const [assignOpen, setAssignOpen] = useState(false);
-    const [assignTraining, setAssignTraining] = useState<Training | null>(null);
+    const [assignTraining, setAssignTraining] = useState<TrainingRow | null>(null);
     const [selectedFuelerIds, setSelectedFuelerIds] = useState<number[]>([]);
     const [assignSubmitting, setAssignSubmitting] = useState(false);
     const [assignError, setAssignError] = useState<string>("");
@@ -119,7 +59,7 @@ export default function ManageTrainingsPage() {
         setSelectedFuelerIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
-    const openAssign = (t: Training) => {
+    const openAssign = (t: TrainingRow) => {
         setAssignTraining(t);
         setSelectedFuelerIds([]);
         setAssignDueDate("");
@@ -128,37 +68,20 @@ export default function ManageTrainingsPage() {
     };
 
     const handleAssignSubmit = async () => {
-        if (!assignTraining || selectedFuelerIds.length === 0 || !session) return;
+        if (!assignTraining || selectedFuelerIds.length === 0) return;
         setAssignSubmitting(true);
         setAssignError("");
         try {
-            const client = await getApiClient(session);
-            for (const fuelerId of selectedFuelerIds) {
-                try {
-                    await client.assignedTraining.assignedTrainingCreate({
-                        requestBody: {
-                            fueler: fuelerId,
-                            training: assignTraining.id,
-                            due_date: assignDueDate || null,
-                        } as any,
-                    });
-                } catch (e) {
-                    // Fallback direct fetch if OpenAPI client is not configured for this tag
-                    const token = (session as any)?.accessToken || (session as any)?.user?.accessToken || (session as any)?.user?.token;
-                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/assigned-training/`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                        },
-                        body: JSON.stringify({ fueler: fuelerId, training: assignTraining.id, due_date: assignDueDate || null }),
-                    });
-                    if (!res.ok) {
-                        const data = await res.json().catch(() => ({}));
-                        throw new Error(data?.detail || data?.error || `Failed (${res.status})`);
-                    }
-                }
-            }
+            const db = createClient();
+            await Promise.all(
+                selectedFuelerIds.map((fuelerId) =>
+                    createAssignedTraining(db, {
+                        fueler_id: fuelerId,
+                        training_id: assignTraining.id,
+                        due_date: assignDueDate || null
+                    })
+                )
+            );
             setAssignOpen(false);
         } catch (err: any) {
             setAssignError(err?.message || "Failed to assign trainings");
@@ -216,9 +139,7 @@ export default function ManageTrainingsPage() {
                                     <div className="font-medium text-foreground">{t.training_name}</div>
                                     <div className="text-xs text-muted-foreground">Validity: {t.validity_period_days} days{t.aircraft_type ? ` • Type: ${t.aircraft_type}` : ""}</div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Button variant="outline" onClick={() => openAssign(t)}>Assign</Button>
-                                </div>
+                                <Button variant="outline" onClick={() => openAssign(t)}>Assign</Button>
                             </div>
                         ))}
                     </div>
@@ -236,11 +157,7 @@ export default function ManageTrainingsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-auto">
                                 {fuelers.map((f) => (
                                     <label key={f.id} className="flex items-center gap-2 border rounded p-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedFuelerIds.includes(f.id)}
-                                            onChange={() => toggleFueler(f.id)}
-                                        />
+                                        <input type="checkbox" checked={selectedFuelerIds.includes(f.id)} onChange={() => toggleFueler(f.id)} />
                                         <span>{f.fueler_name}</span>
                                     </label>
                                 ))}

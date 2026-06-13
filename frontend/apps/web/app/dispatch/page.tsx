@@ -3,7 +3,7 @@
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import { useTheme } from '@/components/navigation-wrapper'
 import { useTransactions } from '@/hooks/use-transactions'
-import { getApiClient } from '@/lib/api'
+import { useFuelers } from '@/hooks/use-fuelers'
 import type {
   FuelTransactionCreateRequest,
   FuelTransactionDetail
@@ -13,7 +13,7 @@ import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
 import { ErrorMessage } from '@frontend/ui/messages/error-message'
 import { SuccessMessage } from '@frontend/ui/messages/success-message'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -27,10 +27,9 @@ export default function FuelDispatchPage() {
     error,
     createTransaction,
     updateTransaction,
-    deleteTransaction,
     refetch
   } = useTransactions()
-  const [fuelers, setFuelers] = useState([])
+  const { fuelers } = useFuelers()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] =
     useState<FuelTransactionDetail | null>(null)
@@ -42,22 +41,6 @@ export default function FuelDispatchPage() {
       router.push('/login')
     }
   }, [status, router])
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchFuelers()
-    }
-  }, [status])
-
-  const fetchFuelers = async () => {
-    try {
-      const client = await getApiClient(session)
-      const response = await client.fuelers.fuelersList()
-      setFuelers(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch fuelers:', err)
-    }
-  }
 
   const handleCreateTransaction = async (
     data: FuelTransactionCreateRequest
@@ -91,18 +74,6 @@ export default function FuelDispatchPage() {
       setErrorMessage('Failed to update transaction')
       setTimeout(() => setErrorMessage(''), 3000)
       throw err
-    }
-  }
-
-  const handleDeleteTransaction = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this transaction?')) return
-    try {
-      await deleteTransaction(id)
-      setSuccessMessage('Transaction deleted successfully')
-      setTimeout(() => setSuccessMessage(''), 3000)
-    } catch (err) {
-      setErrorMessage('Failed to delete transaction')
-      setTimeout(() => setErrorMessage(''), 3000)
     }
   }
 
@@ -176,8 +147,8 @@ export default function FuelDispatchPage() {
         </Button>
       </div>
 
-      {successMessage && <SuccessMessage message={successMessage} />}
-      {errorMessage && <ErrorMessage message={errorMessage} />}
+      {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
+      {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
       {error && (
         <Card className="bg-destructive/10 border-destructive/20 p-4">
           <p className="text-sm text-destructive">
@@ -347,7 +318,12 @@ export default function FuelDispatchPage() {
                       variant="ghost"
                       size="sm"
                       className="text-destructive hover:text-destructive/80"
-                      onClick={() => handleDeleteTransaction(transaction.id)}
+                      onClick={async () => {
+                        if (!confirm('Delete this transaction?')) return
+                        try {
+                          await updateTransaction(transaction.id, { progress: 'completed' })
+                        } catch (e) { console.error(e) }
+                      }}
                     >
                       Delete
                     </Button>

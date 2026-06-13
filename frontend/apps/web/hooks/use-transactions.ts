@@ -1,96 +1,50 @@
 'use client'
 
-import type {
-  FuelTransactionCreateRequest,
-  FuelTransactionDetail,
-  FuelTransactionList,
-  FuelTransactionListRequest
-} from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { createClient } from '@/lib/supabase/client'
+import {
+  createTransaction,
+  findAllTransactions,
+  updateTransaction,
+  type TransactionFilters,
+  type TransactionInsert,
+  type TransactionUpdate,
+  type TransactionWithRelations
+} from '@/repositories/transactions.repo'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-export function useTransactions() {
-  const { data: session } = useSession()
-  const [transactions, setTransactions] = useState<FuelTransactionList[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+export const transactionKeys = {
+  all: ['transactions'] as const,
+  lists: () => [...transactionKeys.all, 'list'] as const,
+  list: (filters?: TransactionFilters) => [...transactionKeys.lists(), filters] as const
+}
 
-  const fetchTransactions = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
-    }
+export function useTransactions(filters?: TransactionFilters) {
+  const qc = useQueryClient()
+  const db = createClient()
 
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
+  const query = useQuery({
+    queryKey: transactionKeys.list(filters),
+    queryFn: () => findAllTransactions(db, filters)
+  })
 
-      const response = await client.transactions.transactionsList()
-      setTransactions(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch transactions:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch transactions')
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const createMutation = useMutation({
+    mutationFn: (tx: TransactionInsert) => createTransaction(db, tx),
+    onSuccess: () => qc.invalidateQueries({ queryKey: transactionKeys.all })
+  })
 
-  useEffect(() => {
-    if (session) {
-      fetchTransactions()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchTransactions])
-
-  const createTransaction = useCallback(
-    async (transaction: FuelTransactionCreateRequest) => {
-      const client = await getApiClient(session)
-      const newTransaction =
-        await client.transactions.transactionsCreate(transaction)
-      setTransactions((prev) => [...prev, newTransaction])
-      return newTransaction
-    },
-    [session]
-  )
-
-  const updateTransaction = useCallback(
-    async (id: number, updates: FuelTransactionListRequest) => {
-      const client = await getApiClient(session)
-      const updatedTransaction =
-        await client.transactions.transactionsPartialUpdate(id, updates)
-      setTransactions((prev) =>
-        prev.map((t) => (t.id === id ? updatedTransaction : t))
-      )
-      return updatedTransaction
-    },
-    [session]
-  )
-
-  const deleteTransaction = useCallback(
-    async (id: number) => {
-      const client = await getApiClient(session)
-      await client.transactions.transactionsDestroy(id)
-      setTransactions((prev) => prev.filter((t) => t.id !== id))
-    },
-    [session]
-  )
-
-  const refetch = useCallback(() => {
-    fetchTransactions()
-  }, [fetchTransactions])
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: number; updates: TransactionUpdate }) =>
+      updateTransaction(db, id, updates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: transactionKeys.all })
+  })
 
   return {
-    transactions,
-    loading,
-    error,
-    createTransaction,
-    updateTransaction,
-    deleteTransaction,
-    refetch
+    transactions: query.data ?? [] as TransactionWithRelations[],
+    loading: query.isLoading,
+    error: query.error,
+    createTransaction: (tx: TransactionInsert) => createMutation.mutateAsync(tx),
+    updateTransaction: (id: number, updates: TransactionUpdate) =>
+      updateMutation.mutateAsync({ id, updates }),
+    refetch: query.refetch
   }
 }

@@ -1,97 +1,58 @@
 'use client'
 
-import type { FuelerTraining, FuelerTrainingRequest } from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { createClient } from '@/lib/supabase/client'
+import {
+  deleteCertification,
+  findAllCertifications,
+  upsertCertification,
+  type CertificationFilters,
+  type CertificationInsert
+} from '@/repositories/certifications.repo'
+import { completeCertification } from '@/services/certifications.service'
+import { toCertificationDomain, type CertificationDomain } from '@/types/domain/certifications'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-export function useCertifications() {
-  const { data: session } = useSession()
-  const [certifications, setCertifications] = useState<FuelerTraining[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+export const certificationKeys = {
+  all: ['certifications'] as const,
+  lists: () => [...certificationKeys.all, 'list'] as const,
+  list: (filters?: CertificationFilters) => [...certificationKeys.lists(), filters] as const
+}
 
-  const fetchCertifications = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
+export function useCertifications(filters?: CertificationFilters) {
+  const qc = useQueryClient()
+  const db = createClient()
+
+  const query = useQuery({
+    queryKey: certificationKeys.list(filters),
+    queryFn: async () => {
+      const rows = await findAllCertifications(db, filters)
+      return rows.map(toCertificationDomain)
     }
+  })
 
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
+  const completeMutation = useMutation({
+    mutationFn: (input: Parameters<typeof completeCertification>[1]) =>
+      completeCertification(db, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: certificationKeys.all })
+  })
 
-      const response =
-        await client.fuelerCertifications.fuelerCertificationsList()
-      setCertifications(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch certifications:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch certifications')
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const upsertMutation = useMutation({
+    mutationFn: (cert: CertificationInsert) => upsertCertification(db, cert),
+    onSuccess: () => qc.invalidateQueries({ queryKey: certificationKeys.all })
+  })
 
-  useEffect(() => {
-    if (session) {
-      fetchCertifications()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchCertifications])
-
-  const createCertification = useCallback(
-    async (certification: FuelerTrainingRequest) => {
-      const client = await getApiClient(session)
-      const newCertification =
-        await client.fuelerCertifications.fuelerCertificationsCreate(
-          certification
-        )
-      setCertifications((prev) => [newCertification, ...prev])
-      return newCertification
-    },
-    [session]
-  )
-
-  const updateCertification = useCallback(
-    async (id: number, updates: FuelerTrainingRequest) => {
-      const client = await getApiClient(session)
-      const updatedCertification =
-        await client.fuelerCertifications.fuelerCertificationsPartialUpdate(
-          id,
-          updates
-        )
-      setCertifications((prev) =>
-        prev.map((c) => (c.id === id ? updatedCertification : c))
-      )
-      return updatedCertification
-    },
-    [session]
-  )
-
-  const deleteCertification = useCallback(
-    async (id: number) => {
-      const client = await getApiClient(session)
-      await client.fuelerCertifications.fuelerCertificationsDestroy(id)
-      setCertifications((prev) => prev.filter((c) => c.id !== id))
-    },
-    [session]
-  )
-
-  const refetch = useCallback(() => {
-    fetchCertifications()
-  }, [fetchCertifications])
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteCertification(db, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: certificationKeys.all })
+  })
 
   return {
-    certifications,
-    loading,
-    error,
-    createCertification,
-    updateCertification,
-    deleteCertification,
-    refetch
+    certifications: query.data ?? [] as CertificationDomain[],
+    loading: query.isLoading,
+    error: query.error,
+    completeCertification: completeMutation.mutateAsync,
+    upsertCertification: (cert: CertificationInsert) => upsertMutation.mutateAsync(cert),
+    deleteCertification: (id: number) => deleteMutation.mutateAsync(id),
+    refetch: query.refetch
   }
 }

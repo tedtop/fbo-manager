@@ -1,12 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type {
-  RegisterFormSchema,
-  registerAction
-} from '@/actions/register-action'
-import { fieldApiError } from '@/lib/forms'
 import { registerFormSchema } from '@/lib/validation'
+import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@frontend/ui/components/ui/button'
 import {
   Card,
@@ -20,19 +16,21 @@ import { Input } from '@frontend/ui/components/ui/input'
 import { Label } from '@frontend/ui/components/ui/label'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plane } from 'lucide-react'
-import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import type { z } from 'zod'
 
-export function RegisterForm({
-  onSubmitHandler
-}: { onSubmitHandler: typeof registerAction }) {
+type RegisterFormSchema = z.infer<typeof registerFormSchema>
+
+export function RegisterForm() {
   const [formError, setFormError] = useState<string | null>(null)
+  const { supabase } = useAuth()
+  const router = useRouter()
 
-  const { formState, handleSubmit, register, setError } =
-    useForm<RegisterFormSchema>({
-      resolver: zodResolver(registerFormSchema)
-    })
+  const { formState, handleSubmit, register } = useForm<RegisterFormSchema>({
+    resolver: zodResolver(registerFormSchema)
+  })
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -53,44 +51,32 @@ export function RegisterForm({
 
         <form
           onSubmit={handleSubmit(async (data) => {
-            setFormError(null) // reset previous banner error
+            setFormError(null)
 
-            const res = await onSubmitHandler(data)
-
-            if (res === true) {
-              signIn()
-              return
-            }
-
-            if (typeof res !== 'boolean') {
-              const nfe = (res as any)?.non_field_errors
-              if (Array.isArray(nfe) && nfe.length > 0) {
-                setFormError(nfe.join(' '))
-              } else {
-                setFormError('Registration failed. Please check your details.')
+            const { error } = await supabase.auth.signUp({
+              email: data.email,
+              password: data.password,
+              options: {
+                data: { username: data.username }
               }
+            })
 
-              // existing field-level mapping
-              fieldApiError('username', 'username', res, setError)
-              fieldApiError('email', 'email', res, setError)
-              fieldApiError('password', 'password', res, setError)
-              fieldApiError('password_retype', 'passwordRetype', res, setError)
+            if (error) {
+              setFormError(error.message)
               return
             }
 
-            // boolean false fallback
-            setFormError('Registration failed. Please try again.')
+            router.push('/')
+            router.refresh()
           })}
         >
           <CardContent className="space-y-4">
-            {/* Global error banner */}
             {formError && (
               <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2">
                 <p className="text-sm text-destructive">{formError}</p>
               </div>
             )}
 
-            {/* Username */}
             <div className="space-y-2">
               <Label htmlFor="username" className="text-card-foreground">
                 Username
@@ -110,7 +96,6 @@ export function RegisterForm({
               )}
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-card-foreground">
                 Email
@@ -130,7 +115,6 @@ export function RegisterForm({
               )}
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password" className="text-card-foreground">
                 Password
@@ -150,7 +134,6 @@ export function RegisterForm({
               )}
             </div>
 
-            {/* Confirm Password */}
             <div className="space-y-2">
               <Label htmlFor="passwordRetype" className="text-card-foreground">
                 Confirm Password
@@ -193,4 +176,3 @@ export function RegisterForm({
     </div>
   )
 }
-

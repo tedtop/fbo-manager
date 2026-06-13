@@ -1,5 +1,4 @@
-import { authOptions } from '@/lib/auth'
-import { getServerSession } from 'next-auth'
+import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export default async function AccountLayout({
@@ -7,10 +6,11 @@ export default async function AccountLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (session === null) {
-    return redirect('/')
+  if (!user) {
+    return redirect('/login')
   }
 
   return (

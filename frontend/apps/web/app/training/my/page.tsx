@@ -4,7 +4,7 @@ import { useMyFuelerCertifications } from '@/hooks/use-my-fueler-certifications'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { Badge } from '@frontend/ui/components/ui/badge'
 import { Card } from '@frontend/ui/components/ui/card'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -59,18 +59,18 @@ export default function MyTrainingsPage() {
                     <tbody>
                         {certifications.map((c) => (
                             <tr key={c.id} className="border-t border-border">
-                                <td className="py-2 font-medium">{c.training_name}</td>
-                                <td className="py-2 text-muted-foreground">{c.completed_date}</td>
-                                <td className="py-2 text-muted-foreground">{c.expiry_date}</td>
+                                <td className="py-2 font-medium">{c.trainingName}</td>
+                                <td className="py-2 text-muted-foreground">{c.completedDate}</td>
+                                <td className="py-2 text-muted-foreground">{c.expiryDate}</td>
                                 <td className="py-2">
-                                    <span className={`font-semibold ${c.days_until_expiry < 0 ? 'text-destructive' : c.days_until_expiry <= 3 ? 'text-destructive' : c.days_until_expiry <= 7 ? 'text-warning' : 'text-foreground'}`}>
-                                        {c.days_until_expiry < 0
-                                            ? `${Math.abs(c.days_until_expiry)} days ago`
-                                            : `${c.days_until_expiry} days`}
+                                    <span className={`font-semibold ${c.daysUntilExpiry < 0 ? 'text-destructive' : c.daysUntilExpiry <= 3 ? 'text-destructive' : c.daysUntilExpiry <= 7 ? 'text-warning' : 'text-foreground'}`}>
+                                        {c.daysUntilExpiry < 0
+                                            ? `${Math.abs(c.daysUntilExpiry)} days ago`
+                                            : `${c.daysUntilExpiry} days`}
                                     </span>
                                 </td>
                                 <td className="py-2">
-                                    <Badge className={statusBadge(c.expiry_status)}>{c.expiry_status}</Badge>
+                                    <Badge className={statusBadge(c.expiryStatus)}>{c.expiryStatus}</Badge>
                                 </td>
                             </tr>
                         ))}

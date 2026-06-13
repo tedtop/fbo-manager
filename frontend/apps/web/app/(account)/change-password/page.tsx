@@ -1,5 +1,5 @@
 import { changePasswordAction } from '@/actions/change-password-action'
-import { ChangePaswordForm } from '@/components/forms/change-password-form'
+import { ChangePasswordForm } from '@/components/forms/change-password-form'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function ChangePassword() {
-  return <ChangePaswordForm onSubmitHandler={changePasswordAction} />
+  return <ChangePasswordForm onSubmitHandler={changePasswordAction} />
 }

@@ -1,71 +1,28 @@
 'use client'
 
-import type { TankLevelReading } from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { createClient } from '@/lib/supabase/client'
+import { findReadingsByTankId } from '@/repositories/tank-readings.repo'
+import { useQuery } from '@tanstack/react-query'
 
-export function useTankReadings() {
-  const { data: session } = useSession()
-  const [readings, setReadings] = useState<TankLevelReading[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+export const tankReadingKeys = {
+  all: ['tank-readings'] as const,
+  byTank: (tankId: string, days: number) =>
+    [...tankReadingKeys.all, tankId, days] as const
+}
 
-  const fetchReadings = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
-    }
+export function useTankReadings(tankId: string, days = 7) {
+  const db = createClient()
 
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
-
-      const response = await client.tankReadings.tankReadingsList()
-      setReadings(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch tank readings:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch tank readings')
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (session) {
-      fetchReadings()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchReadings])
-
-  const createReading = useCallback(
-    async (tankId: string, levelInches: number) => {
-      const client = await getApiClient(session)
-      // Note: The API expects level_gallons but we're storing inches
-      // This will need backend adjustment to accept inches or convert
-      const newReading = await client.tankReadings.tankReadingsCreate({
-        tank_id: tankId,
-        level: levelInches.toString()
-      })
-      setReadings((prev) => [newReading, ...prev])
-      return newReading
-    },
-    [session]
-  )
-
-  const refetch = useCallback(() => {
-    fetchReadings()
-  }, [fetchReadings])
+  const query = useQuery({
+    queryKey: tankReadingKeys.byTank(tankId, days),
+    queryFn: () => findReadingsByTankId(db, tankId, days),
+    enabled: !!tankId
+  })
 
   return {
-    readings,
-    loading,
-    error,
-    createReading,
-    refetch
+    readings: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch
   }
 }

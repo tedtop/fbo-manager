@@ -1,11 +1,12 @@
 'use client'
 
 import { useTheme } from '@/components/navigation-wrapper'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { useEquipment } from '@/hooks/use-equipment'
+import type { EquipmentDomain } from '@/types/domain/equipment'
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
 import { Button } from '@frontend/ui/components/ui/button'
 
@@ -27,7 +28,7 @@ export default function EquipmentPage() {
 
   // modal states
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingEquipment, setEditingEquipment] = useState(null)
+  const [editingEquipment, setEditingEquipment] = useState<EquipmentDomain | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {

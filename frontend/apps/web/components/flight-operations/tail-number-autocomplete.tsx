@@ -1,6 +1,6 @@
 'use client'
 
-import type { Aircraft } from '@frontend/types/api'
+import type { AircraftRow as Aircraft } from '@/repositories/aircraft.repo'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Input } from '@frontend/ui/components/ui/input'
 import { Label } from '@frontend/ui/components/ui/label'
@@ -73,8 +73,8 @@ export function TailNumberAutocomplete({
   const handleSelectAircraft = (selectedAircraft: Aircraft) => {
     setInputValue(selectedAircraft.tail_number)
     const displayType =
-      (selectedAircraft as any).aircraft_type_display ||
-      (selectedAircraft as any).aircraft_type ||
+      selectedAircraft.aircraft_type_display ||
+      selectedAircraft.aircraft_type_icao ||
       'Unknown'
     onChange(selectedAircraft.tail_number, displayType)
     setIsOpen(false)
@@ -118,9 +118,7 @@ export function TailNumberAutocomplete({
               <div>
                 <div className="font-semibold">{a.tail_number}</div>
                 <div className="text-xs text-muted-foreground">
-                  {(a as any).aircraft_type_display ||
-                    a.aircraft_type ||
-                    'Unknown'}
+                  {a.aircraft_type_display || a.aircraft_type_icao || 'Unknown'}
                 </div>
               </div>
               {inputValue.toLowerCase() === a.tail_number.toLowerCase() && (

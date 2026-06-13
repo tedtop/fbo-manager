@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/hooks/use-session'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
 import { Badge } from '@frontend/ui/components/ui/badge'
@@ -91,14 +91,8 @@ export default function FuelDispatchMonitorPage() {
         </div>
       </div>
 
-      {/* Error Display */}
       {error && (
-        <ErrorMessage
-          message={error}
-          onDismiss={() => {
-            // Error will be cleared on next successful fetch
-          }}
-        />
+        <ErrorMessage>{(error as any)?.message || String(error)}</ErrorMessage>
       )}
 
       {/* Filter Controls */}

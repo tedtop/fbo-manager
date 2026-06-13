@@ -1,93 +1,58 @@
 'use client'
 
-import type { Equipment } from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { createClient } from '@/lib/supabase/client'
+import {
+  createEquipment,
+  deleteEquipment,
+  findAllEquipment,
+  updateEquipment,
+  type EquipmentInsert,
+  type EquipmentUpdate
+} from '@/repositories/equipment.repo'
+import { toEquipmentDomain, type EquipmentDomain } from '@/types/domain/equipment'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+export const equipmentKeys = {
+  all: ['equipment'] as const,
+  lists: () => [...equipmentKeys.all, 'list'] as const
+}
 
 export function useEquipment() {
-  const { data: session } = useSession()
-  const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const qc = useQueryClient()
+  const db = createClient()
 
-  const fetchEquipment = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
+  const query = useQuery({
+    queryKey: equipmentKeys.lists(),
+    queryFn: async () => {
+      const rows = await findAllEquipment(db)
+      return rows.map(toEquipmentDomain)
     }
+  })
 
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
+  const createMutation = useMutation({
+    mutationFn: (equipment: EquipmentInsert) => createEquipment(db, equipment),
+    onSuccess: () => qc.invalidateQueries({ queryKey: equipmentKeys.all })
+  })
 
-      // Note: Adjust this endpoint based on actual API
-      const response = await client.equipment.equipmentList()
-      setEquipment(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch equipment:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to fetch equipment')
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: number; updates: EquipmentUpdate }) =>
+      updateEquipment(db, id, updates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: equipmentKeys.all })
+  })
 
-  useEffect(() => {
-    if (session) {
-      fetchEquipment()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchEquipment])
-
-  const createEquipment = useCallback(
-    async (equipmentData: any) => {
-      const client = await getApiClient(session)
-      const newEquipment = await client.equipment.equipmentCreate(equipmentData)
-      setEquipment((prev) => [...prev, newEquipment])
-      return newEquipment
-    },
-    [session]
-  )
-
-  const updateEquipment = useCallback(
-    async (id: number, updates: any) => {
-      const client = await getApiClient(session)
-      const updatedEquipment = await client.equipment.equipmentPartialUpdate(
-        id,
-        updates
-      )
-      setEquipment((prev) =>
-        prev.map((e) => (e.id === id ? updatedEquipment : e))
-      )
-      return updatedEquipment
-    },
-    [session]
-  )
-
-  const deleteEquipment = useCallback(
-    async (id: number) => {
-      const client = await getApiClient(session)
-      await client.equipment.equipmentDestroy(id)
-      setEquipment((prev) => prev.filter((e) => e.id !== id))
-    },
-    [session]
-  )
-
-  const refetch = useCallback(() => {
-    fetchEquipment()
-  }, [fetchEquipment])
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteEquipment(db, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: equipmentKeys.all })
+  })
 
   return {
-    equipment,
-    loading,
-    error,
-    createEquipment,
-    updateEquipment,
-    deleteEquipment,
-    refetch
+    equipment: query.data ?? [] as EquipmentDomain[],
+    loading: query.isLoading,
+    error: query.error,
+    createEquipment: (equipment: EquipmentInsert) => createMutation.mutateAsync(equipment),
+    updateEquipment: (id: number, updates: EquipmentUpdate) =>
+      updateMutation.mutateAsync({ id, updates }),
+    deleteEquipment: (id: number) => deleteMutation.mutateAsync(id),
+    refetch: query.refetch
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import type { FuelTankWithLatestReading } from '@frontend/types/api'
+import type { TankWithLatestReading } from '@/repositories/tanks.repo'
 import { Badge } from '@frontend/ui/components/ui/badge'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Card } from '@frontend/ui/components/ui/card'
@@ -9,7 +9,7 @@ import { cn } from '@frontend/ui/lib/utils'
 import { useState } from 'react'
 
 interface TankVisualCardProps {
-  tank: FuelTankWithLatestReading
+  tank: TankWithLatestReading
   onUpdateLevel: (tankId: string, level: number) => Promise<void>
 }
 

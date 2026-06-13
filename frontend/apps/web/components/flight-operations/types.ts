@@ -145,8 +145,8 @@ export function apiFlightToComponentFlight(apiFlight: FlightList): Flight {
 
   // Calculate duration from arrival and departure times
   const duration = calculateDuration(
-    apiFlight.arrival_time,
-    apiFlight.departure_time
+    apiFlight.arrival_time ?? undefined,
+    apiFlight.departure_time ?? undefined
   )
 
   // Extract creator info (always present, defaults to admin if not provided)
@@ -165,11 +165,11 @@ export function apiFlightToComponentFlight(apiFlight: FlightList): Flight {
     type,
     tailNumber: apiFlight.aircraft || '',
     aircraftType: (apiFlight as any).aircraft_type_display || '',
-    arrivalTime: apiFlight.arrival_time,
+    arrivalTime: apiFlight.arrival_time ?? undefined,
     departureTime: apiFlight.departure_time!,
     origin:
       apiFlight.origin || (hasArrival ? apiFlight.destination : undefined),
-    destination: apiFlight.destination,
+    destination: apiFlight.destination ?? undefined,
     status: mapFlightStatus(apiFlight.flight_status),
     contactName: (apiFlight as any).contact_name || undefined,
     contactNotes: (apiFlight as any).contact_notes || undefined,

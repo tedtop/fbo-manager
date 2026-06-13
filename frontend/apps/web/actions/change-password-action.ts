@@ -1,34 +1,28 @@
 'use server'
 
-import { getApiClient } from '@/lib/api'
-import { authOptions } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import type { changePasswordFormSchema } from '@/lib/validation'
-import { ApiError, type UserChangePasswordError } from '@frontend/types/api'
-import { getServerSession } from 'next-auth'
 import type { z } from 'zod'
 
 export type ChangePasswordFormSchema = z.infer<typeof changePasswordFormSchema>
 
 export async function changePasswordAction(
   data: ChangePasswordFormSchema
-): Promise<UserChangePasswordError | boolean> {
-  const session = await getServerSession(authOptions)
+): Promise<boolean | string> {
+  const supabase = await createClient()
 
-  try {
-    const apiClient = await getApiClient(session)
+  // Re-authenticate with current password before changing
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return false
 
-    await apiClient.users.usersChangePasswordCreate({
-      password: data.password,
-      password_new: data.passwordNew,
-      password_retype: data.passwordRetype
-    })
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: data.password
+  })
+  if (signInError) return 'Current password is incorrect'
 
-    return true
-  } catch (error) {
-    if (error instanceof ApiError) {
-      return error.body as UserChangePasswordError
-    }
-  }
+  const { error } = await supabase.auth.updateUser({ password: data.passwordNew })
+  if (error) return error.message
 
-  return false
+  return true
 }

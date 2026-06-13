@@ -1,90 +1,55 @@
 'use client'
 
-import type {
-  FuelTankRequest,
-  FuelTankWithLatestReading
-} from '@frontend/types/api'
-import { useSession } from 'next-auth/react'
-import { useCallback, useEffect, useState } from 'react'
-import { getApiClient } from '../lib/api'
+import { createClient } from '@/lib/supabase/client'
+import {
+  createTank,
+  deleteTank,
+  findAllTanks,
+  updateTank,
+  type TankInsert,
+  type TankUpdate,
+  type TankWithLatestReading
+} from '@/repositories/tanks.repo'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+export const tankKeys = {
+  all: ['tanks'] as const,
+  lists: () => [...tankKeys.all, 'list'] as const
+}
 
 export function useTanks() {
-  const { data: session } = useSession()
-  const [tanks, setTanks] = useState<FuelTankWithLatestReading[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  const qc = useQueryClient()
+  const db = createClient()
 
-  const fetchTanks = useCallback(async () => {
-    if (!session) {
-      setLoading(false)
-      return
-    }
+  const query = useQuery({
+    queryKey: tankKeys.lists(),
+    queryFn: () => findAllTanks(db)
+  })
 
-    try {
-      setLoading(true)
-      setError(null)
-      const client = await getApiClient(session)
+  const createMutation = useMutation({
+    mutationFn: (tank: TankInsert) => createTank(db, tank),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tankKeys.all })
+  })
 
-      const response = await client.tanks.tanksList()
-      setTanks(response.results || [])
-    } catch (err) {
-      console.error('Failed to fetch tanks:', err)
-      setError(err instanceof Error ? err : new Error('Failed to fetch tanks'))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const updateMutation = useMutation({
+    mutationFn: ({ tankId, updates }: { tankId: string; updates: TankUpdate }) =>
+      updateTank(db, tankId, updates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tankKeys.all })
+  })
 
-  useEffect(() => {
-    if (session) {
-      fetchTanks()
-    } else {
-      setLoading(false)
-    }
-  }, [session, fetchTanks])
-
-  const createTank = useCallback(
-    async (tank: FuelTankRequest) => {
-      const client = await getApiClient(session)
-      const newTank = await client.tanks.tanksCreate(tank)
-      // Refetch to get the tank with latest reading
-      await fetchTanks()
-      return newTank
-    },
-    [session, fetchTanks]
-  )
-
-  const updateTank = useCallback(
-    async (id: number, updates: FuelTankRequest) => {
-      const client = await getApiClient(session)
-      const updatedTank = await client.tanks.tanksPartialUpdate(id, updates)
-      // Refetch to get the tank with latest reading
-      await fetchTanks()
-      return updatedTank
-    },
-    [session, fetchTanks]
-  )
-
-  const deleteTank = useCallback(
-    async (id: number) => {
-      const client = await getApiClient(session)
-      await client.tanks.tanksDestroy(id)
-      setTanks((prev) => prev.filter((t) => t.id !== id))
-    },
-    [session]
-  )
-
-  const refetch = useCallback(() => {
-    fetchTanks()
-  }, [fetchTanks])
+  const deleteMutation = useMutation({
+    mutationFn: (tankId: string) => deleteTank(db, tankId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tankKeys.all })
+  })
 
   return {
-    tanks,
-    loading,
-    error,
-    createTank,
-    updateTank,
-    deleteTank,
-    refetch
+    tanks: query.data ?? [] as TankWithLatestReading[],
+    loading: query.isLoading,
+    error: query.error,
+    createTank: (tank: TankInsert) => createMutation.mutateAsync(tank),
+    updateTank: (tankId: string, updates: TankUpdate) =>
+      updateMutation.mutateAsync({ tankId, updates }),
+    deleteTank: (tankId: string) => deleteMutation.mutateAsync(tankId),
+    refetch: query.refetch
   }
 }

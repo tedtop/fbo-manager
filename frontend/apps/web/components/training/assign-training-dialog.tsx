@@ -1,6 +1,9 @@
 'use client'
 
-import type { Fueler, FuelerTrainingRequest } from '@frontend/types/api'
+import { useFuelers } from '@/hooks/use-fuelers'
+import { completeCertification } from '@/services/certifications.service'
+import { createClient } from '@/lib/supabase/client'
+import type { TrainingRow } from '@/repositories/trainings.repo'
 import { Button } from '@frontend/ui/components/ui/button'
 import {
     Dialog,
@@ -17,17 +20,16 @@ import {
     SelectTrigger,
     SelectValue
 } from '@frontend/ui/components/ui/select'
-import { useSession } from 'next-auth/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { SuccessMessage } from '@frontend/ui/messages/success-message'
 import { ErrorMessage } from '@frontend/ui/messages/error-message'
-import { getApiClient } from '@/lib/api'
-import type { Training } from '@frontend/types/api'
+import { useQueryClient } from '@tanstack/react-query'
+import { certificationKeys } from '@/hooks/use-certifications'
 
 interface AssignTrainingDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    training: Training | null
+    training: TrainingRow | null
     onAssigned?: () => void
 }
 
@@ -37,8 +39,8 @@ export function AssignTrainingDialog({
     training,
     onAssigned
 }: AssignTrainingDialogProps) {
-    const { data: session } = useSession()
-    const [fuelers, setFuelers] = useState<Fueler[]>([])
+    const { fuelers } = useFuelers()
+    const qc = useQueryClient()
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -47,7 +49,6 @@ export function AssignTrainingDialog({
     const [fuelerId, setFuelerId] = useState<number>(0)
     const [notes, setNotes] = useState('')
 
-    // Compute expiry client-side (mirrors server logic) so we can preview
     const expiryDate = useMemo(() => {
         if (!training) return ''
         const validity = training.validity_period_days || 0
@@ -56,25 +57,6 @@ export function AssignTrainingDialog({
         return base.toISOString().slice(0, 10)
     }, [training, completedDate])
 
-    useEffect(() => {
-        if (open && session) {
-            fetchFuelers()
-            setCompletedDate(today)
-            setFuelerId(0)
-            setNotes('')
-        }
-    }, [open, session, today])
-
-    const fetchFuelers = async () => {
-        try {
-            const client = await getApiClient(session)
-            const res = await client.fuelers.fuelersList()
-            setFuelers(res.results || [])
-        } catch (e) {
-            console.error('Failed to load fuelers', e)
-        }
-    }
-
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!training || !fuelerId) return
@@ -82,17 +64,16 @@ export function AssignTrainingDialog({
         try {
             setError(null)
             setSuccess(null)
-            const client = await getApiClient(session)
-            const body: FuelerTrainingRequest & { notes?: string } = {
-                fueler: fuelerId,
-                training: training.id!,
-                completed_date: completedDate,
-                expiry_date: expiryDate,
-                certified_by: null,
-                ...(notes ? { notes } : {})
-            }
-            // Use the complete action endpoint (auto-upsert + history)
-            await client.fuelerCertifications.fuelerCertificationsCompleteCreate(body)
+            const db = createClient()
+            await completeCertification(db, {
+                fuelerId,
+                trainingId: training.id,
+                completedDate,
+                expiryDate,
+                certifiedById: null,
+                notes
+            })
+            qc.invalidateQueries({ queryKey: certificationKeys.all })
             onOpenChange(false)
             onAssigned?.()
             setSuccess('Training assigned successfully')
@@ -125,7 +106,7 @@ export function AssignTrainingDialog({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {fuelers.map((f) => (
-                                        <SelectItem key={f.id} value={f.id!.toString()}>
+                                        <SelectItem key={f.id} value={f.id.toString()}>
                                             {f.fueler_name}
                                         </SelectItem>
                                     ))}
@@ -158,18 +139,10 @@ export function AssignTrainingDialog({
                         {success && <SuccessMessage>{success}</SuccessMessage>}
                         {error && <ErrorMessage>{error}</ErrorMessage>}
                         <div className="flex justify-end gap-2 pt-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => onOpenChange(false)}
-                                disabled={loading}
-                            >
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
                                 Cancel
                             </Button>
-                            <Button
-                                type="submit"
-                                disabled={loading || !fuelerId || !expiryDate}
-                            >
+                            <Button type="submit" disabled={loading || !fuelerId || !expiryDate}>
                                 {loading ? 'Assigning...' : 'Assign'}
                             </Button>
                         </div>

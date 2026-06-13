@@ -137,7 +137,7 @@ export function TransactionFormDialog({
                 <SelectItem value="none">No flight assigned</SelectItem>
                 {flights.map((flight) => (
                   <SelectItem key={flight.id} value={flight.id}>
-                    {flight.callsign} - {flight.aircraftType}
+                    {flight.callSign ?? flight.tailNumber} - {flight.aircraftType}
                   </SelectItem>
                 ))}
               </SelectContent>

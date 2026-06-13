@@ -1,5 +1,3 @@
-'use client'
-
 import { NavigationWrapper } from '@/components/navigation-wrapper'
 import { AuthProvider } from '@/providers/auth-provider'
 import { QueryProvider } from '@/providers/query-provider'

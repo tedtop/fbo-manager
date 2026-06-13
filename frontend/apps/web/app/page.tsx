@@ -11,7 +11,7 @@ import type {
 import { useTheme } from '@/components/navigation-wrapper'
 import { useFlights } from '@/hooks/use-flights'
 import { ErrorMessage } from '@frontend/ui/messages/error-message'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -165,7 +165,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode="split"
           theme={theme}
-          flights={weekInternalFlights}
+          flights={flights}
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
@@ -176,7 +176,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode="arrivals"
           theme={theme}
-          flights={weekInternalFlights}
+          flights={flights}
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
@@ -187,7 +187,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode="departures"
           theme={theme}
-          flights={weekInternalFlights}
+          flights={flights}
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}

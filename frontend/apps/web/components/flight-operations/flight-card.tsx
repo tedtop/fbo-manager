@@ -642,7 +642,9 @@ export function FlightCard({
               className="h-6 text-xs text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="w-3 h-3 mr-1" />
-              Delete
+              {flight.status === 'departed' || flight.status === 'cancelled'
+                ? 'Clear'
+                : 'Delete'}
             </Button>
           </div>
         </div>
