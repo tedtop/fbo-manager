@@ -2,5 +2,5 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
-  '@biomejs/biome': set this to true or false
-  sharp: set this to true or false
+  '@biomejs/biome': true
+  sharp: true
