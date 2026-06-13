@@ -24,9 +24,10 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"],
+      "@/components/ui/*": ["../../packages/ui/components/ui/*"],
+      "@/lib/utils": ["../../packages/ui/lib/utils"],
+      "@/hooks/use-toast": ["../../packages/ui/hooks/use-toast"]
     }
   },
   "include": [

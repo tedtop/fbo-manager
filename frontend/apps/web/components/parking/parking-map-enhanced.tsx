@@ -6,14 +6,15 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import { useQuery, useMutation, useQueryClient, keepPreviousData, useIsMutating } from '@tanstack/react-query'
 
-import { ApiClient } from '@frontend/types/api/ApiClient'
+import { useAuth } from '@/providers/auth-provider'
+import { findAllParkingLocations, createParkingLocation, updateParkingLocation } from '@/repositories/parking.repo'
+import { findAllFlights } from '@/repositories/flights.repo'
 import { getAircraftSize } from '@/lib/aircraft-sizes'
 import { findParkingLocationAtPoint } from '@/lib/point-in-polygon'
 import { ParkingLocationPanel } from './parking-location-panel'
 import { Button } from '@frontend/ui/components/ui/button'
 import { Plus, Trash2 } from 'lucide-react'
 import { AircraftSheet } from './aircraft-sheet'
-import { useSession } from '@/hooks/use-session'
 import { AIRCRAFT_TYPES, getAircraftDefinition, DEFAULT_AIRCRAFT_TYPE } from '@/lib/aircraft-types'
 
 // Minuteman Aviation Ramp - Optimal view for day-to-day operations
@@ -56,8 +57,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
   const [drawControlAdded, setDrawControlAdded] = useState(false)
   const [currentBearing, setCurrentBearing] = useState(320)
   const queryClient = useQueryClient()
-  const { data: session } = useSession()
-  const token = (session as any)?.accessToken as string
+  const { supabase } = useAuth()
 
   // Generic Aircraft State
   const [selectedAircraftId, setSelectedAircraftId] = useState<number | null>(null)
@@ -105,41 +105,16 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
 
   // ... (existing code) ...
 
-  const apiClient = new ApiClient({
-    BASE: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-    TOKEN: token,
-  })
-
-  // Fetch parking locations
   // Sync previewOverridesRef with state
   useEffect(() => {
     previewOverridesRef.current = { ...previewOverridesRef.current, ...previewOverrides }
   }, [previewOverrides])
 
-  const { data: parkingLocationsData, isLoading: isParkingLoading } =    // Fetch all parking locations (handle pagination)
-    useQuery({
-      queryKey: ['parking-locations'],
-      queryFn: async () => {
-        let allResults: any[] = []
-        let page = 1
-        let hasMore = true
-
-        while (hasMore) {
-          const response = await apiClient.parkingLocations.parkingLocationsList('-id', page, undefined, 100)
-          if (response.results) {
-            allResults = [...allResults, ...response.results]
-          }
-
-          if (response.next) {
-            page++
-          } else {
-            hasMore = false
-          }
-        }
-        return allResults
-      },
-      placeholderData: keepPreviousData,
-    })
+  const { data: parkingLocationsData, isLoading: isParkingLoading } = useQuery({
+    queryKey: ['parking-locations'],
+    queryFn: () => findAllParkingLocations(supabase as any, false),
+    placeholderData: keepPreviousData,
+  })
 
   const parkingLocations = parkingLocationsData || []
 
@@ -157,10 +132,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
   // Fetch flights with parking locations
   const { data: flightsData } = useQuery({
     queryKey: ['flights-with-parking'],
-    queryFn: async () => {
-      const response = await apiClient.flights.flightsList()
-      return response.results || []
-    },
+    queryFn: () => findAllFlights(supabase as any),
   })
 
   const flights = flightsData || []
@@ -168,7 +140,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
   // Create parking location mutation
   const createLocationMutation = useMutation({
     mutationFn: async (data: Partial<ParkingLocation>) => {
-      return await apiClient.parkingLocations.parkingLocationsCreate(data as any)
+      return await createParkingLocation(supabase as any, data as any)
     },
     onMutate: async (newLocation) => {
       await queryClient.cancelQueries({ queryKey: ['parking-locations'] })
@@ -205,10 +177,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
       id: number
       data: Partial<ParkingLocation>
     }) => {
-      return await apiClient.parkingLocations.parkingLocationsPartialUpdate(
-        id,
-        data as any
-      )
+      return await updateParkingLocation(supabase as any, id, data as any)
     },
     onSuccess: (data, variables) => {
       // Don't clear preview overrides or invalidate here
@@ -245,7 +214,8 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
   // Delete parking location mutation
   const deleteLocationMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiClient.parkingLocations.parkingLocationsDestroy(id)
+      const { error } = await supabase.from('parking_location').delete().eq('id', id)
+      if (error) throw error
     },
     onMutate: async (deletedId) => {
       // Cancel any outgoing refetches
@@ -286,9 +256,11 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
       flightId: number
       locationId: number | null
     }) => {
-      return await apiClient.flights.flightsPartialUpdate(flightId, {
-        location: locationId,
-      } as any)
+      const { error } = await supabase
+        .from('flight')
+        .update({ location_id: locationId })
+        .eq('id', flightId)
+      if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['flights-with-parking'] })
@@ -636,9 +608,9 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     // Group flights by location for stacking
     const flightsByLocation = new Map<number, any[]>()
     flights.forEach((flight: any) => {
-      if (flight.location_details && flight.location) {
-        const existing = flightsByLocation.get(flight.location) || []
-        flightsByLocation.set(flight.location, [...existing, flight])
+      if (flight.location && flight.location_id) {
+        const existing = flightsByLocation.get(flight.location_id) || []
+        flightsByLocation.set(flight.location_id, [...existing, flight])
       }
     })
 
@@ -650,14 +622,14 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     // Add markers for aircraft with parking locations
     flights.forEach((flight: any) => {
       if (
-        flight.location_details &&
-        flight.location_details.latitude &&
-        flight.location_details.longitude
+        flight.location &&
+        flight.location.latitude &&
+        flight.location.longitude
       ) {
-        const aircraftType = flight.aircraft_details.aircraft_type_icao || DEFAULT_AIRCRAFT_TYPE
+        const aircraftType = flight.aircraft?.aircraft_type_icao || DEFAULT_AIRCRAFT_TYPE
 
         // Calculate offset for stacking aircraft in same location
-        const aircraftsAtLocation = flightsByLocation.get(flight.location) || []
+        const aircraftsAtLocation = flightsByLocation.get(flight.location_id) || []
         const indexAtLocation = aircraftsAtLocation.findIndex((f: any) => f.id === flight.id)
         const offsetAngle = (indexAtLocation / aircraftsAtLocation.length) * 2 * Math.PI
         const stackRadius = aircraftsAtLocation.length > 1 ? 0.00003 * indexAtLocation : 0
@@ -670,10 +642,10 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
         el.style.cursor = configMode ? 'default' : 'grab'
         el.style.transition = 'transform 0.2s, filter 0.2s'
         el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
-        el.title = `${flight.aircraft_details.tail_number} - ${flight.location_details.location_code}`
+        el.title = `${flight.aircraft?.tail_number} - ${flight.location?.location_code}`
 
         // Create aircraft icon
-        const iconData = createAircraftIcon(aircraftType, flight.aircraft_details.tail_number, '#3b82f6', false, scale) // Default blue for real flights
+        const iconData = createAircraftIcon(aircraftType, flight.aircraft?.tail_number ?? '', '#3b82f6', false, scale) // Default blue for real flights
         const img = document.createElement('img')
         img.src = iconData.src
         img.style.width = `${iconData.width}px`
@@ -693,8 +665,8 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
           el.style.zIndex = ''
         })
 
-        const baseLng = parseFloat(flight.location_details.longitude)
-        const baseLat = parseFloat(flight.location_details.latitude)
+        const baseLng = parseFloat(flight.location.longitude)
+        const baseLat = parseFloat(flight.location.latitude)
 
         const marker = new mapboxgl.Marker({
           element: el,
@@ -708,9 +680,9 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
 
         const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
           `<div class="p-2">
-            <h3 class="font-bold">${flight.aircraft_details.tail_number}</h3>
-            <p class="text-sm">${flight.aircraft_details.aircraft_type_display || 'Unknown Type'}</p>
-            <p class="text-xs text-gray-600">${flight.location_details.location_code}</p>
+            <h3 class="font-bold">${flight.aircraft?.tail_number}</h3>
+            <p class="text-sm">${flight.aircraft?.aircraft_type_display || 'Unknown Type'}</p>
+            <p class="text-xs text-gray-600">${flight.location?.location_code}</p>
             ${aircraftsAtLocation.length > 1 ? `<p class="text-xs text-blue-600">${aircraftsAtLocation.length} aircraft at this location</p>` : ''}
           </div>`
         )
@@ -761,8 +733,8 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
                 // Update popup
                 popup.setHTML(
                   `<div class="p-2">
-                    <h3 class="font-bold">${flight.aircraft_details.tail_number}</h3>
-                    <p class="text-sm">${flight.aircraft_details.aircraft_type_display || 'Unknown Type'}</p>
+                    <h3 class="font-bold">${flight.aircraft?.tail_number}</h3>
+                    <p class="text-sm">${flight.aircraft?.aircraft_type_display || 'Unknown Type'}</p>
                     <p class="text-xs text-green-600">Moved to: ${newLocation.location_code}</p>
                   </div>`
                 )

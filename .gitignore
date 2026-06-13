@@ -1,6 +1,3 @@
-.DS_Store
-.DS_Store
-
 # -----------------------------
 # macOS
 # -----------------------------
@@ -88,3 +85,6 @@ coverage/
 # -----------------------------
 # UI design system created from v0
 flight-board-ui/
+
+# Nimbalyst local workspace files
+nimbalyst-local/

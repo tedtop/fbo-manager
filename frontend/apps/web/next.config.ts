@@ -1,21 +1,13 @@
 import type { NextConfig } from 'next'
-import path from 'path'
-import dotenv from 'dotenv'
 
-// Load root .env file
-dotenv.config({ path: path.resolve(__dirname, '../../../../.env') })
+// .env.local is now at frontend/apps/web/.env.local — loaded automatically by Next.js
 
 const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['@frontend/types', '@frontend/ui'],
   // Migrated from webpack to Turbopack (Next.js 16 default)
   turbopack: {
-    root: '../..',  // Set root to monorepo root (frontend/)
-    resolveAlias: {
-      '@/components': '../../packages/ui/components',
-      '@/lib': '../../packages/ui/lib',
-      '@/hooks': '../../packages/ui/hooks',
-    },
+    root: '../..',
   },
 }
 

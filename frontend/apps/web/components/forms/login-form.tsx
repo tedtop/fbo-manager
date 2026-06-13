@@ -15,7 +15,7 @@ import { Input } from '@frontend/ui/components/ui/input'
 import { Label } from '@frontend/ui/components/ui/label'
 import { ErrorMessage } from '@frontend/ui/messages/error-message'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plane } from 'lucide-react'
+import { Loader2, Plane } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
@@ -29,6 +29,7 @@ export function LoginForm() {
   const router = useRouter()
   const { supabase } = useAuth()
   const [authError, setAuthError] = useState<string | null>(null)
+  const [devLoading, setDevLoading] = useState<'admin' | 'user' | null>(null)
 
   const { register, handleSubmit, formState } = useForm<LoginFormSchema>({
     resolver: zodResolver(loginFormSchema)
@@ -39,10 +40,11 @@ export function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setAuthError(error.message)
-    } else {
-      router.push('/')
-      router.refresh()
+      return false
     }
+    router.push('/')
+    router.refresh()
+    return true
   }
 
   const onSubmitHandler = handleSubmit((data) => {
@@ -146,17 +148,35 @@ export function LoginForm() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => signIn('admin@fbo.local', 'admin')}
+                disabled={devLoading !== null}
+                onClick={async () => {
+                  setDevLoading('admin')
+                  const ok = await signIn('admin@fbo.local', 'devadmin')
+                  if (!ok) setDevLoading(null)
+                }}
               >
-                Log in as Admin
+                {devLoading === 'admin' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Log in as Admin'
+                )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => signIn('user@fbo.local', 'user')}
+                disabled={devLoading !== null}
+                onClick={async () => {
+                  setDevLoading('user')
+                  const ok = await signIn('user@fbo.local', 'devuser')
+                  if (!ok) setDevLoading(null)
+                }}
               >
-                Log in as User
+                {devLoading === 'user' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Log in as User'
+                )}
               </Button>
             </div>
 
