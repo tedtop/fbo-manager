@@ -528,25 +528,38 @@ export type Database = {
         Row: {
           id: number
           customer_id: number
+          flight_id: number | null
           status: 'draft' | 'issued' | 'paid' | 'void'
           total_amount: string
           payment_method: 'credit_card' | 'cash' | 'check' | 'account' | null
           due_date: string | null
           notes: string
+          payment_recorded_at: string | null
+          emailed_at: string | null
           created_at: string
           modified_at: string
         }
         Insert: {
           id?: number
           customer_id: number
+          flight_id?: number | null
           status?: 'draft' | 'issued' | 'paid' | 'void'
           total_amount?: number | string
           payment_method?: 'credit_card' | 'cash' | 'check' | 'account' | null
           due_date?: string | null
           notes?: string
+          payment_recorded_at?: string | null
+          emailed_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['invoice']['Insert']>
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'invoice_flight_id_fkey'
+            columns: ['flight_id']
+            referencedRelation: 'flight'
+            referencedColumns: ['id']
+          }
+        ]
       }
       invoice_item: {
         Row: {
