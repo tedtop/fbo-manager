@@ -6,53 +6,62 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { inchesToGallons } from '@/lib/gallons-tables'
 import { useState } from 'react'
 
 interface TankVisualCardProps {
   tank: TankWithLatestReading
   onUpdateLevel: (tankId: string, level: number) => Promise<void>
+  onFocusInput?: () => void
+  onBlurInput?: () => void
 }
 
-export function TankVisualCard({ tank, onUpdateLevel }: TankVisualCardProps) {
+function useTankCardState(tank: TankWithLatestReading, onUpdateLevel: TankVisualCardProps['onUpdateLevel']) {
   const [inputValue, setInputValue] = useState('')
   const [updating, setUpdating] = useState(false)
+  const [showPlaceholder, setShowPlaceholder] = useState(true)
 
-  const currentLevel = tank.latest_reading
-    ? Number.parseFloat(tank.latest_reading.level)
-    : 0
+  const currentLevel = tank.latest_reading ? Number.parseFloat(tank.latest_reading.level) : 0
   const maxLevel = Number.parseFloat(tank.usable_max_inches)
   const minLevel = Number.parseFloat(tank.usable_min_inches)
   const percentage = Math.round((currentLevel / maxLevel) * 100)
   const levelHeight = (currentLevel / maxLevel) * 100
+  const currentGallons = inchesToGallons(tank.tank_id, currentLevel)
 
   const isAvgas = tank.fuel_type === 'avgas'
   const isT7 = tank.tank_id === 'T7'
+  const isLF = tank.tank_id === 'LF'
 
-  // Parse foot-inch notation (5'7") or regular numbers
   const parseFootInchToInches = (input: string): number => {
     const footInchMatch = input.match(/^(\d+(?:\.\d+)?)'(\d+(?:\.\d+)?)"?$/)
     if (footInchMatch) {
-      const feet = Number.parseFloat(footInchMatch[1])
-      const inches = Number.parseFloat(footInchMatch[2])
-      return feet * 12 + inches
+      return Number.parseFloat(footInchMatch[1]) * 12 + Number.parseFloat(footInchMatch[2])
     }
-
     const feetOnlyMatch = input.match(/^(\d+(?:\.\d+)?)'$/)
     if (feetOnlyMatch) {
       return Number.parseFloat(feetOnlyMatch[1]) * 12
     }
-
     return Number.parseFloat(input)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits, decimal point, apostrophe, double quote (foot-inch notation)
+    const cleaned = e.target.value.replace(/[^0-9.'"]/g, '')
+    setInputValue(cleaned)
   }
 
   const handleUpdate = async () => {
     if (!inputValue.trim()) return
 
-    const level = parseFootInchToInches(inputValue.trim())
-    if (isNaN(level) || level < minLevel || level > maxLevel) {
-      alert(`Level must be between ${minLevel}" and ${maxLevel}"`)
+    let level = parseFootInchToInches(inputValue.trim())
+    if (isNaN(level)) return
+
+    if (level < minLevel) {
+      alert(`${tank.tank_id} must be at least ${minLevel}"`)
       return
     }
+    // Floor to max instead of rejecting
+    if (level > maxLevel) level = maxLevel
 
     setUpdating(true)
     try {
@@ -66,66 +75,68 @@ export function TankVisualCard({ tank, onUpdateLevel }: TankVisualCardProps) {
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleUpdate()
-    }
+    if (e.key === 'Enter') handleUpdate()
   }
 
   const formatLastUpdated = (isoString?: string) => {
     if (!isoString) return 'Never'
-    const date = new Date(isoString)
-    return date.toLocaleString()
+    return new Date(isoString).toLocaleString()
   }
+
+  return {
+    inputValue, setInputValue, updating, showPlaceholder, setShowPlaceholder,
+    currentLevel, maxLevel, minLevel, percentage, levelHeight, currentGallons,
+    isAvgas, isT7, isLF,
+    handleInputChange, handleUpdate, handleKeyPress, formatLastUpdated,
+  }
+}
+
+export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput }: TankVisualCardProps) {
+  const s = useTankCardState(tank, onUpdateLevel)
 
   return (
     <Card
       className={cn(
-        'bg-white/95 backdrop-blur-sm hover:shadow-lg transition-all',
-        isT7 && 'bg-yellow-50/98 border-2 border-yellow-400'
+        'bg-card hover:shadow-lg transition-all',
+        s.isT7 && 'border-2 border-warning/40 bg-warning/5',
+        s.isLF && 'border-2 border-primary/40 bg-primary/5'
       )}
     >
       <div className="p-4 text-center space-y-4">
         {/* Header */}
         <div>
-          <div className="text-2xl font-bold text-gray-800">{tank.tank_id}</div>
+          <div className="text-2xl font-bold text-foreground">{tank.tank_id}</div>
           <Badge
             className={cn(
               'mt-1 text-xs',
-              isAvgas
+              s.isAvgas
                 ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
                 : 'bg-cyan-100 text-cyan-800 border-cyan-300'
             )}
           >
-            {isAvgas ? 'Avgas' : 'Jet A'}
+            {s.isAvgas ? 'Avgas' : 'Jet A'}
           </Badge>
         </div>
 
         {/* Visual Tank */}
-        <div className="relative w-20 h-48 mx-auto bg-gray-100 border-3 border-gray-300 rounded-lg overflow-hidden">
-          {/* Fuel Level */}
+        <div className="relative w-20 h-48 mx-auto bg-muted border-2 border-border rounded-lg overflow-hidden">
           <div
             className={cn(
               'absolute bottom-0 left-0 right-0 transition-all duration-700 rounded-b-lg',
-              isAvgas
+              s.isAvgas
                 ? 'bg-gradient-to-t from-orange-500 to-yellow-400 shadow-[0_-2px_10px_rgba(255,193,7,0.3)]'
                 : 'bg-gradient-to-t from-cyan-600 to-cyan-400 shadow-[0_-2px_10px_rgba(23,162,184,0.3)]'
             )}
-            style={{ height: `${Math.min(levelHeight, 100)}%` }}
+            style={{ height: `${Math.min(s.levelHeight, 100)}%` }}
           />
-
-          {/* Level Markers */}
           <div className="absolute left-0 top-0 h-full w-full pointer-events-none">
             {[...Array(9)].map((_, i) => {
-              const position = i * 12.5 + '%'
               const isMajor = i % 2 === 0
               return (
                 <div
                   key={i}
-                  className={cn(
-                    'absolute left-0 bg-gray-600',
-                    isMajor ? 'w-3 h-0.5' : 'w-2 h-px'
-                  )}
-                  style={{ top: position }}
+                  className={cn('absolute left-0 bg-muted-foreground/50', isMajor ? 'w-3 h-0.5' : 'w-2 h-px')}
+                  style={{ top: `${i * 12.5}%` }}
                 />
               )
             })}
@@ -134,34 +145,122 @@ export function TankVisualCard({ tank, onUpdateLevel }: TankVisualCardProps) {
 
         {/* Level Info */}
         <div>
-          <div className="text-3xl font-bold text-gray-800">
-            {currentLevel.toFixed(1)}"
-          </div>
-          <div className="text-sm text-gray-600">
-            {percentage}% ({maxLevel}" max)
-          </div>
+          <div className="text-3xl font-bold text-foreground">{s.currentLevel.toFixed(1)}"</div>
+          <div className="text-sm text-muted-foreground">{s.percentage}% ({s.maxLevel}" max)</div>
+          <div className="text-sm text-muted-foreground">{s.currentGallons.toLocaleString()} gal</div>
         </div>
 
         {/* Update Section */}
-        <div className="space-y-2 pt-3 border-t border-gray-200">
+        <div className="space-y-2 pt-3 border-t border-border">
           <Input
             type="text"
-            placeholder="Level (inches)"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
+            inputMode="decimal"
+            placeholder={s.showPlaceholder ? 'Level (inches)' : ''}
+            value={s.inputValue}
+            onChange={s.handleInputChange}
+            onKeyPress={s.handleKeyPress}
+            onFocus={() => { s.setShowPlaceholder(false); onFocusInput?.() }}
+            onBlur={() => { s.setShowPlaceholder(true); onBlurInput?.() }}
             className="text-center text-sm"
-            disabled={updating}
+            disabled={s.updating}
           />
           <Button
-            onClick={handleUpdate}
-            disabled={updating || !inputValue.trim()}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            onClick={s.handleUpdate}
+            disabled={s.updating || !s.inputValue.trim()}
+            className="w-full"
           >
-            {updating ? 'Updating...' : 'Update'}
+            {s.updating ? 'Updating...' : 'Update'}
           </Button>
-          <div className="text-xs text-gray-500">
-            Updated: {formatLastUpdated(tank.latest_reading?.recorded_at)}
+          <div className="text-xs text-muted-foreground">
+            Updated: {s.formatLastUpdated(tank.latest_reading?.recorded_at)}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurInput }: TankVisualCardProps) {
+  const s = useTankCardState(tank, onUpdateLevel)
+
+  return (
+    <Card
+      className={cn(
+        'bg-card hover:shadow-lg transition-all',
+        s.isT7 && 'border-2 border-warning/40 bg-warning/5',
+        s.isLF && 'border-2 border-primary/40 bg-primary/5'
+      )}
+    >
+      <div className="p-4 space-y-3">
+        {/* Header row */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <div className="text-2xl font-bold text-foreground">{tank.tank_id}</div>
+            <Badge
+              className={cn(
+                'text-xs',
+                s.isAvgas
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                  : 'bg-cyan-100 text-cyan-800 border-cyan-300'
+              )}
+            >
+              {s.isAvgas ? 'Avgas' : s.isLF ? 'Jet A (Life Flight)' : 'Jet A'}
+            </Badge>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-foreground">{s.currentLevel.toFixed(1)}"</div>
+            <div className="text-xs text-muted-foreground">{s.percentage}% ({s.maxLevel}" max)</div>
+            <div className="text-xs text-muted-foreground">{s.currentGallons.toLocaleString()} gal</div>
+          </div>
+        </div>
+
+        {/* Horizontal cylinder visual — wide pill, fills left to right */}
+        <div className="relative h-10 bg-muted border-2 border-border rounded-full overflow-hidden">
+          <div
+            className={cn(
+              'absolute left-0 top-0 bottom-0 transition-all duration-700',
+              s.isAvgas
+                ? 'bg-gradient-to-r from-orange-500 to-yellow-400 shadow-[2px_0_10px_rgba(255,193,7,0.3)]'
+                : 'bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[2px_0_10px_rgba(23,162,184,0.3)]'
+            )}
+            style={{
+              width: `${Math.min(s.levelHeight, 100)}%`,
+              borderRadius: s.levelHeight >= 98 ? '9999px' : '9999px 0 0 9999px',
+            }}
+          />
+          {/* Quarter-mark tick lines */}
+          {[25, 50, 75].map((pct) => (
+            <div
+              key={pct}
+              className="absolute top-1 bottom-1 w-px bg-muted-foreground/30"
+              style={{ left: `${pct}%` }}
+            />
+          ))}
+        </div>
+
+        {/* Update section */}
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <Input
+            type="text"
+            inputMode="decimal"
+            placeholder={s.showPlaceholder ? 'Level (inches)' : ''}
+            value={s.inputValue}
+            onChange={s.handleInputChange}
+            onKeyPress={s.handleKeyPress}
+            onFocus={() => { s.setShowPlaceholder(false); onFocusInput?.() }}
+            onBlur={() => { s.setShowPlaceholder(true); onBlurInput?.() }}
+            className="text-sm w-36"
+            disabled={s.updating}
+          />
+          <Button
+            onClick={s.handleUpdate}
+            disabled={s.updating || !s.inputValue.trim()}
+            size="sm"
+          >
+            {s.updating ? 'Updating...' : 'Update'}
+          </Button>
+          <div className="text-xs text-muted-foreground ml-auto">
+            Updated: {s.formatLastUpdated(tank.latest_reading?.recorded_at)}
           </div>
         </div>
       </div>
