@@ -14,6 +14,9 @@ import { ErrorMessage } from '@/messages/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { ScanLine } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function FlightOperationsPage() {
   const { data: session, status } = useSession()
@@ -151,7 +154,9 @@ export default function FlightOperationsPage() {
 
   return (
     <div className="space-y-4">
-      <CompactToolbar
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <CompactToolbar
         view={view}
         theme={theme}
         onViewChange={handleViewChange}
@@ -159,7 +164,15 @@ export default function FlightOperationsPage() {
         filters={filters}
         onFiltersChange={setFilters}
         onAddFlight={() => setIsAddDialogOpen(true)}
-      />
+          />
+        </div>
+        <Button variant="outline" asChild className="shrink-0">
+          <Link href="/flight-operations/ocr-import">
+            <ScanLine className="w-4 h-4 mr-2" />
+            Import Schedule
+          </Link>
+        </Button>
+      </div>
 
       {view === 'split' && (
         <FlightBoard
