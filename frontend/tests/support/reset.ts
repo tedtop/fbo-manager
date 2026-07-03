@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { TEST_SUPABASE_URL, assertSafeTestTarget } from './client'
 
 // Deletion order: children before parents, so FK constraints never block a wipe.
 // Keep this in sync with frontend/supabase/migrations/*.sql.
@@ -37,6 +38,12 @@ const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string
  * instead of tagging/filtering rows in a shared dataset.
  */
 export async function resetDatabase(db: SupabaseClient<Database>): Promise<void> {
+  // Defense in depth: re-check the guard from client.ts even though createTestClient()
+  // already checks it at construction time — this is the function that actually deletes
+  // rows, so it re-validates independently rather than trusting the caller went through
+  // the guarded factory.
+  assertSafeTestTarget(TEST_SUPABASE_URL)
+
   for (const { table, pk } of RESET_ORDER) {
     const { error } = await db.from(table).delete().not(pk, 'is', null)
     if (error) {
