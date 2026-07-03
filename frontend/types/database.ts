@@ -450,33 +450,40 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['equipment']['Insert']>
         Relationships: []
       }
-      line_schedule: {
+      staff_shift: {
         Row: {
           id: number
-          flight_id: number | null
-          service_type: 'arrival_service' | 'departure_service' | 'turnaround' | 'overnight'
-          scheduled_time: string
-          actual_start_time: string | null
-          actual_end_time: string | null
-          status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-          gate_id: number | null
-          notes: string
+          fueler_id: number
+          shift_date: string
+          start_time: string
+          end_time: string
+          created_by: number | null
           created_at: string
-          modified_at: string
         }
         Insert: {
           id?: number
-          flight_id?: number | null
-          service_type: 'arrival_service' | 'departure_service' | 'turnaround' | 'overnight'
-          scheduled_time: string
-          actual_start_time?: string | null
-          actual_end_time?: string | null
-          status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-          gate_id?: number | null
-          notes?: string
+          fueler_id: number
+          shift_date: string
+          start_time: string
+          end_time: string
+          created_by?: number | null
+          created_at?: string
         }
-        Update: Partial<Database['public']['Tables']['line_schedule']['Insert']>
-        Relationships: []
+        Update: Partial<Database['public']['Tables']['staff_shift']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'staff_shift_fueler_id_fkey'
+            columns: ['fueler_id']
+            referencedRelation: 'fueler'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'staff_shift_created_by_fkey'
+            columns: ['created_by']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
       }
       customer: {
         Row: {
