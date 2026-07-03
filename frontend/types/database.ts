@@ -1,6 +1,12 @@
 // Auto-generate with: npx supabase gen types typescript --project-id qkuhvlrdidhumyyxokil > types/database.ts
 // Manually maintained to match Django models in backend/api/models.py
 
+// Per-department scheduling policy (ACL knobs live in data, not code)
+export type DepartmentSettings = {
+  allow_self_edit?: boolean
+  edit_roles?: Array<'lead' | 'supervisor' | 'member'>
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -622,41 +628,108 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['equipment']['Insert']>
         Relationships: []
       }
-      line_schedule: {
+      department: {
         Row: {
           id: number
-          flight_id: number | null
-          service_type:
-            | 'arrival_service'
-            | 'departure_service'
-            | 'turnaround'
-            | 'overnight'
-          scheduled_time: string
-          actual_start_time: string | null
-          actual_end_time: string | null
-          status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-          gate_id: number | null
-          notes: string
+          name: string
+          slug: string
+          color: string
+          settings: DepartmentSettings
+          is_active: boolean
           created_at: string
           modified_at: string
         }
         Insert: {
           id?: number
-          flight_id?: number | null
-          service_type:
-            | 'arrival_service'
-            | 'departure_service'
-            | 'turnaround'
-            | 'overnight'
-          scheduled_time: string
-          actual_start_time?: string | null
-          actual_end_time?: string | null
-          status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-          gate_id?: number | null
-          notes?: string
+          name: string
+          slug: string
+          color?: string
+          settings?: DepartmentSettings
+          is_active?: boolean
         }
-        Update: Partial<Database['public']['Tables']['line_schedule']['Insert']>
+        Update: Partial<Database['public']['Tables']['department']['Insert']>
         Relationships: []
+      }
+      department_member: {
+        Row: {
+          id: number
+          department_id: number
+          user_id: number
+          dept_role: 'lead' | 'supervisor' | 'member'
+          title: string
+          target_weekly_hours: number | null
+          display_order: number
+          is_active: boolean
+          created_at: string
+          modified_at: string
+        }
+        Insert: {
+          id?: number
+          department_id: number
+          user_id: number
+          dept_role?: 'lead' | 'supervisor' | 'member'
+          title?: string
+          target_weekly_hours?: number | null
+          display_order?: number
+          is_active?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['department_member']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'department_member_department_id_fkey'
+            columns: ['department_id']
+            referencedRelation: 'department'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'department_member_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      schedule_shift: {
+        Row: {
+          id: number
+          department_id: number
+          user_id: number
+          shift_date: string
+          start_time: string
+          end_time: string
+          notes: string
+          created_by: number | null
+          updated_by: number | null
+          created_at: string
+          modified_at: string
+        }
+        Insert: {
+          id?: number
+          department_id: number
+          user_id: number
+          shift_date: string
+          start_time: string
+          end_time: string
+          notes?: string
+          created_by?: number | null
+          updated_by?: number | null
+          modified_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['schedule_shift']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'schedule_shift_department_id_fkey'
+            columns: ['department_id']
+            referencedRelation: 'department'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'schedule_shift_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
       }
       customer: {
         Row: {
