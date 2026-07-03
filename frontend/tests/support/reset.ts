@@ -2,8 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
 // Deletion order: children before parents, so FK constraints never block a wipe.
-// Keep this in sync with frontend/supabase/migrations/20260703000000_test_schema.sql.
+// Keep this in sync with frontend/supabase/migrations/*.sql.
 const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string }> = [
+  { table: 'invoice_fuel_readings', pk: 'id' },
+  { table: 'invoice_line_items', pk: 'id' },
+  { table: 'invoices', pk: 'id' },
   { table: 'truck_meter_readings', pk: 'id' },
   { table: 'truck_sheets', pk: 'id' },
   { table: 'invoice_item', pk: 'id' },

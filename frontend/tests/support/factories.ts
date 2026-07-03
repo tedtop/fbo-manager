@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { createAircraft } from '@/repositories/aircraft.repo'
+import { createCustomer } from '@/repositories/customers.repo'
 import { createEquipment } from '@/repositories/equipment.repo'
 import { createFlight } from '@/repositories/flights.repo'
 import { createFueler } from '@/repositories/fuelers.repo'
@@ -115,6 +116,37 @@ export async function makeFlight(
     created_by_id: creator.id,
     ...overrides,
   })
+}
+
+export async function makeCustomer(
+  db: Db,
+  overrides: Partial<Database['public']['Tables']['customer']['Insert']> = {}
+) {
+  return createCustomer(db, {
+    name: unique('Customer '),
+    ...overrides,
+  })
+}
+
+/** Inserts directly: product.repo.ts only exposes findActiveProducts (no create). */
+export async function makeProduct(
+  db: Db,
+  overrides: Partial<Database['public']['Tables']['product']['Insert']> = {}
+) {
+  const { data, error } = await db
+    .from('product')
+    .insert({
+      name: unique('Product '),
+      sku: unique('SKU-'),
+      price: 10,
+      product_type: 'product',
+      is_active: true,
+      ...overrides,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function makeTank(

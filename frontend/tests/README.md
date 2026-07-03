@@ -78,3 +78,12 @@ the ones added by the concurrent user-management/training-compliance rebuild (`p
 `user_roles`/`module_permissions`/`department_member` schema (backed by Supabase Auth) that
 this migration doesn't model yet — deliberately left out of this pass rather than guessing at
 an auth-integrated schema; a good next slice of work.
+
+The "digital fuel tickets" invoicing rebuild that landed mid-session (`customers.repo.ts`,
+`products.repo.ts`, `fueling-events.repo.ts`, `invoices.repo.ts`) **is** covered — see
+`frontend/supabase/migrations/20260703000100_invoicing_v2_schema.sql` and
+`repositories/__tests__/invoices.repo.test.ts`. This is the module the 2026-07-03 handoff
+flagged as previously silently failing to persist a POS ticket; `createInvoice`'s multi-step
+write (fueling event → invoice → line items → gauge readings, with best-effort rollback since
+supabase-js has no client transactions) now has passing tests exercising the draft/finalize,
+on-account, join, settle, void, and delete-draft paths end to end against a real DB.
