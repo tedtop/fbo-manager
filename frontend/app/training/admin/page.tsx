@@ -1,145 +1,135 @@
-"use client";
+'use client'
 
-import { useEffect, useMemo, useState } from "react";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useTrainings } from '@/hooks/use-trainings'
+import { CourseFormDialog } from '@/components/training/course-form-dialog'
+import { AssignmentDialog } from '@/components/training/assignment-dialog'
+import { ComplianceMatrix } from '@/components/training/compliance-matrix'
+import type { TrainingRow } from '@/repositories/trainings.repo'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
+import { useState } from 'react'
 
-type Fueler = { id: number; fueler_name: string };
-type Training = { id: number; training_name: string };
+export default function TrainingAdminPage() {
+  const { user, loading: userLoading } = useCurrentUser()
+  const { trainings, loading: trainingsLoading, deleteTraining } = useTrainings()
 
-export default function AdminTrainingAssignmentsPage() {
-    const { user } = useCurrentUser();
-    const isAdmin = user?.role === "admin";
+  const [courseDialogOpen, setCourseDialogOpen] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<TrainingRow | null>(null)
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [assigningCourse, setAssigningCourse] = useState<TrainingRow | null>(null)
 
-    const [fuelers, setFuelers] = useState<Fueler[]>([]);
-    const [trainings, setTrainings] = useState<Training[]>([]);
-    const [selectedFuelerIds, setSelectedFuelerIds] = useState<number[]>([]);
-    const [selectedTrainingId, setSelectedTrainingId] = useState<number | null>(null);
-    const [dueDate, setDueDate] = useState<string>("");
-    const [notes, setNotes] = useState<string>("");
-    const [submitting, setSubmitting] = useState(false);
-    const [message, setMessage] = useState<string>("");
+  const isAdmin = user?.role === 'admin'
 
-    useEffect(() => {
-        if (!isAdmin) return;
-        // Fetch fuelers
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/fuelers/`)
-            .then((r) => r.json())
-            .then((data) => setFuelers(data || []))
-            .catch(() => setFuelers([]));
+  if (userLoading) {
+    return <div className="p-6 text-muted-foreground">Loading...</div>
+  }
+  if (!isAdmin) {
+    return <div className="p-6 text-muted-foreground">Admins only</div>
+  }
 
-        // Fetch trainings
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/trainings/`)
-            .then((r) => r.json())
-            .then((data) => setTrainings(data || []))
-            .catch(() => setTrainings([]));
-    }, [isAdmin]);
+  const openCreate = () => {
+    setEditingCourse(null)
+    setCourseDialogOpen(true)
+  }
 
-    const toggleFueler = (id: number) => {
-        setSelectedFuelerIds((prev) =>
-            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-        );
-    };
+  const openEdit = (course: TrainingRow) => {
+    setEditingCourse(course)
+    setCourseDialogOpen(true)
+  }
 
-    const canSubmit = useMemo(
-        () => isAdmin && !!selectedTrainingId && selectedFuelerIds.length > 0 && !submitting,
-        [isAdmin, selectedTrainingId, selectedFuelerIds, submitting]
-    );
+  const openAssign = (course: TrainingRow) => {
+    setAssigningCourse(course)
+    setAssignDialogOpen(true)
+  }
 
-    const handleAssign = async () => {
-        if (!canSubmit || !selectedTrainingId) return;
-        setSubmitting(true);
-        setMessage("");
-        try {
-            const results: Response[] = [];
-            for (const fuelerId of selectedFuelerIds) {
-                results.push(
-                    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/assigned-training/`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ fueler: fuelerId, training: selectedTrainingId, due_date: dueDate || null, notes }),
-                    })
-                );
-            }
-            const okCount = results.filter((r) => r.ok).length;
-            setMessage(`Assigned ${okCount}/${selectedFuelerIds.length} fuelers`);
-            setSelectedFuelerIds([]);
-            setNotes("");
-        } catch (e) {
-            setMessage("Failed to assign trainings");
-        } finally {
-            setSubmitting(false);
-        }
-    };
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete this course?')) return
+    await deleteTraining(id)
+  }
 
-    if (!isAdmin) {
-        return <div className="p-6">You do not have access to this page.</div>;
-    }
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Training Admin</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage courses and review fueler compliance
+        </p>
+      </div>
 
-    return (
-        <div className="p-6 space-y-6">
-            <h1 className="text-xl font-semibold">Assign Trainings to Fuelers</h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label className="block text-sm font-medium mb-2">Training</label>
-                    <select
-                        className="w-full border rounded p-2"
-                        value={selectedTrainingId ?? ""}
-                        onChange={(e) => setSelectedTrainingId(Number(e.target.value))}
-                    >
-                        <option value="">Select a training</option>
-                        {trainings.map((t) => (
-                            <option key={t.id} value={t.id}>{t.training_name}</option>
-                        ))}
-                    </select>
-                    <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">Due Date (optional)</label>
-                        <input
-                            type="date"
-                            className="w-full border rounded p-2"
-                            value={dueDate}
-                            onChange={(e) => setDueDate(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Fuelers</label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {fuelers.map((f) => (
-                            <label key={f.id} className="flex items-center gap-2 border rounded p-2">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedFuelerIds.includes(f.id)}
-                                    onChange={() => toggleFueler(f.id)}
-                                />
-                                <span>{f.fueler_name}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <label className="block text-sm font-medium mb-2">Notes (optional)</label>
-                <textarea
-                    className="w-full border rounded p-2"
-                    rows={3}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                />
-            </div>
-
-            <div className="flex items-center gap-3">
-                <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-                    disabled={!canSubmit}
-                    onClick={handleAssign}
-                >
-                    {submitting ? "Assigning..." : "Assign Training"}
-                </button>
-                {message && <span className="text-sm text-gray-600">{message}</span>}
-            </div>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium text-foreground">Courses</h2>
+          <Button onClick={openCreate}>New Course</Button>
         </div>
-    );
+        <Card className="p-4">
+          {trainingsLoading ? (
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          ) : trainings.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No courses yet. Create one to get started.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Validity (days)</TableHead>
+                  <TableHead>Aircraft Type</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {trainings.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="font-medium">{t.training_name}</TableCell>
+                    <TableCell>{t.validity_period_days}</TableCell>
+                    <TableCell>{t.aircraft_type || '—'}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => openEdit(t)}>
+                        Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => openAssign(t)}>
+                        Assign
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(t.id)}>
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-medium text-foreground">Compliance Matrix</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            ✅ valid &nbsp;⚠️ expires ≤30 days &nbsp;❌ expired / not certified — click any cell to mark complete
+          </p>
+        </div>
+        <ComplianceMatrix />
+      </section>
+
+      <CourseFormDialog
+        open={courseDialogOpen}
+        onOpenChange={setCourseDialogOpen}
+        course={editingCourse}
+      />
+      <AssignmentDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        course={assigningCourse}
+      />
+    </div>
+  )
 }
