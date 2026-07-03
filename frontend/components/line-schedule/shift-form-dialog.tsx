@@ -1,12 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { ShiftInsert, ShiftWithFueler } from '@/repositories/shifts.repo'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import type { FuelerRow } from '@/repositories/fuelers.repo'
+import type { ShiftInsert, ShiftWithFueler } from '@/repositories/shifts.repo'
+import { useEffect, useState } from 'react'
 
 interface ShiftFormDialogProps {
   open: boolean
@@ -24,7 +31,7 @@ const emptyForm = {
   fueler_id: 0,
   shift_date: '',
   start_time: '',
-  end_time: '',
+  end_time: ''
 }
 
 export function ShiftFormDialog({
@@ -36,7 +43,7 @@ export function ShiftFormDialog({
   defaultFuelerId,
   onAdd,
   onUpdate,
-  onDelete,
+  onDelete
 }: ShiftFormDialogProps) {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
@@ -48,14 +55,14 @@ export function ShiftFormDialog({
         fueler_id: shift.fueler_id,
         shift_date: shift.shift_date,
         start_time: shift.start_time.slice(0, 5),
-        end_time: shift.end_time.slice(0, 5),
+        end_time: shift.end_time.slice(0, 5)
       })
     } else {
       setForm({
-        fueler_id: defaultFuelerId ?? (fuelers[0]?.id ?? 0),
+        fueler_id: defaultFuelerId ?? fuelers[0]?.id ?? 0,
         shift_date: defaultDate ?? '',
         start_time: '',
-        end_time: '',
+        end_time: ''
       })
     }
   }, [shift, open, defaultDate, defaultFuelerId, fuelers])
@@ -63,7 +70,13 @@ export function ShiftFormDialog({
   const isEdit = !!shift
 
   async function handleSave() {
-    if (!form.fueler_id || !form.shift_date || !form.start_time || !form.end_time) return
+    if (
+      !form.fueler_id ||
+      !form.shift_date ||
+      !form.start_time ||
+      !form.end_time
+    )
+      return
     setSaving(true)
     try {
       if (isEdit && shift) {
@@ -88,24 +101,37 @@ export function ShiftFormDialog({
     }
   }
 
-  const isOvernight = form.start_time && form.end_time && form.end_time < form.start_time
+  const isOvernight =
+    form.start_time && form.end_time && form.end_time < form.start_time
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Shift' : 'Add Shift'}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+      >
+        <SheetHeader className="border-b border-border p-4">
+          <SheetTitle>{isEdit ? 'Edit Shift' : 'Add Shift'}</SheetTitle>
+          <SheetDescription>
+            {isEdit
+              ? 'Update or remove this fueler shift.'
+              : 'Schedule a new fueler shift.'}
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4 mt-2">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <div>
             <Label>Fueler</Label>
             <select
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={form.fueler_id}
-              onChange={(e) => setForm((f) => ({ ...f, fueler_id: Number(e.target.value) }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, fueler_id: Number(e.target.value) }))
+              }
             >
-              <option value={0} disabled>Select fueler…</option>
+              <option value={0} disabled>
+                Select fueler…
+              </option>
               {fuelers.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.fueler_name}
@@ -120,7 +146,9 @@ export function ShiftFormDialog({
               type="date"
               className="mt-1"
               value={form.shift_date}
-              onChange={(e) => setForm((f) => ({ ...f, shift_date: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, shift_date: e.target.value }))
+              }
             />
           </div>
 
@@ -131,7 +159,9 @@ export function ShiftFormDialog({
                 type="time"
                 className="mt-1"
                 value={form.start_time}
-                onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, start_time: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -140,7 +170,9 @@ export function ShiftFormDialog({
                 type="time"
                 className="mt-1"
                 value={form.end_time}
-                onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, end_time: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -150,28 +182,37 @@ export function ShiftFormDialog({
               Overnight shift — ends next calendar day.
             </p>
           )}
-
-          <div className="flex gap-2 pt-1">
-            {isEdit && (
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={handleDelete}
-                disabled={deleting || saving}
-              >
-                {deleting ? 'Deleting…' : 'Delete'}
-              </Button>
-            )}
-            <Button
-              className="flex-1"
-              onClick={handleSave}
-              disabled={saving || deleting || !form.fueler_id || !form.shift_date || !form.start_time || !form.end_time}
-            >
-              {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Shift'}
-            </Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <SheetFooter
+          className={`flex-col gap-2 border-t border-border p-4 sm:flex-row ${isEdit ? 'sm:justify-between' : 'sm:justify-end'}`}
+        >
+          {isEdit && (
+            <Button
+              variant="destructive"
+              className="w-full sm:w-auto"
+              onClick={handleDelete}
+              disabled={deleting || saving}
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          )}
+          <Button
+            className="w-full sm:w-auto"
+            onClick={handleSave}
+            disabled={
+              saving ||
+              deleting ||
+              !form.fueler_id ||
+              !form.shift_date ||
+              !form.start_time ||
+              !form.end_time
+            }
+          >
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Shift'}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }
