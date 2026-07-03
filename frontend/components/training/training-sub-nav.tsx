@@ -21,7 +21,8 @@ const baseItems: NavItem[] = [
     { name: 'Manage Trainings', href: '/training/manage', admin: true },
     { name: 'Types', href: '/training/types', admin: true },
     { name: 'Fuelers', href: '/training/fuelers', admin: true },
-    { name: 'Calendar', href: '/training/calendar', admin: true }
+    { name: 'Calendar', href: '/training/calendar', admin: true },
+    { name: 'Admin', href: '/training/admin', admin: true }
 ]
 
 export function TrainingSubNav() {
