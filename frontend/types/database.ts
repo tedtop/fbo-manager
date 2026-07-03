@@ -595,37 +595,6 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['invoice_item']['Insert']>
         Relationships: []
       }
-      parking_map_configurations: {
-        Row: {
-          id: string
-          airport: string
-          user_id: number | null
-          center_lat: number
-          center_lon: number
-          zoom: number
-          bearing: number
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          airport: string
-          user_id?: number | null
-          center_lat: number
-          center_lon: number
-          zoom: number
-          bearing?: number
-          updated_at?: string
-        }
-        Update: Partial<Database['public']['Tables']['parking_map_configurations']['Insert']>
-        Relationships: [
-          {
-            foreignKeyName: 'parking_map_configurations_user_id_fkey'
-            columns: ['user_id']
-            referencedRelation: 'users'
-            referencedColumns: ['id']
-          }
-        ]
-      }
     }
     Views: Record<string, never>
     Functions: {
