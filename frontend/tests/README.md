@@ -59,15 +59,31 @@ pnpm supabase:stop
   one local database — running them concurrently would let one file's reset wipe rows another
   file is mid-assertion on.
 
+## Safety: this suite deletes data — it can only target loopback
+
+`resetDatabase()` truncates every table it knows about before every test. That's only safe
+because `tests/support/client.ts` refuses to construct a test client (`createTestClient()`)
+against anything that isn't `127.0.0.1`/`localhost`/`::1` — and `resetDatabase()` independently
+re-checks the same guard right before it deletes anything, as defense in depth in case a client
+ever gets built another way. Pointing `SUPABASE_TEST_URL` at a real project URL (e.g. by
+copy-pasting from `.env.local`, or a stale CI secret) fails loudly at client construction,
+**before any test body or delete runs** — it does not silently wipe whatever's on the other end.
+
 ## Pointing at a different Postgres/PostgREST instance (e.g. CI)
 
-Override the defaults with env vars if you don't want to run the Supabase CLI stack directly:
+Override the defaults with env vars if you don't want to run the Supabase CLI stack directly.
+Because of the guard above, a non-loopback URL alone isn't enough — you also need the explicit
+opt-in flag, so this only works if you mean it:
 
 ```bash
-SUPABASE_TEST_URL=http://localhost:54321 \
+SUPABASE_TEST_URL=http://some-disposable-ci-instance:54321 \
 SUPABASE_TEST_SERVICE_ROLE_KEY=... \
+SUPABASE_TEST_ALLOW_REMOTE=yes-i-am-sure \
 pnpm test:repos
 ```
+
+Never set `SUPABASE_TEST_ALLOW_REMOTE` against anything that isn't a disposable/throwaway
+instance — this suite will delete every row in it.
 
 ## Coverage
 
