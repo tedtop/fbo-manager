@@ -8,7 +8,6 @@ import { FetchHttpRequest } from './core/FetchHttpRequest';
 import { AdminService } from './services/AdminService';
 import { AircraftService } from './services/AircraftService';
 import { AuthService } from './services/AuthService';
-import { EquipmentService } from './services/EquipmentService';
 import { FlightsService } from './services/FlightsService';
 import { FuelerCertificationsService } from './services/FuelerCertificationsService';
 import { FuelersService } from './services/FuelersService';
@@ -26,7 +25,6 @@ export class ApiClient {
     public readonly admin: AdminService;
     public readonly aircraft: AircraftService;
     public readonly auth: AuthService;
-    public readonly equipment: EquipmentService;
     public readonly flights: FlightsService;
     public readonly fuelerCertifications: FuelerCertificationsService;
     public readonly fuelers: FuelersService;
@@ -55,7 +53,6 @@ export class ApiClient {
         this.admin = new AdminService(this.request);
         this.aircraft = new AircraftService(this.request);
         this.auth = new AuthService(this.request);
-        this.equipment = new EquipmentService(this.request);
         this.flights = new FlightsService(this.request);
         this.fuelerCertifications = new FuelerCertificationsService(this.request);
         this.fuelers = new FuelersService(this.request);

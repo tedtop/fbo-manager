@@ -1,10 +1,26 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { EQUIPMENT_TYPES, formatTypeLabel } from '@/components/equipment/equipment-status-card'
 import type { EquipmentInsert } from '@/repositories/equipment.repo'
 import type { EquipmentDomain } from '@/types/domain/equipment'
 
@@ -34,6 +50,7 @@ const emptyForm: EquipmentInsert = {
 
 export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }: EquipmentFormDialogProps) {
   const [form, setForm] = useState<EquipmentInsert>(emptyForm)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (equipment) {
@@ -59,102 +76,171 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
-  const handleSave = async () => {
-    await onSubmit(form)
-    onOpenChange(false)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await onSubmit(form)
+      onOpenChange(false)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{equipment ? 'Edit Equipment' : 'Add Equipment'}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+        <SheetHeader className="border-b border-border p-4">
+          <SheetTitle>{equipment ? 'Edit Equipment' : 'Add Equipment'}</SheetTitle>
+          <SheetDescription>
+            {equipment
+              ? 'Update the details for this piece of equipment.'
+              : 'Add a new piece of ground-support equipment.'}
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4 mt-4">
-          <div>
-            <Label>Equipment ID</Label>
-            <Input value={form.equipment_id as string}
-              onChange={(e) => updateField('equipment_id', e.target.value)}
-              disabled={!!equipment} />
-          </div>
-
-          <div>
-            <Label>Name</Label>
-            <Input value={form.equipment_name as string}
-              onChange={(e) => updateField('equipment_name', e.target.value)} />
-          </div>
-
-          <div>
-            <Label>Equipment Type</Label>
-            <select className="w-full border rounded p-2" value={form.equipment_type as string}
-              onChange={(e) => updateField('equipment_type', e.target.value as EquipmentType)}>
-              {['fuel_truck', 'tug', 'gpu', 'air_start', 'belt_loader', 'stairs', 'lavatory_service', 'water_service', 'other'].map((v) => (
-                <option key={v} value={v}>{v.replace(/_/g, ' ')}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             <div>
-              <Label>Manufacturer</Label>
-              <Input value={form.manufacturer as string}
-                onChange={(e) => updateField('manufacturer', e.target.value)} />
+              <Label htmlFor="equipment_id">Equipment ID</Label>
+              <Input
+                id="equipment_id"
+                value={form.equipment_id as string}
+                onChange={(e) => updateField('equipment_id', e.target.value)}
+                disabled={!!equipment}
+              />
             </div>
+
             <div>
-              <Label>Model</Label>
-              <Input value={form.model as string}
-                onChange={(e) => updateField('model', e.target.value)} />
+              <Label htmlFor="equipment_name">Name</Label>
+              <Input
+                id="equipment_name"
+                value={form.equipment_name as string}
+                onChange={(e) => updateField('equipment_name', e.target.value)}
+              />
             </div>
-          </div>
 
-          <div>
-            <Label>Serial Number</Label>
-            <Input value={form.serial_number as string}
-              onChange={(e) => updateField('serial_number', e.target.value)} />
-          </div>
-
-          <div>
-            <Label>Status</Label>
-            <select className="w-full border rounded p-2" value={form.status as string}
-              onChange={(e) => updateField('status', e.target.value as EquipmentStatus)}>
-              <option value="available">Available</option>
-              <option value="in_use">In Use</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="out_of_service">Out of Service</option>
-            </select>
-          </div>
-
-          <div>
-            <Label>Location</Label>
-            <Input value={form.location as string}
-              onChange={(e) => updateField('location', e.target.value)} />
-          </div>
-
-          <div>
-            <Label>Notes</Label>
-            <textarea className="w-full border rounded p-2" value={form.notes as string}
-              onChange={(e) => updateField('notes', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Last Maintenance</Label>
-              <Input type="date" value={(form.last_maintenance_date as string) ?? ''}
-                onChange={(e) => updateField('last_maintenance_date', e.target.value || null)} />
+              <Label>Equipment Type</Label>
+              <Select
+                value={form.equipment_type as string}
+                onValueChange={(value) => updateField('equipment_type', value as EquipmentType)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EQUIPMENT_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {formatTypeLabel(type)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="manufacturer">Manufacturer</Label>
+                <Input
+                  id="manufacturer"
+                  value={form.manufacturer as string}
+                  onChange={(e) => updateField('manufacturer', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="model">Model</Label>
+                <Input
+                  id="model"
+                  value={form.model as string}
+                  onChange={(e) => updateField('model', e.target.value)}
+                />
+              </div>
+            </div>
+
             <div>
-              <Label>Next Maintenance</Label>
-              <Input type="date" value={(form.next_maintenance_date as string) ?? ''}
-                onChange={(e) => updateField('next_maintenance_date', e.target.value || null)} />
+              <Label htmlFor="serial_number">Serial Number</Label>
+              <Input
+                id="serial_number"
+                value={form.serial_number as string}
+                onChange={(e) => updateField('serial_number', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={form.status as string}
+                onValueChange={(value) => updateField('status', value as EquipmentStatus)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="in_use">In Use</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="out_of_service">Out of Service</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={form.location as string}
+                onChange={(e) => updateField('location', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={form.notes as string}
+                onChange={(e) => updateField('notes', e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="last_maintenance_date">Last Maintenance</Label>
+                <Input
+                  id="last_maintenance_date"
+                  type="date"
+                  value={(form.last_maintenance_date as string) ?? ''}
+                  onChange={(e) => updateField('last_maintenance_date', e.target.value || null)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="next_maintenance_date">Next Maintenance</Label>
+                <Input
+                  id="next_maintenance_date"
+                  type="date"
+                  value={(form.next_maintenance_date as string) ?? ''}
+                  onChange={(e) => updateField('next_maintenance_date', e.target.value || null)}
+                />
+              </div>
             </div>
           </div>
 
-          <Button className="w-full mt-4" onClick={handleSave}>
-            {equipment ? 'Save Changes' : 'Add Equipment'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <SheetFooter className="flex-col gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+              {loading ? 'Saving...' : equipment ? 'Save Changes' : 'Add Equipment'}
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
   )
 }
