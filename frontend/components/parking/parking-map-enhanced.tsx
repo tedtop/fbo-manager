@@ -16,10 +16,10 @@ import { Button } from '@/components/ui/button'
 import { Plus, Trash2 } from 'lucide-react'
 import { AircraftSheet } from './aircraft-sheet'
 import { AIRCRAFT_TYPES, getAircraftDefinition, DEFAULT_AIRCRAFT_TYPE } from '@/lib/aircraft-types'
+import { feetPerPixelAtZoom, normalizeBearing, aircraftMoveDeltas } from '@/lib/parking-math'
+import { getParkingMapConfig, upsertParkingMapConfig, type ParkingMapConfigInsert } from '@/repositories/parking-map-config.repo'
 
-// Minuteman Aviation Ramp - Optimal view for day-to-day operations
-// TODO: Move these default view settings to a `parking_map_configurations` table
-// to allow per-airport/user customization instead of hardcoding
+// Minuteman Aviation Ramp — fallback defaults used until DB config loads
 const MINUTEMAN_RAMP_CENTER: [number, number] = [-114.08587471583614, 46.92183963008256]
 const INITIAL_ZOOM = 17.97576240461887
 const INITIAL_BEARING = 40
@@ -55,7 +55,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
   const [selectedLocation, setSelectedLocation] =
     useState<ParkingLocation | null>(null)
   const [drawControlAdded, setDrawControlAdded] = useState(false)
-  const [currentBearing, setCurrentBearing] = useState(320)
+  const [currentBearing, setCurrentBearing] = useState(INITIAL_BEARING)
   const queryClient = useQueryClient()
   const { supabase } = useAuth()
 
@@ -77,8 +77,6 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
   const [hasPendingSave, setHasPendingSave] = useState(false)
   const savePendingRef = useRef<Map<number, NodeJS.Timeout>>(new Map())
   const previewOverridesRef = useRef(previewOverrides) // Ref for performance optimizations
-
-  // TODO: Create a `parking_map_configurations` table to store default view settings (center, zoom, bearing) per airport/user instead of localStorage.
 
   const isMutating = useIsMutating()
 
@@ -270,13 +268,15 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     },
   })
 
-  // Local Storage Keys
-  const STORAGE_KEYS = {
-    CENTER_LAT: 'fbo_map_center_lat',
-    CENTER_LNG: 'fbo_map_center_lng',
-    ZOOM: 'fbo_map_zoom',
-    BEARING: 'fbo_map_bearing'
-  }
+  const { data: mapConfig } = useQuery({
+    queryKey: ['parking-map-config', 'MSO'],
+    queryFn: () => getParkingMapConfig(supabase as any, 'MSO'),
+  })
+
+  const saveMapConfigMutation = useMutation({
+    mutationFn: (config: ParkingMapConfigInsert) => upsertParkingMapConfig(supabase as any, config),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['parking-map-config', 'MSO'] }),
+  })
 
   // Initialize Mapbox
   useEffect(() => {
@@ -291,18 +291,10 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
 
     mapboxgl.accessToken = mapboxToken
 
-    // Load saved view or use defaults
-    const savedLat = localStorage.getItem(STORAGE_KEYS.CENTER_LAT)
-    const savedLng = localStorage.getItem(STORAGE_KEYS.CENTER_LNG)
-    const savedZoom = localStorage.getItem(STORAGE_KEYS.ZOOM)
-    const savedBearing = localStorage.getItem(STORAGE_KEYS.BEARING)
-
-    const initialCenter: [number, number] = (savedLat && savedLng)
-      ? [parseFloat(savedLng), parseFloat(savedLat)]
-      : MINUTEMAN_RAMP_CENTER
-
-    const initialZoomVal = savedZoom ? parseFloat(savedZoom) : INITIAL_ZOOM
-    const initialBearingVal = savedBearing ? parseFloat(savedBearing) : 40
+    // Map view loaded from DB (parking_map_configurations) after init — use hardcoded fallbacks here.
+    const initialCenter: [number, number] = MINUTEMAN_RAMP_CENTER
+    const initialZoomVal = INITIAL_ZOOM
+    const initialBearingVal = INITIAL_BEARING
 
     setCurrentBearing(initialBearingVal)
 
@@ -409,6 +401,19 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     */
   }, [configMode, isAdmin, mapLoaded, parkingLocations, drawControlAdded])
 
+  // Apply DB map config to the map on first load (replaces localStorage reads)
+  const mapConfigApplied = useRef(false)
+  useEffect(() => {
+    if (!mapLoaded || !mapConfig || mapConfigApplied.current) return
+    mapConfigApplied.current = true
+    map.current?.jumpTo({
+      center: [mapConfig.center_lon, mapConfig.center_lat],
+      zoom: mapConfig.zoom,
+      bearing: mapConfig.bearing,
+    })
+    setCurrentBearing(mapConfig.bearing)
+  }, [mapLoaded, mapConfig])
+
   // Add parking location polygons to map (when not in config mode)
   // Keeping this so existing polygons are still visible as context, but not editable
   useEffect(() => {
@@ -495,16 +500,6 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     })
   }, [mapLoaded, parkingLocations])
 
-  // Helper to calculate feet per pixel at current latitude
-  const getFeetPerPixel = (lat: number, zoomLevel: number) => {
-    // Earth circumference in feet approx 131,479,725 ft
-    // C * cos(lat) / 2^zoom
-    // 156543.03392 meters * 3.28084 = 513592.7 ft (approx)
-    // Let's use the standard meters value and convert
-    const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoomLevel)
-    return metersPerPixel * 3.28084
-  }
-
   // Store markers in a ref to avoid recreation
   const markersRef = useRef<Map<number, mapboxgl.Marker>>(new Map())
 
@@ -560,7 +555,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     const updateMarkers = () => {
       const currentZoom = map.current!.getZoom()
       const center = map.current!.getCenter()
-      const feetPerPixel = getFeetPerPixel(center.lat, currentZoom)
+      const feetPerPixel = feetPerPixelAtZoom(center.lat, currentZoom)
       const scale = 1 / feetPerPixel
 
       // Update generic aircraft markers
@@ -616,7 +611,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
 
     const currentZoom = map.current.getZoom()
     const center = map.current.getCenter()
-    const feetPerPixel = getFeetPerPixel(center.lat, currentZoom)
+    const feetPerPixel = feetPerPixelAtZoom(center.lat, currentZoom)
     const scale = 1 / feetPerPixel
 
     // Add markers for aircraft with parking locations
@@ -759,7 +754,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
 
     const currentZoom = map.current.getZoom()
     const center = map.current.getCenter()
-    const feetPerPixel = getFeetPerPixel(center.lat, currentZoom)
+    const feetPerPixel = feetPerPixelAtZoom(center.lat, currentZoom)
     const scale = 1 / feetPerPixel
 
     // Track which IDs are currently active to remove stale ones
@@ -1344,22 +1339,9 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
       if (keysPressed.current.has('ArrowRight')) {
         newRotation += rotateStep
       }
-      // Normalize rotation
-      if (newRotation < 0) newRotation += 360
-      if (newRotation >= 360) newRotation -= 360
+      newRotation = normalizeBearing(newRotation)
 
-      // Movement
-      // Calculate direction based on NEW rotation (tank controls usually turn then move, or turn while moving)
-      // We use the map bearing to adjust if needed, but "Forward" is relative to the nose.
-      // Nose is at `newRotation`.
-      // Map projection adjustment:
-      const latRad = newLat * Math.PI / 180
-      // Angle in math (0 is East, counter-clockwise) vs Navigation (0 is North, clockwise)
-      // Math Angle = 90 - Nav Angle
-      const mathRad = (90 - newRotation) * Math.PI / 180
-
-      const dLat = moveStep * Math.sin(mathRad)
-      const dLng = (moveStep * Math.cos(mathRad)) / Math.cos(latRad)
+      const { dLat, dLng } = aircraftMoveDeltas(newRotation, moveStep, newLat)
 
       if (keysPressed.current.has('ArrowUp')) {
         newLat += dLat
@@ -1408,17 +1390,16 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
     const zoom = map.current.getZoom()
     const bearing = map.current.getBearing()
 
-    localStorage.setItem(STORAGE_KEYS.CENTER_LAT, center.lat.toString())
-    localStorage.setItem(STORAGE_KEYS.CENTER_LNG, center.lng.toString())
-    localStorage.setItem(STORAGE_KEYS.ZOOM, zoom.toString())
-    localStorage.setItem(STORAGE_KEYS.BEARING, bearing.toString())
+    saveMapConfigMutation.mutate({
+      airport: 'MSO',
+      user_id: null,
+      center_lat: center.lat,
+      center_lon: center.lng,
+      zoom,
+      bearing,
+    })
 
     setContextMenu(null)
-    console.log('Default View Settings:', JSON.stringify({
-      center: [center.lng, center.lat],
-      zoom: zoom,
-      bearing: bearing
-    }, null, 2))
   }
 
   const handleVerifyData = () => {
@@ -1603,29 +1584,27 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
           </div>
         )}
 
-        {/* Legend */}
-        {/* TODO: Put back in later
-        <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur p-4 rounded-lg shadow-lg border">
-          <h3 className="font-semibold mb-2 text-sm">Legend</h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-[#088] opacity-20 border-2 border-[#088]"></div>
-              <span>Parking Location</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-blue-500 rounded-sm flex items-center justify-center text-white text-xs">
-                ✈
+        {/* Legend — operations mode only */}
+        {!configMode && (
+          <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm p-4 rounded-lg shadow-lg border border-border">
+            <h3 className="font-semibold mb-2 text-sm">Legend</h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-sm border-2 border-cyan-500 bg-cyan-500/20" />
+                <span className="text-muted-foreground">Parking Zone</span>
               </div>
-              <span>Aircraft (drag to move)</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-2">
-              <div>• Icon size reflects aircraft size</div>
-              <div>• Multiple aircraft at same location are stacked</div>
-              {!configMode && <div>• Drag aircraft to reassign parking</div>}
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-5 rounded bg-blue-500 flex items-center justify-center text-white text-[10px] font-bold">✈</div>
+                <span className="text-muted-foreground">Flight (drag to reassign)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-5 rounded bg-white/90 flex items-center justify-center text-[10px] font-bold text-black">✈</div>
+                <span className="text-muted-foreground">Generic aircraft</span>
+              </div>
+              <p className="text-muted-foreground/70 mt-1">Icon size reflects aircraft size</p>
             </div>
           </div>
-        </div>
-        */}
+        )}
       </div>
       {/* Context Menu */}
       {

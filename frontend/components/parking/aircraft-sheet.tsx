@@ -7,6 +7,7 @@ import { Trash2, Plane } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AIRCRAFT_TYPES, getAircraftDefinition } from "@/lib/aircraft-types"
+import { shortestRotationDelta, trueHeadingToCssRotation, pointerToTrueHeading, mapDirectionToHeading } from "@/lib/parking-math"
 
 const DEFAULT_AIRCRAFT_TYPE = "light_single"
 
@@ -38,27 +39,16 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
     const compassPlaneRef = useRef<HTMLDivElement>(null)
     const cumulativeRotationRef = useRef(0)
 
-    // Helper to update compass rotation smoothly
     const updateCompassRotation = (targetRotation: number) => {
         if (!compassPlaneRef.current) return
-
-        const current = cumulativeRotationRef.current
-        // Calculate shortest delta
-        let delta = (targetRotation - current) % 360
-        if (delta > 180) delta -= 360
-        if (delta < -180) delta += 360
-
-        const newCumulative = current + delta
+        const newCumulative = cumulativeRotationRef.current + shortestRotationDelta(cumulativeRotationRef.current, targetRotation)
         cumulativeRotationRef.current = newCumulative
-
-        compassPlaneRef.current.style.transform = `rotate(${newCumulative - mapRotation - 45}deg)`
+        compassPlaneRef.current.style.transform = `rotate(${trueHeadingToCssRotation(newCumulative, mapRotation)}deg)`
     }
 
-    // Update compass when mapRotation changes
     useEffect(() => {
         if (compassPlaneRef.current) {
-            const current = cumulativeRotationRef.current
-            compassPlaneRef.current.style.transform = `rotate(${current - mapRotation - 45}deg)`
+            compassPlaneRef.current.style.transform = `rotate(${trueHeadingToCssRotation(cumulativeRotationRef.current, mapRotation)}deg)`
         }
     }, [mapRotation])
 
@@ -90,20 +80,11 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
             // No, on open, we just snap.
             cumulativeRotationRef.current = aircraft.rotation || 0
 
-            // Update compass ref directly if it exists
             if (compassPlaneRef.current) {
-                compassPlaneRef.current.style.transform = `rotate(${(aircraft.rotation || 0) - mapRotation - 45}deg)`
+                compassPlaneRef.current.style.transform = `rotate(${trueHeadingToCssRotation(aircraft.rotation || 0, mapRotation)}deg)`
             }
 
-            // Smooth rotation update
-            setVisualRotation(prev => {
-                const target = aircraft.rotation || 0
-                let delta = (target - prev) % 360
-                // Normalize delta to -180 to 180
-                if (delta > 180) delta -= 360
-                if (delta < -180) delta += 360
-                return prev + delta
-            })
+            setVisualRotation(prev => prev + shortestRotationDelta(prev, aircraft.rotation || 0))
         }
     }, [isOpen, aircraft?.id])
 
@@ -200,19 +181,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
                                         const centerY = rect.top + rect.height / 2
 
                                         const handleMouseMove = (moveEvent: MouseEvent) => {
-                                            const x = moveEvent.clientX - centerX
-                                            const y = moveEvent.clientY - centerY
-                                            // Calculate visual angle (0 at top)
-                                            let visualDeg = (Math.atan2(y, x) * 180 / Math.PI) + 90
-                                            if (visualDeg < 0) visualDeg += 360
-
-                                            // Adjust for Map Rotation
-                                            // True Heading = Visual Angle + Map Rotation
-                                            let trueHeading = visualDeg + mapRotation
-                                            if (trueHeading < 0) trueHeading += 360
-                                            if (trueHeading >= 360) trueHeading -= 360
-
-                                            const roundedDeg = Math.round(trueHeading)
+                                            const roundedDeg = Math.round(pointerToTrueHeading(moveEvent.clientX, moveEvent.clientY, centerX, centerY, mapRotation))
 
                                             // Update smoothly
                                             updateCompassRotation(roundedDeg)
@@ -226,16 +195,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
 
                                         const handleMouseUp = (upEvent: MouseEvent) => {
                                             setIsDragging(false)
-                                            const x = upEvent.clientX - centerX
-                                            const y = upEvent.clientY - centerY
-                                            let visualDeg = (Math.atan2(y, x) * 180 / Math.PI) + 90
-                                            if (visualDeg < 0) visualDeg += 360
-
-                                            let trueHeading = visualDeg + mapRotation
-                                            if (trueHeading < 0) trueHeading += 360
-                                            if (trueHeading >= 360) trueHeading -= 360
-
-                                            const roundedDeg = Math.round(trueHeading)
+                                            const roundedDeg = Math.round(pointerToTrueHeading(upEvent.clientX, upEvent.clientY, centerX, centerY, mapRotation))
 
                                             if (aircraft) {
                                                 onUpdate(aircraft.id, { rotation: roundedDeg })
@@ -298,9 +258,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
 
                             <div className="flex gap-2 justify-center">
                                 <Button variant="outline" size="icon" onClick={() => {
-                                    // Left relative to Map = 270 + mapRotation
-                                    let h = 270 + mapRotation
-                                    if (h >= 360) h -= 360
+                                    const h = mapDirectionToHeading('left', mapRotation)
                                     setRotation(h)
                                     updateCompassRotation(h)
                                     if (aircraft) {
@@ -311,9 +269,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
                                     <Plane className="w-4 h-4" style={{ transform: 'rotate(225deg)' }} />
                                 </Button>
                                 <Button variant="outline" size="icon" onClick={() => {
-                                    // Top relative to Map = 0 + mapRotation
-                                    let h = 0 + mapRotation
-                                    if (h >= 360) h -= 360
+                                    const h = mapDirectionToHeading('up', mapRotation)
                                     setRotation(h)
                                     updateCompassRotation(h)
                                     if (aircraft) {
@@ -324,9 +280,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
                                     <Plane className="w-4 h-4" style={{ transform: 'rotate(315deg)' }} />
                                 </Button>
                                 <Button variant="outline" size="icon" onClick={() => {
-                                    // Right relative to Map = 90 + mapRotation
-                                    let h = 90 + mapRotation
-                                    if (h >= 360) h -= 360
+                                    const h = mapDirectionToHeading('right', mapRotation)
                                     setRotation(h)
                                     updateCompassRotation(h)
                                     if (aircraft) {
@@ -337,9 +291,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
                                     <Plane className="w-4 h-4" style={{ transform: 'rotate(45deg)' }} />
                                 </Button>
                                 <Button variant="outline" size="icon" onClick={() => {
-                                    // Bottom relative to Map = 180 + mapRotation
-                                    let h = 180 + mapRotation
-                                    if (h >= 360) h -= 360
+                                    const h = mapDirectionToHeading('down', mapRotation)
                                     setRotation(h)
                                     updateCompassRotation(h)
                                     if (aircraft) {
