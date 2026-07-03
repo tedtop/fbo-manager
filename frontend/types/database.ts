@@ -430,6 +430,8 @@ export type Database = {
           notes: string
           last_maintenance_date: string | null
           next_maintenance_date: string | null
+          assigned_fueler_id: number | null
+          available_at: string | null
           created_at: string
           modified_at: string
         }
@@ -446,6 +448,8 @@ export type Database = {
           notes?: string
           last_maintenance_date?: string | null
           next_maintenance_date?: string | null
+          assigned_fueler_id?: number | null
+          available_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['equipment']['Insert']>
         Relationships: []

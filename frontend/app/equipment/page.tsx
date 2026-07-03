@@ -1,172 +1,148 @@
 'use client'
 
-import { useTheme } from '@/components/navigation-wrapper'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { useEquipment } from '@/hooks/use-equipment'
-import type { EquipmentDomain } from '@/types/domain/equipment'
+import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
+import { EquipmentStatusCard } from '@/components/equipment/equipment-status-card'
+import type { EquipmentStatus } from '@/components/equipment/status-badge'
 import { Button } from '@/components/ui/button'
+import type { EquipmentDomain } from '@/types/domain/equipment'
+import type { EquipmentInsert } from '@/repositories/equipment.repo'
 
 export default function EquipmentPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { theme } = useTheme()
 
-  // Use your equipment API hook
-  const {
-    equipment,
-    loading,
-    error,
-    createEquipment,
-    updateEquipment,
-    deleteEquipment,
-    refetch,
-  } = useEquipment()
+  const { equipment, loading, error, createEquipment, updateEquipment, refetch } = useEquipment()
+  useEquipmentRealtime()
 
-  // modal states
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] = useState<EquipmentDomain | null>(null)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-    }
+    if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      refetch()
-    }
+    if (status === 'authenticated') refetch()
   }, [status, refetch])
+
+  function handleStatusChange(id: number, newStatus: EquipmentStatus) {
+    updateEquipment(id, { status: newStatus })
+  }
+
+  function handleEdit(item: EquipmentDomain) {
+    setEditingEquipment(item)
+    setDialogOpen(true)
+  }
+
+  async function handleSubmit(data: EquipmentInsert) {
+    if (editingEquipment) {
+      await updateEquipment(editingEquipment.id, data)
+    } else {
+      await createEquipment(data)
+    }
+    refetch()
+    setDialogOpen(false)
+  }
 
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-muted-foreground">
-          Loading equipment...
-        </div>
+        <div className="text-lg text-muted-foreground">Loading equipment...</div>
       </div>
     )
   }
 
   if (status === 'unauthenticated') return null
 
+  const available = equipment.filter(e => e.status === 'available').length
+  const inUse = equipment.filter(e => e.status === 'in_use').length
+  const outOfService = equipment.filter(e => e.status === 'out_of_service').length
+  const maintenanceWarnings = equipment.filter(
+    e => e.maintenanceStatus === 'due_soon' || e.maintenanceStatus === 'overdue'
+  ).length
+
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Equipment</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Manage ground support equipment inventory
+          <p className="mt-1 text-sm text-muted-foreground">
+            Live status board — updates in real time
           </p>
         </div>
-
-        {/* ADD EQUIPMENT BUTTON */}
         <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => {
-            setEditingEquipment(null)  // create mode
-            setDialogOpen(true)
-          }}
+          onClick={() => { setEditingEquipment(null); setDialogOpen(true) }}
         >
           Add Equipment
         </Button>
       </div>
 
-      {/* DASHBOARD CARDS */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg bg-card px-4 py-5 shadow-sm border border-border">
-          <div className="text-sm font-medium text-muted-foreground">
-            Total Equipment
-          </div>
-          <div className="mt-2 text-3xl font-bold text-foreground">
-            {equipment.length}
-          </div>
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
+          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{equipment.length}</p>
         </div>
-        <div className="rounded-lg bg-card px-4 py-5 shadow-sm border border-border">
-          <div className="text-sm font-medium text-muted-foreground">
-            Available
-          </div>
-          <div className="mt-2 text-3xl font-bold text-success">
-            {equipment.filter((e) => e.status === 'available').length}
-          </div>
+        <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
+          <p className="text-xs text-muted-foreground">Available</p>
+          <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">{available}</p>
         </div>
-        <div className="rounded-lg bg-card px-4 py-5 shadow-sm border border-border">
-          <div className="text-sm font-medium text-muted-foreground">
-            Maintenance
-          </div>
-          <div className="mt-2 text-3xl font-bold text-warning">
-            {equipment.filter((e) => e.status === 'maintenance').length}
-          </div>
+        <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
+          <p className="text-xs text-muted-foreground">In Use</p>
+          <p className="mt-1 text-2xl font-bold text-yellow-600 dark:text-yellow-400">{inUse}</p>
+        </div>
+        <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
+          <p className="text-xs text-muted-foreground">Out of Service</p>
+          <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">{outOfService}</p>
         </div>
       </div>
 
-      {/* TABLE OR PLACEHOLDER */}
-      <div className="rounded-lg bg-card shadow border border-border">
-        <div className="px-6 py-5 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">
-            Equipment Inventory
-          </h2>
+      {/* Maintenance warning banner */}
+      {maintenanceWarnings > 0 && (
+        <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
+          ⚠ {maintenanceWarnings} {maintenanceWarnings === 1 ? 'item has' : 'items have'} maintenance due within 30 days
         </div>
+      )}
 
-        {equipment.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="text-muted-foreground">
-              No equipment found. Add equipment to get started.
-            </div>
-          </div>
-        ) : (
-          <div className="p-6">
-            <ul className="space-y-2">
-              {equipment.map((item) => (
-                <li
-                  key={item.id}
-                  className="p-4 border rounded flex justify-between items-center bg-card"
-                >
-                  <div>
-                    <strong>{item.equipment_name}</strong>
-                    <div className="text-muted-foreground text-sm">
-                      {item.equipment_type} • {item.status}
-                    </div>
-                  </div>
+      {/* Error state */}
+      {error && (
+        <div className="rounded-md border border-red-400 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-300">
+          Failed to load equipment. Please refresh.
+        </div>
+      )}
 
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEditingEquipment(item)
-                      setDialogOpen(true)
-                    }}
-                  >
-                    Edit
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      {/* Status board */}
+      {equipment.length === 0 ? (
+        <div className="rounded-lg bg-card border border-border p-12 text-center text-muted-foreground">
+          No equipment found. Add equipment to get started.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {equipment.map(item => (
+            <EquipmentStatusCard
+              key={item.id}
+              equipment={item}
+              onStatusChange={handleStatusChange}
+              onEdit={handleEdit}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* FORM MODAL */}
+      {/* Form dialog */}
       <EquipmentFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         equipment={editingEquipment}
-        onSubmit={async (data) => {
-          if (editingEquipment) {
-            await updateEquipment(editingEquipment.id, data)
-          } else {
-            await createEquipment(data)
-          }
-          refetch()
-          setDialogOpen(false)
-        }}
+        onSubmit={handleSubmit}
       />
     </div>
   )
 }
-
