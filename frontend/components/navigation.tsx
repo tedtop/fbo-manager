@@ -1,10 +1,17 @@
 'use client'
 
+import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@/components/ui/button'
-import { Moon, Sun } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Moon, Sun, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAuth } from '@/providers/auth-provider'
 
 const navigation = [
   { name: 'Flight Ops', href: '/' },
@@ -15,7 +22,8 @@ const navigation = [
   { name: 'Invoicing', href: '/invoicing' },
   { name: 'Equipment', href: '/equipment' },
   { name: 'Line Schedule', href: '/line-schedule' },
-  { name: 'Training', href: '/training' }
+  { name: 'Training', href: '/training' },
+  { name: 'Users', href: '/users' }
 ]
 
 interface NavigationProps {
@@ -80,13 +88,26 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 )}
               </Button>
             )}
-            <Button
-              variant="outline"
-              onClick={handleSignOut}
-              className="text-foreground"
-            >
-              Sign out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="text-foreground"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
