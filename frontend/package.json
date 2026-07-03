@@ -10,7 +10,6 @@
     "openapi:generate": "openapi -i http://api:8000/api/schema -o types/api --name ApiClient"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.106.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.9.1",
