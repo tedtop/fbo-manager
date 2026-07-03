@@ -2,13 +2,13 @@
 
 import { createClient } from '@/lib/supabase/client'
 import {
+  type TankInsert,
+  type TankUpdate,
+  type TankWithLatestReading,
   createTank,
   deleteTank,
   findAllTanks,
-  updateTank,
-  type TankInsert,
-  type TankUpdate,
-  type TankWithLatestReading
+  updateTank
 } from '@/repositories/tanks.repo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -32,8 +32,15 @@ export function useTanks() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ tankId, updates }: { tankId: string; updates: TankUpdate }) =>
-      updateTank(db, tankId, updates),
+    mutationFn: ({
+      tankId,
+      updates,
+      expectedModifiedAt
+    }: {
+      tankId: string
+      updates: TankUpdate
+      expectedModifiedAt?: string
+    }) => updateTank(db, tankId, updates, expectedModifiedAt),
     onSuccess: () => qc.invalidateQueries({ queryKey: tankKeys.all })
   })
 
@@ -43,12 +50,15 @@ export function useTanks() {
   })
 
   return {
-    tanks: query.data ?? [] as TankWithLatestReading[],
+    tanks: query.data ?? ([] as TankWithLatestReading[]),
     loading: query.isLoading,
     error: query.error,
     createTank: (tank: TankInsert) => createMutation.mutateAsync(tank),
-    updateTank: (tankId: string, updates: TankUpdate) =>
-      updateMutation.mutateAsync({ tankId, updates }),
+    updateTank: (
+      tankId: string,
+      updates: TankUpdate,
+      expectedModifiedAt?: string
+    ) => updateMutation.mutateAsync({ tankId, updates, expectedModifiedAt }),
     deleteTank: (tankId: string) => deleteMutation.mutateAsync(tankId),
     refetch: query.refetch
   }

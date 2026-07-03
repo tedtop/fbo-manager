@@ -1,10 +1,6 @@
 'use client'
 
-import type {
-  FuelTransactionCreateRequest,
-  FuelTransactionDetail,
-  ProgressEnum
-} from '@/types/api'
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,6 +17,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import type { TransactionRow } from '@/repositories/transactions.repo'
+import type {
+  FuelTransactionCreateRequest,
+  FuelTransactionDetail,
+  ProgressEnum
+} from '@/types/api'
 import { useEffect, useState } from 'react'
 import { useFlights } from '../../hooks/use-flights'
 
@@ -28,7 +31,10 @@ interface TransactionFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction?: FuelTransactionDetail | null
-  onSubmit: (data: FuelTransactionCreateRequest) => Promise<void>
+  onSubmit: (
+    data: FuelTransactionCreateRequest,
+    expectedModifiedAt?: string
+  ) => Promise<void>
 }
 
 export function TransactionFormDialog({
@@ -70,11 +76,35 @@ export function TransactionFormDialog({
     }
   }, [transaction, open])
 
+  const editSession = useRecordEditSession<TransactionRow>({
+    table: 'fuel_transaction',
+    recordId: transaction?.id ?? null,
+    modifiedAt: transaction?.modified_at ?? null,
+    enabled: open && !!transaction,
+    onReload: (freshRow) => {
+      setFormData({
+        ticket_number: freshRow.ticket_number,
+        flight: freshRow.flight_id,
+        quantity_gallons: freshRow.quantity_gallons,
+        quantity_lbs: freshRow.quantity_lbs,
+        density: freshRow.density,
+        charge_flags: freshRow.charge_flags
+      })
+    }
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await onSubmit(formData)
+      if (transaction) {
+        const outcome = await editSession.save((expectedModifiedAt) =>
+          onSubmit(formData, expectedModifiedAt)
+        )
+        if (outcome.status === 'conflict') return
+      } else {
+        await onSubmit(formData)
+      }
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to save transaction:', error)
@@ -105,6 +135,12 @@ export function TransactionFormDialog({
             {transaction ? 'Edit Transaction' : 'Create Transaction'}
           </DialogTitle>
         </DialogHeader>
+        {transaction && (
+          <EditSessionStatus
+            editSession={editSession}
+            onOverwriteComplete={() => onOpenChange(false)}
+          />
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ticket_number">Ticket Number *</Label>
@@ -137,7 +173,8 @@ export function TransactionFormDialog({
                 <SelectItem value="none">No flight assigned</SelectItem>
                 {flights.map((flight) => (
                   <SelectItem key={flight.id} value={flight.id}>
-                    {flight.callSign ?? flight.tailNumber} - {flight.aircraftType}
+                    {flight.callSign ?? flight.tailNumber} -{' '}
+                    {flight.aircraftType}
                   </SelectItem>
                 ))}
               </SelectContent>
