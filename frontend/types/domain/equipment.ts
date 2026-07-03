@@ -1,8 +1,8 @@
-import type { EquipmentWithFueler } from '@/repositories/equipment.repo'
+import type { EquipmentRow } from '@/repositories/equipment.repo'
 
 export type MaintenanceStatus = 'overdue' | 'due_soon' | 'current' | 'not_scheduled'
 
-export interface EquipmentDomain extends EquipmentWithFueler {
+export interface EquipmentDomain extends EquipmentRow {
   maintenanceStatus: MaintenanceStatus
   daysUntilMaintenance: number | null
 }
@@ -17,7 +17,7 @@ function computeMaintenanceStatus(nextDate: string | null): MaintenanceStatus {
   return 'current'
 }
 
-export function toEquipmentDomain(row: EquipmentWithFueler): EquipmentDomain {
+export function toEquipmentDomain(row: EquipmentRow): EquipmentDomain {
   const nextDate = row.next_maintenance_date
   const maintenanceStatus = computeMaintenanceStatus(nextDate)
   let daysUntilMaintenance: number | null = null
