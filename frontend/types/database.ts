@@ -591,6 +591,108 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['invoice_item']['Insert']>
         Relationships: []
       }
+      truck_sheets: {
+        Row: {
+          id: number
+          sheet_date: string
+          fuel_truck_id: number
+          truck_number: string
+          fuel_type: 'jet_a' | 'avgas'
+          gallons_down: number | null
+          starting_gallons: number | null
+          front_meter_start: number | null
+          rear_meter_start: number | null
+          fueler_initials: string | null
+          page_count: number
+          ocr_raw: unknown
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          sheet_date: string
+          fuel_truck_id: number
+          truck_number: string
+          fuel_type: 'jet_a' | 'avgas'
+          gallons_down?: number | null
+          starting_gallons?: number | null
+          front_meter_start?: number | null
+          rear_meter_start?: number | null
+          fueler_initials?: string | null
+          page_count?: number
+          ocr_raw?: unknown
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['truck_sheets']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'truck_sheets_fuel_truck_id_fkey'
+            columns: ['fuel_truck_id']
+            isOneToOne: false
+            referencedRelation: 'equipment'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      truck_meter_readings: {
+        Row: {
+          id: number
+          truck_sheet_id: number
+          line_number: number
+          reading_type: 'fueling' | 'tank_fill' | 'transfer_in' | 'transfer_out' | 'other'
+          customer: string | null
+          tail_number: string | null
+          aircraft_type: string | null
+          fuel_type_confirmed: boolean
+          meter: 'front' | 'rear' | null
+          meter_start: number | null
+          meter_end: number | null
+          gallons_pumped: number | null
+          gallons_remaining: number | null
+          req_gals_or_lbs: string | null
+          prist: boolean | null
+          line_tech_initials: string | null
+          invoice_number: string | null
+          service_time: string | null
+          flight_id: number | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          truck_sheet_id: number
+          line_number: number
+          reading_type?: 'fueling' | 'tank_fill' | 'transfer_in' | 'transfer_out' | 'other'
+          customer?: string | null
+          tail_number?: string | null
+          aircraft_type?: string | null
+          fuel_type_confirmed?: boolean
+          meter?: 'front' | 'rear' | null
+          meter_start?: number | null
+          meter_end?: number | null
+          gallons_pumped?: number | null
+          gallons_remaining?: number | null
+          req_gals_or_lbs?: string | null
+          prist?: boolean | null
+          line_tech_initials?: string | null
+          invoice_number?: string | null
+          service_time?: string | null
+          flight_id?: number | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['truck_meter_readings']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'truck_meter_readings_truck_sheet_id_fkey'
+            columns: ['truck_sheet_id']
+            isOneToOne: false
+            referencedRelation: 'truck_sheets'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
