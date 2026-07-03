@@ -6,12 +6,6 @@ import type {
   ProgressEnum
 } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -21,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import { useEffect, useState } from 'react'
 import { useFlights } from '../../hooks/use-flights'
 
@@ -98,118 +100,140 @@ export function TransactionFormDialog({
   }, [formData.quantity_gallons, formData.quantity_lbs])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+      >
+        <SheetHeader className="border-b border-border p-4">
+          <SheetTitle>
             {transaction ? 'Edit Transaction' : 'Create Transaction'}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="ticket_number">Ticket Number *</Label>
-            <Input
-              id="ticket_number"
-              value={formData.ticket_number}
-              onChange={(e) =>
-                setFormData({ ...formData, ticket_number: e.target.value })
-              }
-              required
-              placeholder="Enter ticket number"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="flight">Flight (Optional)</Label>
-            <Select
-              value={formData.flight?.toString() || 'none'}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  flight: value === 'none' ? null : Number.parseInt(value)
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a flight" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No flight assigned</SelectItem>
-                {flights.map((flight) => (
-                  <SelectItem key={flight.id} value={flight.id}>
-                    {flight.callSign ?? flight.tailNumber} - {flight.aircraftType}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          </SheetTitle>
+          <SheetDescription>
+            {transaction
+              ? 'Update the details for this fuel transaction.'
+              : 'Record a new fuel transaction.'}
+          </SheetDescription>
+        </SheetHeader>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             <div className="space-y-2">
-              <Label htmlFor="quantity_gallons">Quantity (Gallons) *</Label>
+              <Label htmlFor="ticket_number">Ticket Number *</Label>
               <Input
-                id="quantity_gallons"
-                type="number"
-                step="0.01"
-                value={formData.quantity_gallons}
+                id="ticket_number"
+                value={formData.ticket_number}
                 onChange={(e) =>
-                  setFormData({ ...formData, quantity_gallons: e.target.value })
+                  setFormData({ ...formData, ticket_number: e.target.value })
                 }
                 required
-                placeholder="0.00"
+                placeholder="Enter ticket number"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="quantity_lbs">Quantity (Lbs) *</Label>
-              <Input
-                id="quantity_lbs"
-                type="number"
-                step="0.01"
-                value={formData.quantity_lbs}
-                onChange={(e) =>
-                  setFormData({ ...formData, quantity_lbs: e.target.value })
+              <Label htmlFor="flight">Flight (Optional)</Label>
+              <Select
+                value={formData.flight?.toString() || 'none'}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    flight: value === 'none' ? null : Number.parseInt(value)
+                  })
                 }
-                required
-                placeholder="0.00"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No flight assigned</SelectItem>
+                  {flights.map((flight) => (
+                    <SelectItem key={flight.id} value={flight.id}>
+                      {flight.callSign ?? flight.tailNumber} -{' '}
+                      {flight.aircraftType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="quantity_gallons">Quantity (Gallons) *</Label>
+                <Input
+                  id="quantity_gallons"
+                  type="number"
+                  step="0.01"
+                  value={formData.quantity_gallons}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      quantity_gallons: e.target.value
+                    })
+                  }
+                  required
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quantity_lbs">Quantity (Lbs) *</Label>
+                <Input
+                  id="quantity_lbs"
+                  type="number"
+                  step="0.01"
+                  value={formData.quantity_lbs}
+                  onChange={(e) =>
+                    setFormData({ ...formData, quantity_lbs: e.target.value })
+                  }
+                  required
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="density">Density (lbs/gal)</Label>
+              <Input
+                id="density"
+                type="number"
+                step="0.0001"
+                value={formData.density}
+                onChange={(e) =>
+                  setFormData({ ...formData, density: e.target.value })
+                }
+                placeholder="Auto-calculated"
+                disabled
+                className="bg-muted"
               />
+              <p className="text-sm text-muted-foreground">
+                Density is automatically calculated from gallons and lbs
+              </p>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="density">Density (lbs/gal)</Label>
-            <Input
-              id="density"
-              type="number"
-              step="0.0001"
-              value={formData.density}
-              onChange={(e) =>
-                setFormData({ ...formData, density: e.target.value })
-              }
-              placeholder="Auto-calculated"
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-sm text-muted-foreground">
-              Density is automatically calculated from gallons and lbs
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
+          <SheetFooter className="flex-col gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
               {loading ? 'Saving...' : transaction ? 'Update' : 'Create'}
             </Button>
-          </div>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
