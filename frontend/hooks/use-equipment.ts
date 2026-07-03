@@ -37,7 +37,18 @@ export function useEquipment() {
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }: { id: number; updates: EquipmentUpdate }) =>
       updateEquipment(db, id, updates),
-    onSuccess: () => qc.invalidateQueries({ queryKey: equipmentKeys.all })
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey: equipmentKeys.lists() })
+      const prev = qc.getQueryData<EquipmentDomain[]>(equipmentKeys.lists())
+      qc.setQueryData<EquipmentDomain[]>(equipmentKeys.lists(), old =>
+        old?.map(e => e.id === id ? { ...e, ...updates } : e) ?? []
+      )
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(equipmentKeys.lists(), ctx.prev)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: equipmentKeys.all })
   })
 
   const deleteMutation = useMutation({

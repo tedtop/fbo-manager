@@ -5,10 +5,17 @@ export type EquipmentRow = Tables<'equipment'>
 export type EquipmentInsert = TablesInsert<'equipment'>
 export type EquipmentUpdate = TablesUpdate<'equipment'>
 
-export async function findAllEquipment(db: SupabaseClient<Database>): Promise<EquipmentRow[]> {
-  const { data, error } = await db.from('equipment').select('*').order('equipment_id')
+export type EquipmentWithFueler = EquipmentRow & {
+  fueler: { id: number; fueler_name: string } | null
+}
+
+export async function findAllEquipment(db: SupabaseClient<Database>): Promise<EquipmentWithFueler[]> {
+  const { data, error } = await db
+    .from('equipment')
+    .select('*, fueler:assigned_fueler_id(id, fueler_name)')
+    .order('equipment_name')
   if (error) throw error
-  return data
+  return data as EquipmentWithFueler[]
 }
 
 export async function findEquipmentById(
