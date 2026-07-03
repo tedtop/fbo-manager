@@ -2,12 +2,9 @@
 
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import { useTheme } from '@/components/navigation-wrapper'
+import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useFuelers } from '@/hooks/use-fuelers'
-import type {
-  FuelTransactionCreateRequest,
-  FuelTransactionDetail
-} from '@/types/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -32,7 +29,7 @@ export default function FuelDispatchPage() {
   const { fuelers } = useFuelers()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] =
-    useState<FuelTransactionDetail | null>(null)
+    useState<TransactionWithRelations | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -43,7 +40,7 @@ export default function FuelDispatchPage() {
   }, [status, router])
 
   const handleCreateTransaction = async (
-    data: FuelTransactionCreateRequest
+    data: TransactionInsert
   ) => {
     try {
       await createTransaction(data)
@@ -56,13 +53,13 @@ export default function FuelDispatchPage() {
     }
   }
 
-  const handleEditTransaction = (transaction: FuelTransactionDetail) => {
+  const handleEditTransaction = (transaction: TransactionWithRelations) => {
     setEditingTransaction(transaction)
     setDialogOpen(true)
   }
 
   const handleUpdateTransaction = async (
-    data: FuelTransactionCreateRequest
+    data: TransactionInsert
   ) => {
     if (!editingTransaction) return
     try {

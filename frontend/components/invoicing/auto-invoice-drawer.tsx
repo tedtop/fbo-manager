@@ -96,7 +96,7 @@ export function AutoInvoiceDrawer() {
 
         // Add fuel line items from completed transactions
         for (const txn of fuelTxns) {
-            const gallons = Number.parseFloat(txn.quantity_gallons)
+            const gallons = txn.quantity_gallons ? Number.parseFloat(txn.quantity_gallons) : 0
             if (gallons > 0) {
                 items.push({
                     key:         `fuel-${txn.id}`,
@@ -131,11 +131,11 @@ export function AutoInvoiceDrawer() {
             const hasFuel = prev.some((i) => i.key.startsWith("fuel-"))
             if (hasFuel) return prev
             const fuelItems = fuelTxns
-                .filter((t) => Number.parseFloat(t.quantity_gallons) > 0)
+                .filter((t) => (t.quantity_gallons ? Number.parseFloat(t.quantity_gallons) : 0) > 0)
                 .map((t) => ({
                     key:         `fuel-${t.id}`,
                     description: "Jet A Fuel",
-                    quantity:    Number.parseFloat(t.quantity_gallons),
+                    quantity:    t.quantity_gallons ? Number.parseFloat(t.quantity_gallons) : 0,
                     unit_price:  6.45,
                 }))
             return [...fuelItems, ...prev]

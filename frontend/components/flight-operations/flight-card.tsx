@@ -17,6 +17,7 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -78,6 +79,7 @@ interface FlightCardProps {
   theme: 'dark' | 'light'
   onEdit: (flight: Flight) => void
   onDelete: (id: string) => void
+  onOrderFuel?: (flight: Flight) => void
   isLinked?: boolean
   linkColor?: string
   isHovered?: boolean
@@ -183,6 +185,7 @@ export function FlightCard({
   theme,
   onEdit,
   onDelete,
+  onOrderFuel,
   isLinked,
   linkColor,
   isHovered,
@@ -190,9 +193,6 @@ export function FlightCard({
 }: FlightCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isEditingServices, setIsEditingServices] = useState(false)
-  const [fuelOrder, setFuelOrder] = useState('')
-  const [isFueled, setIsFueled] = useState(false)
-  const [isWaitAdvise, setIsWaitAdvise] = useState(false)
   const [passengerCount, setPassengerCount] = useState(
     flight.passengers?.toString() || ''
   )
@@ -202,6 +202,9 @@ export function FlightCard({
     text: string
     isUrgent: boolean
   }>({ text: '', isUrgent: false })
+
+  const isDbFlight = !flight.id.startsWith('manual-')
+  const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
 
   const status = statusConfig[flight.status]
   const isArrival =
@@ -404,34 +407,30 @@ export function FlightCard({
               <div className="flex items-center gap-2">
                 <FuelIcon className="w-3.5 h-3.5 text-blue-500" />
                 <span className="text-xs font-semibold text-foreground">
-                  Fuel Order
+                  Fuel
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="W/A"
-                  value={fuelOrder}
-                  onChange={(e) => setFuelOrder(e.target.value)}
-                  className="text-xs h-7"
-                />
+              {fuelStatus.isFueled ? (
+                <div className="flex items-center gap-2 text-xs text-green-500">
+                  <Check className="w-3 h-3" />
+                  Fueled
+                  {fuelStatus.fueledAt && (
+                    <span className="text-muted-foreground">
+                      at {new Date(fuelStatus.fueledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+              ) : (
                 <Button
                   size="sm"
-                  variant={isFueled ? 'default' : 'outline'}
-                  onClick={() => setIsFueled(!isFueled)}
+                  variant="outline"
+                  onClick={() => onOrderFuel?.(flight)}
                   className="h-7 text-xs"
                 >
-                  {isFueled ? <Check className="w-3 h-3 mr-1" /> : null}
-                  Fueled
+                  <FuelIcon className="w-3 h-3 mr-1" />
+                  Order Fuel
                 </Button>
-                <Button
-                  size="sm"
-                  variant={isWaitAdvise ? 'secondary' : 'outline'}
-                  onClick={() => setIsWaitAdvise(!isWaitAdvise)}
-                  className="h-7 text-xs px-2"
-                >
-                  W/A
-                </Button>
-              </div>
+              )}
             </div>
           )}
 

@@ -7,6 +7,7 @@ interface FlightListProps {
   theme: 'dark' | 'light'
   onEditFlight: (flight: Flight) => void
   onDeleteFlight: (id: string) => void
+  onOrderFuel?: (flight: Flight) => void
   linkedFlightIds?: Set<string>
   flightLinkColors?: Map<string, string>
   hoveredFlightId?: string | null
@@ -19,6 +20,7 @@ export function FlightList({
   theme,
   onEditFlight,
   onDeleteFlight,
+  onOrderFuel,
   linkedFlightIds,
   flightLinkColors,
   hoveredFlightId,
@@ -46,6 +48,7 @@ export function FlightList({
             theme={theme}
             onEdit={onEditFlight}
             onDelete={onDeleteFlight}
+            onOrderFuel={onOrderFuel}
             isLinked={isLinked}
             linkColor={linkColor}
             isHovered={isHovered}

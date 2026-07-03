@@ -11,6 +11,7 @@ interface FlightBoardProps {
   onAddFlight: (flight: Flight) => void
   onEditFlight: (flight: Flight) => void
   onDeleteFlight: (id: string) => void
+  onOrderFuel?: (flight: Flight) => void
   filters: FilterType
 }
 
@@ -20,6 +21,7 @@ export function FlightBoard({
   flights,
   onEditFlight,
   onDeleteFlight,
+  onOrderFuel,
   filters
 }: FlightBoardProps) {
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null)
@@ -126,6 +128,7 @@ export function FlightBoard({
               theme={theme}
               onEditFlight={onEditFlight}
               onDeleteFlight={onDeleteFlight}
+              onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedFlightIds}
               flightLinkColors={flightLinkColors}
               hoveredFlightId={hoveredFlightId}
@@ -147,6 +150,7 @@ export function FlightBoard({
               theme={theme}
               onEditFlight={onEditFlight}
               onDeleteFlight={onDeleteFlight}
+              onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedFlightIds}
               flightLinkColors={flightLinkColors}
               hoveredFlightId={hoveredFlightId}
@@ -169,6 +173,7 @@ export function FlightBoard({
             theme={theme}
             onEditFlight={onEditFlight}
             onDeleteFlight={onDeleteFlight}
+            onOrderFuel={onOrderFuel}
             linkedFlightIds={linkedFlightIds}
             flightLinkColors={flightLinkColors}
             hoveredFlightId={hoveredFlightId}
@@ -190,6 +195,7 @@ export function FlightBoard({
             theme={theme}
             onEditFlight={onEditFlight}
             onDeleteFlight={onDeleteFlight}
+            onOrderFuel={onOrderFuel}
             linkedFlightIds={linkedFlightIds}
             flightLinkColors={flightLinkColors}
             hoveredFlightId={hoveredFlightId}

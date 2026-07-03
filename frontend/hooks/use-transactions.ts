@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import {
   createTransaction,
+  deleteTransaction as deleteTransactionRepo,
   findAllTransactions,
   updateTransaction,
   type TransactionFilters,
@@ -38,6 +39,11 @@ export function useTransactions(filters?: TransactionFilters) {
     onSuccess: () => qc.invalidateQueries({ queryKey: transactionKeys.all })
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteTransactionRepo(db, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: transactionKeys.all })
+  })
+
   return {
     transactions: query.data ?? [] as TransactionWithRelations[],
     loading: query.isLoading,
@@ -45,6 +51,7 @@ export function useTransactions(filters?: TransactionFilters) {
     createTransaction: (tx: TransactionInsert) => createMutation.mutateAsync(tx),
     updateTransaction: (id: number, updates: TransactionUpdate) =>
       updateMutation.mutateAsync({ id, updates }),
+    deleteTransaction: (id: number) => deleteMutation.mutateAsync(id),
     refetch: query.refetch
   }
 }
