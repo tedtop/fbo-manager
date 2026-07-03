@@ -421,7 +421,7 @@ export type Database = {
           id: number
           equipment_id: string
           equipment_name: string
-          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'other'
+          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'golf_cart' | 'staff_vehicle' | 'other'
           manufacturer: string
           model: string
           serial_number: string
@@ -439,7 +439,7 @@ export type Database = {
           id?: number
           equipment_id: string
           equipment_name: string
-          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'other'
+          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'golf_cart' | 'staff_vehicle' | 'other'
           manufacturer?: string
           model?: string
           serial_number?: string

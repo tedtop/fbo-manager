@@ -4,7 +4,21 @@ import { cn } from '@/lib/utils'
 import { StatusBadge, type EquipmentStatus } from './status-badge'
 import type { EquipmentDomain } from '@/types/domain/equipment'
 
-const TYPE_ICONS: Record<string, string> = {
+export const EQUIPMENT_TYPES = [
+  'fuel_truck',
+  'tug',
+  'gpu',
+  'air_start',
+  'belt_loader',
+  'stairs',
+  'lavatory_service',
+  'water_service',
+  'golf_cart',
+  'staff_vehicle',
+  'other',
+] as const
+
+export const TYPE_ICONS: Record<string, string> = {
   fuel_truck:       '🚛',
   tug:              '🚜',
   gpu:              '⚡',
@@ -13,6 +27,8 @@ const TYPE_ICONS: Record<string, string> = {
   stairs:           '🪜',
   lavatory_service: '🚿',
   water_service:    '💧',
+  golf_cart:        '⛳',
+  staff_vehicle:    '🚗',
   other:            '🔧',
 }
 
@@ -23,7 +39,7 @@ const STATUS_BORDER: Record<string, string> = {
   out_of_service: 'border-l-red-500',
 }
 
-function formatTypeLabel(type: string): string {
+export function formatTypeLabel(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
