@@ -1,10 +1,17 @@
 'use client'
 
+import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@frontend/ui/components/ui/button'
-import { Moon, Sun } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@frontend/ui/components/ui/dropdown-menu'
+import { Moon, Sun, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAuth } from '@/providers/auth-provider'
 
 const navigation = [
   { name: 'Flight Ops', href: '/' },
@@ -14,7 +21,8 @@ const navigation = [
   { name: 'Invoicing', href: '/invoicing' },
   { name: 'Equipment', href: '/equipment' },
   { name: 'Line Schedule', href: '/line-schedule' },
-  { name: 'Training', href: '/training' }
+  { name: 'Training', href: '/training' },
+  { name: 'Users', href: '/users' }
 ]
 
 interface NavigationProps {
@@ -37,7 +45,10 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-12 items-center justify-between">
           <div className="flex items-center space-x-6">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-lg font-bold text-foreground"
+            >
               <img
                 src="/fbo-manager-logo.png"
                 alt="Logo"
@@ -53,10 +64,11 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`text-sm font-medium ${isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                  className={`text-sm font-medium ${
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
                   {item.name}
                 </Link>
@@ -79,13 +91,26 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 )}
               </Button>
             )}
-            <Button
-              variant="outline"
-              onClick={handleSignOut}
-              className="text-foreground"
-            >
-              Sign out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="text-foreground"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

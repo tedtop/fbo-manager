@@ -571,6 +571,124 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['invoice_item']['Insert']>
         Relationships: []
       }
+      profiles: {
+        Row: {
+          id: string
+          email: string
+          first_name: string
+          last_name: string
+          phone_number: string
+          employee_id: string | null
+          status: 'active' | 'disabled'
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id: string
+          email: string
+          first_name?: string
+          last_name?: string
+          phone_number?: string
+          employee_id?: string | null
+          status?: 'active' | 'disabled'
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['profiles']['Insert']>
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          id: number
+          name: string
+          description: string
+          is_system: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          description?: string
+          is_system?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['roles']['Insert']>
+        Relationships: []
+      }
+      module_permissions: {
+        Row: {
+          id: number
+          role_id: number
+          module:
+            | 'equipment'
+            | 'invoicing'
+            | 'training'
+            | 'parking'
+            | 'flight_operations'
+            | 'line_schedule'
+            | 'truck_sheets'
+            | 'fuel_farm'
+            | 'users'
+          access_level: 'view' | 'manage'
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          role_id: number
+          module:
+            | 'equipment'
+            | 'invoicing'
+            | 'training'
+            | 'parking'
+            | 'flight_operations'
+            | 'line_schedule'
+            | 'truck_sheets'
+            | 'fuel_farm'
+            | 'users'
+          access_level: 'view' | 'manage'
+        }
+        Update: Partial<Database['public']['Tables']['module_permissions']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'module_permissions_role_id_fkey'
+            columns: ['role_id']
+            referencedRelation: 'roles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: number
+          user_id: string
+          role_id: number
+          assigned_at: string
+          assigned_by: string | null
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          role_id: number
+          assigned_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['user_roles']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'user_roles_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'user_roles_role_id_fkey'
+            columns: ['role_id']
+            referencedRelation: 'roles'
+            referencedColumns: ['id']
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
