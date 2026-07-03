@@ -1,5 +1,6 @@
 allowBuilds:
   '@biomejs/biome': true
+  esbuild: true
   sharp: true
 # @anthropic-ai/sdk@0.110.0 trips pnpm's minimumReleaseAge supply-chain check (it's a
 # recent release) even though it was already a pinned dependency before this change —

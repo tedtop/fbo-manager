@@ -67,6 +67,13 @@ coverage/
 .pytest_cache/
 .ruff_cache
 
+# Playwright E2E (frontend/e2e) — local run artifacts and saved login sessions,
+# never something to commit even though the target is a throwaway local stack
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/e2e/.auth/
+
 # -----------------------------
 # Editors / IDEs / Local tooling
 # -----------------------------
