@@ -5,10 +5,22 @@ import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { useEquipment } from '@/hooks/use-equipment'
-import type { EquipmentDomain } from '@/types/domain/equipment'
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
+import { useEquipment } from '@/hooks/use-equipment'
+import {
+  EQUIPMENT_TYPES,
+  type EquipmentType,
+  getEquipmentTypeDefinition
+} from '@/lib/equipment-types'
+import type { EquipmentDomain } from '@/types/domain/equipment'
 import { Button } from '@frontend/ui/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@frontend/ui/components/ui/select'
 
 export default function EquipmentPage() {
   const { data: session, status } = useSession()
@@ -23,12 +35,20 @@ export default function EquipmentPage() {
     createEquipment,
     updateEquipment,
     deleteEquipment,
-    refetch,
+    refetch
   } = useEquipment()
 
   // modal states
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingEquipment, setEditingEquipment] = useState<EquipmentDomain | null>(null)
+  const [editingEquipment, setEditingEquipment] =
+    useState<EquipmentDomain | null>(null)
+
+  // type filter
+  const [typeFilter, setTypeFilter] = useState<EquipmentType | 'all'>('all')
+  const filteredEquipment =
+    typeFilter === 'all'
+      ? equipment
+      : equipment.filter((e) => e.equipment_type === typeFilter)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -56,7 +76,6 @@ export default function EquipmentPage() {
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -70,7 +89,7 @@ export default function EquipmentPage() {
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => {
-            setEditingEquipment(null)  // create mode
+            setEditingEquipment(null) // create mode
             setDialogOpen(true)
           }}
         >
@@ -108,44 +127,73 @@ export default function EquipmentPage() {
 
       {/* TABLE OR PLACEHOLDER */}
       <div className="rounded-lg bg-card shadow border border-border">
-        <div className="px-6 py-5 border-b border-border">
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold text-foreground">
             Equipment Inventory
           </h2>
+
+          <Select
+            value={typeFilter}
+            onValueChange={(value) =>
+              setTypeFilter(value as EquipmentType | 'all')
+            }
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {EQUIPMENT_TYPES.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {equipment.length === 0 ? (
+        {filteredEquipment.length === 0 ? (
           <div className="p-8 text-center">
             <div className="text-muted-foreground">
-              No equipment found. Add equipment to get started.
+              {equipment.length === 0
+                ? 'No equipment found. Add equipment to get started.'
+                : 'No equipment matches this type.'}
             </div>
           </div>
         ) : (
           <div className="p-6">
             <ul className="space-y-2">
-              {equipment.map((item) => (
-                <li
-                  key={item.id}
-                  className="p-4 border rounded flex justify-between items-center bg-card"
-                >
-                  <div>
-                    <strong>{item.equipment_name}</strong>
-                    <div className="text-muted-foreground text-sm">
-                      {item.equipment_type} • {item.status}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEditingEquipment(item)
-                      setDialogOpen(true)
-                    }}
+              {filteredEquipment.map((item) => {
+                const { label, icon: Icon } = getEquipmentTypeDefinition(
+                  item.equipment_type
+                )
+                return (
+                  <li
+                    key={item.id}
+                    className="p-4 border rounded flex justify-between items-center bg-card"
                   >
-                    Edit
-                  </Button>
-                </li>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <Icon className="size-5 text-muted-foreground shrink-0" />
+                      <div>
+                        <strong>{item.equipment_name}</strong>
+                        <div className="text-muted-foreground text-sm">
+                          {label} • {item.status}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditingEquipment(item)
+                        setDialogOpen(true)
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}
@@ -169,4 +217,3 @@ export default function EquipmentPage() {
     </div>
   )
 }
-
