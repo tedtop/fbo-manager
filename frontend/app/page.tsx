@@ -4,12 +4,15 @@ import { CalendarWeekView } from '@/components/flight-operations/calendar-week-v
 import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
 import { FlightBoard } from '@/components/flight-operations/flight-board'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
+import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import type {
   Flight,
   FlightFilters
 } from '@/components/flight-operations/types'
 import { useTheme } from '@/components/navigation-wrapper'
 import { useFlights } from '@/hooks/use-flights'
+import { useTransactions } from '@/hooks/use-transactions'
+import { useToast } from '@/hooks/use-toast'
 import { ErrorMessage } from '@/messages/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
@@ -41,6 +44,8 @@ export default function FlightOperationsPage() {
 
   const { flights, loading, error, createFlight, updateFlight, deleteFlight } =
     useFlights(dateParams)
+  const { createTransaction } = useTransactions()
+  const { toast } = useToast()
   const { theme } = useTheme()
   const [filters, setFilters] = useState<FlightFilters>({
     search: '',
@@ -49,6 +54,8 @@ export default function FlightOperationsPage() {
     services: []
   })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [fuelDialogOpen, setFuelDialogOpen] = useState(false)
+  const [fuelFlight, setFuelFlight] = useState<Flight | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -105,6 +112,22 @@ export default function FlightOperationsPage() {
       await deleteFlight(id)
     } catch (err) {
       console.error('Failed to delete flight:', err)
+    }
+  }
+
+  const handleOrderFuel = (flight: Flight) => {
+    setFuelFlight(flight)
+    setFuelDialogOpen(true)
+  }
+
+  const handleFuelOrderSubmit = async (data: import('@/repositories/transactions.repo').TransactionInsert) => {
+    try {
+      await createTransaction(data)
+      toast({ title: 'Fuel order created' })
+      setFuelDialogOpen(false)
+      setFuelFlight(null)
+    } catch (err) {
+      console.error('Failed to create fuel order:', err)
     }
   }
 
@@ -169,6 +192,7 @@ export default function FlightOperationsPage() {
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onOrderFuel={handleOrderFuel}
           filters={filters}
         />
       )}
@@ -180,6 +204,7 @@ export default function FlightOperationsPage() {
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onOrderFuel={handleOrderFuel}
           filters={filters}
         />
       )}
@@ -191,6 +216,7 @@ export default function FlightOperationsPage() {
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onOrderFuel={handleOrderFuel}
           filters={filters}
         />
       )}
@@ -211,6 +237,17 @@ export default function FlightOperationsPage() {
         onOpenChange={setIsAddDialogOpen}
         onSubmit={handleAddFlight}
         theme={theme}
+      />
+
+      <TransactionFormDialog
+        open={fuelDialogOpen}
+        onOpenChange={(open) => {
+          setFuelDialogOpen(open)
+          if (!open) setFuelFlight(null)
+        }}
+        onSubmit={handleFuelOrderSubmit}
+        defaultFlightId={fuelFlight ? Number(fuelFlight.id.replace('manual-', '')) : null}
+        defaultTailNumber={fuelFlight?.tailNumber}
       />
     </div>
   )
