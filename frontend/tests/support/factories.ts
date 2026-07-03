@@ -6,7 +6,6 @@ import { createFlight } from '@/repositories/flights.repo'
 import { createFueler } from '@/repositories/fuelers.repo'
 import { createParkingLocation } from '@/repositories/parking.repo'
 import { createTank } from '@/repositories/tanks.repo'
-import { createTraining } from '@/repositories/trainings.repo'
 
 let counter = 0
 /** Monotonic-ish suffix so parallel-within-a-file fixtures never collide on unique text PKs. */
@@ -72,15 +71,25 @@ export async function makeParkingLocation(
   })
 }
 
+// `training.repo.ts` was removed when the training/compliance module was rebuilt onto
+// training_course/training_completion (see repositories/training-courses.repo.ts), but the
+// underlying `training` table is still referenced by certifications.repo.ts's `fueler_training`
+// join, so this factory inserts directly instead of going through a now-deleted repo function.
 export async function makeTraining(
   db: Db,
   overrides: Partial<Database['public']['Tables']['training']['Insert']> = {}
 ) {
-  return createTraining(db, {
-    training_name: unique('Training '),
-    validity_period_days: 365,
-    ...overrides,
-  })
+  const { data, error } = await db
+    .from('training')
+    .insert({
+      training_name: unique('Training '),
+      validity_period_days: 365,
+      ...overrides,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
 export async function makeFueler(

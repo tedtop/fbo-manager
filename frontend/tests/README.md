@@ -68,3 +68,13 @@ SUPABASE_TEST_URL=http://localhost:54321 \
 SUPABASE_TEST_SERVICE_ROLE_KEY=... \
 pnpm test:repos
 ```
+
+## Coverage
+
+All repository files present on `master` as of this writing have integration tests **except**
+the ones added by the concurrent user-management/training-compliance rebuild (`profiles.repo.ts`,
+`roles.repo.ts`, `staff.repo.ts`, `user-roles.repo.ts`, `training-courses.repo.ts`,
+`training-completions.repo.ts`). Those introduce a different, UUID-keyed `profiles`/`roles`/
+`user_roles`/`module_permissions`/`department_member` schema (backed by Supabase Auth) that
+this migration doesn't model yet — deliberately left out of this pass rather than guessing at
+an auth-integrated schema; a good next slice of work.
