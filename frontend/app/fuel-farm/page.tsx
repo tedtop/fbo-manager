@@ -8,6 +8,7 @@ import type { TankInsert, TankWithLatestReading } from '@/repositories/tanks.rep
 import { createTankReading } from '@/repositories/tank-readings.repo'
 import { inchesToGallons } from '@/lib/gallons-tables'
 import { createClient } from '@/lib/supabase/client'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -78,21 +79,27 @@ export default function FuelFarmPage() {
     setDialogOpen(true)
   }
 
-  const handleUpdateTank = async (data: TankInsert) => {
+  const handleUpdateTank = async (data: TankInsert, expectedModifiedAt?: string) => {
     if (!editingTank) return
     try {
-      await updateTank(editingTank.tank_id, {
-        tank_name: data.tank_name as string,
-        fuel_type: data.fuel_type as 'jet_a' | 'avgas',
-        capacity_gallons: data.capacity_gallons,
-        min_level_inches: data.min_level_inches,
-        max_level_inches: data.max_level_inches,
-        usable_min_inches: data.usable_min_inches,
-        usable_max_inches: data.usable_max_inches
-      })
+      await updateTank(
+        editingTank.tank_id,
+        {
+          tank_name: data.tank_name as string,
+          fuel_type: data.fuel_type as 'jet_a' | 'avgas',
+          capacity_gallons: data.capacity_gallons,
+          min_level_inches: data.min_level_inches,
+          max_level_inches: data.max_level_inches,
+          usable_min_inches: data.usable_min_inches,
+          usable_max_inches: data.usable_max_inches
+        },
+        expectedModifiedAt
+      )
       showSuccess('Tank updated successfully')
       setEditingTank(null)
     } catch (err) {
+      // A concurrency conflict is handled by the form's edit-session dialog, not a toast.
+      if (err instanceof ConcurrencyConflictError) throw err
       showError('Failed to update tank')
       throw err
     }

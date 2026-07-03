@@ -1,7 +1,9 @@
 'use client'
 
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
 import type {
   TankInsert,
+  TankRow,
   TankWithLatestReading
 } from '@/repositories/tanks.repo'
 import { Button } from '@/components/ui/button'
@@ -22,13 +24,14 @@ import {
   SheetHeader,
   SheetTitle
 } from '@/components/ui/sheet'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import { useEffect, useState } from 'react'
 
 interface TankFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   tank?: TankWithLatestReading | null
-  onSubmit: (data: TankInsert) => Promise<void>
+  onSubmit: (data: TankInsert, expectedModifiedAt?: string) => Promise<void>
 }
 
 export function TankFormDialog({
@@ -75,11 +78,38 @@ export function TankFormDialog({
     }
   }, [tank, open])
 
+  const editSession = useRecordEditSession<TankRow>({
+    table: 'fuel_tank',
+    idColumn: 'tank_id',
+    recordId: tank?.tank_id ?? null,
+    modifiedAt: tank?.modified_at ?? null,
+    enabled: open && !!tank,
+    onReload: (freshRow) => {
+      setFormData({
+        tank_id: freshRow.tank_id,
+        tank_name: freshRow.tank_name,
+        fuel_type: freshRow.fuel_type,
+        capacity_gallons: freshRow.capacity_gallons,
+        min_level_inches: freshRow.min_level_inches,
+        max_level_inches: freshRow.max_level_inches,
+        usable_min_inches: freshRow.usable_min_inches,
+        usable_max_inches: freshRow.usable_max_inches
+      })
+    }
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await onSubmit(formData)
+      if (tank) {
+        const outcome = await editSession.save((expectedModifiedAt) =>
+          onSubmit(formData, expectedModifiedAt)
+        )
+        if (outcome.status === 'conflict') return
+      } else {
+        await onSubmit(formData)
+      }
       onOpenChange(false)
     } catch (error) {
       console.error('Failed to save tank:', error)
@@ -102,6 +132,14 @@ export function TankFormDialog({
               : 'Add a new fuel tank to the farm.'}
           </SheetDescription>
         </SheetHeader>
+        {tank && (
+          <div className="px-4 pt-4">
+            <EditSessionStatus
+              editSession={editSession}
+              onOverwriteComplete={() => onOpenChange(false)}
+            />
+          </div>
+        )}
         <form
           onSubmit={handleSubmit}
           className="flex flex-1 flex-col overflow-hidden"

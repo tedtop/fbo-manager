@@ -1,5 +1,6 @@
 'use client'
 
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,7 +26,12 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useFlights } from '@/hooks/use-flights'
-import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import type {
+  TransactionInsert,
+  TransactionRow,
+  TransactionWithRelations
+} from '@/repositories/transactions.repo'
 import { format } from 'date-fns'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -46,7 +52,10 @@ interface TransactionFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction?: TransactionWithRelations | null
-  onSubmit: (data: TransactionInsert) => Promise<void>
+  onSubmit: (
+    data: TransactionInsert,
+    expectedModifiedAt?: string
+  ) => Promise<void>
   defaultFlightId?: number | null
   defaultTailNumber?: string
 }
@@ -126,6 +135,25 @@ export function TransactionFormDialog({
       })
   }, [open, transaction, defaultFlightId, defaultTailNumber, db])
 
+  const editSession = useRecordEditSession<TransactionRow>({
+    table: 'fuel_transaction',
+    recordId: transaction?.id ?? null,
+    modifiedAt: transaction?.modified_at ?? null,
+    enabled: open && !!transaction,
+    onReload: (freshRow) => {
+      setForm({
+        ticket_number: freshRow.ticket_number,
+        flight_id: freshRow.flight_id,
+        tail_number: freshRow.tail_number ?? '',
+        fuel_type: (freshRow.fuel_type as FuelType) ?? '',
+        fuel_truck_id: freshRow.fuel_truck_id,
+        fuel_order_text: freshRow.fuel_order_text ?? '',
+        quantity_gallons: freshRow.quantity_gallons ?? '',
+        quantity_lbs: freshRow.quantity_lbs ?? ''
+      })
+    }
+  })
+
   const density =
     form.quantity_gallons && form.quantity_lbs
       ? (Number(form.quantity_lbs) / Number(form.quantity_gallons)).toFixed(4)
@@ -154,7 +182,14 @@ export function TransactionFormDialog({
         source: transaction?.source ?? 'manual',
         charge_flags: undefined
       }
-      await onSubmit(payload)
+      if (transaction) {
+        const outcome = await editSession.save((expectedModifiedAt) =>
+          onSubmit(payload, expectedModifiedAt)
+        )
+        if (outcome.status === 'conflict') return
+      } else {
+        await onSubmit(payload)
+      }
       onOpenChange(false)
     } catch (err) {
       console.error('Failed to save transaction:', err)
@@ -182,6 +217,15 @@ export function TransactionFormDialog({
               : 'Create a new fuel order for line staff.'}
           </SheetDescription>
         </SheetHeader>
+
+        {transaction && (
+          <div className="px-4 pt-4">
+            <EditSessionStatus
+              editSession={editSession}
+              onOverwriteComplete={() => onOpenChange(false)}
+            />
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-4 overflow-y-auto p-4">

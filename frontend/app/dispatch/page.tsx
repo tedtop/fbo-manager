@@ -5,6 +5,7 @@ import { useTheme } from '@/components/navigation-wrapper'
 import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useFuelers } from '@/hooks/use-fuelers'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -59,15 +60,18 @@ export default function FuelDispatchPage() {
   }
 
   const handleUpdateTransaction = async (
-    data: TransactionInsert
+    data: TransactionInsert,
+    expectedModifiedAt?: string
   ) => {
     if (!editingTransaction) return
     try {
-      await updateTransaction(editingTransaction.id, data)
+      await updateTransaction(editingTransaction.id, data, expectedModifiedAt)
       setSuccessMessage('Transaction updated successfully')
       setTimeout(() => setSuccessMessage(''), 3000)
       setEditingTransaction(null)
     } catch (err) {
+      // A concurrency conflict is handled by the form's edit-session dialog, not a toast.
+      if (err instanceof ConcurrencyConflictError) throw err
       setErrorMessage('Failed to update transaction')
       setTimeout(() => setErrorMessage(''), 3000)
       throw err
