@@ -68,6 +68,7 @@ docker compose exec api uv run -- python manage.py seed_training
 - Formatter/Linter: Biome (`biome.json`)
 - React/Next conventions: App Router, server actions, `use client` where necessary
 - Shared code via workspace packages (`@frontend/ui`, `@frontend/types`)
+- Overlay UI (Sheet vs Dialog vs AlertDialog, standard form slideout): see [UI Conventions](./ui-conventions.md)
 
 ### Backend (Python)
 - Linter: Ruff (configured in `pyproject.toml`)
