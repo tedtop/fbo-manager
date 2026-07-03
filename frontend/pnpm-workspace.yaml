@@ -1,3 +1,8 @@
 allowBuilds:
   '@biomejs/biome': true
   sharp: true
+# @anthropic-ai/sdk@0.110.0 trips pnpm's minimumReleaseAge supply-chain check (it's a
+# recent release) even though it was already a pinned dependency before this change —
+# without this, `pnpm install`/`pnpm exec` fail outright for everyone on this lockfile.
+minimumReleaseAgeExclude:
+  - '@anthropic-ai/sdk@0.110.0'
