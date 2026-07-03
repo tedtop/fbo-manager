@@ -19,7 +19,7 @@ export type TransactionWithRelations = TransactionRow & {
 const TX_SELECT = `
   *,
   flight:flight_id ( id, aircraft_id, call_sign ),
-  fueler_assignments ( id, fueler_id, assigned_at, fueler:fueler_id ( id, fueler_name ) ),
+  fueler_assignments:fueler_assignment ( id, fueler_id, assigned_at, fueler:fueler_id ( id, fueler_name ) ),
   fuel_truck:fuel_truck_id ( id, equipment_id, equipment_name )
 `
 
