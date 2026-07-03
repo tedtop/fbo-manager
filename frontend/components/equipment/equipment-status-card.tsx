@@ -4,7 +4,21 @@ import { cn } from '@/lib/utils'
 import { StatusBadge, type EquipmentStatus } from './status-badge'
 import type { EquipmentDomain } from '@/types/domain/equipment'
 
-const TYPE_ICONS: Record<string, string> = {
+export const EQUIPMENT_TYPES = [
+  'fuel_truck',
+  'tug',
+  'gpu',
+  'air_start',
+  'belt_loader',
+  'stairs',
+  'lavatory_service',
+  'water_service',
+  'golf_cart',
+  'staff_vehicle',
+  'other',
+] as const
+
+export const TYPE_ICONS: Record<string, string> = {
   fuel_truck:       '🚛',
   tug:              '🚜',
   gpu:              '⚡',
@@ -13,6 +27,8 @@ const TYPE_ICONS: Record<string, string> = {
   stairs:           '🪜',
   lavatory_service: '🚿',
   water_service:    '💧',
+  golf_cart:        '⛳',
+  staff_vehicle:    '🚗',
   other:            '🔧',
 }
 
@@ -23,20 +39,13 @@ const STATUS_BORDER: Record<string, string> = {
   out_of_service: 'border-l-red-500',
 }
 
-function formatTypeLabel(type: string): string {
+export function formatTypeLabel(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 function formatDate(dateStr: string | null): string | null {
   if (!dateStr) return null
   return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function formatAvailableAt(ts: string | null): string | null {
-  if (!ts) return null
-  const d = new Date(ts)
-  if (d <= new Date()) return null
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 function daysSince(dateStr: string): number {
@@ -52,7 +61,6 @@ interface EquipmentStatusCardProps {
 export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: EquipmentStatusCardProps) {
   const icon = TYPE_ICONS[eq.equipment_type] ?? '🔧'
   const borderColor = STATUS_BORDER[eq.status] ?? 'border-l-border'
-  const availableAt = formatAvailableAt(eq.available_at)
   const maintenanceDate = formatDate(eq.next_maintenance_date)
   const lastSeen = daysSince(eq.modified_at)
 
@@ -95,20 +103,6 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
 
       {/* Info rows */}
       <div className="space-y-1 text-sm">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">Fueler</span>
-          <span className="text-foreground font-medium truncate">
-            {eq.fueler ? eq.fueler.fueler_name : 'Available'}
-          </span>
-        </div>
-
-        {availableAt && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground">Available at</span>
-            <span className="text-foreground">{availableAt}</span>
-          </div>
-        )}
-
         {maintenanceDate && (
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">Maintenance due</span>

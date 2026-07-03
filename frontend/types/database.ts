@@ -23,6 +23,8 @@ export type Database = {
           last_login: string | null
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -53,6 +55,8 @@ export type Database = {
           fleet_id: string
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           tail_number: string
@@ -76,6 +80,8 @@ export type Database = {
           usable_max_inches: string
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           tank_id: string
@@ -129,6 +135,8 @@ export type Database = {
           display_order: number
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -155,6 +163,8 @@ export type Database = {
           display_order: number
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -188,6 +198,8 @@ export type Database = {
           created_by_source: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -239,6 +251,8 @@ export type Database = {
           status: 'active' | 'inactive'
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -266,6 +280,8 @@ export type Database = {
           aircraft_type: string | null
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -287,6 +303,8 @@ export type Database = {
           certified_by_id: number | null
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -376,6 +394,8 @@ export type Database = {
           qt_sync_status: 'pending' | 'synced' | 'failed'
           created_at: string
           modified_at: string
+          assigned_fueler_id: number | null
+          available_at: string | null
         }
         Insert: {
           id?: number
@@ -421,7 +441,7 @@ export type Database = {
           id: number
           equipment_id: string
           equipment_name: string
-          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'other'
+          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'golf_cart' | 'staff_vehicle' | 'other'
           manufacturer: string
           model: string
           serial_number: string
@@ -439,7 +459,7 @@ export type Database = {
           id?: number
           equipment_id: string
           equipment_name: string
-          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'other'
+          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'golf_cart' | 'staff_vehicle' | 'other'
           manufacturer?: string
           model?: string
           serial_number?: string

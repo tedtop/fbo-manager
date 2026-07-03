@@ -7,9 +7,16 @@ import { useEffect, useState } from 'react'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
-import { EquipmentStatusCard } from '@/components/equipment/equipment-status-card'
+import { EquipmentStatusCard, EQUIPMENT_TYPES, formatTypeLabel } from '@/components/equipment/equipment-status-card'
 import type { EquipmentStatus } from '@/components/equipment/status-badge'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import type { EquipmentDomain } from '@/types/domain/equipment'
 import type { EquipmentInsert } from '@/repositories/equipment.repo'
 
@@ -22,6 +29,7 @@ export default function EquipmentPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] = useState<EquipmentDomain | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string>('all')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -67,6 +75,9 @@ export default function EquipmentPage() {
     e => e.maintenanceStatus === 'due_soon' || e.maintenanceStatus === 'overdue'
   ).length
 
+  const filteredEquipment =
+    typeFilter === 'all' ? equipment : equipment.filter(e => e.equipment_type === typeFilter)
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -77,11 +88,26 @@ export default function EquipmentPage() {
             Live status board — updates in real time
           </p>
         </div>
-        <Button
-          onClick={() => { setEditingEquipment(null); setDialogOpen(true) }}
-        >
-          Add Equipment
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {EQUIPMENT_TYPES.map(type => (
+                <SelectItem key={type} value={type}>
+                  {formatTypeLabel(type)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={() => { setEditingEquipment(null); setDialogOpen(true) }}
+          >
+            Add Equipment
+          </Button>
+        </div>
       </div>
 
       {/* Summary stats */}
@@ -123,9 +149,13 @@ export default function EquipmentPage() {
         <div className="rounded-lg bg-card border border-border p-12 text-center text-muted-foreground">
           No equipment found. Add equipment to get started.
         </div>
+      ) : filteredEquipment.length === 0 ? (
+        <div className="rounded-lg bg-card border border-border p-12 text-center text-muted-foreground">
+          No equipment matches this type.
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {equipment.map(item => (
+          {filteredEquipment.map(item => (
             <EquipmentStatusCard
               key={item.id}
               equipment={item}
