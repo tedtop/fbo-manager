@@ -111,7 +111,9 @@ export type Database = {
           recorded_at: string
           created_at?: string
         }
-        Update: Partial<Database['public']['Tables']['tank_level_readings']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['tank_level_readings']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'tank_level_readings_tank_id_fkey'
@@ -150,7 +152,9 @@ export type Database = {
           gate?: string | null
           display_order?: number
         }
-        Update: Partial<Database['public']['Tables']['parking_location']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['parking_location']['Insert']
+        >
         Relationships: []
       }
       terminal_gate: {
@@ -184,7 +188,13 @@ export type Database = {
           call_sign: string | null
           arrival_time: string | null
           departure_time: string
-          flight_status: 'scheduled' | 'arrived' | 'departed' | 'cancelled' | 'delayed' | 'planned'
+          flight_status:
+            | 'scheduled'
+            | 'arrived'
+            | 'departed'
+            | 'cancelled'
+            | 'delayed'
+            | 'planned'
           origin: string
           destination: string
           contact_name: string
@@ -208,7 +218,13 @@ export type Database = {
           call_sign?: string | null
           arrival_time?: string | null
           departure_time: string
-          flight_status?: 'scheduled' | 'arrived' | 'departed' | 'cancelled' | 'delayed' | 'planned'
+          flight_status?:
+            | 'scheduled'
+            | 'arrived'
+            | 'departed'
+            | 'cancelled'
+            | 'delayed'
+            | 'planned'
           origin?: string
           destination?: string
           contact_name?: string
@@ -316,7 +332,9 @@ export type Database = {
           expiry_date: string
           certified_by_id?: number | null
         }
-        Update: Partial<Database['public']['Tables']['fueler_training']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['fueler_training']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'fueler_training_fueler_id_fkey'
@@ -352,7 +370,9 @@ export type Database = {
           certified_by_id?: number | null
           notes?: string
         }
-        Update: Partial<Database['public']['Tables']['fueler_training_history']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['fueler_training_history']['Insert']
+        >
         Relationships: []
       }
       assigned_training: {
@@ -377,8 +397,122 @@ export type Database = {
           notes?: string
           completed_at?: string | null
         }
-        Update: Partial<Database['public']['Tables']['assigned_training']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['assigned_training']['Insert']
+        >
         Relationships: []
+      }
+      training_course: {
+        Row: {
+          id: number
+          name: string
+          url: string
+          instructions: string
+          validity_amount: number | null
+          validity_unit: 'days' | 'weeks' | 'months' | 'years' | null
+          display_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          url?: string
+          instructions?: string
+          validity_amount?: number | null
+          validity_unit?: 'days' | 'weeks' | 'months' | 'years' | null
+          display_order?: number
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: Partial<
+          Database['public']['Tables']['training_course']['Insert']
+        >
+        Relationships: []
+      }
+      training_completion: {
+        Row: {
+          id: number
+          course_id: number
+          user_id: number
+          completed_on: string
+          expires_on: string | null
+          certificate_path: string | null
+          certificate_name: string | null
+          notes: string
+          recorded_by_id: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          course_id: number
+          user_id: number
+          completed_on: string
+          expires_on?: string | null
+          certificate_path?: string | null
+          certificate_name?: string | null
+          notes?: string
+          recorded_by_id?: number | null
+        }
+        Update: Partial<
+          Database['public']['Tables']['training_completion']['Insert']
+        >
+        Relationships: [
+          {
+            foreignKeyName: 'training_completion_course_id_fkey'
+            columns: ['course_id']
+            referencedRelation: 'training_course'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'training_completion_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'training_completion_recorded_by_id_fkey'
+            columns: ['recorded_by_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      department_member: {
+        Row: {
+          id: number
+          department_id: number
+          user_id: number
+          dept_role: 'lead' | 'supervisor' | 'member'
+          title: string
+          target_weekly_hours: number | null
+          display_order: number
+          is_active: boolean
+          created_at: string
+          modified_at: string
+        }
+        Insert: {
+          id?: number
+          department_id: number
+          user_id: number
+          dept_role?: 'lead' | 'supervisor' | 'member'
+          title?: string
+          target_weekly_hours?: number | null
+          display_order?: number
+          is_active?: boolean
+        }
+        Update: Partial<
+          Database['public']['Tables']['department_member']['Insert']
+        >
+        Relationships: [
+          {
+            foreignKeyName: 'department_member_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
       }
       fuel_transaction: {
         Row: {
@@ -425,7 +559,9 @@ export type Database = {
           ordered_by_id?: number | null
           fuel_order_text?: string | null
         }
-        Update: Partial<Database['public']['Tables']['fuel_transaction']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['fuel_transaction']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'fuel_transaction_flight_id_fkey'
@@ -447,7 +583,9 @@ export type Database = {
           transaction_id: number
           fueler_id: number
         }
-        Update: Partial<Database['public']['Tables']['fueler_assignment']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['fueler_assignment']['Insert']
+        >
         Relationships: []
       }
       equipment: {
@@ -488,7 +626,11 @@ export type Database = {
         Row: {
           id: number
           flight_id: number | null
-          service_type: 'arrival_service' | 'departure_service' | 'turnaround' | 'overnight'
+          service_type:
+            | 'arrival_service'
+            | 'departure_service'
+            | 'turnaround'
+            | 'overnight'
           scheduled_time: string
           actual_start_time: string | null
           actual_end_time: string | null
@@ -501,7 +643,11 @@ export type Database = {
         Insert: {
           id?: number
           flight_id?: number | null
-          service_type: 'arrival_service' | 'departure_service' | 'turnaround' | 'overnight'
+          service_type:
+            | 'arrival_service'
+            | 'departure_service'
+            | 'turnaround'
+            | 'overnight'
           scheduled_time: string
           actual_start_time?: string | null
           actual_end_time?: string | null
