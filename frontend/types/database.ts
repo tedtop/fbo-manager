@@ -205,11 +205,8 @@ export type Database = {
           notes: string
           location_id: number | null
           created_by_id: number
-          created_by_source:
-            | 'qt'
-            | 'front-desk'
-            | 'line-department'
-            | 'google-calendar'
+          created_by_source: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
+          fueled_at: string | null
           created_at: string
           modified_at: string
           assigned_fueler_id: number | null
@@ -238,11 +235,8 @@ export type Database = {
           notes?: string
           location_id?: number | null
           created_by_id?: number
-          created_by_source?:
-            | 'qt'
-            | 'front-desk'
-            | 'line-department'
-            | 'google-calendar'
+          created_by_source?: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
+          fueled_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['flight']['Insert']>
         Relationships: [
@@ -525,15 +519,21 @@ export type Database = {
           id: number
           flight_id: number | null
           ticket_number: string
-          quantity_gallons: string
-          quantity_lbs: string
-          density: string
+          quantity_gallons: string | null
+          quantity_lbs: string | null
+          density: string | null
           progress: 'started' | 'in_progress' | 'completed'
-          charge_flags: Record<string, unknown>
+          charge_flags: Record<string, unknown> | null
           assigned_at: string | null
           completed_at: string | null
           qt_dispatch_id: string | null
           qt_sync_status: 'pending' | 'synced' | 'failed'
+          fuel_truck_id: number | null
+          tail_number: string | null
+          fuel_type: 'jet_a' | 'jet_a_plus' | 'avgas' | null
+          source: 'qt' | 'flight_card' | 'manual'
+          ordered_by_id: number | null
+          fuel_order_text: string | null
           created_at: string
           modified_at: string
           assigned_fueler_id: number | null
@@ -543,15 +543,21 @@ export type Database = {
           id?: number
           flight_id?: number | null
           ticket_number: string
-          quantity_gallons: number | string
-          quantity_lbs: number | string
-          density: number | string
+          quantity_gallons?: number | string | null
+          quantity_lbs?: number | string | null
+          density?: number | string | null
           progress?: 'started' | 'in_progress' | 'completed'
           charge_flags?: Record<string, unknown>
           assigned_at?: string | null
           completed_at?: string | null
           qt_dispatch_id?: string | null
           qt_sync_status?: 'pending' | 'synced' | 'failed'
+          fuel_truck_id?: number | null
+          tail_number?: string | null
+          fuel_type?: 'jet_a' | 'jet_a_plus' | 'avgas' | null
+          source?: 'qt' | 'flight_card' | 'manual'
+          ordered_by_id?: number | null
+          fuel_order_text?: string | null
         }
         Update: Partial<
           Database['public']['Tables']['fuel_transaction']['Insert']
