@@ -55,21 +55,22 @@ project has since fully decoupled from Django — see the no-Django convention f
 below.)
 
 Before this feature, `modified_at` was **not** being updated by frontend writes at all.
-`frontend/scripts/modified-at-triggers.sql` adds a `BEFORE UPDATE` Postgres trigger
-(`set_modified_at()`) on `fuel_tank` and `fuel_transaction` so `modified_at` updates at the
-database level regardless of write path. It also registers both tables with the
-`supabase_realtime` publication so `postgres_changes` events actually fire for them. Run it
-directly against the live Supabase DB (`psql` or the Supabase SQL Editor) — like every other
-schema change in this project, it's a plain SQL script, not a Django migration.
+`frontend/supabase/migrations/20260703000300_modified_at_triggers.sql` adds a `BEFORE UPDATE`
+Postgres trigger (`set_modified_at()`) on `fuel_tank` and `fuel_transaction` so `modified_at`
+updates at the database level regardless of write path. It also registers both tables with the
+`supabase_realtime` publication so `postgres_changes` events actually fire for them. Schema for
+this project lives entirely in `frontend/supabase/migrations/` — applied locally via
+`pnpm supabase:reset` and to staging/prod via `supabase db push`; there is no separate manual-SQL
+step for schema changes.
 
 **If you adopt this pattern for another table, check first whether that table has a comparable
 trigger.** As of this writing, no other table has one — `modified_at`/`created_at` fields
 elsewhere (equipment, training, invoicing, user management, etc.) have the same silent-gap risk if
 they're written to directly via Supabase without a trigger. Add a trigger for your table using the
 existing `set_modified_at()` function (it's generic — a two-line
-`CREATE TRIGGER ... EXECUTE FUNCTION set_modified_at();` in a new `frontend/scripts/*.sql` file,
-not a new pattern), and add the table to `supabase_realtime` the same way, before wiring up the
-hook. Don't assume a trigger exists just because one table has it.
+`CREATE TRIGGER ... EXECUTE FUNCTION set_modified_at();` in a new migration under
+`frontend/supabase/migrations/`), and add the table to `supabase_realtime` the same way, before
+wiring up the hook. Don't assume a trigger exists just because one table has it.
 
 ## Using the hook
 

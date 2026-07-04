@@ -90,10 +90,14 @@ instance — this suite will delete every row in it.
 All repository files present on `master` as of this writing have integration tests **except**
 the ones added by the concurrent user-management/training-compliance rebuild (`profiles.repo.ts`,
 `roles.repo.ts`, `staff.repo.ts`, `user-roles.repo.ts`, `training-courses.repo.ts`,
-`training-completions.repo.ts`). Those introduce a different, UUID-keyed `profiles`/`roles`/
-`user_roles`/`module_permissions`/`department_member` schema (backed by Supabase Auth) that
-this migration doesn't model yet — deliberately left out of this pass rather than guessing at
-an auth-integrated schema; a good next slice of work.
+`training-completions.repo.ts`) — deliberately left out of this pass; a good next slice of work.
+The UUID-keyed `profiles`/`roles`/`user_roles`/`module_permissions` schema (backed by Supabase
+Auth) and the `training_course`/`training_completion` schema are modeled in
+`20260703000200_user_management_schema.sql` and `20260703000400_training_compliance_schema.sql`
+respectively, so tests for those repos are just a matter of writing them. `department_member`
+(used by `staff.repo.ts`) is the one piece still not modeled here — it belongs to the
+line-schedule module's department/department_member/schedule_shift rebuild, out of scope for
+this migration set.
 
 The "digital fuel tickets" invoicing rebuild that landed mid-session (`customers.repo.ts`,
 `products.repo.ts`, `fueling-events.repo.ts`, `invoices.repo.ts`) **is** covered — see

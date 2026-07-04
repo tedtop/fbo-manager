@@ -9,7 +9,8 @@ import {
 /**
  * Idempotently creates the two "Quick Dev Login" accounts the login form already offers
  * (components/forms/login-form.tsx) via the Supabase Admin API, and grants each their role
- * per frontend/scripts/user-management-schema.sql's `handle_new_auth_user` trigger (which
+ * per the `handle_new_auth_user` trigger defined in
+ * frontend/supabase/migrations/20260703000200_user_management_schema.sql (which
  * auto-creates the `profiles` row — this only needs to add the `user_roles` grant on top).
  *
  * Safe to call every run: createUser on an existing email fails with a recognizable error

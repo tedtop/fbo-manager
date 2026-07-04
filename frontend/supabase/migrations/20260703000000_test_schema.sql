@@ -99,7 +99,7 @@ create table terminal_gate (
 
 create table equipment (
   id serial primary key,
-  equipment_id text not null,
+  equipment_id text not null unique,
   equipment_name text not null,
   equipment_type text not null check (equipment_type in (
     'fuel_truck','tug','gpu','air_start','belt_loader','stairs',
@@ -116,6 +116,21 @@ create table equipment (
   created_at timestamptz not null default now(),
   modified_at timestamptz not null default now()
 );
+
+-- Seed the fuel truck fleet into the equipment registry (idempotent — safe on
+-- both a fresh `supabase db reset` and a `supabase db push` against an
+-- already-seeded project).
+insert into equipment
+  (equipment_id, equipment_name, equipment_type, manufacturer, model,
+   serial_number, status, location, notes, created_at, modified_at)
+values
+  ('5282', 'Fuel Truck 5282 (Jet A, 5,000 gal)', 'fuel_truck', '', '', '', 'available', '', 'Fuel: Jet A. Capacity: 5000 gal. Front + rear meter registers.', now(), now()),
+  ('8178', 'Fuel Truck 8178 (Jet A, 3,000 gal)', 'fuel_truck', '', '', '', 'available', '', 'Fuel: Jet A. Capacity: 3000 gal. Front + rear meter registers.', now(), now()),
+  ('8370', 'Fuel Truck 8370 (Jet A, 3,000 gal)', 'fuel_truck', '', '', '', 'available', '', 'Fuel: Jet A. Capacity: 3000 gal. Front + rear meter registers.', now(), now()),
+  ('8628', 'Fuel Truck 8628 (Jet A, 3,000 gal)', 'fuel_truck', '', '', '', 'available', '', 'Fuel: Jet A. Capacity: 3000 gal. Front + rear meter registers.', now(), now()),
+  ('5183', 'Fuel Truck 5183 (Avgas, 750 gal)',  'fuel_truck', '', '', '', 'available', '', 'Fuel: Avgas 100LL. Capacity: 750 gal. Front meter only.', now(), now()),
+  ('8338', 'Fuel Truck 8338 (Avgas, 2,000 gal)', 'fuel_truck', '', '', '', 'available', '', 'Fuel: Avgas 100LL. Capacity: 2000 gal. Front meter only.', now(), now())
+on conflict (equipment_id) do nothing;
 
 create table fueler (
   id serial primary key,
@@ -336,6 +351,23 @@ create table truck_meter_readings (
   notes text,
   created_at timestamptz not null default now()
 );
+
+create index idx_truck_sheets_date          on truck_sheets(sheet_date desc);
+create index idx_truck_sheets_truck         on truck_sheets(fuel_truck_id, sheet_date desc);
+create index idx_truck_meter_readings_sheet on truck_meter_readings(truck_sheet_id, line_number);
+create index idx_truck_meter_readings_tail  on truck_meter_readings(tail_number) where tail_number is not null;
+create index idx_truck_meter_readings_invoice on truck_meter_readings(invoice_number) where invoice_number is not null;
+
+alter table truck_sheets         enable row level security;
+alter table truck_meter_readings enable row level security;
+
+create policy "Authenticated users can manage truck sheets"
+  on truck_sheets for all
+  using (auth.role() = 'authenticated');
+
+create policy "Authenticated users can manage truck meter readings"
+  on truck_meter_readings for all
+  using (auth.role() = 'authenticated');
 
 -- PostgREST needs explicit grants in a local (non-managed) Postgres instance so the
 -- anon/service_role roles it authenticates requests as can actually see these tables.

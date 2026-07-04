@@ -1,5 +1,4 @@
 -- Edit-Concurrency: modified_at triggers
--- Run this in the Supabase SQL Editor (supabase.com/dashboard → SQL Editor).
 --
 -- Guarantees `modified_at` changes on every UPDATE to fuel_tank / fuel_transaction,
 -- at the database level, regardless of write path.
@@ -23,52 +22,47 @@
 -- etc.) have the same gap if/when they're written to directly via Supabase, but are
 -- out of scope here — see docs/edit-concurrency.md for the note to future adopters.
 -- set_modified_at() is a generic, reusable function so wiring up additional tables
--- later is a two-line trigger, not a new migration.
---
--- This project is Supabase-native (not Django-managed) — see project convention in
--- other frontend/scripts/*.sql files. This was originally authored as a Django
--- migration (`migrations.RunSQL`); converted to a plain script here since the
--- project has fully decoupled from Django.
+-- later is a two-line trigger in a new migration, not a new pattern.
 
 -- ============================================================
 -- 1. Trigger function
 -- ============================================================
-CREATE OR REPLACE FUNCTION set_modified_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.modified_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+create or replace function set_modified_at()
+returns trigger as $$
+begin
+    new.modified_at = now();
+    return new;
+end;
+$$ language plpgsql;
 
 -- ============================================================
 -- 2. Triggers
 -- ============================================================
-DROP TRIGGER IF EXISTS trg_fuel_tank_set_modified_at ON fuel_tank;
-CREATE TRIGGER trg_fuel_tank_set_modified_at
-    BEFORE UPDATE ON fuel_tank
-    FOR EACH ROW EXECUTE FUNCTION set_modified_at();
+drop trigger if exists trg_fuel_tank_set_modified_at on fuel_tank;
+create trigger trg_fuel_tank_set_modified_at
+    before update on fuel_tank
+    for each row execute function set_modified_at();
 
-DROP TRIGGER IF EXISTS trg_fuel_transaction_set_modified_at ON fuel_transaction;
-CREATE TRIGGER trg_fuel_transaction_set_modified_at
-    BEFORE UPDATE ON fuel_transaction
-    FOR EACH ROW EXECUTE FUNCTION set_modified_at();
+drop trigger if exists trg_fuel_transaction_set_modified_at on fuel_transaction;
+create trigger trg_fuel_transaction_set_modified_at
+    before update on fuel_transaction
+    for each row execute function set_modified_at();
 
 -- ============================================================
 -- 3. Realtime: register both tables so the frontend can subscribe to
 --    postgres_changes for live "someone just edited this" detection.
 --    No-op if the publication doesn't exist (e.g. plain Postgres in tests/CI).
 -- ============================================================
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-        BEGIN
-            ALTER PUBLICATION supabase_realtime ADD TABLE fuel_tank;
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END;
-        BEGIN
-            ALTER PUBLICATION supabase_realtime ADD TABLE fuel_transaction;
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END;
-    END IF;
-END $$;
+do $$
+begin
+    if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+        begin
+            alter publication supabase_realtime add table fuel_tank;
+        exception when duplicate_object then null;
+        end;
+        begin
+            alter publication supabase_realtime add table fuel_transaction;
+        exception when duplicate_object then null;
+        end;
+    end if;
+end $$;
