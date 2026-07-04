@@ -1,4 +1,5 @@
 import { ConcurrencyConflictError } from '@/lib/concurrency'
+import { handleWriteError } from '@/lib/db-errors'
 import type {
   Database,
   Tables,
@@ -128,7 +129,15 @@ export async function deleteTransaction(
   id: number
 ): Promise<void> {
   const { error } = await db.from('fuel_transaction').delete().eq('id', id)
-  if (error) throw error
+  if (error) {
+    // Most likely invoice_line_items_fuel_transaction_id_fkey (ON DELETE
+    // RESTRICT — this fueling is already billed on an invoice). Translated
+    // into a clear message and logged; see lib/db-errors.ts.
+    await handleWriteError(db, error, {
+      source: 'transactions.repo.deleteTransaction',
+      context: { fuel_transaction_id: id }
+    })
+  }
 }
 
 // ============================================================
@@ -270,50 +279,97 @@ export async function unlinkReading(
   if (error) throw error
 }
 
-export type TankReadingRow = Tables<'fuel_transaction_tank_readings'>
-export type TankReadingInput = {
-  tank_position: string // e.g. 'L' / 'C' / 'R' (737), 'L' / 'R' / 'T' (E175) — free-form by design
-  reading_before: number | null
-  reading_after: number | null
-  reading_unit?: 'lbs' | 'gal' | 'kg'
+/**
+ * Optional per-tank before/after readings for airline fuelings, as fixed,
+ * explicitly-named columns on fuel_transaction (not a normalized per-row
+ * table — see docs/architecture/fuel-invoicing-workflow.md for why: fixed
+ * columns let plain SQL (AVG/GROUP BY) aggregate directly for analytics
+ * like "average fuel taken by airline X", where a pivoted EAV-style table
+ * would need a pivot on every query).
+ *
+ * `center` is a real third tank on 737s; E175 has no center tank (its L/R/T
+ * layout's "T" is the Total reading, not a tank) so `center` stays null for
+ * E175 fuelings. `total` is recorded for both. All eight fields — and the
+ * whole group — are optional: GA fuelings simply never set any of these.
+ */
+export interface TankReadings {
+  before_left: number | null
+  before_right: number | null
+  before_center: number | null
+  before_total: number | null
+  after_left: number | null
+  after_right: number | null
+  after_center: number | null
+  after_total: number | null
+  unit?: 'lbs' | 'gal' | 'kg'
 }
 
-export async function findTankReadings(
-  db: SupabaseClient<Database>,
-  transactionId: number
-): Promise<TankReadingRow[]> {
-  const { data, error } = await db
-    .from('fuel_transaction_tank_readings')
-    .select('*')
-    .eq('fuel_transaction_id', transactionId)
-    .order('tank_position')
-  if (error) throw error
-  return data
+function numOrNull(v: string | null): number | null {
+  return v == null ? null : Number(v)
 }
 
 /**
- * Replaces the optional per-tank before/after readings for an airline
- * fueling (GA transactions simply never call this). Delete-then-insert
- * keeps the (transaction, position) set exactly what the caller supplied.
+ * Reads back the eight tank-reading columns as the TankReadings shape.
+ * Postgres numeric columns come back from PostgREST as strings (same as
+ * fuel_transaction.quantity_gallons etc.) — converted to numbers here so
+ * callers get plain numbers, matching the shape updateTankReadings accepts.
  */
-export async function replaceTankReadings(
+export async function findTankReadings(
+  db: SupabaseClient<Database>,
+  transactionId: number
+): Promise<TankReadings | null> {
+  const { data, error } = await db
+    .from('fuel_transaction')
+    .select(
+      'tank_reading_before_left, tank_reading_before_right, tank_reading_before_center, tank_reading_before_total, tank_reading_after_left, tank_reading_after_right, tank_reading_after_center, tank_reading_after_total, tank_reading_unit'
+    )
+    .eq('id', transactionId)
+    .single()
+  if (error) throw error
+  if (
+    data.tank_reading_before_left == null &&
+    data.tank_reading_before_right == null &&
+    data.tank_reading_before_center == null &&
+    data.tank_reading_before_total == null &&
+    data.tank_reading_after_left == null &&
+    data.tank_reading_after_right == null &&
+    data.tank_reading_after_center == null &&
+    data.tank_reading_after_total == null
+  ) {
+    return null
+  }
+  return {
+    before_left: numOrNull(data.tank_reading_before_left),
+    before_right: numOrNull(data.tank_reading_before_right),
+    before_center: numOrNull(data.tank_reading_before_center),
+    before_total: numOrNull(data.tank_reading_before_total),
+    after_left: numOrNull(data.tank_reading_after_left),
+    after_right: numOrNull(data.tank_reading_after_right),
+    after_center: numOrNull(data.tank_reading_after_center),
+    after_total: numOrNull(data.tank_reading_after_total),
+    unit: data.tank_reading_unit
+  }
+}
+
+/**
+ * Sets (or clears, by passing all-null fields) the per-tank readings for an
+ * airline fueling. A plain field-for-field update — this is 1:1 data on
+ * fuel_transaction, not a related table, so there's nothing to replace/merge.
+ */
+export async function updateTankReadings(
   db: SupabaseClient<Database>,
   transactionId: number,
-  readings: TankReadingInput[]
-): Promise<TankReadingRow[]> {
-  const { error: clearError } = await db
-    .from('fuel_transaction_tank_readings')
-    .delete()
-    .eq('fuel_transaction_id', transactionId)
-  if (clearError) throw clearError
-
-  if (readings.length === 0) return []
-  const { data, error } = await db
-    .from('fuel_transaction_tank_readings')
-    .insert(
-      readings.map((r) => ({ ...r, fuel_transaction_id: transactionId }))
-    )
-    .select()
-  if (error) throw error
-  return data
+  readings: TankReadings
+): Promise<TransactionRow> {
+  return updateTransaction(db, transactionId, {
+    tank_reading_before_left: readings.before_left,
+    tank_reading_before_right: readings.before_right,
+    tank_reading_before_center: readings.before_center,
+    tank_reading_before_total: readings.before_total,
+    tank_reading_after_left: readings.after_left,
+    tank_reading_after_right: readings.after_right,
+    tank_reading_after_center: readings.after_center,
+    tank_reading_after_total: readings.after_total,
+    ...(readings.unit ? { tank_reading_unit: readings.unit } : {})
+  })
 }

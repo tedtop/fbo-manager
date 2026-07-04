@@ -537,6 +537,15 @@ export type Database = {
           gallons_requested: string | null
           gallons_delivered: string | null
           customer_name: string | null
+          tank_reading_before_left: string | null
+          tank_reading_before_right: string | null
+          tank_reading_before_center: string | null
+          tank_reading_before_total: string | null
+          tank_reading_after_left: string | null
+          tank_reading_after_right: string | null
+          tank_reading_after_center: string | null
+          tank_reading_after_total: string | null
+          tank_reading_unit: 'lbs' | 'gal' | 'kg'
           created_at: string
           modified_at: string
           assigned_fueler_id: number | null
@@ -564,6 +573,15 @@ export type Database = {
           gallons_requested?: number | string | null
           gallons_delivered?: number | string | null
           customer_name?: string | null
+          tank_reading_before_left?: number | string | null
+          tank_reading_before_right?: number | string | null
+          tank_reading_before_center?: number | string | null
+          tank_reading_before_total?: number | string | null
+          tank_reading_after_left?: number | string | null
+          tank_reading_after_right?: number | string | null
+          tank_reading_after_center?: number | string | null
+          tank_reading_after_total?: number | string | null
+          tank_reading_unit?: 'lbs' | 'gal' | 'kg'
         }
         Update: Partial<
           Database['public']['Tables']['fuel_transaction']['Insert']
@@ -1147,37 +1165,6 @@ export type Database = {
           },
         ]
       }
-      fuel_transaction_tank_readings: {
-        Row: {
-          id: number
-          fuel_transaction_id: number
-          tank_position: string
-          reading_before: number | null
-          reading_after: number | null
-          reading_unit: 'lbs' | 'gal' | 'kg'
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          fuel_transaction_id: number
-          tank_position: string
-          reading_before?: number | null
-          reading_after?: number | null
-          reading_unit?: 'lbs' | 'gal' | 'kg'
-        }
-        Update: Partial<
-          Database['public']['Tables']['fuel_transaction_tank_readings']['Insert']
-        >
-        Relationships: [
-          {
-            foreignKeyName: 'fuel_transaction_tank_readings_fuel_transaction_id_fkey'
-            columns: ['fuel_transaction_id']
-            isOneToOne: false
-            referencedRelation: 'fuel_transaction'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       scanned_documents: {
         Row: {
           id: number
@@ -1225,6 +1212,33 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      app_error_log: {
+        Row: {
+          id: number
+          occurred_at: string
+          category: string
+          error_code: string
+          message: string
+          detail: string | null
+          context: Record<string, unknown> | null
+          user_id: string | null
+          source: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          occurred_at?: string
+          category: string
+          error_code: string
+          message: string
+          detail?: string | null
+          context?: Record<string, unknown> | null
+          user_id?: string | null
+          source?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['app_error_log']['Insert']>
+        Relationships: []
       }
     }
     // NOTE: the truck_sheet_running_totals view exists in the database (see

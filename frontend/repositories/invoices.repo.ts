@@ -2,6 +2,7 @@ import {
   type PositionReading,
   lineAmount
 } from '@/components/invoicing/ticket-math'
+import { handleWriteError } from '@/lib/db-errors'
 import {
   type TruckMeterReadingRow,
   deleteFuelingEvent,
@@ -380,7 +381,23 @@ export async function createInvoice(
         })
         .select('id')
         .single()
-      if (fuelItemError) throw fuelItemError
+      if (fuelItemError) {
+        // Most likely uq_invoice_line_items_fuel_transaction (double-billing
+        // the same fuel_transaction) or the older
+        // uq_invoice_line_items_meter_reading — translated into a clear
+        // message and logged to app_error_log; see lib/db-errors.ts.
+        // handleWriteError always throws; the throw below is unreachable in
+        // practice but keeps TS's control-flow narrowing of `fuelItem` happy.
+        await handleWriteError(db, fuelItemError, {
+          source: 'invoices.repo.createInvoice',
+          context: {
+            invoice_id: invoice.id,
+            fuel_transaction_id: fuelTransactionId,
+            truck_meter_reading_id: meterReadingId
+          }
+        })
+        throw fuelItemError
+      }
       fuelLineItemId = fuelItem.id
     }
 

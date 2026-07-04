@@ -36,6 +36,9 @@
 --     slips) are persisted in Supabase Storage via the scanned_documents
 --     table + the private 'scans' bucket (today only OCR JSON survives; the
 --     photos are discarded).
+--   * Optional per-tank before/after readings for airline fuelings are fixed,
+--     explicitly-named columns on fuel_transaction (not a normalized side
+--     table) so plain SQL can aggregate them directly for analytics.
 --
 -- Data-resilience posture (hard requirement): every linkage below is
 -- nullable and populated after the fact. A fuel_transaction with no sheet
@@ -101,27 +104,45 @@ COMMENT ON COLUMN truck_meter_readings.fuel_transaction_id IS 'Matched dispatch 
 -- ============================================================
 -- 3. Per-tank before/after readings (airline fuelings only).
 --    Recorded on the invoice slip and per-airline paperwork for airline
---    aircraft: 737 uses L/C/R tanks, E175 uses L/R/T. tank_position is
---    free-form TEXT on purpose — other types/layouts must not require a
---    migration. Units are usually lbs (gauge readings), occasionally gal.
---    Optional for every transaction; GA fuelings never have these.
---    (invoice_fuel_readings remains the transcription of what's printed in
---    the invoice DESCRIPTION block; this table is the transaction-side
---    record, attached to the fueling event itself.)
+--    aircraft: 737 uses L/C/R tanks (a real center tank); E175 uses L/R/T,
+--    but the "T" there is almost certainly the Total reading, not a third
+--    physical tank — E175 has no center tank. So: fixed left/right/center/
+--    total columns, all nullable; center stays null for aircraft without
+--    one, total is recorded for both. This is 1:1 supplemental data on the
+--    transaction (one set of readings per fueling, never one-to-many), and
+--    fixed columns are deliberate over a normalized per-position table:
+--    Ted wants to run analytics later (e.g. average fuel taken by a given
+--    airline/aircraft type), and plain SQL (AVG, GROUP BY) aggregates fixed
+--    columns directly — a normalized row-per-position table would need a
+--    pivot on every such query. Optional for every transaction; GA fuelings
+--    never set these. (invoice_fuel_readings remains the transcription of
+--    what's printed in the invoice DESCRIPTION block — a different, ticket-
+--    side record.)
 -- ============================================================
-CREATE TABLE IF NOT EXISTS fuel_transaction_tank_readings (
-  id                  BIGSERIAL PRIMARY KEY,
-  fuel_transaction_id BIGINT NOT NULL REFERENCES fuel_transaction(id) ON DELETE CASCADE,
-  tank_position       TEXT   NOT NULL CHECK (tank_position <> ''),  -- 'L','C','R','T', wing/aux names — free-form by design
-  reading_before      NUMERIC(12,1),
-  reading_after       NUMERIC(12,1),
-  reading_unit        TEXT   NOT NULL DEFAULT 'lbs' CHECK (reading_unit IN ('lbs', 'gal', 'kg')),
-  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (fuel_transaction_id, tank_position)
-);
+ALTER TABLE fuel_transaction
+  ADD COLUMN IF NOT EXISTS tank_reading_before_left   NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_before_right  NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_before_center NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_before_total  NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_after_left    NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_after_right   NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_after_center  NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_after_total   NUMERIC(12,1),
+  ADD COLUMN IF NOT EXISTS tank_reading_unit          TEXT NOT NULL DEFAULT 'lbs';
 
-CREATE INDEX IF NOT EXISTS idx_fuel_tx_tank_readings_tx
-  ON fuel_transaction_tank_readings(fuel_transaction_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fuel_transaction_tank_reading_unit_check'
+  ) THEN
+    ALTER TABLE fuel_transaction
+      ADD CONSTRAINT fuel_transaction_tank_reading_unit_check
+      CHECK (tank_reading_unit IN ('lbs', 'gal', 'kg'));
+  END IF;
+END $$;
+
+COMMENT ON COLUMN fuel_transaction.tank_reading_before_center IS 'Real center-tank reading (737 L/C/R). NULL for aircraft types with no center tank (e.g. E175).';
+COMMENT ON COLUMN fuel_transaction.tank_reading_before_total  IS 'Totalizer reading (E175''s "T" in L/R/T). Recorded for both aircraft types.';
 
 -- ============================================================
 -- 4. invoice_line_items → fuel_transaction: the billing link.
@@ -257,14 +278,12 @@ COMMENT ON VIEW truck_sheet_running_totals IS 'Derived per-truck running fuel le
 
 -- ============================================================
 -- 8. RLS (house style: authenticated users manage all)
+--    fuel_transaction itself has no RLS (Django-era table, written directly
+--    via Supabase like the rest of the fuel-dispatch tables — see
+--    modified-at-triggers.sql) so the new tank_reading_* columns need no
+--    policy of their own.
 -- ============================================================
-ALTER TABLE fuel_transaction_tank_readings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scanned_documents              ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Authenticated users can manage tank readings" ON fuel_transaction_tank_readings;
-CREATE POLICY "Authenticated users can manage tank readings"
-  ON fuel_transaction_tank_readings FOR ALL
-  USING (auth.role() = 'authenticated');
+ALTER TABLE scanned_documents ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can manage scanned documents" ON scanned_documents;
 CREATE POLICY "Authenticated users can manage scanned documents"

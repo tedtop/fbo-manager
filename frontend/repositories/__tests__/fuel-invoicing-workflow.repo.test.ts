@@ -10,7 +10,7 @@ import {
   findUninvoicedTransactions,
   linkReadingToTransaction,
   parseGallonsRequested,
-  replaceTankReadings,
+  updateTankReadings,
   unlinkReading,
 } from '@/repositories/transactions.repo'
 import {
@@ -214,31 +214,86 @@ describe('dispatch ↔ truck-sheet reconciliation', () => {
   })
 })
 
-describe('per-tank readings (airline fuelings)', () => {
-  it('stores flexible tank positions — E175 L/R/T here — and replaces them wholesale', async () => {
+describe('per-tank readings (airline fuelings, fixed columns)', () => {
+  it('is null until set — GA transactions never touch these columns', async () => {
+    const tx = await createTransaction(db, { ticket_number: 'GA-1', tail_number: 'N1GA' })
+    expect(await findTankReadings(db, tx.id)).toBeNull()
+  })
+
+  it('E175 (L/R/T): T is the totalizer, not a center tank — center stays null', async () => {
     const tx = await createTransaction(db, { ticket_number: 'E175-1', tail_number: 'N123UA' })
 
-    await replaceTankReadings(db, tx.id, [
-      { tank_position: 'L', reading_before: 3930, reading_after: 7950 },
-      { tank_position: 'R', reading_before: 4040, reading_after: 7950 },
-      { tank_position: 'T', reading_before: 7970, reading_after: 15900 },
-    ])
+    await updateTankReadings(db, tx.id, {
+      before_left: 3930,
+      before_right: 4040,
+      before_center: null,
+      before_total: 7970,
+      after_left: 7950,
+      after_right: 7950,
+      after_center: null,
+      after_total: 15900,
+    })
 
-    let readings = await findTankReadings(db, tx.id)
-    expect(readings.map((r) => r.tank_position)).toEqual(['L', 'R', 'T'])
-    expect(readings.every((r) => r.reading_unit === 'lbs')).toBe(true)
+    const readings = await findTankReadings(db, tx.id)
+    expect(readings).toEqual({
+      before_left: 3930,
+      before_right: 4040,
+      before_center: null,
+      before_total: 7970,
+      after_left: 7950,
+      after_right: 7950,
+      after_center: null,
+      after_total: 15900,
+      unit: 'lbs',
+    })
+  })
 
-    // 737 layout is just different position strings — no schema knowledge of types
-    await replaceTankReadings(db, tx.id, [
-      { tank_position: 'L', reading_before: 5000, reading_after: 9000 },
-      { tank_position: 'C', reading_before: 0, reading_after: 4000 },
-      { tank_position: 'R', reading_before: 5000, reading_after: 9000 },
-    ])
-    readings = await findTankReadings(db, tx.id)
-    expect(readings.map((r) => r.tank_position)).toEqual(['C', 'L', 'R'])
+  it('737 (L/C/R): center is a real tank', async () => {
+    const tx = await createTransaction(db, { ticket_number: '737-1', tail_number: 'N737X' })
 
-    await replaceTankReadings(db, tx.id, [])
-    expect(await findTankReadings(db, tx.id)).toEqual([])
+    await updateTankReadings(db, tx.id, {
+      before_left: 5000,
+      before_right: 5000,
+      before_center: 0,
+      before_total: null,
+      after_left: 9000,
+      after_right: 9000,
+      after_center: 4000,
+      after_total: null,
+      unit: 'lbs',
+    })
+
+    const readings = await findTankReadings(db, tx.id)
+    expect(readings?.before_center).toBe(0)
+    expect(readings?.after_center).toBe(4000)
+    expect(readings?.before_total).toBeNull()
+  })
+
+  it('can be cleared back to null (all fields null)', async () => {
+    const tx = await createTransaction(db, { ticket_number: 'CLEAR-1', tail_number: 'N1CLR' })
+    await updateTankReadings(db, tx.id, {
+      before_left: 100,
+      before_right: 100,
+      before_center: null,
+      before_total: null,
+      after_left: 200,
+      after_right: 200,
+      after_center: null,
+      after_total: null,
+    })
+    expect(await findTankReadings(db, tx.id)).not.toBeNull()
+
+    await updateTankReadings(db, tx.id, {
+      before_left: null,
+      before_right: null,
+      before_center: null,
+      before_total: null,
+      after_left: null,
+      after_right: null,
+      after_center: null,
+      after_total: null,
+    })
+    expect(await findTankReadings(db, tx.id)).toBeNull()
   })
 })
 
@@ -277,14 +332,33 @@ describe('billing a fuel_transaction', () => {
     expect(queue).toEqual([])
   })
 
-  it('refuses to bill the same fuel_transaction twice (double-billing guard)', async () => {
+  it('refuses to bill the same fuel_transaction twice, with a friendly message, and logs it', async () => {
     const tx = await createTransaction(db, {
       ticket_number: 'ONCE',
       tail_number: 'N116FE',
       progress: 'completed',
     })
     await billTransaction(tx.id)
-    await expect(billTransaction(tx.id)).rejects.toMatchObject({ code: '23505' })
+
+    await expect(billTransaction(tx.id)).rejects.toMatchObject({
+      name: 'ConstraintViolationError',
+      sqlCode: '23505',
+      constraintName: 'uq_invoice_line_items_fuel_transaction',
+      message: 'This fueling has already been added to another invoice.',
+    })
+
+    const { data: logRows } = await db
+      .from('app_error_log')
+      .select('*')
+      .eq('category', 'db_constraint')
+    expect(logRows).toHaveLength(1)
+    expect(logRows?.[0]).toMatchObject({
+      error_code: 'uq_invoice_line_items_fuel_transaction',
+      message: 'This fueling has already been added to another invoice.',
+      source: 'invoices.repo.createInvoice',
+    })
+    expect(logRows?.[0].context).toMatchObject({ fuel_transaction_id: tx.id })
+    expect(logRows?.[0].detail).toContain('23505')
   })
 
   it('voiding the invoice releases the transaction for rebilling', async () => {
@@ -302,7 +376,7 @@ describe('billing a fuel_transaction', () => {
     expect(rebilled.line_items[0].fuel_transaction_id).toBe(tx.id)
   })
 
-  it('blocks deleting a billed transaction (void the invoice first)', async () => {
+  it('blocks deleting a billed transaction with a friendly message, and logs it', async () => {
     const tx = await createTransaction(db, {
       ticket_number: 'RESTRICT',
       tail_number: 'N116FE',
@@ -310,7 +384,20 @@ describe('billing a fuel_transaction', () => {
     })
     const invoice = await billTransaction(tx.id)
 
-    await expect(deleteTransaction(db, tx.id)).rejects.toMatchObject({ code: '23503' })
+    await expect(deleteTransaction(db, tx.id)).rejects.toMatchObject({
+      name: 'ConstraintViolationError',
+      sqlCode: '23503',
+      constraintName: 'invoice_line_items_fuel_transaction_id_fkey',
+      message:
+        'This fueling has already been billed to an invoice — void the invoice before deleting it.',
+    })
+
+    const { data: logRows } = await db
+      .from('app_error_log')
+      .select('*')
+      .eq('source', 'transactions.repo.deleteTransaction')
+    expect(logRows).toHaveLength(1)
+    expect(logRows?.[0].context).toMatchObject({ fuel_transaction_id: tx.id })
 
     await voidInvoice(db, invoice)
     await deleteTransaction(db, tx.id) // now allowed

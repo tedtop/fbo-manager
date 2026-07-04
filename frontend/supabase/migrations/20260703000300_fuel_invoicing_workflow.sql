@@ -19,17 +19,22 @@ alter table fuel_transaction
 alter table truck_meter_readings
   add column fuel_transaction_id integer references fuel_transaction(id) on delete set null;
 
--- 3. per-tank before/after readings (airline fuelings; free-form position)
-create table fuel_transaction_tank_readings (
-  id serial primary key,
-  fuel_transaction_id integer not null references fuel_transaction(id) on delete cascade,
-  tank_position text not null check (tank_position <> ''),
-  reading_before numeric,
-  reading_after numeric,
-  reading_unit text not null default 'lbs' check (reading_unit in ('lbs','gal','kg')),
-  created_at timestamptz not null default now(),
-  unique (fuel_transaction_id, tank_position)
-);
+-- 3. per-tank before/after readings (airline fuelings only): fixed columns
+--    on fuel_transaction, not a normalized per-position table — plain SQL
+--    (AVG/GROUP BY) needs to aggregate these directly for analytics later.
+--    center is a real tank on 737 (L/C/R); E175's L/R/T has no center tank,
+--    its "T" is the total reading, so center stays null there.
+alter table fuel_transaction
+  add column tank_reading_before_left numeric,
+  add column tank_reading_before_right numeric,
+  add column tank_reading_before_center numeric,
+  add column tank_reading_before_total numeric,
+  add column tank_reading_after_left numeric,
+  add column tank_reading_after_right numeric,
+  add column tank_reading_after_center numeric,
+  add column tank_reading_after_total numeric,
+  add column tank_reading_unit text not null default 'lbs'
+    check (tank_reading_unit in ('lbs','gal','kg'));
 
 -- 4. billing link: a fuel_transaction is billed at most once
 alter table invoice_line_items
@@ -101,6 +106,6 @@ select
 from truck_meter_readings r
 join truck_sheets s on s.id = r.truck_sheet_id;
 
-grant all on fuel_transaction_tank_readings, scanned_documents to anon, authenticated, service_role;
+grant all on scanned_documents to anon, authenticated, service_role;
 grant select on truck_sheet_running_totals to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;

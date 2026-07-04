@@ -3,6 +3,8 @@
 Status: **proposal** (schema drafted, not yet applied to the live database).
 Migration: `frontend/scripts/fuel-invoicing-workflow-schema.sql` (production, run manually via the Supabase SQL editor / `psql`) mirrored by `frontend/supabase/migrations/20260703000300_fuel_invoicing_workflow.sql` (local test stack).
 
+**Revision note:** per-tank readings were originally designed as a normalized `fuel_transaction_tank_readings` side table with a free-form `tank_position` column (to stay agnostic of aircraft type). Ted corrected this after review: he wants to run analytics later (e.g. average fuel taken by a given airline/aircraft type), which fixed columns aggregate directly in plain SQL and a normalized table would require pivoting on every query. The table was replaced with eight fixed, nullable columns on `fuel_transaction` — see "Per-tank readings" below.
+
 This resolves the long-open "fuel_transactions-to-invoice" design question (flagged since PR #15). It is modeled directly on the real paper workflow on the ramp, as described by the night-shift operator who will be scanning the sheets in — the operational nuances below are requirements, not color.
 
 ## The paper reality being modeled
@@ -47,7 +49,6 @@ No format CHECK constrains `invoice_number`: hand-written numbers are messy, and
 erDiagram
     fuel_transaction ||--o{ truck_meter_readings : "reconciled to (async, nullable)"
     fuel_transaction ||--o| invoice_line_items : "billed as ONE line (unique)"
-    fuel_transaction ||--o{ fuel_transaction_tank_readings : "optional per-tank before/after"
     truck_sheets ||--|{ truck_meter_readings : "one row per sheet line"
     truck_sheets ||--o{ scanned_documents : "original photos (pages)"
     invoices ||--|{ invoice_line_items : "fuel + services + fees"
@@ -67,6 +68,15 @@ erDiagram
         numeric gallons_requested "best-effort parse; NULL when not derivable"
         numeric gallons_delivered "as radioed in; preferred over 'gallons_pumped'"
         text progress "started | in_progress | completed"
+        numeric tank_reading_before_left "airline fuelings only, all nullable"
+        numeric tank_reading_before_right
+        numeric tank_reading_before_center "737 real tank; NULL for E175 (no center tank)"
+        numeric tank_reading_before_total "totalizer; E175's L/R/T 'T'"
+        numeric tank_reading_after_left
+        numeric tank_reading_after_right
+        numeric tank_reading_after_center
+        numeric tank_reading_after_total
+        text tank_reading_unit "lbs | gal | kg"
     }
     truck_meter_readings {
         bigint id PK
@@ -77,14 +87,6 @@ erDiagram
         numeric gallons_pumped
         numeric gallons_remaining "running inventory, as written"
         text invoice_number "as written in the last column"
-    }
-    fuel_transaction_tank_readings {
-        bigint id PK
-        bigint fuel_transaction_id FK
-        text tank_position "free-form: 737 L/C/R, E175 L/R/T, others later"
-        numeric reading_before
-        numeric reading_after
-        text reading_unit "lbs | gal | kg"
     }
     invoices {
         bigint id PK
@@ -141,7 +143,7 @@ sequenceDiagram
         LT->>LT: Fills carbon-copy slip by hand at the aircraft<br/>(incl. per-tank before/after readings)
         LT->>LT: Drops top copy in the box; writes 21483 on the truck sheet
         FD->>APP: createInvoice(number_source='paper_book') → pending pickup
-        FD->>APP: replaceTankReadings(txId, [L/C/R or L/R/T …])
+        FD->>APP: updateTankReadings(txId, { before/after left/right/center/total })
         ACC->>ACC: Midday box pickup
         ACC->>APP: markAccountingPickedUp(invoiceId)
     end
@@ -167,7 +169,11 @@ Meter numbers are **rarely entered live**. A dispatch-time `fuel_transaction` ty
 
 ## Per-tank readings (airlines only)
 
-Airline fuelings record before/after fuel per tank on the invoice slip and per-airline paperwork. The two aircraft types serviced today: **737 = L/C/R**, **E175 = L/R/T**. `fuel_transaction_tank_readings.tank_position` is free-form TEXT **by design** — a new aircraft type must never require a migration. Unit defaults to lbs (gauge readings). GA fuelings simply have no rows. (`invoice_fuel_readings` remains what it always was: a transcription of the printed DESCRIPTION block on a ticket; the new table is the transaction-side record.)
+Airline fuelings record before/after fuel per tank on the invoice slip and per-airline paperwork. The two aircraft types serviced today: **737 = L/C/R** (a real center tank) and **E175 = L/R/T** (no center tank — the "T" there is almost certainly the *totalizer* reading, not a third tank).
+
+These are **fixed, explicitly-named nullable columns directly on `fuel_transaction`** — `tank_reading_before_left/right/center/total` and `tank_reading_after_left/right/center/total`, plus one `tank_reading_unit` (default `lbs`) — rather than a normalized per-position side table. This is a deliberate revision of the original design (which used a flexible `fuel_transaction_tank_readings` table with a free-form `tank_position` column): Ted wants to run analytics later — e.g. average fuel taken by a given airline or aircraft type — and fixed columns aggregate directly with plain SQL (`AVG(tank_reading_after_total - tank_reading_before_total) ... GROUP BY ...`), where a normalized row-per-position table would need a pivot on every such query. It's also honestly a better fit for the data: this is strictly 1:1 supplemental data (one set of readings per fueling, never one-to-many), so a side table added a join for no structural reason.
+
+The tradeoff, accepted explicitly: a genuinely new aircraft layout beyond left/right/center/total (e.g. a 4-tank widebody) would need a migration to add columns, whereas the free-form table would not have. `center` and `total` simply stay `NULL` for aircraft types that don't use them (E175 fuelings: `center` always null; GA fuelings: all eight columns null). `findTankReadings`/`updateTankReadings` in `transactions.repo.ts` read/write this group as one unit. (`invoice_fuel_readings` remains what it always was: a transcription of the printed DESCRIPTION block on a ticket — a different, ticket-side record.)
 
 ## "Remaining Gallons" — per-truck running inventory
 
