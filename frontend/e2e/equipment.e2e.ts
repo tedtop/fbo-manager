@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createE2EDbClient, waitForDbRow } from './support/db'
+import { expectConventionalSheet } from './support/ui'
 import { uniqueValue } from './support/unique'
 
 const db = createE2EDbClient()
@@ -11,6 +12,8 @@ test.describe('Equipment form — create and edit actually persist', () => {
 
     await page.goto('/equipment')
     await page.getByRole('button', { name: 'Add Equipment' }).click()
+    // House conventions: form opens as a themed right-side Sheet slide-out.
+    await expectConventionalSheet(page)
 
     await page.getByLabel('Equipment ID').fill(equipmentId)
     await page.getByLabel('Name').fill(equipmentName)
@@ -53,6 +56,7 @@ test.describe('Equipment form — create and edit actually persist', () => {
     // distinguishing class and click that card's Edit button.
     const card = page.locator('.border-l-4').filter({ hasText: originalName })
     await card.getByRole('button', { name: 'Edit' }).click()
+    await expectConventionalSheet(page)
 
     const nameField = page.getByLabel('Name')
     await nameField.fill(updatedName)

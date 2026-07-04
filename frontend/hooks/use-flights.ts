@@ -13,6 +13,7 @@ import {
   apiFlightToComponentFlight,
   componentFlightToApiRequest
 } from '@/components/flight-operations/types'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export const flightKeys = {
@@ -62,6 +63,7 @@ export function useFlights(params?: {
 }) {
   const qc = useQueryClient()
   const db = createClient()
+  const { user: currentUser } = useCurrentUser()
 
   const filters: FlightFilters | undefined = params
     ? {
@@ -82,7 +84,16 @@ export function useFlights(params?: {
   const createMutation = useMutation({
     mutationFn: async (flight: Partial<Flight>) => {
       const requestData = componentFlightToApiRequest(flight)
+      // flight.created_by_id is NOT NULL with no DB default (the old Django backend
+      // defaulted it to the admin user); it has to come from the signed-in user's
+      // legacy users row or the insert is rejected outright.
+      if (!currentUser?.id) {
+        throw new Error(
+          'Cannot create flight: no users record found for the signed-in account'
+        )
+      }
       const row = await createFlightRepo(db, {
+        created_by_id: currentUser.id,
         aircraft_id: requestData.aircraft,
         call_sign: requestData.call_sign,
         arrival_time: requestData.arrival_time,

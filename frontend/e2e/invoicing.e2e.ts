@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createE2EDbClient, waitForDbRow } from './support/db'
+import { expectConventionalSheet } from './support/ui'
 import { uniqueValue } from './support/unique'
 
 const db = createE2EDbClient()
@@ -28,6 +29,8 @@ test.describe('Fuel ticket entry — Complete ticket actually persists', () => {
 
     await page.goto('/invoicing')
     await page.getByRole('button', { name: 'New ticket' }).click()
+    // House conventions: the ticket-entry form is a themed right-side Sheet slide-out.
+    await expectConventionalSheet(page)
 
     const invoiceNumberField = page.getByLabel('Invoice #')
     await invoiceNumberField.fill(invoiceNumber)
