@@ -60,8 +60,22 @@ Import from `@/components/ui/sheet` and follow this skeleton:
 
 Keep destructive confirmations as `AlertDialog` (or `Dialog` where already in place) — do not migrate them to `Sheet`. A slideout implies a workspace; a confirmation is a blocking question.
 
-## Status (as of 2026-07-03)
+## Status (as of 2026-07-04)
 
-Already `Sheet`: `equipment/equipment-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`, `invoicing/fuel-ticket-sheet.tsx`, `parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`, `training/course-form-sheet.tsx`, `users/user-sheet.tsx`.
+Already `Sheet` (verified by the Playwright E2E suite's `expectConventionalSheet`
+assertion — which also checks the panel follows the active dark/light theme
+(`frontend/e2e/support/ui.ts`) — except `parking/aircraft-sheet.tsx`, since the parking
+module is excluded from E2E): `equipment/equipment-form-dialog.tsx`,
+`flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`,
+`fuel-dispatch/fueler-assign-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`,
+`invoicing/fuel-ticket-sheet.tsx`, `invoicing/settle-invoice-dialog.tsx`,
+`parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`,
+`training/course-form-sheet.tsx`, `users/user-sheet.tsx`.
 
-Still `Dialog` and pending migration to `Sheet` (data-entry forms, not read-only/confirmation): `flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx`. Left as `Dialog` intentionally: `invoicing/invoice-detail-dialog.tsx` (read-only), `components/ui/command.tsx` (command palette), and the parking module generally (frozen — audit-only, do not change UX per `.omc/specs/deep-interview-fbo-manager-modules.md`).
+Left as `Dialog` intentionally: `invoicing/invoice-detail-dialog.tsx` (read-only),
+`components/ui/command.tsx` (command palette), and the parking module generally (frozen —
+audit-only, do not change UX per `.omc/specs/deep-interview-fbo-manager-modules.md`).
+
+Note on theming: the `dark` class must live on `<html>` (`navigation-wrapper.tsx` maintains
+it there). Sheets/dialogs/dropdowns portal to `<body>`, so scoping the theme class any lower
+silently un-themes every overlay.
