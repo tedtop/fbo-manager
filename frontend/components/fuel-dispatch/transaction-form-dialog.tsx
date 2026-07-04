@@ -27,10 +27,11 @@ import { createClient } from '@/lib/supabase/client'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useFlights } from '@/hooks/use-flights'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
-import type {
-  TransactionInsert,
-  TransactionRow,
-  TransactionWithRelations
+import {
+  parseGallonsRequested,
+  type TransactionInsert,
+  type TransactionRow,
+  type TransactionWithRelations
 } from '@/repositories/transactions.repo'
 import { format } from 'date-fns'
 import { useEffect, useMemo, useState } from 'react'
@@ -43,7 +44,7 @@ interface TransactionFormData {
   tail_number: string
   fuel_type: FuelType
   fuel_truck_id: number | null
-  fuel_order_text: string
+  fuel_request: string
   quantity_gallons: string
   quantity_lbs: string
 }
@@ -66,7 +67,7 @@ const emptyForm: TransactionFormData = {
   tail_number: '',
   fuel_type: '',
   fuel_truck_id: null,
-  fuel_order_text: '',
+  fuel_request: '',
   quantity_gallons: '',
   quantity_lbs: ''
 }
@@ -111,7 +112,7 @@ export function TransactionFormDialog({
         tail_number: transaction.tail_number ?? '',
         fuel_type: transaction.fuel_type ?? '',
         fuel_truck_id: transaction.fuel_truck_id,
-        fuel_order_text: transaction.fuel_order_text ?? '',
+        fuel_request: transaction.fuel_request ?? '',
         quantity_gallons: transaction.quantity_gallons ?? '',
         quantity_lbs: transaction.quantity_lbs ?? ''
       })
@@ -147,7 +148,7 @@ export function TransactionFormDialog({
         tail_number: freshRow.tail_number ?? '',
         fuel_type: (freshRow.fuel_type as FuelType) ?? '',
         fuel_truck_id: freshRow.fuel_truck_id,
-        fuel_order_text: freshRow.fuel_order_text ?? '',
+        fuel_request: freshRow.fuel_request ?? '',
         quantity_gallons: freshRow.quantity_gallons ?? '',
         quantity_lbs: freshRow.quantity_lbs ?? ''
       })
@@ -175,7 +176,9 @@ export function TransactionFormDialog({
         tail_number: form.tail_number || null,
         fuel_type: form.fuel_type || null,
         fuel_truck_id: form.fuel_truck_id || null,
-        fuel_order_text: form.fuel_order_text || null,
+        fuel_request: form.fuel_request || null,
+        // Best-effort parse only — stays null for 'T/O', lbs requests, etc.
+        gallons_requested: parseGallonsRequested(form.fuel_request),
         quantity_gallons: gal,
         quantity_lbs: lbs,
         density: gal && lbs && density ? Number(density) : null,
@@ -325,11 +328,11 @@ export function TransactionFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="fuel_order_text">Fuel Request</Label>
+              <Label htmlFor="fuel_request">Fuel Request</Label>
               <Input
-                id="fuel_order_text"
-                value={form.fuel_order_text}
-                onChange={(e) => setForm({ ...form, fuel_order_text: e.target.value })}
+                id="fuel_request"
+                value={form.fuel_request}
+                onChange={(e) => setForm({ ...form, fuel_request: e.target.value })}
                 placeholder='e.g. "T/O", "panel set", "110/s", "1260", "10000 lbs"'
               />
               <p className="text-xs text-muted-foreground">
