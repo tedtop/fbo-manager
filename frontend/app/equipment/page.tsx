@@ -4,10 +4,12 @@ import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { useEquipment } from '@/hooks/use-equipment'
-import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
-import { EquipmentStatusCard, EQUIPMENT_TYPES, formatTypeLabel } from '@/components/equipment/equipment-status-card'
+import {
+  EQUIPMENT_TYPES,
+  EquipmentStatusCard,
+  formatTypeLabel
+} from '@/components/equipment/equipment-status-card'
 import type { EquipmentStatus } from '@/components/equipment/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,18 +19,28 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import type { EquipmentDomain } from '@/types/domain/equipment'
+import { useEquipment } from '@/hooks/use-equipment'
+import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import type { EquipmentInsert } from '@/repositories/equipment.repo'
+import type { EquipmentDomain } from '@/types/domain/equipment'
 
 export default function EquipmentPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  const { equipment, loading, error, createEquipment, updateEquipment, refetch } = useEquipment()
+  const {
+    equipment,
+    loading,
+    error,
+    createEquipment,
+    updateEquipment,
+    refetch
+  } = useEquipment()
   useEquipmentRealtime()
 
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingEquipment, setEditingEquipment] = useState<EquipmentDomain | null>(null)
+  const [editingEquipment, setEditingEquipment] =
+    useState<EquipmentDomain | null>(null)
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
   useEffect(() => {
@@ -48,9 +60,12 @@ export default function EquipmentPage() {
     setDialogOpen(true)
   }
 
-  async function handleSubmit(data: EquipmentInsert) {
+  async function handleSubmit(
+    data: EquipmentInsert,
+    expectedModifiedAt?: string
+  ) {
     if (editingEquipment) {
-      await updateEquipment(editingEquipment.id, data)
+      await updateEquipment(editingEquipment.id, data, expectedModifiedAt)
     } else {
       await createEquipment(data)
     }
@@ -61,22 +76,29 @@ export default function EquipmentPage() {
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-muted-foreground">Loading equipment...</div>
+        <div className="text-lg text-muted-foreground">
+          Loading equipment...
+        </div>
       </div>
     )
   }
 
   if (status === 'unauthenticated') return null
 
-  const available = equipment.filter(e => e.status === 'available').length
-  const inUse = equipment.filter(e => e.status === 'in_use').length
-  const outOfService = equipment.filter(e => e.status === 'out_of_service').length
+  const available = equipment.filter((e) => e.status === 'available').length
+  const inUse = equipment.filter((e) => e.status === 'in_use').length
+  const outOfService = equipment.filter(
+    (e) => e.status === 'out_of_service'
+  ).length
   const maintenanceWarnings = equipment.filter(
-    e => e.maintenanceStatus === 'due_soon' || e.maintenanceStatus === 'overdue'
+    (e) =>
+      e.maintenanceStatus === 'due_soon' || e.maintenanceStatus === 'overdue'
   ).length
 
   const filteredEquipment =
-    typeFilter === 'all' ? equipment : equipment.filter(e => e.equipment_type === typeFilter)
+    typeFilter === 'all'
+      ? equipment
+      : equipment.filter((e) => e.equipment_type === typeFilter)
 
   return (
     <div className="space-y-6">
@@ -95,7 +117,7 @@ export default function EquipmentPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              {EQUIPMENT_TYPES.map(type => (
+              {EQUIPMENT_TYPES.map((type) => (
                 <SelectItem key={type} value={type}>
                   {formatTypeLabel(type)}
                 </SelectItem>
@@ -103,7 +125,10 @@ export default function EquipmentPage() {
             </SelectContent>
           </Select>
           <Button
-            onClick={() => { setEditingEquipment(null); setDialogOpen(true) }}
+            onClick={() => {
+              setEditingEquipment(null)
+              setDialogOpen(true)
+            }}
           >
             Add Equipment
           </Button>
@@ -114,26 +139,36 @@ export default function EquipmentPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
           <p className="text-xs text-muted-foreground">Total</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{equipment.length}</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">
+            {equipment.length}
+          </p>
         </div>
         <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
           <p className="text-xs text-muted-foreground">Available</p>
-          <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">{available}</p>
+          <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
+            {available}
+          </p>
         </div>
         <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
           <p className="text-xs text-muted-foreground">In Use</p>
-          <p className="mt-1 text-2xl font-bold text-yellow-600 dark:text-yellow-400">{inUse}</p>
+          <p className="mt-1 text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+            {inUse}
+          </p>
         </div>
         <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
           <p className="text-xs text-muted-foreground">Out of Service</p>
-          <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">{outOfService}</p>
+          <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
+            {outOfService}
+          </p>
         </div>
       </div>
 
       {/* Maintenance warning banner */}
       {maintenanceWarnings > 0 && (
         <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
-          ⚠ {maintenanceWarnings} {maintenanceWarnings === 1 ? 'item has' : 'items have'} maintenance due within 30 days
+          ⚠ {maintenanceWarnings}{' '}
+          {maintenanceWarnings === 1 ? 'item has' : 'items have'} maintenance
+          due within 30 days
         </div>
       )}
 
@@ -155,7 +190,7 @@ export default function EquipmentPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredEquipment.map(item => (
+          {filteredEquipment.map((item) => (
             <EquipmentStatusCard
               key={item.id}
               equipment={item}

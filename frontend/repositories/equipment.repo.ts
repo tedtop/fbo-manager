@@ -1,11 +1,19 @@
+import { ConcurrencyConflictError } from '@/lib/concurrency'
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate
+} from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
 export type EquipmentRow = Tables<'equipment'>
 export type EquipmentInsert = TablesInsert<'equipment'>
 export type EquipmentUpdate = TablesUpdate<'equipment'>
 
-export async function findAllEquipment(db: SupabaseClient<Database>): Promise<EquipmentRow[]> {
+export async function findAllEquipment(
+  db: SupabaseClient<Database>
+): Promise<EquipmentRow[]> {
   const { data, error } = await db
     .from('equipment')
     .select('*')
@@ -31,7 +39,11 @@ export async function createEquipment(
   db: SupabaseClient<Database>,
   equipment: EquipmentInsert
 ): Promise<EquipmentRow> {
-  const { data, error } = await db.from('equipment').insert(equipment).select().single()
+  const { data, error } = await db
+    .from('equipment')
+    .insert(equipment)
+    .select()
+    .single()
   if (error) throw error
   return data
 }
@@ -39,15 +51,20 @@ export async function createEquipment(
 export async function updateEquipment(
   db: SupabaseClient<Database>,
   id: number,
-  updates: EquipmentUpdate
+  updates: EquipmentUpdate,
+  expectedModifiedAt?: string
 ): Promise<EquipmentRow> {
-  const { data, error } = await db
-    .from('equipment')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw error
+  let query = db.from('equipment').update(updates).eq('id', id)
+  if (expectedModifiedAt) {
+    query = query.eq('modified_at', expectedModifiedAt)
+  }
+  const { data, error } = await query.select().single()
+  if (error) {
+    if (expectedModifiedAt && error.code === 'PGRST116') {
+      throw new ConcurrencyConflictError('equipment', id)
+    }
+    throw error
+  }
   return data
 }
 

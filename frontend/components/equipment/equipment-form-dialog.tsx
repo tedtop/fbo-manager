@@ -1,6 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import {
+  EQUIPMENT_TYPES,
+  formatTypeLabel
+} from '@/components/equipment/equipment-status-card'
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import {
   Sheet,
   SheetContent,
@@ -9,26 +23,23 @@ import {
   SheetHeader,
   SheetTitle
 } from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
-import { EQUIPMENT_TYPES, formatTypeLabel } from '@/components/equipment/equipment-status-card'
-import type { EquipmentInsert } from '@/repositories/equipment.repo'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import type {
+  EquipmentInsert,
+  EquipmentRow
+} from '@/repositories/equipment.repo'
 import type { EquipmentDomain } from '@/types/domain/equipment'
+import { useEffect, useState } from 'react'
 
 interface EquipmentFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   equipment?: EquipmentDomain | null
-  onSubmit: (data: EquipmentInsert) => Promise<void>
+  onSubmit: (
+    data: EquipmentInsert,
+    expectedModifiedAt?: string
+  ) => Promise<void>
 }
 
 type EquipmentType = EquipmentInsert['equipment_type']
@@ -48,7 +59,12 @@ const emptyForm: EquipmentInsert = {
   next_maintenance_date: null
 }
 
-export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }: EquipmentFormDialogProps) {
+export function EquipmentFormDialog({
+  open,
+  onOpenChange,
+  equipment,
+  onSubmit
+}: EquipmentFormDialogProps) {
   const [form, setForm] = useState<EquipmentInsert>(emptyForm)
   const [loading, setLoading] = useState(false)
 
@@ -72,15 +88,47 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
     }
   }, [equipment, open])
 
-  const updateField = <K extends keyof EquipmentInsert>(key: K, value: EquipmentInsert[K]) => {
-    setForm(prev => ({ ...prev, [key]: value }))
+  const updateField = <K extends keyof EquipmentInsert>(
+    key: K,
+    value: EquipmentInsert[K]
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  const editSession = useRecordEditSession<EquipmentRow>({
+    table: 'equipment',
+    recordId: equipment?.id ?? null,
+    modifiedAt: equipment?.modified_at ?? null,
+    enabled: open && !!equipment,
+    onReload: (freshRow) => {
+      setForm({
+        equipment_id: freshRow.equipment_id,
+        equipment_name: freshRow.equipment_name,
+        equipment_type: freshRow.equipment_type,
+        manufacturer: freshRow.manufacturer,
+        model: freshRow.model,
+        serial_number: freshRow.serial_number,
+        status: freshRow.status,
+        location: freshRow.location,
+        notes: freshRow.notes,
+        last_maintenance_date: freshRow.last_maintenance_date,
+        next_maintenance_date: freshRow.next_maintenance_date
+      })
+    }
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await onSubmit(form)
+      if (equipment) {
+        const outcome = await editSession.save((expectedModifiedAt) =>
+          onSubmit(form, expectedModifiedAt)
+        )
+        if (outcome.status === 'conflict') return
+      } else {
+        await onSubmit(form)
+      }
       onOpenChange(false)
     } finally {
       setLoading(false)
@@ -89,9 +137,14 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+      >
         <SheetHeader className="border-b border-border p-4">
-          <SheetTitle>{equipment ? 'Edit Equipment' : 'Add Equipment'}</SheetTitle>
+          <SheetTitle>
+            {equipment ? 'Edit Equipment' : 'Add Equipment'}
+          </SheetTitle>
           <SheetDescription>
             {equipment
               ? 'Update the details for this piece of equipment.'
@@ -99,7 +152,19 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+        {equipment && (
+          <div className="px-4 pt-4">
+            <EditSessionStatus
+              editSession={editSession}
+              onOverwriteComplete={() => onOpenChange(false)}
+            />
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             <div>
               <Label htmlFor="equipment_id">Equipment ID</Label>
@@ -124,7 +189,9 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
               <Label>Equipment Type</Label>
               <Select
                 value={form.equipment_type as string}
-                onValueChange={(value) => updateField('equipment_type', value as EquipmentType)}
+                onValueChange={(value) =>
+                  updateField('equipment_type', value as EquipmentType)
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -171,7 +238,9 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
               <Label>Status</Label>
               <Select
                 value={form.status as string}
-                onValueChange={(value) => updateField('status', value as EquipmentStatus)}
+                onValueChange={(value) =>
+                  updateField('status', value as EquipmentStatus)
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -210,7 +279,9 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
                   id="last_maintenance_date"
                   type="date"
                   value={(form.last_maintenance_date as string) ?? ''}
-                  onChange={(e) => updateField('last_maintenance_date', e.target.value || null)}
+                  onChange={(e) =>
+                    updateField('last_maintenance_date', e.target.value || null)
+                  }
                 />
               </div>
               <div>
@@ -219,7 +290,9 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
                   id="next_maintenance_date"
                   type="date"
                   value={(form.next_maintenance_date as string) ?? ''}
-                  onChange={(e) => updateField('next_maintenance_date', e.target.value || null)}
+                  onChange={(e) =>
+                    updateField('next_maintenance_date', e.target.value || null)
+                  }
                 />
               </div>
             </div>
@@ -235,8 +308,16 @@ export function EquipmentFormDialog({ open, onOpenChange, equipment, onSubmit }:
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-              {loading ? 'Saving...' : equipment ? 'Save Changes' : 'Add Equipment'}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
+              {loading
+                ? 'Saving...'
+                : equipment
+                  ? 'Save Changes'
+                  : 'Add Equipment'}
             </Button>
           </SheetFooter>
         </form>
