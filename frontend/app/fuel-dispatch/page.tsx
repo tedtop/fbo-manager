@@ -85,8 +85,17 @@ export default function FuelDispatchMonitorPage() {
   }
 
   const handleDelete = async (id: number) => {
-    await deleteTransaction(id)
-    toast({ title: 'Fuel order deleted' })
+    try {
+      await deleteTransaction(id)
+      toast({ title: 'Fuel order deleted' })
+    } catch (err) {
+      toast({
+        title: 'Could not delete fuel order',
+        description:
+          err instanceof Error ? err.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleProgress = async (id: number, progress: 'started' | 'in_progress' | 'completed') => {

@@ -5,6 +5,8 @@ import { TEST_SUPABASE_URL, assertSafeTestTarget } from './client'
 // Deletion order: children before parents, so FK constraints never block a wipe.
 // Keep this in sync with frontend/supabase/migrations/*.sql.
 const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string }> = [
+  { table: 'app_error_log', pk: 'id' },
+  { table: 'scanned_documents', pk: 'id' },
   { table: 'invoice_fuel_readings', pk: 'id' },
   { table: 'invoice_line_items', pk: 'id' },
   { table: 'invoices', pk: 'id' },

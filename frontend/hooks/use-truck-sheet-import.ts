@@ -7,6 +7,7 @@ import {
   createTruckSheet,
   type TruckMeterReadingInsert,
 } from '@/repositories/truck-sheets.repo'
+import { uploadScannedDocument } from '@/repositories/scanned-documents.repo'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   ExtractedReading,
@@ -33,6 +34,8 @@ export interface ReviewSheet {
   fueler_initials: string
   page_count: number
   source_files: string[]
+  /** The original photos, in page order — persisted to Storage on import. */
+  files: File[]
   ocr_raw: unknown[]
   readings: ReviewReading[]
 }
@@ -85,6 +88,7 @@ export function mergeExtractions(
       fueler_initials: first.fueler_initials,
       page_count: group.length,
       source_files: group.map((p) => p.file.name),
+      files: group.map((p) => p.file),
       ocr_raw: group.map((p) => {
         const { raw_text: _rawText, ...extraction } = p.extraction
         return extraction
@@ -188,6 +192,29 @@ export function useTruckSheetCommit() {
             notes: r.notes || null,
           }))
         await createTruckMeterReadings(db, inserts)
+
+        // 4. Persist the original photos (private 'scans' bucket) so the
+        //    paper source outlives the OCR JSON. Best-effort by design: the
+        //    imported readings are the operationally critical data, and a
+        //    storage hiccup must not roll back a successful import — the
+        //    photos still exist on the phone and can be re-attached later.
+        for (let page = 0; page < sheet.files.length; page++) {
+          try {
+            await uploadScannedDocument(db, {
+              docType: 'truck_sheet',
+              file: sheet.files[page],
+              filename: sheet.files[page].name,
+              pageNumber: page + 1,
+              truckSheetId: sheetRow.id,
+            })
+          } catch (err) {
+            console.error(
+              `Failed to persist original scan "${sheet.files[page].name}" for truck sheet ${sheetRow.id}:`,
+              err
+            )
+          }
+        }
+
         created.push(sheetRow.id)
       }
 
