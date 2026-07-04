@@ -33,12 +33,15 @@ department-scheduling ACL seam).
 
 ## Why no backend
 
-The project originally shipped with a Django REST Framework backend (the `backend/`
-directory some old docs/scripts reference no longer exists — it was fully removed).
-Django required coordinated changes across two codebases for every feature with no
-technical benefit, since Supabase already serves the frontend directly via PostgREST,
-Auth, and Realtime. See `frontend/repositories/*.repo.ts` for the full list of
-entities and their query surface.
+The project originally shipped with a Django REST Framework backend. It required
+coordinated changes across two codebases for every feature with no technical benefit,
+since Supabase already serves the frontend directly via PostgREST, Auth, and Realtime.
+The Next.js app no longer talks to it or depends on anything it generates — its
+generated OpenAPI TypeScript client has been removed from `frontend/`, and no runtime
+path touches Django. The `backend/` directory itself is kept in the repo for
+historical reference only; it isn't run, deployed, or maintained. See
+`frontend/repositories/*.repo.ts` for the full list of entities and their query
+surface.
 
 ## Auth
 
