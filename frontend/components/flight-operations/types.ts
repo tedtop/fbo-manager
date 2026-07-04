@@ -1,5 +1,32 @@
-import type { FlightList } from '@/types/api'
-import { FlightStatusEnum } from '@/types/api'
+import type { Database } from '@/types/database'
+
+type BackendFlightStatus =
+  Database['public']['Tables']['flight']['Row']['flight_status']
+
+// Shape produced by hooks/use-flights.ts's rowToFlight() adapter over a Supabase flight row
+export interface FlightRow {
+  id: number | string
+  aircraft?: string | null
+  aircraft_type_display?: string | null
+  call_sign?: string | null
+  arrival_time?: string | null
+  departure_time?: string | null
+  flight_status?: BackendFlightStatus
+  origin?: string | null
+  destination?: string | null
+  contact_name?: string | null
+  contact_notes?: string | null
+  services?: string[] | null
+  fuel_order_notes?: string | null
+  passenger_count?: number | null
+  notes?: string | null
+  created_by_source?: string | null
+  created_by_initials?: string | null
+  created_by_name?: string | null
+  created_by_department?: string | null
+  created_at: string
+  modified_at?: string | null
+}
 
 // Component types (from v0)
 export type FlightType =
@@ -76,39 +103,40 @@ export interface FlightFilters {
   services: string[]
 }
 
-// Map backend flight status to component status
-function mapFlightStatus(status?: FlightStatusEnum): FlightStatus {
+// Map DB flight_status to component status
+function mapFlightStatus(status?: BackendFlightStatus): FlightStatus {
   switch (status) {
-    case FlightStatusEnum.SCHEDULED:
+    case 'scheduled':
+    case 'planned':
       return 'scheduled'
-    case FlightStatusEnum.ARRIVED:
+    case 'arrived':
       return 'arrived'
-    case FlightStatusEnum.DEPARTED:
+    case 'departed':
       return 'departed'
-    case FlightStatusEnum.DELAYED:
+    case 'delayed':
       return 'delayed'
-    case FlightStatusEnum.CANCELLED:
+    case 'cancelled':
       return 'cancelled'
     default:
       return 'scheduled'
   }
 }
 
-// Map component status back to backend status
-export function mapStatusToBackend(status: FlightStatus): FlightStatusEnum {
+// Map component status back to DB flight_status
+export function mapStatusToBackend(status: FlightStatus): BackendFlightStatus {
   switch (status) {
     case 'scheduled':
-      return FlightStatusEnum.SCHEDULED
+      return 'scheduled'
     case 'en-route':
-      return FlightStatusEnum.SCHEDULED // Backend doesn't have en-route, use scheduled
+      return 'scheduled' // DB doesn't have en-route, use scheduled
     case 'arrived':
-      return FlightStatusEnum.ARRIVED
+      return 'arrived'
     case 'departed':
-      return FlightStatusEnum.DEPARTED
+      return 'departed'
     case 'delayed':
-      return FlightStatusEnum.DELAYED
+      return 'delayed'
     case 'cancelled':
-      return FlightStatusEnum.CANCELLED
+      return 'cancelled'
   }
 }
 
@@ -127,8 +155,8 @@ function calculateDuration(
   return 45 // Default 45 minutes for single-time flights
 }
 
-// Convert backend API flight to component flight
-export function apiFlightToComponentFlight(apiFlight: FlightList): Flight {
+// Convert a Supabase flight row (via rowToFlight()) to the component's Flight shape
+export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
   // Determine flight type based on which times are set
   const hasArrival = !!apiFlight.arrival_time
   const hasDeparture = !!apiFlight.departure_time
@@ -168,7 +196,9 @@ export function apiFlightToComponentFlight(apiFlight: FlightList): Flight {
     arrivalTime: apiFlight.arrival_time ?? undefined,
     departureTime: apiFlight.departure_time!,
     origin:
-      apiFlight.origin || (hasArrival ? apiFlight.destination : undefined),
+      apiFlight.origin ||
+      (hasArrival ? apiFlight.destination : undefined) ||
+      undefined,
     destination: apiFlight.destination ?? undefined,
     status: mapFlightStatus(apiFlight.flight_status),
     contactName: (apiFlight as any).contact_name || undefined,
