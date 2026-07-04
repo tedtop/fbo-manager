@@ -1,10 +1,13 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { TEST_SUPABASE_URL, assertSafeTestTarget } from './client'
 
 // Deletion order: children before parents, so FK constraints never block a wipe.
 // Keep this in sync with frontend/supabase/migrations/*.sql.
-const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string }> = [
+const RESET_ORDER: Array<{
+  table: keyof Database['public']['Tables']
+  pk: string
+}> = [
   { table: 'invoice_fuel_readings', pk: 'id' },
   { table: 'invoice_line_items', pk: 'id' },
   { table: 'invoices', pk: 'id' },
@@ -29,7 +32,7 @@ const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string
   { table: 'tank_level_readings', pk: 'id' },
   { table: 'fuel_tank', pk: 'tank_id' },
   { table: 'aircraft', pk: 'tail_number' },
-  { table: 'users', pk: 'id' },
+  { table: 'users', pk: 'id' }
 ]
 
 /**
@@ -37,7 +40,9 @@ const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string
  * test (see tests/support/setup.ts) so every test starts from a clean, empty database
  * instead of tagging/filtering rows in a shared dataset.
  */
-export async function resetDatabase(db: SupabaseClient<Database>): Promise<void> {
+export async function resetDatabase(
+  db: SupabaseClient<Database>
+): Promise<void> {
   // Defense in depth: re-check the guard from client.ts even though createTestClient()
   // already checks it at construction time — this is the function that actually deletes
   // rows, so it re-validates independently rather than trusting the caller went through
@@ -47,7 +52,9 @@ export async function resetDatabase(db: SupabaseClient<Database>): Promise<void>
   for (const { table, pk } of RESET_ORDER) {
     const { error } = await db.from(table).delete().not(pk, 'is', null)
     if (error) {
-      throw new Error(`resetDatabase: failed to clear "${table}": ${error.message}`)
+      throw new Error(
+        `resetDatabase: failed to clear "${table}": ${error.message}`
+      )
     }
   }
 }

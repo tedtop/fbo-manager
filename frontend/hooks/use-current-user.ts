@@ -1,7 +1,7 @@
 'use client'
 
-import { useAuth } from '@/providers/auth-provider'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/providers/auth-provider'
 import { findUserByEmail } from '@/repositories/users.repo'
 import { useQuery } from '@tanstack/react-query'
 

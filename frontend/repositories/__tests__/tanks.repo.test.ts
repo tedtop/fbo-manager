@@ -1,9 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeTank } from '@/tests/support/factories'
 import { createTankReading } from '@/repositories/tank-readings.repo'
-import { deleteTank, findAllTanks, findTankById, updateTank } from '@/repositories/tanks.repo'
+import {
+  deleteTank,
+  findAllTanks,
+  findTankById,
+  updateTank
+} from '@/repositories/tanks.repo'
+import { createTestClient } from '@/tests/support/client'
+import { makeTank } from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -27,12 +32,12 @@ describe('tanks.repo', () => {
     await createTankReading(db, {
       tank_id: tank.tank_id,
       level: 40,
-      recorded_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      recorded_at: new Date(Date.now() - 60 * 60 * 1000).toISOString()
     })
     await createTankReading(db, {
       tank_id: tank.tank_id,
       level: 55,
-      recorded_at: new Date().toISOString(),
+      recorded_at: new Date().toISOString()
     })
 
     const [found] = await findAllTanks(db)
@@ -42,8 +47,16 @@ describe('tanks.repo', () => {
   it('does not cross-contaminate latest_reading between tanks', async () => {
     const tankA = await makeTank(db, { tank_id: 'T-A' })
     const tankB = await makeTank(db, { tank_id: 'T-B' })
-    await createTankReading(db, { tank_id: tankA.tank_id, level: 10, recorded_at: new Date().toISOString() })
-    await createTankReading(db, { tank_id: tankB.tank_id, level: 90, recorded_at: new Date().toISOString() })
+    await createTankReading(db, {
+      tank_id: tankA.tank_id,
+      level: 10,
+      recorded_at: new Date().toISOString()
+    })
+    await createTankReading(db, {
+      tank_id: tankB.tank_id,
+      level: 90,
+      recorded_at: new Date().toISOString()
+    })
 
     const all = await findAllTanks(db)
     const a = all.find((t) => t.tank_id === 'T-A')
@@ -53,11 +66,14 @@ describe('tanks.repo', () => {
   })
 
   it('updates and deletes a tank', async () => {
-    const tank = await makeTank(db, { tank_id: 'T-EDIT', tank_name: 'Original' })
+    const tank = await makeTank(db, {
+      tank_id: 'T-EDIT',
+      tank_name: 'Original'
+    })
     const updated = await updateTank(db, tank.tank_id, { tank_name: 'Renamed' })
     expect(updated.tank_name).toBe('Renamed')
 
-    await deleteTank(db, tank.tank_id);
+    await deleteTank(db, tank.tank_id)
     expect(await findTankById(db, tank.tank_id)).toBeNull()
   })
 })

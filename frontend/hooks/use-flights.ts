@@ -1,18 +1,20 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
-import {
-  createFlight as createFlightRepo,
-  deleteFlight as deleteFlightRepo,
-  findAllFlights,
-  updateFlight as updateFlightRepo,
-  type FlightFilters
-} from '@/repositories/flights.repo'
 import {
   type Flight,
   apiFlightToComponentFlight,
   componentFlightToApiRequest
 } from '@/components/flight-operations/types'
+import { createClient } from '@/lib/supabase/client'
+import {
+  type FlightFilters,
+  type FlightUpdate,
+  type FlightWithRelations,
+  createFlight as createFlightRepo,
+  deleteFlight as deleteFlightRepo,
+  findAllFlights,
+  updateFlight as updateFlightRepo
+} from '@/repositories/flights.repo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export const flightKeys = {
@@ -21,7 +23,7 @@ export const flightKeys = {
   list: (filters?: FlightFilters) => [...flightKeys.lists(), filters] as const
 }
 
-function rowToFlight(row: any): Flight {
+function rowToFlight(row: FlightWithRelations): Flight {
   return apiFlightToComponentFlight({
     id: row.id,
     aircraft: row.aircraft_id,
@@ -29,7 +31,7 @@ function rowToFlight(row: any): Flight {
     call_sign: row.call_sign,
     arrival_time: row.arrival_time,
     departure_time: row.departure_time,
-    flight_status: row.flight_status as any,
+    flight_status: row.flight_status,
     origin: row.origin,
     destination: row.destination,
     contact_name: row.contact_name,
@@ -40,19 +42,22 @@ function rowToFlight(row: any): Flight {
     notes: row.notes,
     created_by_source: row.created_by_source,
     created_by_initials: row.created_by
-      ? `${row.created_by.first_name?.[0] ?? ''}${row.created_by.last_name?.[0] ?? ''}`.toUpperCase() || 'ADM'
+      ? `${row.created_by.first_name?.[0] ?? ''}${row.created_by.last_name?.[0] ?? ''}`.toUpperCase() ||
+        'ADM'
       : 'ADM',
     created_by_name: row.created_by
-      ? `${row.created_by.first_name} ${row.created_by.last_name}`.trim() || row.created_by.username
+      ? `${row.created_by.first_name} ${row.created_by.last_name}`.trim() ||
+        row.created_by.username
       : 'Admin',
-    created_by_department: row.created_by?.role === 'line'
-      ? 'Line Department'
-      : row.created_by?.role === 'frontdesk'
-        ? 'Front Desk'
-        : 'Administration',
+    created_by_department:
+      row.created_by?.role === 'line'
+        ? 'Line Department'
+        : row.created_by?.role === 'frontdesk'
+          ? 'Front Desk'
+          : 'Administration',
     created_at: row.created_at,
     modified_at: row.modified_at
-  } as any)
+  })
 }
 
 export function useFlights(params?: {
@@ -83,10 +88,10 @@ export function useFlights(params?: {
     mutationFn: async (flight: Partial<Flight>) => {
       const requestData = componentFlightToApiRequest(flight)
       const row = await createFlightRepo(db, {
-        aircraft_id: requestData.aircraft,
+        aircraft_id: requestData.aircraft ?? '',
         call_sign: requestData.call_sign,
         arrival_time: requestData.arrival_time,
-        departure_time: requestData.departure_time,
+        departure_time: requestData.departure_time ?? '',
         flight_status: requestData.flight_status ?? 'scheduled',
         origin: requestData.origin ?? '',
         destination: requestData.destination ?? '',
@@ -104,23 +109,39 @@ export function useFlights(params?: {
   })
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Flight> }) => {
+    mutationFn: async ({
+      id,
+      updates
+    }: { id: string; updates: Partial<Flight> }) => {
       const requestData = componentFlightToApiRequest(updates)
-      const dbUpdates: Record<string, any> = {}
-      if (requestData.aircraft !== undefined) dbUpdates.aircraft_id = requestData.aircraft
-      if (requestData.call_sign !== undefined) dbUpdates.call_sign = requestData.call_sign
-      if (requestData.arrival_time !== undefined) dbUpdates.arrival_time = requestData.arrival_time
-      if (requestData.departure_time !== undefined) dbUpdates.departure_time = requestData.departure_time
-      if (requestData.flight_status !== undefined) dbUpdates.flight_status = requestData.flight_status
-      if (requestData.origin !== undefined) dbUpdates.origin = requestData.origin
-      if (requestData.destination !== undefined) dbUpdates.destination = requestData.destination
-      if (requestData.contact_name !== undefined) dbUpdates.contact_name = requestData.contact_name
-      if (requestData.contact_notes !== undefined) dbUpdates.contact_notes = requestData.contact_notes
-      if (requestData.services !== undefined) dbUpdates.services = requestData.services
-      if (requestData.fuel_order_notes !== undefined) dbUpdates.fuel_order_notes = requestData.fuel_order_notes
-      if (requestData.passenger_count !== undefined) dbUpdates.passenger_count = requestData.passenger_count
+      const dbUpdates: FlightUpdate = {}
+      if (requestData.aircraft !== undefined)
+        dbUpdates.aircraft_id = requestData.aircraft
+      if (requestData.call_sign !== undefined)
+        dbUpdates.call_sign = requestData.call_sign
+      if (requestData.arrival_time !== undefined)
+        dbUpdates.arrival_time = requestData.arrival_time
+      if (requestData.departure_time !== undefined)
+        dbUpdates.departure_time = requestData.departure_time
+      if (requestData.flight_status !== undefined)
+        dbUpdates.flight_status = requestData.flight_status
+      if (requestData.origin !== undefined)
+        dbUpdates.origin = requestData.origin
+      if (requestData.destination !== undefined)
+        dbUpdates.destination = requestData.destination
+      if (requestData.contact_name !== undefined)
+        dbUpdates.contact_name = requestData.contact_name
+      if (requestData.contact_notes !== undefined)
+        dbUpdates.contact_notes = requestData.contact_notes
+      if (requestData.services !== undefined)
+        dbUpdates.services = requestData.services
+      if (requestData.fuel_order_notes !== undefined)
+        dbUpdates.fuel_order_notes = requestData.fuel_order_notes
+      if (requestData.passenger_count !== undefined)
+        dbUpdates.passenger_count = requestData.passenger_count
       if (requestData.notes !== undefined) dbUpdates.notes = requestData.notes
-      if (requestData.created_by_source !== undefined) dbUpdates.created_by_source = requestData.created_by_source
+      if (requestData.created_by_source !== undefined)
+        dbUpdates.created_by_source = requestData.created_by_source
 
       const row = await updateFlightRepo(db, Number(id), dbUpdates)
       return rowToFlight(row)
@@ -137,7 +158,8 @@ export function useFlights(params?: {
     flights: query.data ?? [],
     loading: query.isLoading,
     error: query.error,
-    createFlight: (flight: Partial<Flight>) => createMutation.mutateAsync(flight),
+    createFlight: (flight: Partial<Flight>) =>
+      createMutation.mutateAsync(flight),
     updateFlight: (id: string, updates: Partial<Flight>) =>
       updateMutation.mutateAsync({ id, updates }),
     deleteFlight: (id: string) => deleteMutation.mutateAsync(id),

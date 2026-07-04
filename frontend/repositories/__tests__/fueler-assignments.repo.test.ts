@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeFueler } from '@/tests/support/factories'
-import { createTransaction } from '@/repositories/transactions.repo'
 import {
   assignFuelerToTransaction,
   findAssignmentsByTransactionId,
-  removeFuelerFromTransaction,
+  removeFuelerFromTransaction
 } from '@/repositories/fueler-assignments.repo'
+import { createTransaction } from '@/repositories/transactions.repo'
+import { createTestClient } from '@/tests/support/client'
+import { makeFueler } from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -26,8 +26,14 @@ describe('fueler-assignments.repo', () => {
     const otherTx = await createTransaction(db, { ticket_number: 'ASSIGN-2' })
     const fueler = await makeFueler(db)
 
-    await assignFuelerToTransaction(db, { transaction_id: tx.id, fueler_id: fueler.id })
-    await assignFuelerToTransaction(db, { transaction_id: otherTx.id, fueler_id: fueler.id })
+    await assignFuelerToTransaction(db, {
+      transaction_id: tx.id,
+      fueler_id: fueler.id
+    })
+    await assignFuelerToTransaction(db, {
+      transaction_id: otherTx.id,
+      fueler_id: fueler.id
+    })
 
     const results = await findAssignmentsByTransactionId(db, tx.id)
     expect(results).toHaveLength(1)
@@ -38,8 +44,14 @@ describe('fueler-assignments.repo', () => {
     const tx = await createTransaction(db, { ticket_number: 'REMOVE-TEST' })
     const fuelerA = await makeFueler(db)
     const fuelerB = await makeFueler(db)
-    await assignFuelerToTransaction(db, { transaction_id: tx.id, fueler_id: fuelerA.id })
-    await assignFuelerToTransaction(db, { transaction_id: tx.id, fueler_id: fuelerB.id })
+    await assignFuelerToTransaction(db, {
+      transaction_id: tx.id,
+      fueler_id: fuelerA.id
+    })
+    await assignFuelerToTransaction(db, {
+      transaction_id: tx.id,
+      fueler_id: fuelerB.id
+    })
 
     await removeFuelerFromTransaction(db, tx.id, fuelerA.id)
 
@@ -50,7 +62,10 @@ describe('fueler-assignments.repo', () => {
   it('fails to assign a fueler to a nonexistent transaction (FK guard)', async () => {
     const fueler = await makeFueler(db)
     await expect(
-      assignFuelerToTransaction(db, { transaction_id: 999_999, fueler_id: fueler.id })
+      assignFuelerToTransaction(db, {
+        transaction_id: 999_999,
+        fueler_id: fueler.id
+      })
     ).rejects.toThrow()
   })
 })

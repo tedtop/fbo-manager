@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { chromium, type FullConfig } from '@playwright/test'
+import { type FullConfig, chromium } from '@playwright/test'
 import { DEV_USERS, E2E_BASE_URL } from './support/env'
 import { seedDevUsers } from './support/seed'
 
@@ -20,11 +20,15 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   for (const [storageState, devUser] of [
     [ADMIN_STORAGE_STATE, DEV_USERS.admin],
-    [USER_STORAGE_STATE, DEV_USERS.user],
+    [USER_STORAGE_STATE, DEV_USERS.user]
   ] as const) {
     const page = await browser.newPage({ baseURL: E2E_BASE_URL })
     await page.goto('/login')
-    await page.getByRole('button', { name: devUser === DEV_USERS.admin ? 'Log in as Admin' : 'Log in as User' }).click()
+    await page
+      .getByRole('button', {
+        name: devUser === DEV_USERS.admin ? 'Log in as Admin' : 'Log in as User'
+      })
+      .click()
     await page.waitForURL(`${E2E_BASE_URL}/`, { timeout: 15_000 })
     await page.context().storageState({ path: storageState })
     await page.close()

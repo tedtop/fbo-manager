@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { equipmentKeys } from './use-equipment'
 
 export function useEquipmentRealtime() {

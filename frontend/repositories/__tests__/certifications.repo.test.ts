@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeFueler, makeTraining, makeUser } from '@/tests/support/factories'
 import {
   deleteCertification,
   findAllCertifications,
-  upsertCertification,
+  upsertCertification
 } from '@/repositories/certifications.repo'
+import { createTestClient } from '@/tests/support/client'
+import { makeFueler, makeTraining, makeUser } from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -31,7 +31,7 @@ describe('certifications.repo', () => {
       training_id: training.id,
       completed_date: daysFromNow(-30),
       expiry_date: daysFromNow(300),
-      certified_by_id: certifier.id,
+      certified_by_id: certifier.id
     })
 
     const [cert] = await findAllCertifications(db)
@@ -48,13 +48,13 @@ describe('certifications.repo', () => {
       fueler_id: fueler.id,
       training_id: training.id,
       completed_date: daysFromNow(-10),
-      expiry_date: daysFromNow(100),
+      expiry_date: daysFromNow(100)
     })
     await upsertCertification(db, {
       fueler_id: fueler.id,
       training_id: training.id,
       completed_date: daysFromNow(-1),
-      expiry_date: daysFromNow(365),
+      expiry_date: daysFromNow(365)
     })
 
     const all = await findAllCertifications(db, { fuelerId: fueler.id })
@@ -69,7 +69,7 @@ describe('certifications.repo', () => {
       fueler_id: fueler.id,
       training_id: training.id,
       completed_date: daysFromNow(-400),
-      expiry_date: daysFromNow(-30),
+      expiry_date: daysFromNow(-30)
     })
 
     const results = await findAllCertifications(db, { status: 'expired' })
@@ -85,16 +85,19 @@ describe('certifications.repo', () => {
       fueler_id: fueler.id,
       training_id: trainingSoon.id,
       completed_date: daysFromNow(-300),
-      expiry_date: daysFromNow(10),
+      expiry_date: daysFromNow(10)
     })
     await upsertCertification(db, {
       fueler_id: fueler.id,
       training_id: trainingFar.id,
       completed_date: daysFromNow(-10),
-      expiry_date: daysFromNow(300),
+      expiry_date: daysFromNow(300)
     })
 
-    const results = await findAllCertifications(db, { status: 'expiring_soon', days: 30 })
+    const results = await findAllCertifications(db, {
+      status: 'expiring_soon',
+      days: 30
+    })
     expect(results).toHaveLength(1)
     expect(results[0].training_id).toBe(trainingSoon.id)
   })
@@ -108,13 +111,13 @@ describe('certifications.repo', () => {
       fueler_id: fueler.id,
       training_id: expiredTraining.id,
       completed_date: daysFromNow(-400),
-      expiry_date: daysFromNow(-5),
+      expiry_date: daysFromNow(-5)
     })
     await upsertCertification(db, {
       fueler_id: fueler.id,
       training_id: validTraining.id,
       completed_date: daysFromNow(-5),
-      expiry_date: daysFromNow(100),
+      expiry_date: daysFromNow(100)
     })
 
     const results = await findAllCertifications(db, { status: 'valid' })
@@ -128,7 +131,7 @@ describe('certifications.repo', () => {
       fueler_id: fueler.id,
       training_id: training.id,
       completed_date: daysFromNow(-1),
-      expiry_date: daysFromNow(1),
+      expiry_date: daysFromNow(1)
     })
 
     await deleteCertification(db, cert.id)

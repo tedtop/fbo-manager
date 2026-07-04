@@ -1,5 +1,10 @@
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate
+} from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
 export type CertificationRow = Tables<'fueler_training'>
 export type CertificationInsert = TablesInsert<'fueler_training'>
@@ -7,8 +12,17 @@ export type CertificationUpdate = TablesUpdate<'fueler_training'>
 
 export type CertificationWithRelations = CertificationRow & {
   fueler: { id: number; fueler_name: string } | null
-  training: { id: number; training_name: string; validity_period_days: number } | null
-  certified_by: { id: number; username: string; first_name: string; last_name: string } | null
+  training: {
+    id: number
+    training_name: string
+    validity_period_days: number
+  } | null
+  certified_by: {
+    id: number
+    username: string
+    first_name: string
+    last_name: string
+  } | null
 }
 
 const CERT_SELECT = `
@@ -28,7 +42,10 @@ export async function findAllCertifications(
   db: SupabaseClient<Database>,
   filters?: CertificationFilters
 ): Promise<CertificationWithRelations[]> {
-  let query = db.from('fueler_training').select(CERT_SELECT).order('expiry_date')
+  let query = db
+    .from('fueler_training')
+    .select(CERT_SELECT)
+    .order('expiry_date')
 
   if (filters?.fuelerId) {
     query = query.eq('fueler_id', filters.fuelerId)

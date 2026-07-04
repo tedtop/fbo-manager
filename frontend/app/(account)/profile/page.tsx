@@ -1,14 +1,14 @@
 'use client'
 
-import { useMyProfile } from '@/hooks/use-my-profile'
-import { useMyPermissions } from '@/hooks/use-permissions'
-import { MODULES } from '@/types/domain/users'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useMyProfile } from '@/hooks/use-my-profile'
+import { useMyPermissions } from '@/hooks/use-permissions'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
+import { MODULES } from '@/types/domain/users'
 import { useEffect, useState } from 'react'
 
 export default function ProfilePage() {

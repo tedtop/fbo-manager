@@ -1,26 +1,29 @@
 'use client'
 
+import { DispatchCard } from '@/components/fuel-dispatch/dispatch-card'
 import { FuelOrderCard } from '@/components/fuel-dispatch/fuel-order-card'
 import { FuelerAssignDialog } from '@/components/fuel-dispatch/fueler-assign-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
-import { DispatchCard } from '@/components/fuel-dispatch/dispatch-card'
-import { ErrorMessage } from '@/messages/error-message'
 import { Button } from '@/components/ui/button'
 import { useQTDispatch } from '@/hooks/use-qt-dispatch'
 import { useSession } from '@/hooks/use-session'
+import { useToast } from '@/hooks/use-toast'
 import { useTransactions } from '@/hooks/use-transactions'
+import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
+import { ErrorMessage } from '@/messages/error-message'
+import type {
+  TransactionInsert,
+  TransactionWithRelations
+} from '@/repositories/transactions.repo'
 import {
   assignFueler,
   removeFueler,
   updateProgress
 } from '@/services/transactions.service'
-import { createClient } from '@/lib/supabase/client'
-import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
+import { Fuel, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Fuel, RefreshCw } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useToast } from '@/hooks/use-toast'
 
 type FilterMode = 'airlines' | 'all'
 
@@ -41,12 +44,21 @@ export default function FuelDispatchMonitorPage() {
 
   const [filterMode, setFilterMode] = useState<FilterMode>('airlines')
   const [hideDeparted, setHideDeparted] = useState(true)
-  const { transactions, loading: txLoading, createTransaction, updateTransaction, deleteTransaction, refetch: txRefetch } = useTransactions()
+  const {
+    transactions,
+    loading: txLoading,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+    refetch: txRefetch
+  } = useTransactions()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editTx, setEditTx] = useState<TransactionWithRelations | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
-  const [assignTx, setAssignTx] = useState<TransactionWithRelations | null>(null)
+  const [assignTx, setAssignTx] = useState<TransactionWithRelations | null>(
+    null
+  )
 
   const filteredDispatches = hideDeparted
     ? dispatches.filter((d) => d.FlightStatus !== 'In Flight')
@@ -89,9 +101,14 @@ export default function FuelDispatchMonitorPage() {
     toast({ title: 'Fuel order deleted' })
   }
 
-  const handleProgress = async (id: number, progress: 'started' | 'in_progress' | 'completed') => {
+  const handleProgress = async (
+    id: number,
+    progress: 'started' | 'in_progress' | 'completed'
+  ) => {
     await updateProgress(db, id, progress)
-    toast({ title: `Order ${progress === 'completed' ? 'completed' : progress === 'in_progress' ? 'started' : 'updated'}` })
+    toast({
+      title: `Order ${progress === 'completed' ? 'completed' : progress === 'in_progress' ? 'started' : 'updated'}`
+    })
   }
 
   const handleAssign = async (fuelerId: number) => {
@@ -131,6 +148,7 @@ export default function FuelDispatchMonitorPage() {
           {/* Filter radio */}
           <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
             <button
+              type="button"
               onClick={() => setFilterMode('airlines')}
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded-md transition-colors',
@@ -142,6 +160,7 @@ export default function FuelDispatchMonitorPage() {
               Airlines
             </button>
             <button
+              type="button"
               onClick={() => setFilterMode('all')}
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded-md transition-colors',
@@ -181,12 +200,18 @@ export default function FuelDispatchMonitorPage() {
             ) : (
               <>
                 {lastUpdated && (
-                  <span>Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+                  <span>
+                    Updated {new Date(lastUpdated).toLocaleTimeString()}
+                  </span>
                 )}
-                <span className={cn(
-                  'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                  refreshCountdown <= 5 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-muted text-muted-foreground'
-                )}>
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded text-[10px] font-medium',
+                    refreshCountdown <= 5
+                      ? 'bg-yellow-500/10 text-yellow-500'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
                   {refreshCountdown}s
                 </span>
               </>
@@ -214,7 +239,9 @@ export default function FuelDispatchMonitorPage() {
       {filterMode === 'airlines' ? (
         qtLoading && dispatches.length === 0 ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-lg text-muted-foreground">Loading dispatches...</div>
+            <div className="text-lg text-muted-foreground">
+              Loading dispatches...
+            </div>
           </div>
         ) : filteredDispatches.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -225,7 +252,13 @@ export default function FuelDispatchMonitorPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredDispatches.map((dispatch) => (
-              <DispatchCard key={dispatch.DispatchID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
+              <DispatchCard
+                key={
+                  dispatch.DispatchID ??
+                  `${dispatch.FlightNumber}-${dispatch.TailNumber}`
+                }
+                dispatch={dispatch}
+              />
             ))}
           </div>
         )
@@ -245,7 +278,13 @@ export default function FuelDispatchMonitorPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredDispatches.map((dispatch) => (
-              <DispatchCard key={dispatch.DispatchID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
+                    <DispatchCard
+                      key={
+                        dispatch.DispatchID ??
+                        `${dispatch.FlightNumber}-${dispatch.TailNumber}`
+                      }
+                      dispatch={dispatch}
+                    />
                   ))}
                 </div>
               )}
@@ -258,10 +297,13 @@ export default function FuelDispatchMonitorPage() {
               Fuel Orders ({fuelOrders.length})
             </h2>
             {txLoading ? (
-              <div className="text-sm text-muted-foreground">Loading orders...</div>
+              <div className="text-sm text-muted-foreground">
+                Loading orders...
+              </div>
             ) : fuelOrders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-                No fuel orders yet. Click &ldquo;New Fuel Order&rdquo; to create one.
+                No fuel orders yet. Click &ldquo;New Fuel Order&rdquo; to create
+                one.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -297,7 +339,9 @@ export default function FuelDispatchMonitorPage() {
         <FuelerAssignDialog
           open={assignOpen}
           onOpenChange={setAssignOpen}
-          assignedFuelerIds={assignTx.fueler_assignments.map((a) => a.fueler_id)}
+          assignedFuelerIds={assignTx.fueler_assignments.map(
+            (a) => a.fueler_id
+          )}
           onAssign={handleAssign}
           onRemove={handleRemoveAssign}
         />

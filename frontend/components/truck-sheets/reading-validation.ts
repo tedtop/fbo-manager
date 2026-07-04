@@ -24,7 +24,9 @@ const CONTINUITY_TOLERANCE_GAL = 0.1
  * - register continuity: a row's meter_start should equal the previous
  *   reading's meter_end on the same register
  */
-export function validateReadings(rows: ReadingNumbers[]): Map<number, ReadingIssue[]> {
+export function validateReadings(
+  rows: ReadingNumbers[]
+): Map<number, ReadingIssue[]> {
   const issues = new Map<number, ReadingIssue[]>()
   const add = (idx: number, issue: ReadingIssue) => {
     const list = issues.get(idx) ?? []
@@ -39,13 +41,16 @@ export function validateReadings(rows: ReadingNumbers[]): Map<number, ReadingIss
 
     if (start != null && end != null) {
       if (end < start) {
-        add(idx, { level: 'warn', message: 'Meter end is lower than meter start' })
+        add(idx, {
+          level: 'warn',
+          message: 'Meter end is lower than meter start'
+        })
       } else if (pumped != null) {
         const delta = end - start
         if (Math.abs(delta - pumped) > MATH_TOLERANCE_GAL) {
           add(idx, {
             level: 'warn',
-            message: `Meter math: end − start = ${delta.toFixed(1)} gal but gallons pumped says ${pumped}`,
+            message: `Meter math: end − start = ${delta.toFixed(1)} gal but gallons pumped says ${pumped}`
           })
         }
       }
@@ -53,10 +58,14 @@ export function validateReadings(rows: ReadingNumbers[]): Map<number, ReadingIss
 
     const meterKey = row.meter || 'front'
     const prev = lastEndByMeter.get(meterKey)
-    if (prev && start != null && Math.abs(start - prev.value) > CONTINUITY_TOLERANCE_GAL) {
+    if (
+      prev &&
+      start != null &&
+      Math.abs(start - prev.value) > CONTINUITY_TOLERANCE_GAL
+    ) {
       add(idx, {
         level: 'info',
-        message: `Register gap: starts at ${start} but row ${prev.idx + 1} ended at ${prev.value} on the ${meterKey} meter`,
+        message: `Register gap: starts at ${start} but row ${prev.idx + 1} ended at ${prev.value} on the ${meterKey} meter`
       })
     }
     if (end != null) {

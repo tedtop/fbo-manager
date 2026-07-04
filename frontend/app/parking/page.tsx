@@ -2,12 +2,12 @@
 
 import { ParkingMapEnhanced } from '@/components/parking/parking-map-enhanced'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useSession } from '@/hooks/use-session'
+import { Plane, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Settings, Plane } from 'lucide-react'
 
 export default function ParkingManagementPage() {
   const { data: session, status } = useSession()
@@ -52,7 +52,9 @@ export default function ParkingManagementPage() {
     <div className="space-y-6 h-screen flex flex-col">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Ramp Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Ramp Management
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {configMode
               ? 'Configure parking location boundaries'
@@ -94,7 +96,10 @@ export default function ParkingManagementPage() {
         <p className="text-xs text-muted-foreground">
           {configMode ? (
             <>
-              <strong className="text-foreground">Config Mode:</strong> 1) Click "New" in sidebar to create a location. 2) Select it. 3) Click the square polygon tool in top-left. 4) Click on map to draw corners. 5) Double-click to finish. It auto-saves!
+              <strong className="text-foreground">Config Mode:</strong> 1) Click
+              "New" in sidebar to create a location. 2) Select it. 3) Click the
+              square polygon tool in top-left. 4) Click on map to draw corners.
+              5) Double-click to finish. It auto-saves!
             </>
           ) : (
             <>

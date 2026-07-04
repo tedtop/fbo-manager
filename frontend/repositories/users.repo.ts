@@ -1,13 +1,17 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesUpdate } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type UserRow = Tables<'users'>
 export type UserUpdate = TablesUpdate<'users'>
 
-export async function findAllUsers(db: SupabaseClient<Database>): Promise<UserRow[]> {
+export async function findAllUsers(
+  db: SupabaseClient<Database>
+): Promise<UserRow[]> {
   const { data, error } = await db
     .from('users')
-    .select('id, username, email, first_name, last_name, role, phone_number, employee_id, is_active_fueler, is_active, created_at, modified_at')
+    .select(
+      'id, username, email, first_name, last_name, role, phone_number, employee_id, is_active_fueler, is_active, created_at, modified_at'
+    )
     .order('username')
   if (error) throw error
   return data as UserRow[]
@@ -19,7 +23,9 @@ export async function findUserById(
 ): Promise<UserRow | null> {
   const { data, error } = await db
     .from('users')
-    .select('id, username, email, first_name, last_name, role, phone_number, employee_id, is_active_fueler, is_active, created_at, modified_at')
+    .select(
+      'id, username, email, first_name, last_name, role, phone_number, employee_id, is_active_fueler, is_active, created_at, modified_at'
+    )
     .eq('id', id)
     .single()
   if (error && error.code !== 'PGRST116') throw error
@@ -32,7 +38,9 @@ export async function findUserByEmail(
 ): Promise<UserRow | null> {
   const { data, error } = await db
     .from('users')
-    .select('id, username, email, first_name, last_name, role, phone_number, employee_id, is_active_fueler, is_active, created_at, modified_at')
+    .select(
+      'id, username, email, first_name, last_name, role, phone_number, employee_id, is_active_fueler, is_active, created_at, modified_at'
+    )
     .eq('email', email)
     .single()
   if (error && error.code !== 'PGRST116') throw error

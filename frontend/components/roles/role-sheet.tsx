@@ -1,11 +1,5 @@
 'use client'
 
-import {
-  type AccessLevel,
-  MODULES,
-  type ModuleKey,
-  type RoleWithPermissions
-} from '@/types/domain/users'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,6 +20,12 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { ErrorMessage } from '@/messages/error-message'
+import {
+  type AccessLevel,
+  MODULES,
+  type ModuleKey,
+  type RoleWithPermissions
+} from '@/types/domain/users'
 import { useEffect, useState } from 'react'
 
 export type PermissionGrid = Partial<Record<ModuleKey, AccessLevel | null>>

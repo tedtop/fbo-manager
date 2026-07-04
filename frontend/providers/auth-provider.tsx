@@ -1,9 +1,9 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import type { Database } from '@/types/database'
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import type { Database } from '@/types/database'
 import type { PropsWithChildren } from 'react'
 
 interface AuthContextValue {

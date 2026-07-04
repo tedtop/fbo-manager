@@ -16,8 +16,8 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
+import { cn } from '@/lib/utils'
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -416,7 +416,11 @@ export function FlightCard({
                   Fueled
                   {fuelStatus.fueledAt && (
                     <span className="text-muted-foreground">
-                      at {new Date(fuelStatus.fueledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      at{' '}
+                      {new Date(fuelStatus.fueledAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </span>
                   )}
                 </div>
@@ -491,6 +495,7 @@ export function FlightCard({
                   const isSelected = localServices.includes(serviceKey)
                   return (
                     <button
+                      type="button"
                       key={serviceKey}
                       onClick={() => toggleService(serviceKey)}
                       className={cn(
@@ -530,6 +535,7 @@ export function FlightCard({
                     )
                   })}
                   <button
+                    type="button"
                     onClick={() => setIsEditingServices(true)}
                     className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
                   >
@@ -540,6 +546,7 @@ export function FlightCard({
               )}
               {localServices.length === 0 && (
                 <button
+                  type="button"
                   onClick={() => setIsEditingServices(true)}
                   className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors mt-1"
                 >

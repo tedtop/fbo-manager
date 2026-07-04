@@ -1,6 +1,5 @@
 'use client'
 
-import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -9,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/providers/auth-provider'
 import { Moon, Sun, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -46,7 +46,10 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-12 items-center justify-between">
           <div className="flex items-center space-x-6">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <Link
+              href="/"
+              className="flex items-center gap-2 text-lg font-bold text-foreground"
+            >
               <img
                 src="/fbo-manager-logo.png"
                 alt="Logo"
@@ -62,10 +65,11 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`text-sm font-medium ${isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                  className={`text-sm font-medium ${
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
                   {item.name}
                 </Link>

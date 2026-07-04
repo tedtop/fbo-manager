@@ -1,8 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeCustomer, makeEquipment, makeProduct } from '@/tests/support/factories'
 import {
+  type NewInvoiceInput,
   createInvoice,
   deleteDraftInvoice,
   findInvoices,
@@ -10,9 +7,16 @@ import {
   invoiceTotal,
   settleInvoice,
   suggestNextInvoiceNumber,
-  voidInvoice,
-  type NewInvoiceInput,
+  voidInvoice
 } from '@/repositories/invoices.repo'
+import { createTestClient } from '@/tests/support/client'
+import {
+  makeCustomer,
+  makeEquipment,
+  makeProduct
+} from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -20,7 +24,9 @@ beforeEach(async () => {
   await resetDatabase(db)
 })
 
-function baseInput(overrides: Partial<NewInvoiceInput['header']> = {}): NewInvoiceInput {
+function baseInput(
+  overrides: Partial<NewInvoiceInput['header']> = {}
+): NewInvoiceInput {
   return {
     header: {
       invoiceNumber: `INV-${Math.floor(Math.random() * 1_000_000)}`,
@@ -35,11 +41,11 @@ function baseInput(overrides: Partial<NewInvoiceInput['header']> = {}): NewInvoi
       checkNumber: null,
       salesmanInitials: 'TT',
       notes: null,
-      ...overrides,
+      ...overrides
     },
     fuelLine: null,
     serviceLines: [],
-    finalize: true,
+    finalize: true
   }
 }
 
@@ -52,14 +58,19 @@ describe('invoices.repo', () => {
     const truck = await makeEquipment(db, { equipment_type: 'fuel_truck' })
     const input = baseInput()
     input.fuelLine = {
-      newFueling: { fuelTruckId: truck.id, truckNumber: 'T-1', meterStart: 100, meterStop: 300 },
+      newFueling: {
+        fuelTruckId: truck.id,
+        truckNumber: 'T-1',
+        meterStart: 100,
+        meterStop: 300
+      },
       fuelType: 'jet_a',
       quantityGallons: 200,
       pricePerGallon: 5.5,
       density: null,
       requestedAmount: null,
       serviceTime: null,
-      readings: [],
+      readings: []
     }
 
     const invoice = await createInvoice(db, input)
@@ -82,11 +93,20 @@ describe('invoices.repo', () => {
   })
 
   it('creates a draft invoice with only service lines (no fuel), leaving status=draft', async () => {
-    const product = await makeProduct(db, { name: 'Lavatory Service', product_type: 'service' })
+    const product = await makeProduct(db, {
+      name: 'Lavatory Service',
+      product_type: 'service'
+    })
     const input = baseInput()
     input.finalize = false
     input.serviceLines = [
-      { itemType: 'service', productId: product.id, description: 'Lav Service', quantity: 1, unitPrice: 75 },
+      {
+        itemType: 'service',
+        productId: product.id,
+        description: 'Lav Service',
+        quantity: 1,
+        unitPrice: 75
+      }
     ]
 
     const invoice = await createInvoice(db, input)
@@ -104,7 +124,10 @@ describe('invoices.repo', () => {
 
   it('joins the customer record when customerId is set', async () => {
     const customer = await makeCustomer(db, { name: 'Regular Charter Co' })
-    const input = baseInput({ customerId: customer.id, customerName: customer.name })
+    const input = baseInput({
+      customerId: customer.id,
+      customerName: customer.name
+    })
     const invoice = await createInvoice(db, input)
     expect(invoice.customer?.name).toBe('Regular Charter Co')
   })
@@ -137,14 +160,19 @@ describe('invoices.repo', () => {
     const input = baseInput()
     input.finalize = false
     input.fuelLine = {
-      newFueling: { fuelTruckId: truck.id, truckNumber: 'T-2', meterStart: 0, meterStop: 50 },
+      newFueling: {
+        fuelTruckId: truck.id,
+        truckNumber: 'T-2',
+        meterStart: 0,
+        meterStop: 50
+      },
       fuelType: 'jet_a',
       quantityGallons: 50,
       pricePerGallon: 5,
       density: null,
       requestedAmount: null,
       serviceTime: null,
-      readings: [],
+      readings: []
     }
     const draft = await createInvoice(db, input)
 
@@ -163,7 +191,9 @@ describe('invoices.repo', () => {
 
   it('deleteDraftInvoice refuses to delete a non-draft invoice', async () => {
     const invoice = await createInvoice(db, baseInput()) // finalize: true => paid
-    await expect(deleteDraftInvoice(db, invoice)).rejects.toThrow('Only drafts can be deleted')
+    await expect(deleteDraftInvoice(db, invoice)).rejects.toThrow(
+      'Only drafts can be deleted'
+    )
   })
 
   it('settleInvoice moves an open invoice to paid and records settlement details', async () => {
@@ -180,14 +210,19 @@ describe('invoices.repo', () => {
     const truck = await makeEquipment(db, { equipment_type: 'fuel_truck' })
     const input = baseInput()
     input.fuelLine = {
-      newFueling: { fuelTruckId: truck.id, truckNumber: 'T-3', meterStart: 0, meterStop: 10 },
+      newFueling: {
+        fuelTruckId: truck.id,
+        truckNumber: 'T-3',
+        meterStart: 0,
+        meterStop: 10
+      },
       fuelType: 'jet_a',
       quantityGallons: 10,
       pricePerGallon: 5,
       density: null,
       requestedAmount: null,
       serviceTime: null,
-      readings: [],
+      readings: []
     }
     const invoice = await createInvoice(db, input)
     const readingId = invoice.line_items[0].truck_meter_reading_id as number
@@ -218,11 +253,17 @@ describe('invoices.repo', () => {
         density: null,
         requestedAmount: null,
         serviceTime: null,
-        readings: [],
+        readings: []
       },
       serviceLines: [
-        { itemType: 'service', productId: null, description: 'Lav', quantity: 1, unitPrice: 25.005 },
-      ],
+        {
+          itemType: 'service',
+          productId: null,
+          description: 'Lav',
+          quantity: 1,
+          unitPrice: 25.005
+        }
+      ]
     })
     expect(total).toBe(125.01)
   })

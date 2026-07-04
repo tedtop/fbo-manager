@@ -1,26 +1,26 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, Loader2, Upload } from 'lucide-react'
+import { TruckSheetReview } from '@/components/truck-sheets/truck-sheet-review'
+import {
+  type PageProgress,
+  TruckSheetUpload
+} from '@/components/truck-sheets/truck-sheet-upload'
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/hooks/use-session'
-import { useFuelTrucks } from '@/hooks/use-truck-sheets'
 import {
-  mergeExtractions,
-  useTruckSheetCommit,
-  useTruckSheetExtract,
   type ExtractedTruckSheet,
   type ReviewSheet,
+  mergeExtractions,
+  useTruckSheetCommit,
+  useTruckSheetExtract
 } from '@/hooks/use-truck-sheet-import'
-import {
-  TruckSheetUpload,
-  type PageProgress,
-} from '@/components/truck-sheets/truck-sheet-upload'
-import { TruckSheetReview } from '@/components/truck-sheets/truck-sheet-review'
+import { useFuelTrucks } from '@/hooks/use-truck-sheets'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
+import { ArrowLeft, CheckCircle2, Loader2, Upload } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 function todayIso() {
   return new Date().toISOString().split('T')[0]
@@ -54,19 +54,25 @@ export default function TruckSheetImportPage() {
 
     const results: { file: File; extraction: ExtractedTruckSheet }[] = []
     for (let i = 0; i < files.length; i++) {
-      setPages((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'extracting' } : p)))
+      setPages((prev) =>
+        prev.map((p, idx) => (idx === i ? { ...p, status: 'extracting' } : p))
+      )
       try {
         const extraction = await extract(files[i])
         results.push({ file: files[i], extraction })
         setPages((prev) =>
           prev.map((p, idx) =>
-            idx === i ? { ...p, status: 'done', truckNumber: extraction.truck_number } : p
+            idx === i
+              ? { ...p, status: 'done', truckNumber: extraction.truck_number }
+              : p
           )
         )
       } catch (err) {
         setPages((prev) =>
           prev.map((p, idx) =>
-            idx === i ? { ...p, status: 'error', error: (err as Error).message } : p
+            idx === i
+              ? { ...p, status: 'error', error: (err as Error).message }
+              : p
           )
         )
       }
@@ -74,11 +80,13 @@ export default function TruckSheetImportPage() {
 
     const merged = mergeExtractions(results).map((sheet) => ({
       ...sheet,
-      sheet_date: sheet.sheet_date || todayIso(),
+      sheet_date: sheet.sheet_date || todayIso()
     }))
     setSheets(merged)
     if (results.length === 0 && files.length > 0) {
-      setExtractError('No sheets could be extracted — check the photos and try again.')
+      setExtractError(
+        'No sheets could be extracted — check the photos and try again.'
+      )
     }
     setExtracting(false)
   }
@@ -119,8 +127,9 @@ export default function TruckSheetImportPage() {
         </Link>
         <h1 className="text-2xl font-bold mt-2">Import Truck Sheets</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Upload photos of tonight&apos;s truck sheets — every meter reading is extracted with AI,
-          checked against the registers, and filed under the right truck.
+          Upload photos of tonight&apos;s truck sheets — every meter reading is
+          extracted with AI, checked against the registers, and filed under the
+          right truck.
         </p>
       </div>
 
@@ -128,7 +137,8 @@ export default function TruckSheetImportPage() {
         <SuccessMessage>
           <span className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
-            Imported {importedCount} truck sheet{importedCount === 1 ? '' : 's'}.{' '}
+            Imported {importedCount} truck sheet{importedCount === 1 ? '' : 's'}
+            .{' '}
             <Link href="/truck-sheets" className="underline">
               View the fuel truck logs
             </Link>
@@ -149,7 +159,9 @@ export default function TruckSheetImportPage() {
                 sheet={sheet}
                 knownTruckNumbers={knownTruckNumbers}
                 onChange={updateSheet}
-                onRemove={() => setSheets((prev) => prev.filter((s) => s.id !== sheet.id))}
+                onRemove={() =>
+                  setSheets((prev) => prev.filter((s) => s.id !== sheet.id))
+                }
               />
             ))}
           </div>
@@ -158,16 +170,21 @@ export default function TruckSheetImportPage() {
 
           <div className="flex items-center justify-end gap-3 pb-8">
             <span className="text-sm text-muted-foreground">
-              {sheets.length} sheet{sheets.length === 1 ? '' : 's'} · {totalReadings} readings
+              {sheets.length} sheet{sheets.length === 1 ? '' : 's'} ·{' '}
+              {totalReadings} readings
             </span>
-            <Button onClick={handleImport} disabled={!readyToImport || committing}>
+            <Button
+              onClick={handleImport}
+              disabled={!readyToImport || committing}
+            >
               {committing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" /> Importing…
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4 mr-1" /> Import {sheets.length} sheet
+                  <Upload className="w-4 h-4 mr-1" /> Import {sheets.length}{' '}
+                  sheet
                   {sheets.length === 1 ? '' : 's'}
                 </>
               )}

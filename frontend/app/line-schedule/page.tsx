@@ -1,22 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Pencil, Trash2, Briefcase } from 'lucide-react'
 import {
-  startOfWeek,
   endOfWeek,
   format,
-  parseISO,
   isWithinInterval,
+  parseISO,
+  startOfWeek
 } from 'date-fns'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Briefcase, Pencil, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 
 type Shift = {
   employee: string
   job: string
   date: string // yyyy-MM-dd
   start: string // HH:MM
-  end: string   // HH:MM
+  end: string // HH:MM
 }
 
 const JOB_OPTIONS = [
@@ -24,13 +24,13 @@ const JOB_OPTIONS = [
   { name: 'Dispatcher', emoji: '🧾' },
   { name: 'Equipment', emoji: '🚧' },
   { name: 'Manager', emoji: '👔' },
-  { name: 'Ground Ops', emoji: '👷‍♂️' },
+  { name: 'Ground Ops', emoji: '👷‍♂️' }
 ]
 
 function ExpandedShiftModal({
   day,
   shifts,
-  onClose,
+  onClose
 }: {
   day: string | null
   shifts: Shift[]
@@ -38,7 +38,7 @@ function ExpandedShiftModal({
 }) {
   if (!day) return null
   const parsed = parseISO(day)
-  const label = isNaN(parsed.getTime())
+  const label = Number.isNaN(parsed.getTime())
     ? day
     : format(parsed, 'EEEE, MMM d, yyyy')
 
@@ -65,9 +65,9 @@ function ExpandedShiftModal({
                 No shifts this day.
               </p>
             )}
-            {shifts.map((s, i) => (
+            {shifts.map((s) => (
               <motion.div
-                key={i}
+                key={`${s.employee}-${s.date}-${s.start}`}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="bg-black/40 border border-white/5 p-3 rounded-xl shadow"
@@ -85,6 +85,7 @@ function ExpandedShiftModal({
 
           <div className="mt-4">
             <button
+              type="button"
               onClick={onClose}
               className="w-full bg-blue-600 hover:bg-blue-500 p-2 rounded-xl text-sm font-semibold shadow-lg transition active:scale-[0.97]"
             >
@@ -111,7 +112,9 @@ export default function LineSchedulePage() {
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null)
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(
+    null
+  )
 
   const selectedDate = date || null
 
@@ -143,8 +146,8 @@ export default function LineSchedulePage() {
     viewCalendar && expandedDay
       ? weekShiftCount(expandedDay)
       : selectedDate
-      ? weekShiftCount(selectedDate)
-      : 0
+        ? weekShiftCount(selectedDate)
+        : 0
 
   const requestDeleteShift = (index: number) => {
     setPendingDeleteIndex(index)
@@ -195,8 +198,16 @@ export default function LineSchedulePage() {
   }
 
   const calendarDays = (() => {
-    const first = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-    const last = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+    const first = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      1
+    )
+    const last = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      0
+    )
 
     const days: string[] = []
     for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
@@ -207,7 +218,6 @@ export default function LineSchedulePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0F172A] to-black text-[#E5E7EB] p-6 font-sans">
-
       {/* DELETE MODAL */}
       <AnimatePresence>
         {showDeleteModal && pendingDeleteIndex !== null && (
@@ -227,11 +237,24 @@ export default function LineSchedulePage() {
             >
               <h3 className="mb-2 text-lg font-semibold">Delete this shift?</h3>
               <p className="mb-4 text-sm opacity-75">
-                Remove <strong>{shifts[pendingDeleteIndex].employee}</strong>'s shift?
+                Remove <strong>{shifts[pendingDeleteIndex].employee}</strong>'s
+                shift?
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={cancelDeleteShift} className="rounded-xl bg-neutral-800 p-2 text-sm">Cancel</button>
-                <button onClick={confirmDeleteShift} className="rounded-xl bg-red-700 p-2 text-sm">Delete</button>
+                <button
+                  type="button"
+                  onClick={cancelDeleteShift}
+                  className="rounded-xl bg-neutral-800 p-2 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteShift}
+                  className="rounded-xl bg-red-700 p-2 text-sm"
+                >
+                  Delete
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -288,10 +311,12 @@ export default function LineSchedulePage() {
         </div>
 
         <button
+          type="button"
           onClick={addShift}
           className="mt-5 w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition-all p-2 rounded-xl text-sm font-semibold shadow-lg flex justify-center items-center gap-2"
         >
-          <Briefcase size={18} /> {editIndex !== null ? 'Save Shift' : 'Add Shift'}
+          <Briefcase size={18} />{' '}
+          {editIndex !== null ? 'Save Shift' : 'Add Shift'}
         </button>
 
         {/* TOTAL FOR THE CURRENT CALENDAR WEEK */}
@@ -324,7 +349,7 @@ export default function LineSchedulePage() {
           ) : (
             shifts.map((s, i) => (
               <motion.div
-                key={i}
+                key={`${s.employee}-${s.date}-${s.start}`}
                 className="bg-black/40 border border-white/5 p-4 rounded-xl shadow flex justify-between items-center"
               >
                 <div>
@@ -332,15 +357,25 @@ export default function LineSchedulePage() {
                   <p className="text-xs flex items-center gap-1 opacity-80">
                     {JOB_OPTIONS.find((o) => o.name === s.job)?.emoji} {s.job}
                   </p>
-                  <p className="text-[10px] opacity-60">{s.start} → {s.end}</p>
+                  <p className="text-[10px] opacity-60">
+                    {s.start} → {s.end}
+                  </p>
                   <p className="text-[10px] opacity-60">on {s.date}</p>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => editShift(i)} className="p-2 bg-yellow-600 hover:bg-yellow-500 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => editShift(i)}
+                    className="p-2 bg-yellow-600 hover:bg-yellow-500 rounded-xl"
+                  >
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => requestDeleteShift(i)} className="p-2 bg-red-600 hover:bg-red-500 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => requestDeleteShift(i)}
+                    className="p-2 bg-red-600 hover:bg-red-500 rounded-xl"
+                  >
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -352,6 +387,7 @@ export default function LineSchedulePage() {
 
       {/* CALENDAR VIEW */}
       <button
+        type="button"
         onClick={() => setViewCalendar((v) => !v)}
         className="mx-auto mt-7 w-full max-w-3xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition-all p-2 rounded-xl text-sm font-semibold shadow-lg flex justify-center items-center gap-2"
       >
@@ -371,8 +407,20 @@ export default function LineSchedulePage() {
             </h3>
 
             <div className="mb-5 flex justify-center items-center gap-5">
-              <button onClick={prevMonth} className="px-4 py-2 rounded-xl bg-neutral-800 shadow hover:scale-105 transition text-sm">◀ Prev</button>
-              <button onClick={nextMonth} className="px-4 py-2 rounded-xl bg-neutral-800 shadow hover:scale-105 transition text-sm">Next ▶</button>
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="px-4 py-2 rounded-xl bg-neutral-800 shadow hover:scale-105 transition text-sm"
+              >
+                ◀ Prev
+              </button>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="px-4 py-2 rounded-xl bg-neutral-800 shadow hover:scale-105 transition text-sm"
+              >
+                Next ▶
+              </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
@@ -396,12 +444,13 @@ export default function LineSchedulePage() {
                   </div>
 
                   <div className="mt-2 space-y-1">
-                    {getShiftsForDate(day).map((s, i2) => (
+                    {getShiftsForDate(day).map((s) => (
                       <div
-                        key={i2}
+                        key={`${s.employee}-${s.date}-${s.start}`}
                         className="text-[10px] bg-black/40 px-1 py-0.5 rounded-md border border-white/5 text-center"
                       >
-                        {JOB_OPTIONS.find((o) => o.name === s.job)?.emoji} {s.start}-{s.end}
+                        {JOB_OPTIONS.find((o) => o.name === s.job)?.emoji}{' '}
+                        {s.start}-{s.end}
                       </div>
                     ))}
                   </div>

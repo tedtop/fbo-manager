@@ -1,6 +1,12 @@
 import type { CertificationWithRelations } from '@/repositories/certifications.repo'
 
-export type ExpiryStatus = 'expired' | 'critical' | 'warning' | 'caution' | 'valid' | 'unknown'
+export type ExpiryStatus =
+  | 'expired'
+  | 'critical'
+  | 'warning'
+  | 'caution'
+  | 'valid'
+  | 'unknown'
 
 export interface CertificationDomain {
   id: number
@@ -24,13 +30,18 @@ function computeExpiryStatus(daysUntilExpiry: number): ExpiryStatus {
   return 'valid'
 }
 
-export function toCertificationDomain(row: CertificationWithRelations): CertificationDomain {
+export function toCertificationDomain(
+  row: CertificationWithRelations
+): CertificationDomain {
   const today = new Date()
   const expiry = new Date(row.expiry_date)
-  const daysUntilExpiry = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const daysUntilExpiry = Math.floor(
+    (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  )
 
   const certifiedByName = row.certified_by
-    ? `${row.certified_by.first_name} ${row.certified_by.last_name}`.trim() || row.certified_by.username
+    ? `${row.certified_by.first_name} ${row.certified_by.last_name}`.trim() ||
+      row.certified_by.username
     : 'Unknown'
 
   return {

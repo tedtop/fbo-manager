@@ -26,7 +26,7 @@ export async function requireUsersAdmin(): Promise<
     return { ok: false, status: 401, error: 'Not authenticated' }
   }
 
-  const access = await findModuleAccessForUser(supabase as any, user.id)
+  const access = await findModuleAccessForUser(supabase, user.id)
   if (!accessAtLeast(access, 'users', 'manage')) {
     return {
       ok: false,

@@ -5,7 +5,9 @@ import { uniqueValue } from './support/unique'
 const db = createE2EDbClient()
 
 test.describe('Equipment form — create and edit actually persist', () => {
-  test('Add Equipment form creates a real row in the database', async ({ page }) => {
+  test('Add Equipment form creates a real row in the database', async ({
+    page
+  }) => {
     const equipmentId = uniqueValue('E2E-EQ-')
     const equipmentName = uniqueValue('E2E Fuel Truck ')
 
@@ -25,7 +27,11 @@ test.describe('Equipment form — create and edit actually persist', () => {
 
     // The only proof that matters: a real row exists in the database with this data.
     const row = await waitForDbRow(async () => {
-      const { data } = await db.from('equipment').select('*').eq('equipment_id', equipmentId).maybeSingle()
+      const { data } = await db
+        .from('equipment')
+        .select('*')
+        .eq('equipment_id', equipmentId)
+        .maybeSingle()
       return data
     })
     expect(row.equipment_name).toBe(equipmentName)
@@ -35,7 +41,9 @@ test.describe('Equipment form — create and edit actually persist', () => {
     await expect(page.getByText(equipmentName)).toBeVisible()
   })
 
-  test('Editing equipment persists the change to the database', async ({ page }) => {
+  test('Editing equipment persists the change to the database', async ({
+    page
+  }) => {
     const equipmentId = uniqueValue('E2E-EQ-EDIT-')
     const originalName = uniqueValue('E2E Original Name ')
     const updatedName = uniqueValue('E2E Updated Name ')
@@ -43,7 +51,7 @@ test.describe('Equipment form — create and edit actually persist', () => {
     const { error } = await db.from('equipment').insert({
       equipment_id: equipmentId,
       equipment_name: originalName,
-      equipment_type: 'fuel_truck',
+      equipment_type: 'fuel_truck'
     })
     if (error) throw error
 
@@ -61,7 +69,11 @@ test.describe('Equipment form — create and edit actually persist', () => {
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
 
     const row = await waitForDbRow(async () => {
-      const { data } = await db.from('equipment').select('*').eq('equipment_id', equipmentId).maybeSingle()
+      const { data } = await db
+        .from('equipment')
+        .select('*')
+        .eq('equipment_id', equipmentId)
+        .maybeSingle()
       return data?.equipment_name === updatedName ? data : null
     })
     expect(row.equipment_name).toBe(updatedName)

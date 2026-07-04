@@ -1,7 +1,7 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import type { QTDispatch } from '@/types/qt-dispatch'
 import { format } from 'date-fns'
 
@@ -49,7 +49,9 @@ export function DispatchCard({ dispatch }: DispatchCardProps) {
             {dispatch.FlightNumber} to {dispatch.Destination}
           </h3>
           {dispatch.AirlineName && (
-            <p className="text-sm text-muted-foreground mt-1">{dispatch.AirlineName}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {dispatch.AirlineName}
+            </p>
           )}
         </div>
         <Badge className={getStatusColor(dispatch.FlightStatus)}>

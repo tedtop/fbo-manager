@@ -3,16 +3,16 @@
 import { createClient } from '@/lib/supabase/client'
 import { findAllEquipment } from '@/repositories/equipment.repo'
 import {
-  findAllTruckSheets,
-  findTruckSheetById,
   deleteTruckSheet,
+  findAllTruckSheets,
+  findTruckSheetById
 } from '@/repositories/truck-sheets.repo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export const truckSheetKeys = {
   all: ['truck-sheets'] as const,
   lists: () => [...truckSheetKeys.all, 'list'] as const,
-  detail: (id: number) => [...truckSheetKeys.all, 'detail', id] as const,
+  detail: (id: number) => [...truckSheetKeys.all, 'detail', id] as const
 }
 
 export function useFuelTrucks() {
@@ -23,7 +23,7 @@ export function useFuelTrucks() {
       const equipment = await findAllEquipment(db)
       return equipment.filter((e) => e.equipment_type === 'fuel_truck')
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000
   })
 }
 
@@ -31,7 +31,7 @@ export function useTruckSheets() {
   const db = createClient()
   return useQuery({
     queryKey: truckSheetKeys.lists(),
-    queryFn: () => findAllTruckSheets(db),
+    queryFn: () => findAllTruckSheets(db)
   })
 }
 
@@ -40,7 +40,7 @@ export function useTruckSheet(id: number) {
   return useQuery({
     queryKey: truckSheetKeys.detail(id),
     queryFn: () => findTruckSheetById(db, id),
-    enabled: Number.isFinite(id),
+    enabled: Number.isFinite(id)
   })
 }
 
@@ -51,6 +51,6 @@ export function useDeleteTruckSheet() {
     mutationFn: (id: number) => deleteTruckSheet(db, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: truckSheetKeys.all })
-    },
+    }
   })
 }

@@ -1,10 +1,10 @@
 'use client'
 
 import type { changePasswordAction } from '@/actions/change-password-action'
-import { changePasswordFormSchema } from '@/lib/validation'
 import { FormHeader } from '@/forms/form-header'
 import { SubmitField } from '@/forms/submit-field'
 import { TextField } from '@/forms/text-field'
+import { changePasswordFormSchema } from '@/lib/validation'
 import { SuccessMessage } from '@/messages/success-message'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'

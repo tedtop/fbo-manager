@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
 import {
   createAircraft,
   deleteAircraft,
   findAircraftByTailNumber,
   findAllAircraft,
-  updateAircraft,
+  updateAircraft
 } from '@/repositories/aircraft.repo'
+import { createTestClient } from '@/tests/support/client'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -25,7 +25,7 @@ describe('aircraft.repo', () => {
     await createAircraft(db, {
       tail_number: 'N123AB',
       aircraft_type_icao: 'C172',
-      aircraft_type_display: 'Cessna 172',
+      aircraft_type_display: 'Cessna 172'
     })
     const found = await findAircraftByTailNumber(db, 'N123AB')
     expect(found?.aircraft_type_display).toBe('Cessna 172')
@@ -33,7 +33,9 @@ describe('aircraft.repo', () => {
 
   it('rejects creating a second aircraft with a duplicate tail number', async () => {
     await createAircraft(db, { tail_number: 'N555ZZ' })
-    await expect(createAircraft(db, { tail_number: 'N555ZZ' })).rejects.toThrow()
+    await expect(
+      createAircraft(db, { tail_number: 'N555ZZ' })
+    ).rejects.toThrow()
   })
 
   it('lists all aircraft ordered by tail_number', async () => {
@@ -45,7 +47,9 @@ describe('aircraft.repo', () => {
 
   it('updates aircraft fields keyed by tail_number', async () => {
     await createAircraft(db, { tail_number: 'N777CC', fleet_id: 'old-fleet' })
-    const updated = await updateAircraft(db, 'N777CC', { fleet_id: 'new-fleet' })
+    const updated = await updateAircraft(db, 'N777CC', {
+      fleet_id: 'new-fleet'
+    })
     expect(updated.fleet_id).toBe('new-fleet')
   })
 

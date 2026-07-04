@@ -1,8 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import {
+  findAllUsers,
+  findUserByEmail,
+  findUserById,
+  updateUser
+} from '@/repositories/users.repo'
 import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
 import { makeUser } from '@/tests/support/factories'
-import { findAllUsers, findUserByEmail, findUserById, updateUser } from '@/repositories/users.repo'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -16,7 +21,10 @@ describe('users.repo', () => {
   })
 
   it('finds a user by id and never leaks the password column', async () => {
-    const user = await makeUser(db, { username: 'alice', email: 'alice@example.com' })
+    const user = await makeUser(db, {
+      username: 'alice',
+      email: 'alice@example.com'
+    })
     const found = await findUserById(db, user.id)
     expect(found?.username).toBe('alice')
     expect(found).not.toHaveProperty('password')

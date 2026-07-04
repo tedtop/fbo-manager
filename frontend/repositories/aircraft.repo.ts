@@ -1,12 +1,22 @@
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate
+} from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
 export type AircraftRow = Tables<'aircraft'>
 export type AircraftInsert = TablesInsert<'aircraft'>
 export type AircraftUpdate = TablesUpdate<'aircraft'>
 
-export async function findAllAircraft(db: SupabaseClient<Database>): Promise<AircraftRow[]> {
-  const { data, error } = await db.from('aircraft').select('*').order('tail_number')
+export async function findAllAircraft(
+  db: SupabaseClient<Database>
+): Promise<AircraftRow[]> {
+  const { data, error } = await db
+    .from('aircraft')
+    .select('*')
+    .order('tail_number')
   if (error) throw error
   return data
 }
@@ -28,7 +38,11 @@ export async function createAircraft(
   db: SupabaseClient<Database>,
   aircraft: AircraftInsert
 ): Promise<AircraftRow> {
-  const { data, error } = await db.from('aircraft').insert(aircraft).select().single()
+  const { data, error } = await db
+    .from('aircraft')
+    .insert(aircraft)
+    .select()
+    .single()
   if (error) throw error
   return data
 }
@@ -52,6 +66,9 @@ export async function deleteAircraft(
   db: SupabaseClient<Database>,
   tailNumber: string
 ): Promise<void> {
-  const { error } = await db.from('aircraft').delete().eq('tail_number', tailNumber)
+  const { error } = await db
+    .from('aircraft')
+    .delete()
+    .eq('tail_number', tailNumber)
   if (error) throw error
 }

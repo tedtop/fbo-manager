@@ -11,7 +11,9 @@ export async function deleteAccountAction(
 ): Promise<boolean> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
   if (!user) return false
 
   const { error } = await supabase.auth.admin.deleteUser(user.id)

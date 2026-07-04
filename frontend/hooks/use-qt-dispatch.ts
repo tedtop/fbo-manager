@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
-import type { QTDispatch, QTConfig, QTDispatchChange } from '@/types/qt-dispatch'
+import type {
+  QTConfig,
+  QTDispatch,
+  QTDispatchChange
+} from '@/types/qt-dispatch'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-const LOCAL_PROXY_URL = ''  // Same origin
+const LOCAL_PROXY_URL = '' // Same origin
 const LOGIN_ENDPOINT = '/api/qt/login'
 const DISPATCH_ENDPOINT = '/api/qt/dispatch'
 const CONFIG_ENDPOINT = '/api/qt/config'
@@ -52,8 +56,8 @@ export function useQTDispatch(): UseQTDispatchReturn {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: config.username,
-          password: config.password,
-        }),
+          password: config.password
+        })
       })
 
       const loginData = await loginResponse.json()
@@ -61,9 +65,8 @@ export function useQTDispatch(): UseQTDispatchReturn {
       if (loginResponse.ok && loginData.success) {
         qtCookiesRef.current = loginData.qtCookies
         return true
-      } else {
-        throw new Error(loginData.message || 'Login failed')
       }
+      throw new Error(loginData.message || 'Login failed')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
       return false
@@ -72,7 +75,10 @@ export function useQTDispatch(): UseQTDispatchReturn {
 
   // Detect changes between old and new dispatches
   const detectChanges = useCallback(
-    (newDispatches: QTDispatch[], oldDispatches: QTDispatch[]): QTDispatchChange[] => {
+    (
+      newDispatches: QTDispatch[],
+      oldDispatches: QTDispatch[]
+    ): QTDispatchChange[] => {
       if (!oldDispatches.length) return []
 
       const detected: QTDispatchChange[] = []
@@ -89,7 +95,7 @@ export function useQTDispatch(): UseQTDispatchReturn {
           detected.push({
             type: 'new_flight',
             flight,
-            message: `New flight added: ${flight.FlightNumber} to ${flight.Destination}`,
+            message: `New flight added: ${flight.FlightNumber} to ${flight.Destination}`
           })
         }
       }
@@ -114,7 +120,7 @@ export function useQTDispatch(): UseQTDispatchReturn {
             flight: newFlight,
             oldChangeFlags: oldFlight.ChangeFlags,
             newChangeFlags: newFlight.ChangeFlags,
-            message,
+            message
           })
         }
       }
@@ -139,12 +145,12 @@ export function useQTDispatch(): UseQTDispatchReturn {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'QT-Cookies': qtCookiesRef.current || '',
+          'QT-Cookies': qtCookiesRef.current || ''
         },
         body: JSON.stringify({
           CompanyLocationID: qtConfigRef.current.companyLocationId,
-          UserID: qtConfigRef.current.userId,
-        }),
+          UserID: qtConfigRef.current.userId
+        })
       })
 
       if (response.status === 401) {
@@ -176,7 +182,9 @@ export function useQTDispatch(): UseQTDispatchReturn {
         throw new Error(data.ErrorMessage || 'Failed to fetch dispatch data')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch dispatch data')
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch dispatch data'
+      )
     } finally {
       setLoading(false)
     }
@@ -210,13 +218,22 @@ export function useQTDispatch(): UseQTDispatchReturn {
     startRefreshCountdown()
   }, [fetchDispatchData, startRefreshCountdown])
 
+  // Keep latest callbacks available to the mount-only init effect below
+  // without making it re-run every time they change identity.
+  const fetchDispatchDataRef = useRef(fetchDispatchData)
+  const startRefreshCountdownRef = useRef(startRefreshCountdown)
+  useEffect(() => {
+    fetchDispatchDataRef.current = fetchDispatchData
+    startRefreshCountdownRef.current = startRefreshCountdown
+  }, [fetchDispatchData, startRefreshCountdown])
+
   // Initialize
   useEffect(() => {
     const init = async () => {
       const success = await authenticate()
       if (success) {
-        await fetchDispatchData()
-        startRefreshCountdown()
+        await fetchDispatchDataRef.current()
+        startRefreshCountdownRef.current()
       }
     }
 
@@ -230,7 +247,7 @@ export function useQTDispatch(): UseQTDispatchReturn {
         clearInterval(pollIntervalRef.current)
       }
     }
-  }, []) // Only run once on mount
+  }, [authenticate]) // Only run once on mount (authenticate has empty deps)
 
   return {
     dispatches,
@@ -239,6 +256,6 @@ export function useQTDispatch(): UseQTDispatchReturn {
     lastUpdated,
     refreshCountdown,
     refetch,
-    changes,
+    changes
   }
 }

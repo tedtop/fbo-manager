@@ -1,11 +1,6 @@
 'use client'
 
 import { EditSessionStatus } from '@/components/shared/edit-session-status'
-import type {
-  TankInsert,
-  TankRow,
-  TankWithLatestReading
-} from '@/repositories/tanks.repo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +20,11 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import type {
+  TankInsert,
+  TankRow,
+  TankWithLatestReading
+} from '@/repositories/tanks.repo'
 import { useEffect, useState } from 'react'
 
 interface TankFormDialogProps {
@@ -53,6 +53,7 @@ export function TankFormDialog({
   })
 
   useEffect(() => {
+    if (!open) return
     if (tank) {
       setFormData({
         tank_id: tank.tank_id,

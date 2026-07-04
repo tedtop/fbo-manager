@@ -19,14 +19,11 @@ import {
   SheetHeader,
   SheetTitle
 } from '@/components/ui/sheet'
-import {
-  ToggleGroup,
-  ToggleGroupItem
-} from '@/components/ui/toggle-group'
-import { createClient } from '@/lib/supabase/client'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useFlights } from '@/hooks/use-flights'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import { createClient } from '@/lib/supabase/client'
 import type {
   TransactionInsert,
   TransactionRow,
@@ -194,9 +191,11 @@ export function TransactionFormDialog({
     } catch (err) {
       console.error('Failed to save transaction:', err)
       const msg =
-        err instanceof Error ? err.message :
-        typeof err === 'object' && err !== null && 'message' in err ? String((err as { message: unknown }).message) :
-        String(err)
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : String(err)
       setError(msg)
     } finally {
       setLoading(false)
@@ -210,7 +209,9 @@ export function TransactionFormDialog({
         className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
       >
         <SheetHeader className="border-b border-border p-4">
-          <SheetTitle>{isEdit ? 'Edit Fuel Order' : 'New Fuel Order'}</SheetTitle>
+          <SheetTitle>
+            {isEdit ? 'Edit Fuel Order' : 'New Fuel Order'}
+          </SheetTitle>
           <SheetDescription>
             {isEdit
               ? 'Update the fuel order details.'
@@ -227,7 +228,10 @@ export function TransactionFormDialog({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -240,7 +244,9 @@ export function TransactionFormDialog({
               <Input
                 id="ticket_number"
                 value={form.ticket_number}
-                onChange={(e) => setForm({ ...form, ticket_number: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, ticket_number: e.target.value })
+                }
                 required
                 placeholder="e.g. TKT-260703-0001"
               />
@@ -251,7 +257,10 @@ export function TransactionFormDialog({
               <Select
                 value={form.flight_id?.toString() || 'none'}
                 onValueChange={(value) =>
-                  setForm({ ...form, flight_id: value === 'none' ? null : Number(value) })
+                  setForm({
+                    ...form,
+                    flight_id: value === 'none' ? null : Number(value)
+                  })
                 }
               >
                 <SelectTrigger>
@@ -273,7 +282,9 @@ export function TransactionFormDialog({
               <Input
                 id="tail_number"
                 value={form.tail_number}
-                onChange={(e) => setForm({ ...form, tail_number: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, tail_number: e.target.value })
+                }
                 placeholder="e.g. N12345"
               />
             </div>
@@ -307,7 +318,10 @@ export function TransactionFormDialog({
               <Select
                 value={form.fuel_truck_id?.toString() || 'none'}
                 onValueChange={(value) =>
-                  setForm({ ...form, fuel_truck_id: value === 'none' ? null : Number(value) })
+                  setForm({
+                    ...form,
+                    fuel_truck_id: value === 'none' ? null : Number(value)
+                  })
                 }
               >
                 <SelectTrigger>
@@ -329,11 +343,14 @@ export function TransactionFormDialog({
               <Input
                 id="fuel_order_text"
                 value={form.fuel_order_text}
-                onChange={(e) => setForm({ ...form, fuel_order_text: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, fuel_order_text: e.target.value })
+                }
                 placeholder='e.g. "T/O", "panel set", "110/s", "1260", "10000 lbs"'
               />
               <p className="text-xs text-muted-foreground">
-                Freeform fuel request. Actual gallons can be entered below or added later.
+                Freeform fuel request. Actual gallons can be entered below or
+                added later.
               </p>
             </div>
 
@@ -345,7 +362,9 @@ export function TransactionFormDialog({
                   type="number"
                   step="0.01"
                   value={form.quantity_gallons}
-                  onChange={(e) => setForm({ ...form, quantity_gallons: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, quantity_gallons: e.target.value })
+                  }
                   placeholder="0.00"
                 />
               </div>
@@ -356,7 +375,9 @@ export function TransactionFormDialog({
                   type="number"
                   step="0.01"
                   value={form.quantity_lbs}
-                  onChange={(e) => setForm({ ...form, quantity_lbs: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, quantity_lbs: e.target.value })
+                  }
                   placeholder="0.00"
                 />
               </div>
@@ -389,7 +410,11 @@ export function TransactionFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:w-auto"
+            >
               {loading ? 'Saving...' : isEdit ? 'Update Order' : 'Create Order'}
             </Button>
           </SheetFooter>

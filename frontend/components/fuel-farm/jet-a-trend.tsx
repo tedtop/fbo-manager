@@ -1,17 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { useJetAHistory } from '@/hooks/use-jet-a-history'
+import { useState } from 'react'
 import {
-  AreaChart,
   Area,
-  XAxis,
-  YAxis,
+  AreaChart,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from 'recharts'
 
 const RANGES = [
@@ -21,15 +21,22 @@ const RANGES = [
   { label: '120D', days: 120 },
   { label: '6M', days: 180 },
   { label: '1Y', days: 365 },
-  { label: 'All', days: 0 },
+  { label: 'All', days: 0 }
 ]
 
 function fmtDate(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
 function fmtDateWithYear(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
 }
 
 export function JetATrend() {
@@ -47,7 +54,9 @@ export function JetATrend() {
     <Card className="bg-card border-border p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Jet A Trend (T2–T7)</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Jet A Trend (T2–T7)
+          </h2>
           {current !== null && (
             <div className="text-2xl font-bold text-cyan-400 mt-0.5">
               {current.toLocaleString()} gal
@@ -84,14 +93,20 @@ export function JetATrend() {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={144}>
-          <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+          <AreaChart
+            data={data}
+            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+          >
             <defs>
               <linearGradient id="jetAFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.25} />
                 <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="rgba(255,255,255,0.06)"
+            />
             <XAxis
               dataKey="date"
               tickFormatter={fmtDate}
@@ -115,11 +130,14 @@ export function JetATrend() {
                 backgroundColor: 'hsl(260 30% 12%)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 8,
-                fontSize: 12,
+                fontSize: 12
               }}
               labelStyle={{ color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}
               itemStyle={{ color: '#22d3ee' }}
-              formatter={(value: number) => [value.toLocaleString() + ' gal', 'Total Jet A']}
+              formatter={(value: number) => [
+                `${value.toLocaleString()} gal`,
+                'Total Jet A'
+              ]}
             />
             <Area
               type="monotone"

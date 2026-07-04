@@ -1,10 +1,5 @@
 'use client'
 
-import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
-import { useModuleAccess } from '@/hooks/use-permissions'
-import { useRoles } from '@/hooks/use-roles'
-import { useUsers } from '@/hooks/use-users'
-import type { ProfileWithRoles } from '@/types/domain/users'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,8 +24,13 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table'
+import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
+import { useModuleAccess } from '@/hooks/use-permissions'
+import { useRoles } from '@/hooks/use-roles'
+import { useUsers } from '@/hooks/use-users'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
+import type { ProfileWithRoles } from '@/types/domain/users'
 import { MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'

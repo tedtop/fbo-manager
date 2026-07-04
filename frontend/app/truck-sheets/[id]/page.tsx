@@ -1,24 +1,26 @@
 'use client'
 
-import { use, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { AlertTriangle, ArrowLeft, Droplets, Info } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
-import { useSession } from '@/hooks/use-session'
-import { useTruckSheet } from '@/hooks/use-truck-sheets'
 import { validateReadings } from '@/components/truck-sheets/reading-validation'
 import { READING_TYPE_LABELS } from '@/components/truck-sheets/truck-sheet-review'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { useSession } from '@/hooks/use-session'
+import { useTruckSheet } from '@/hooks/use-truck-sheets'
+import { cn } from '@/lib/utils'
 import { ErrorMessage } from '@/messages/error-message'
+import { AlertTriangle, ArrowLeft, Droplets, Info } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { use, useEffect } from 'react'
 
 function fmt(n: number | null, digits = 1): string {
-  return n == null ? '—' : n.toLocaleString(undefined, { maximumFractionDigits: digits })
+  return n == null
+    ? '—'
+    : n.toLocaleString(undefined, { maximumFractionDigits: digits })
 }
 
 export default function TruckSheetDetailPage({
-  params,
+  params
 }: {
   params: Promise<{ id: string }>
 }) {
@@ -42,7 +44,9 @@ export default function TruckSheetDetailPage({
   if (error || !sheet) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-6">
-        <ErrorMessage>{error ? (error as Error).message : 'Truck sheet not found'}</ErrorMessage>
+        <ErrorMessage>
+          {error ? (error as Error).message : 'Truck sheet not found'}
+        </ErrorMessage>
       </div>
     )
   }
@@ -60,9 +64,12 @@ export default function TruckSheetDetailPage({
   const transferOutGal = readings
     .filter((r) => r.reading_type === 'transfer_out')
     .reduce((sum, r) => sum + (r.gallons_pumped ?? 0), 0)
-  const endingGallons = [...readings].reverse().find((r) => r.gallons_remaining != null)
-    ?.gallons_remaining
-  const warnings = [...issues.values()].flat().filter((i) => i.level === 'warn').length
+  const endingGallons = [...readings]
+    .reverse()
+    .find((r) => r.gallons_remaining != null)?.gallons_remaining
+  const warnings = [...issues.values()]
+    .flat()
+    .filter((i) => i.level === 'warn').length
 
   const headerFacts: [string, string][] = [
     ['Date', sheet.sheet_date],
@@ -71,7 +78,7 @@ export default function TruckSheetDetailPage({
     ['Front meter start', fmt(sheet.front_meter_start)],
     ['Rear meter start', fmt(sheet.rear_meter_start)],
     ['Initials', sheet.fueler_initials ?? '—'],
-    ['Pages', String(sheet.page_count)],
+    ['Pages', String(sheet.page_count)]
   ]
 
   return (
@@ -84,13 +91,20 @@ export default function TruckSheetDetailPage({
           <ArrowLeft className="w-4 h-4" /> Fuel Truck Logs
         </Link>
         <div className="flex items-center gap-3 mt-2 flex-wrap">
-          <Droplets className={cn('w-6 h-6', isJetA ? 'text-sky-400' : 'text-emerald-400')} />
+          <Droplets
+            className={cn(
+              'w-6 h-6',
+              isJetA ? 'text-sky-400' : 'text-emerald-400'
+            )}
+          />
           <h1 className="text-2xl font-bold">Truck {sheet.truck_number}</h1>
-          <Badge variant={isJetA ? 'default' : 'secondary'}>{isJetA ? 'Jet A' : 'Avgas'}</Badge>
+          <Badge variant={isJetA ? 'default' : 'secondary'}>
+            {isJetA ? 'Jet A' : 'Avgas'}
+          </Badge>
           {warnings > 0 && (
             <span className="flex items-center gap-1 text-sm text-amber-400">
-              <AlertTriangle className="w-4 h-4" /> {warnings} reading{warnings === 1 ? '' : 's'} to
-              double-check
+              <AlertTriangle className="w-4 h-4" /> {warnings} reading
+              {warnings === 1 ? '' : 's'} to double-check
             </span>
           )}
         </div>
@@ -101,7 +115,9 @@ export default function TruckSheetDetailPage({
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
           {headerFacts.map(([label, value]) => (
             <div key={label}>
-              <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
+              <div className="text-[10px] uppercase text-muted-foreground">
+                {label}
+              </div>
               <div className="font-mono text-sm mt-0.5">{value}</div>
             </div>
           ))}
@@ -115,7 +131,7 @@ export default function TruckSheetDetailPage({
             [`${fmt(dispensed, 1)} gal`, 'dispensed to aircraft'],
             [`${fmt(tankFillGal, 1)} gal`, 'taken from farm tanks'],
             [`${fmt(transferOutGal, 1)} gal`, 'transferred to other trucks'],
-            [`${fmt(endingGallons ?? null, 1)} gal`, 'on truck at end of sheet'],
+            [`${fmt(endingGallons ?? null, 1)} gal`, 'on truck at end of sheet']
           ] as [string, string][]
         ).map(([value, label]) => (
           <Card key={label} className="p-4 text-center">
@@ -130,22 +146,54 @@ export default function TruckSheetDetailPage({
         <table className="w-full text-xs min-w-[64rem]">
           <thead>
             <tr className="border-b border-border bg-muted/50">
-              <th className="p-2 text-left font-medium text-muted-foreground">#</th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                #
+              </th>
               <th className="w-6 p-2" />
-              <th className="p-2 text-left font-medium text-muted-foreground">Type</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">Customer</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">Tail #</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">A/C</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">Meter</th>
-              <th className="p-2 text-right font-medium text-muted-foreground">Start</th>
-              <th className="p-2 text-right font-medium text-muted-foreground">End</th>
-              <th className="p-2 text-right font-medium text-muted-foreground">Pumped</th>
-              <th className="p-2 text-right font-medium text-muted-foreground">Remaining</th>
-              {isJetA && <th className="p-2 text-left font-medium text-muted-foreground">Prist</th>}
-              <th className="p-2 text-left font-medium text-muted-foreground">Req</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">Tech</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">Invoice</th>
-              <th className="p-2 text-left font-medium text-muted-foreground">Time</th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Type
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Customer
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Tail #
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                A/C
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Meter
+              </th>
+              <th className="p-2 text-right font-medium text-muted-foreground">
+                Start
+              </th>
+              <th className="p-2 text-right font-medium text-muted-foreground">
+                End
+              </th>
+              <th className="p-2 text-right font-medium text-muted-foreground">
+                Pumped
+              </th>
+              <th className="p-2 text-right font-medium text-muted-foreground">
+                Remaining
+              </th>
+              {isJetA && (
+                <th className="p-2 text-left font-medium text-muted-foreground">
+                  Prist
+                </th>
+              )}
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Req
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Tech
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Invoice
+              </th>
+              <th className="p-2 text-left font-medium text-muted-foreground">
+                Time
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -154,7 +202,7 @@ export default function TruckSheetDetailPage({
                 key={r.id}
                 className={cn(
                   'border-b border-border last:border-0',
-                  r.reading_type !== 'fueling' && 'bg-muted/30',
+                  r.reading_type !== 'fueling' && 'bg-muted/30'
                 )}
               >
                 <td className="p-2 text-muted-foreground">{r.line_number}</td>
@@ -175,20 +223,34 @@ export default function TruckSheetDetailPage({
                   })()}
                 </td>
                 <td className="p-2">
-                  <Badge variant={r.reading_type === 'fueling' ? 'outline' : 'secondary'}>
+                  <Badge
+                    variant={
+                      r.reading_type === 'fueling' ? 'outline' : 'secondary'
+                    }
+                  >
                     {READING_TYPE_LABELS[r.reading_type]}
                   </Badge>
                 </td>
                 <td className="p-2">{r.customer ?? ''}</td>
-                <td className="p-2 font-mono font-semibold">{r.tail_number ?? ''}</td>
+                <td className="p-2 font-mono font-semibold">
+                  {r.tail_number ?? ''}
+                </td>
                 <td className="p-2">{r.aircraft_type ?? ''}</td>
                 <td className="p-2 capitalize">{r.meter ?? ''}</td>
-                <td className="p-2 text-right font-mono">{fmt(r.meter_start)}</td>
+                <td className="p-2 text-right font-mono">
+                  {fmt(r.meter_start)}
+                </td>
                 <td className="p-2 text-right font-mono">{fmt(r.meter_end)}</td>
-                <td className="p-2 text-right font-mono">{fmt(r.gallons_pumped, 2)}</td>
-                <td className="p-2 text-right font-mono">{fmt(r.gallons_remaining, 2)}</td>
+                <td className="p-2 text-right font-mono">
+                  {fmt(r.gallons_pumped, 2)}
+                </td>
+                <td className="p-2 text-right font-mono">
+                  {fmt(r.gallons_remaining, 2)}
+                </td>
                 {isJetA && (
-                  <td className="p-2">{r.prist == null ? '' : r.prist ? 'Yes' : 'No'}</td>
+                  <td className="p-2">
+                    {r.prist == null ? '' : r.prist ? 'Yes' : 'No'}
+                  </td>
                 )}
                 <td className="p-2">{r.req_gals_or_lbs ?? ''}</td>
                 <td className="p-2">{r.line_tech_initials ?? ''}</td>

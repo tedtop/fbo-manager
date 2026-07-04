@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeEquipment } from '@/tests/support/factories'
 import {
   DIGITAL_ENTRY_MARKER,
   deleteFuelingEvent,
   findUnbilledFuelings,
   isDigitalEntryReading,
-  recordFuelingEvent,
+  recordFuelingEvent
 } from '@/repositories/fueling-events.repo'
+import { createTestClient } from '@/tests/support/client'
+import { makeEquipment } from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -25,7 +25,7 @@ describe('fueling-events.repo', () => {
       truckNumber: 'T-9',
       date: '2026-07-03',
       sheetFuelType: 'jet_a',
-      reading: { tail_number: 'N999AB', gallons_pumped: 200 },
+      reading: { tail_number: 'N999AB', gallons_pumped: 200 }
     })
 
     expect(reading.line_number).toBe(1)
@@ -42,14 +42,14 @@ describe('fueling-events.repo', () => {
       truckNumber: 'T-10',
       date: '2026-07-03',
       sheetFuelType: 'jet_a',
-      reading: { tail_number: 'N001' },
+      reading: { tail_number: 'N001' }
     })
     const second = await recordFuelingEvent(db, {
       fuelTruckId: truck.id,
       truckNumber: 'T-10',
       date: '2026-07-03',
       sheetFuelType: 'jet_a',
-      reading: { tail_number: 'N002' },
+      reading: { tail_number: 'N002' }
     })
 
     expect(second.line_number).toBe(2)
@@ -63,7 +63,7 @@ describe('fueling-events.repo', () => {
       truckNumber: 'T-11',
       date: new Date().toISOString().slice(0, 10),
       sheetFuelType: 'jet_a',
-      reading: { tail_number: 'N111' },
+      reading: { tail_number: 'N111' }
     })
 
     const unbilled = await findUnbilledFuelings(db)
@@ -77,7 +77,7 @@ describe('fueling-events.repo', () => {
       truckNumber: 'T-12',
       date: new Date().toISOString().slice(0, 10),
       sheetFuelType: 'jet_a',
-      reading: { tail_number: 'N112' },
+      reading: { tail_number: 'N112' }
     })
 
     const { error: invoiceError, data: invoice } = await db
@@ -90,7 +90,7 @@ describe('fueling-events.repo', () => {
       invoice_id: invoice.id,
       item_type: 'fuel',
       description: 'Jet A',
-      truck_meter_reading_id: reading.id,
+      truck_meter_reading_id: reading.id
     })
     if (lineError) throw lineError
 
@@ -105,12 +105,16 @@ describe('fueling-events.repo', () => {
       truckNumber: 'T-13',
       date: '2026-07-03',
       sheetFuelType: 'jet_a',
-      reading: {},
+      reading: {}
     })
 
     await deleteFuelingEvent(db, reading.id)
 
-    const { data } = await db.from('truck_meter_readings').select('id').eq('id', reading.id).maybeSingle()
+    const { data } = await db
+      .from('truck_meter_readings')
+      .select('id')
+      .eq('id', reading.id)
+      .maybeSingle()
     expect(data).toBeNull()
   })
 })

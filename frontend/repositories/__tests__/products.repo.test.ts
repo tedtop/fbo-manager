@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeProduct } from '@/tests/support/factories'
 import { findActiveProducts } from '@/repositories/products.repo'
+import { createTestClient } from '@/tests/support/client'
+import { makeProduct } from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -25,6 +25,10 @@ describe('products.repo', () => {
     await makeProduct(db, { name: 'Beta Service', product_type: 'service' })
 
     const all = await findActiveProducts(db)
-    expect(all.map((p) => p.name)).toEqual(['Alpha Fee', 'Beta Service', 'Zulu Service'])
+    expect(all.map((p) => p.name)).toEqual([
+      'Alpha Fee',
+      'Beta Service',
+      'Zulu Service'
+    ])
   })
 })

@@ -12,11 +12,11 @@ export default defineConfig({
     // reset the full table set in `beforeEach`. Running test files concurrently would let
     // one file's reset wipe rows another file is mid-assertion on, so keep files sequential.
     fileParallelism: false,
-    setupFiles: ['./tests/support/setup.ts'],
+    setupFiles: ['./tests/support/setup.ts']
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
-    },
-  },
+      '@': path.resolve(__dirname, '.')
+    }
+  }
 })

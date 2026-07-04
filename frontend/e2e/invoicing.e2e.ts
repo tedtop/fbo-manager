@@ -15,12 +15,14 @@ const db = createE2EDbClient()
  */
 test.describe('Fuel ticket entry — Complete ticket actually persists', () => {
   test('a digitally-entered fuel ticket creates a real invoice, line item, and fueling event', async ({
-    page,
+    page
   }) => {
     const truckId = uniqueValue('E2E-TRK-')
-    const { error: truckError } = await db
-      .from('equipment')
-      .insert({ equipment_id: truckId, equipment_name: `E2E Truck ${truckId}`, equipment_type: 'fuel_truck' })
+    const { error: truckError } = await db.from('equipment').insert({
+      equipment_id: truckId,
+      equipment_name: `E2E Truck ${truckId}`,
+      equipment_type: 'fuel_truck'
+    })
     if (truckError) throw truckError
 
     const invoiceNumber = uniqueValue('E2E-INV-')
@@ -34,9 +36,11 @@ test.describe('Fuel ticket entry — Complete ticket actually persists', () => {
 
     // Customer combobox: write-in flow (no linked account needed for cash).
     await page.getByRole('button', { name: 'Customer name' }).click()
-    await page.getByPlaceholder('Search accounts or type a name…').fill(customerName)
+    await page
+      .getByPlaceholder('Search accounts or type a name…')
+      .fill(customerName)
     // Curly quotes in the source ("Use “X” as written") — match on the stable part only.
-    await page.getByText(new RegExp(`as written`)).click()
+    await page.getByText(/as written/).click()
 
     // Fuel truck select (fuel delivery is on by default).
     await page.getByRole('combobox', { name: 'Fuel truck' }).click()
@@ -54,8 +58,12 @@ test.describe('Fuel ticket entry — Complete ticket actually persists', () => {
 
     // The sheet closing without a form error is the "looks like it worked" signal that
     // hid the original bug — the DB read below is what actually proves it.
-    await expect(page.getByText('Invoice number and customer name are required')).not.toBeVisible()
-    await expect(page.getByRole('button', { name: 'Complete ticket' })).not.toBeVisible({ timeout: 10_000 })
+    await expect(
+      page.getByText('Invoice number and customer name are required')
+    ).not.toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Complete ticket' })
+    ).not.toBeVisible({ timeout: 10_000 })
 
     const invoice = await waitForDbRow(async () => {
       const { data } = await db

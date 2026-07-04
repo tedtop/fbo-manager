@@ -1,7 +1,11 @@
 import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 import { ADMIN_STORAGE_STATE, USER_STORAGE_STATE } from './e2e/global-setup'
-import { E2E_BASE_URL, E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_URL } from './e2e/support/env'
+import {
+  E2E_BASE_URL,
+  E2E_SUPABASE_ANON_KEY,
+  E2E_SUPABASE_URL
+} from './e2e/support/env'
 
 /**
  * Full-stack E2E layer: drives the real Next.js app in a real browser against the same
@@ -28,20 +32,20 @@ export default defineConfig({
   use: {
     baseURL: E2E_BASE_URL,
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    screenshot: 'only-on-failure'
   },
 
   projects: [
     {
       name: 'admin',
       use: { ...devices['Desktop Chrome'], storageState: ADMIN_STORAGE_STATE },
-      testIgnore: '**/user-role/**',
+      testIgnore: '**/user-role/**'
     },
     {
       name: 'line-technician',
       use: { ...devices['Desktop Chrome'], storageState: USER_STORAGE_STATE },
-      testMatch: '**/user-role/**',
-    },
+      testMatch: '**/user-role/**'
+    }
   ],
 
   webServer: {
@@ -59,7 +63,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
       SUPABASE_URL: E2E_SUPABASE_URL,
       SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
-      NEXT_TELEMETRY_DISABLED: '1',
-    },
-  },
+      NEXT_TELEMETRY_DISABLED: '1'
+    }
+  }
 })

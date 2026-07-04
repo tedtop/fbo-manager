@@ -69,5 +69,5 @@ export const AIRCRAFT_TYPES: AircraftTypeDefinition[] = [
 export const DEFAULT_AIRCRAFT_TYPE = 'light_single'
 
 export function getAircraftDefinition(id: string): AircraftTypeDefinition {
-  return AIRCRAFT_TYPES.find(t => t.id === id) || AIRCRAFT_TYPES[0]
+  return AIRCRAFT_TYPES.find((t) => t.id === id) || AIRCRAFT_TYPES[0]
 }

@@ -81,11 +81,11 @@ export function FlightBoard({
     const departureIds = new Set(departures.map((f) => f.id))
     const linked = new Set<string>()
 
-    arrivalIds.forEach((id) => {
+    for (const id of arrivalIds) {
       if (departureIds.has(id)) {
         linked.add(id)
       }
-    })
+    }
 
     return linked
   }, [arrivals, departures])

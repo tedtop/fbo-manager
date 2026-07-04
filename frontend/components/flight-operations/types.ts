@@ -10,7 +10,7 @@ export interface FlightRow {
   aircraft_type_display?: string | null
   call_sign?: string | null
   arrival_time?: string | null
-  departure_time?: string | null
+  departure_time: string
   flight_status?: BackendFlightStatus
   origin?: string | null
   destination?: string | null
@@ -178,9 +178,9 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
   )
 
   // Extract creator info (always present, defaults to admin if not provided)
-  const createdByInitials = (apiFlight as any).created_by_initials || 'ADM'
-  const createdByName = (apiFlight as any).created_by_name || 'Admin'
-  const createdByDept = (apiFlight as any).created_by_department || 'System'
+  const createdByInitials = apiFlight.created_by_initials || 'ADM'
+  const createdByName = apiFlight.created_by_name || 'Admin'
+  const createdByDept = apiFlight.created_by_department || 'System'
 
   const createdBy = {
     initials: createdByInitials,
@@ -192,33 +192,51 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     id: String(apiFlight.id),
     type,
     tailNumber: apiFlight.aircraft || '',
-    aircraftType: (apiFlight as any).aircraft_type_display || '',
+    aircraftType: apiFlight.aircraft_type_display || '',
     arrivalTime: apiFlight.arrival_time ?? undefined,
-    departureTime: apiFlight.departure_time!,
+    departureTime: apiFlight.departure_time,
     origin:
       apiFlight.origin ||
       (hasArrival ? apiFlight.destination : undefined) ||
       undefined,
     destination: apiFlight.destination ?? undefined,
     status: mapFlightStatus(apiFlight.flight_status),
-    contactName: (apiFlight as any).contact_name || undefined,
-    contactNotes: (apiFlight as any).contact_notes || undefined,
-    passengers: (apiFlight as any).passenger_count || undefined,
-    services: (apiFlight as any).services || [],
-    notes: (apiFlight as any).notes || undefined,
+    contactName: apiFlight.contact_name || undefined,
+    contactNotes: apiFlight.contact_notes || undefined,
+    passengers: apiFlight.passenger_count || undefined,
+    services: apiFlight.services || [],
+    notes: apiFlight.notes || undefined,
     duration, // Calculated from arrival and departure times
-    source: ((apiFlight as any).created_by_source as FlightSource) || 'qt',
+    source: (apiFlight.created_by_source as FlightSource) || 'qt',
     createdBy,
     createdAt: apiFlight.created_at,
-    updatedAt: (apiFlight as any).modified_at || apiFlight.created_at
+    updatedAt: apiFlight.modified_at || apiFlight.created_at
   }
+}
+
+// Shape of the payload built for the backend create/update request
+export interface ApiFlightRequest {
+  aircraft?: string
+  destination?: string
+  origin?: string
+  arrival_time?: string
+  departure_time?: string
+  flight_status?: BackendFlightStatus
+  contact_name?: string
+  contact_notes?: string
+  passenger_count?: number
+  services?: string[]
+  fuel_order_notes?: string
+  notes?: string
+  created_by_source?: FlightSource
+  call_sign?: string
 }
 
 // Convert component flight to backend create/update request
 export function componentFlightToApiRequest(
   flight: Partial<Flight>
-): Record<string, any> {
-  const result: Record<string, any> = {}
+): ApiFlightRequest {
+  const result: ApiFlightRequest = {}
 
   // IMPORTANT: Don't modify flight_number or aircraft on updates
   // Only include these for creates, and use tailNumber as aircraft FK
@@ -274,17 +292,17 @@ export function componentFlightToApiRequest(
 
   // Only include call_sign if explicitly provided (for creates)
   // Don't send it on updates as it might conflict with existing data
-  if (flight.id && flight.id.startsWith('manual-')) {
+  if (flight.id?.startsWith('manual-')) {
     // This is a new flight, set call_sign
     result.call_sign = `MAN-${Date.now()}`
   }
 
   // Filter out any undefined/null values
-  Object.keys(result).forEach((key) => {
+  for (const key of Object.keys(result) as Array<keyof ApiFlightRequest>) {
     if (result[key] === undefined || result[key] === null) {
       delete result[key]
     }
-  })
+  }
 
   return result
 }

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { createCustomer, findAllCustomers } from '@/repositories/customers.repo'
 import { createTestClient } from '@/tests/support/client'
 import { resetDatabase } from '@/tests/support/reset'
-import { createCustomer, findAllCustomers } from '@/repositories/customers.repo'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -15,7 +15,10 @@ describe('customers.repo', () => {
   })
 
   it('creates a customer and persists it', async () => {
-    const created = await createCustomer(db, { name: 'Acme Aviation', customer_type: 'private' })
+    const created = await createCustomer(db, {
+      name: 'Acme Aviation',
+      customer_type: 'private'
+    })
     expect(created.id).toBeTypeOf('number')
     expect(created.customer_type).toBe('private')
   })

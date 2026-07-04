@@ -1,27 +1,27 @@
 'use client'
 
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { PlusCircle, Edit, Trash2 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Edit, PlusCircle, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface ParkingLocation {
   id: number
@@ -52,7 +52,7 @@ export function ParkingLocationPanel({
   onUpdateLocation,
   onDeleteLocation,
   onSelectLocation,
-  selectedLocationId,
+  selectedLocationId
 }: ParkingLocationPanelProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingLocation, setEditingLocation] =
@@ -61,7 +61,7 @@ export function ParkingLocationPanel({
     location_code: '',
     description: '',
     airport: 'MSO',
-    display_order: 1,
+    display_order: 1
   })
 
   const handleCreate = () => {
@@ -70,7 +70,7 @@ export function ParkingLocationPanel({
       location_code: '',
       description: '',
       airport: 'MSO',
-      display_order: 1,
+      display_order: 1
     })
     setIsDialogOpen(true)
   }
@@ -81,7 +81,7 @@ export function ParkingLocationPanel({
       location_code: location.location_code,
       description: location.description,
       airport: location.airport,
-      display_order: location.display_order,
+      display_order: location.display_order
     })
     setIsDialogOpen(true)
   }
@@ -138,6 +138,12 @@ export function ParkingLocationPanel({
                       : 'border-border hover:border-primary/50'
                   }`}
                   onClick={() => onSelectLocation(location)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onSelectLocation(location)
+                    }
+                  }}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -210,7 +216,7 @@ export function ParkingLocationPanel({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    location_code: e.target.value.toUpperCase(),
+                    location_code: e.target.value.toUpperCase()
                   })
                 }
                 className="uppercase"
@@ -254,7 +260,7 @@ export function ParkingLocationPanel({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    display_order: parseInt(e.target.value) || 0,
+                    display_order: Number.parseInt(e.target.value) || 0
                   })
                 }
               />

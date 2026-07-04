@@ -34,7 +34,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
   const handleThemeChange = (newTheme: 'dark' | 'light') => {
     // Use View Transitions API for smooth theme change if available
     if (typeof document !== 'undefined' && 'startViewTransition' in document) {
-      (document as any).startViewTransition(() => {
+      document.startViewTransition(() => {
         setTheme(newTheme)
         localStorage.setItem('theme', newTheme)
       })

@@ -48,7 +48,10 @@ export function toTankDomain(row: TankWithLatestReading): TankDomain {
     usableMinInches: usableMin,
     usableMaxInches: usableMax,
     latestReading: row.latest_reading
-      ? { level: Number(row.latest_reading.level), recordedAt: row.latest_reading.recorded_at }
+      ? {
+          level: Number(row.latest_reading.level),
+          recordedAt: row.latest_reading.recorded_at
+        }
       : null,
     levelPercentage,
     status: computeStatus(levelPercentage)

@@ -42,7 +42,7 @@ export function findParkingLocationAtPoint(
     if (location.polygon && pointInPolygon(point, location.polygon)) {
       return {
         id: location.id,
-        location_code: location.location_code,
+        location_code: location.location_code
       }
     }
   }

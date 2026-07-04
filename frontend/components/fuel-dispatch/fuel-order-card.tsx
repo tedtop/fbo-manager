@@ -13,13 +13,25 @@ interface FuelOrderCardProps {
   onEdit: (tx: TransactionWithRelations) => void
   onDelete: (id: number) => void
   onAssignFuelers: (tx: TransactionWithRelations) => void
-  onUpdateProgress: (id: number, progress: 'started' | 'in_progress' | 'completed') => void
+  onUpdateProgress: (
+    id: number,
+    progress: 'started' | 'in_progress' | 'completed'
+  ) => void
 }
 
 const progressConfig = {
-  started: { label: 'Started', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  in_progress: { label: 'In Progress', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-  completed: { label: 'Completed', color: 'bg-green-500/10 text-green-500 border-green-500/20' }
+  started: {
+    label: 'Started',
+    color: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+  },
+  in_progress: {
+    label: 'In Progress',
+    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+  },
+  completed: {
+    label: 'Completed',
+    color: 'bg-green-500/10 text-green-500 border-green-500/20'
+  }
 }
 
 export function FuelOrderCard({
@@ -47,17 +59,22 @@ export function FuelOrderCard({
           <div className="flex items-center gap-2">
             <Fuel className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-bold text-foreground">
-              {transaction.tail_number ?? `Ticket #${transaction.ticket_number}`}
+              {transaction.tail_number ??
+                `Ticket #${transaction.ticket_number}`}
             </span>
           </div>
-          <Badge className={cn('text-xs font-medium px-2 py-0.5', progress.color)}>
+          <Badge
+            className={cn('text-xs font-medium px-2 py-0.5', progress.color)}
+          >
             {progress.label}
           </Badge>
         </div>
 
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Ticket:</span>
-          <span className="font-mono text-foreground">{transaction.ticket_number}</span>
+          <span className="font-mono text-foreground">
+            {transaction.ticket_number}
+          </span>
         </div>
 
         {transaction.flight && (
@@ -73,7 +90,9 @@ export function FuelOrderCard({
           <div className="flex items-center gap-2 text-xs">
             <Truck className="w-3 h-3 text-muted-foreground" />
             <span className="text-muted-foreground">Truck:</span>
-            <span className="text-foreground">{transaction.fuel_truck.equipment_id}</span>
+            <span className="text-foreground">
+              {transaction.fuel_truck.equipment_id}
+            </span>
           </div>
         )}
 

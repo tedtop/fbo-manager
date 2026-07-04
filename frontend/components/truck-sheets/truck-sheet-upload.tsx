@@ -1,8 +1,14 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { Upload, FileImage, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileImage,
+  Loader2,
+  Upload
+} from 'lucide-react'
+import { useRef, useState } from 'react'
 
 export type PageStatus = 'queued' | 'extracting' | 'done' | 'error'
 
@@ -21,7 +27,11 @@ interface TruckSheetUploadProps {
 
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 
-export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps) {
+export function TruckSheetUpload({
+  onFiles,
+  pages,
+  busy
+}: TruckSheetUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
@@ -33,11 +43,7 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
 
   return (
     <div className="space-y-3">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => !busy && inputRef.current?.click()}
-        onKeyDown={(e) => e.key === 'Enter' && !busy && inputRef.current?.click()}
+      <label
         onDrop={(e) => {
           e.preventDefault()
           setDragOver(false)
@@ -53,15 +59,16 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
           busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
           dragOver
             ? 'border-primary bg-primary/5'
-            : 'border-border hover:border-primary/50 hover:bg-muted/30',
+            : 'border-border hover:border-primary/50 hover:bg-muted/30'
         )}
       >
         <input
           ref={inputRef}
           type="file"
           multiple
+          disabled={busy}
           accept="image/jpeg,image/png,image/webp,application/pdf"
-          className="hidden"
+          className="sr-only"
           onChange={(e) => {
             handleFiles(e.target.files)
             e.target.value = ''
@@ -76,15 +83,19 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
             Drop tonight&apos;s truck sheet photos here or click to browse
           </div>
           <div className="text-sm text-muted-foreground mt-1">
-            Select all pages at once — multi-page trucks are merged automatically
+            Select all pages at once — multi-page trucks are merged
+            automatically
           </div>
         </div>
-      </div>
+      </label>
 
       {pages.length > 0 && (
         <ul className="rounded-lg border border-border divide-y divide-border text-sm">
           {pages.map((page, idx) => (
-            <li key={`${page.name}-${idx}`} className="flex items-center gap-3 px-3 py-2">
+            <li
+              key={`${page.name}-${idx}`}
+              className="flex items-center gap-3 px-3 py-2"
+            >
               {page.status === 'extracting' && (
                 <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
               )}
@@ -104,10 +115,14 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
                 </span>
               )}
               {page.status === 'extracting' && (
-                <span className="text-xs text-muted-foreground">Reading with AI…</span>
+                <span className="text-xs text-muted-foreground">
+                  Reading with AI…
+                </span>
               )}
               {page.status === 'error' && (
-                <span className="text-xs text-destructive truncate max-w-[16rem]">{page.error}</span>
+                <span className="text-xs text-destructive truncate max-w-[16rem]">
+                  {page.error}
+                </span>
               )}
             </li>
           ))}

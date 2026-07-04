@@ -1,14 +1,19 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeAircraft, makeFlight, makeParkingLocation, makeUser } from '@/tests/support/factories'
 import {
   createFlight,
   deleteFlight,
   findAllFlights,
   findFlightById,
-  updateFlight,
+  updateFlight
 } from '@/repositories/flights.repo'
+import { createTestClient } from '@/tests/support/client'
+import {
+  makeAircraft,
+  makeFlight,
+  makeParkingLocation,
+  makeUser
+} from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -22,15 +27,20 @@ describe('flights.repo', () => {
   })
 
   it('joins aircraft, location, and created_by on findFlightById', async () => {
-    const aircraft = await makeAircraft(db, { aircraft_type_display: 'Gulfstream G650' })
+    const aircraft = await makeAircraft(db, {
+      aircraft_type_display: 'Gulfstream G650'
+    })
     const location = await makeParkingLocation(db, { description: 'Ramp 4' })
-    const creator = await makeUser(db, { username: 'frontdesk-1', role: 'frontdesk' })
+    const creator = await makeUser(db, {
+      username: 'frontdesk-1',
+      role: 'frontdesk'
+    })
 
     const flight = await createFlight(db, {
       aircraft_id: aircraft.tail_number,
       departure_time: new Date().toISOString(),
       location_id: location.id,
-      created_by_id: creator.id,
+      created_by_id: creator.id
     })
 
     const found = await findFlightById(db, flight.id)
@@ -45,7 +55,7 @@ describe('flights.repo', () => {
       createFlight(db, {
         aircraft_id: 'N-DOES-NOT-EXIST',
         departure_time: new Date().toISOString(),
-        created_by_id: creator.id,
+        created_by_id: creator.id
       })
     ).rejects.toThrow()
   })
@@ -59,7 +69,9 @@ describe('flights.repo', () => {
   })
 
   it('filters by today, excluding flights outside the current day', async () => {
-    const todayFlight = await makeFlight(db, { departure_time: new Date().toISOString() })
+    const todayFlight = await makeFlight(db, {
+      departure_time: new Date().toISOString()
+    })
     const threeDaysAgo = new Date()
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
     await makeFlight(db, { departure_time: threeDaysAgo.toISOString() })
@@ -69,17 +81,24 @@ describe('flights.repo', () => {
   })
 
   it('filters by startDate/endDate range', async () => {
-    const inRange = await makeFlight(db, { departure_time: '2026-03-15T10:00:00.000Z' })
+    const inRange = await makeFlight(db, {
+      departure_time: '2026-03-15T10:00:00.000Z'
+    })
     await makeFlight(db, { departure_time: '2026-01-01T10:00:00.000Z' })
     await makeFlight(db, { departure_time: '2026-06-01T10:00:00.000Z' })
 
-    const results = await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-31' })
+    const results = await findAllFlights(db, {
+      startDate: '2026-03-01',
+      endDate: '2026-03-31'
+    })
     expect(results.map((f) => f.id)).toEqual([inRange.id])
   })
 
   it('updates and deletes a flight', async () => {
     const flight = await makeFlight(db, { flight_status: 'scheduled' })
-    const updated = await updateFlight(db, flight.id, { flight_status: 'arrived' })
+    const updated = await updateFlight(db, flight.id, {
+      flight_status: 'arrived'
+    })
     expect(updated.flight_status).toBe('arrived')
 
     await deleteFlight(db, flight.id)

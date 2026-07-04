@@ -1,13 +1,27 @@
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate
+} from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
 export type FlightRow = Tables<'flight'>
 export type FlightInsert = TablesInsert<'flight'>
 export type FlightUpdate = TablesUpdate<'flight'>
 
 export type FlightWithRelations = FlightRow & {
-  aircraft: { tail_number: string; aircraft_type_icao: string; aircraft_type_display: string } | null
-  location: { location_code: string | null; description: string; latitude: string | null; longitude: string | null } | null
+  aircraft: {
+    tail_number: string
+    aircraft_type_icao: string
+    aircraft_type_display: string
+  } | null
+  location: {
+    location_code: string | null
+    description: string
+    latitude: string | null
+    longitude: string | null
+  } | null
   created_by: {
     id: number
     first_name: string
@@ -58,7 +72,10 @@ export async function findAllFlights(
   }
 
   if (filters?.status) {
-    query = query.eq('flight_status', filters.status as Database['public']['Tables']['flight']['Row']['flight_status'])
+    query = query.eq(
+      'flight_status',
+      filters.status as Database['public']['Tables']['flight']['Row']['flight_status']
+    )
   }
 
   const { data, error } = await query

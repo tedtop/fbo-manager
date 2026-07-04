@@ -15,8 +15,7 @@ export function useFlightFuelStatus(flightId: number | string) {
   const [completedTransactions, setCompletedTransactions] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const numericId =
-    typeof flightId === 'string' ? Number(flightId) : flightId
+  const numericId = typeof flightId === 'string' ? Number(flightId) : flightId
 
   // Initial fetch
   useEffect(() => {
@@ -46,7 +45,9 @@ export function useFlightFuelStatus(flightId: number | string) {
     }
     fetch()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [numericId, db])
 
   // Real-time subscription
@@ -64,11 +65,11 @@ export function useFlightFuelStatus(flightId: number | string) {
         filter: `flight_id=eq.${numericId}`
       },
       (payload) => {
-        if (
-          payload.eventType === 'INSERT' ||
-          payload.eventType === 'UPDATE'
-        ) {
-          const row = payload.new as { progress?: string; completed_at?: string | null }
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const row = payload.new as {
+            progress?: string
+            completed_at?: string | null
+          }
           if (row.progress === 'completed') {
             setCompletedTransactions((c) => c + 1)
           }

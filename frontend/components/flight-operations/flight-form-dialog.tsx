@@ -85,6 +85,7 @@ export function FlightFormDialog({
   const [isEditingAircraftType, setIsEditingAircraftType] = useState(false)
 
   useEffect(() => {
+    if (!open) return
     if (initialData) {
       setFormData(initialData)
 
@@ -136,7 +137,7 @@ export function FlightFormDialog({
       setFormData({
         ...formData,
         tailNumber: newAircraft.tail_number,
-        aircraftType: (newAircraft as any).aircraft_type_display || 'Unknown'
+        aircraftType: newAircraft.aircraft_type_display || 'Unknown'
       })
       setIsEditingAircraftType(true)
     } catch (error) {
@@ -170,7 +171,7 @@ export function FlightFormDialog({
     if (formData.tailNumber) {
       const existingAircraft = aircraft.find(
         (a) =>
-          a.tail_number.toLowerCase() === formData.tailNumber!.toLowerCase()
+          a.tail_number.toLowerCase() === formData.tailNumber?.toLowerCase()
       )
 
       try {
@@ -202,6 +203,11 @@ export function FlightFormDialog({
       finalDepartureTimestamp = arrivalDate.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
     }
 
+    if (!finalDepartureTimestamp) {
+      alert('Please provide at least one time (arrival or departure)')
+      return
+    }
+
     const flight: Flight = {
       id: initialData?.id || `manual-${Date.now()}`,
       tailNumber: formData.tailNumber || '',
@@ -209,7 +215,7 @@ export function FlightFormDialog({
       type: formData.type as Flight['type'],
       status: formData.status as Flight['status'],
       arrivalTime: arrivalTimestamp,
-      departureTime: finalDepartureTimestamp!, // Required by DB
+      departureTime: finalDepartureTimestamp,
       origin: formData.origin,
       destination: formData.destination,
       contactName: formData.contactName,
@@ -300,7 +306,7 @@ export function FlightFormDialog({
                 <Select
                   value={formData.type}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, type: value as any })
+                    setFormData({ ...formData, type: value as Flight['type'] })
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -321,7 +327,10 @@ export function FlightFormDialog({
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, status: value as any })
+                    setFormData({
+                      ...formData,
+                      status: value as Flight['status']
+                    })
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -359,7 +368,7 @@ export function FlightFormDialog({
                       htmlFor="arrivalTime"
                       className="text-sm text-muted-foreground flex items-center gap-2"
                     >
-                      <span className="inline-block w-2 h-2 rounded-full bg-success"></span>
+                      <span className="inline-block w-2 h-2 rounded-full bg-success" />
                       Arrival Time
                     </Label>
                     <Input
@@ -382,7 +391,7 @@ export function FlightFormDialog({
                       htmlFor="departureTime"
                       className="text-sm text-muted-foreground flex items-center gap-2"
                     >
-                      <span className="inline-block w-2 h-2 rounded-full bg-accent"></span>
+                      <span className="inline-block w-2 h-2 rounded-full bg-accent" />
                       Departure Time
                     </Label>
                     <Input

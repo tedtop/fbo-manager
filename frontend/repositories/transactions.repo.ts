@@ -19,7 +19,11 @@ export type TransactionWithRelations = TransactionRow & {
     assigned_at: string
     fueler: { id: number; fueler_name: string } | null
   }>
-  fuel_truck: { id: number; equipment_id: string; equipment_name: string } | null
+  fuel_truck: {
+    id: number
+    equipment_id: string
+    equipment_name: string
+  } | null
 }
 
 const TX_SELECT = `

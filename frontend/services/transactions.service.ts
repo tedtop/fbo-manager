@@ -1,20 +1,23 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
-import {
-  updateTransaction,
-  type TransactionUpdate
-} from '@/repositories/transactions.repo'
 import {
   assignFuelerToTransaction,
   removeFuelerFromTransaction
 } from '@/repositories/fueler-assignments.repo'
+import {
+  type TransactionUpdate,
+  updateTransaction
+} from '@/repositories/transactions.repo'
+import type { Database } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function assignFueler(
   db: SupabaseClient<Database>,
   transactionId: number,
   fuelerId: number
 ): Promise<void> {
-  await assignFuelerToTransaction(db, { transaction_id: transactionId, fueler_id: fuelerId })
+  await assignFuelerToTransaction(db, {
+    transaction_id: transactionId,
+    fueler_id: fuelerId
+  })
 
   // Set assigned_at on the transaction if not already set
   await updateTransaction(db, transactionId, {

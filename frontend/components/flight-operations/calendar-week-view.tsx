@@ -1,6 +1,5 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   ChevronLeft,
@@ -10,6 +9,8 @@ import {
   PlaneTakeoff,
   Plus
 } from 'lucide-react'
+import type React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { FlightFilters as FilterType, Flight } from './types'
 
@@ -54,11 +55,28 @@ function getTimeStr(date: Date): string {
 }
 
 function parseLocalTimestamp(timestamp: string): Date {
-  // Parsing ISO string in local context is tricky if strictly using new Date(iso) which parses as key. 
+  // Parsing ISO string in local context is tricky if strictly using new Date(iso) which parses as key.
   // But our timestamps from backend are full ISO8601 with offset or Z.
-  // The backend script generates with timezone.make_aware. 
+  // The backend script generates with timezone.make_aware.
   // If we want to display them in LOCAL browser time, new Date(iso) is correct.
   return new Date(timestamp)
+}
+
+// Pure pixel/time conversions for the drag grid (80px per hour, snapped to 15min)
+function getPositionFromTime(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  const mins = h * 60 + m
+  return mins * (80 / 60)
+}
+
+function getTimeFromPosition(y: number): string {
+  const pxPerMin = 80 / 60
+  const mins = y / pxPerMin
+  // Snap to 15
+  const snapped = Math.round(mins / 15) * 15
+  const h = Math.floor(snapped / 60)
+  const m = snapped % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 // --- Component ---
@@ -96,7 +114,10 @@ export function CalendarWeekView({
   const [editingFlight, setEditingFlight] = useState<Flight | null>(null)
 
   // Hover interact
-  const [hoveredSlot, setHoveredSlot] = useState<{ day: string; time: string } | null>(null)
+  const [hoveredSlot, setHoveredSlot] = useState<{
+    day: string
+    time: string
+  } | null>(null)
   const [showAddButton, setShowAddButton] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -139,7 +160,7 @@ export function CalendarWeekView({
     // Iterate over flights, then for each flight, iterate over Visible Week Days
     // This handles multi-day splitting naturally.
 
-    flights.forEach(flight => {
+    for (const flight of flights) {
       // Filter
       if (filters.search) {
         const s = filters.search.toLowerCase()
@@ -148,12 +169,14 @@ export function CalendarWeekView({
           flight.aircraftType.toLowerCase().includes(s) ||
           flight.origin?.toLowerCase().includes(s) ||
           flight.destination?.toLowerCase().includes(s)
-        if (!matches) return
+        if (!matches) continue
       }
-      if (filters.status !== 'all' && flight.status !== filters.status) return
+      if (filters.status !== 'all' && flight.status !== filters.status) continue
       if (filters.services.length > 0) {
-        const hasAll = filters.services.every(svc => flight.services.includes(svc))
-        if (!hasAll) return
+        const hasAll = filters.services.every((svc) =>
+          flight.services.includes(svc)
+        )
+        if (!hasAll) continue
       }
 
       // Define Flight Interval [Start, End]
@@ -178,10 +201,10 @@ export function CalendarWeekView({
         intervalStart = new Date(intervalEnd.getTime() - 60 * 60 * 1000)
       }
 
-      if (!intervalStart || !intervalEnd) return
+      if (!intervalStart || !intervalEnd) continue
 
       // Iterate Week Days to intersect
-      weekDays.forEach((dayDate) => {
+      for (const dayDate of weekDays) {
         const dayStart = new Date(dayDate) // 00:00
         const dayEnd = new Date(dayDate)
         dayEnd.setHours(23, 59, 59, 999)
@@ -191,18 +214,18 @@ export function CalendarWeekView({
         // Day Interval: [dayStart, dayEnd]
         // Overlap if (StartA <= EndB) and (EndA >= StartB)
 
-        if (intervalStart! <= dayEnd && intervalEnd! >= dayStart) {
+        if (intervalStart <= dayEnd && intervalEnd >= dayStart) {
           // Calculate block for this day
           // BlockStart = Max(intervalStart, dayStart)
           // BlockEnd = Min(intervalEnd, dayEnd)
 
-          const blockStart = intervalStart! > dayStart ? intervalStart! : dayStart
-          const blockEnd = intervalEnd! < dayEnd ? intervalEnd! : dayEnd
+          const blockStart = intervalStart > dayStart ? intervalStart : dayStart
+          const blockEnd = intervalEnd < dayEnd ? intervalEnd : dayEnd
 
           // Determine type
           let type: BlockType = 'stay'
-          const isStart = blockStart.getTime() === intervalStart!.getTime()
-          const isEnd = blockEnd.getTime() === intervalEnd!.getTime()
+          const isStart = blockStart.getTime() === intervalStart?.getTime()
+          const isEnd = blockEnd.getTime() === intervalEnd?.getTime()
 
           if (isStart && isEnd) {
             // Fully contained in day -> check if it's visually a quick turn
@@ -227,8 +250,8 @@ export function CalendarWeekView({
             isEnd
           })
         }
-      })
-    })
+      }
+    }
 
     return result
   }, [flights, filters, weekDays])
@@ -256,52 +279,20 @@ export function CalendarWeekView({
 
   const handleMouseUp = () => setIsDragging(false)
 
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      if (draggedBlock) handleBlockDragEnd()
-      setIsDragging(false)
-    }
-    window.addEventListener('mouseup', handleGlobalMouseUp)
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (draggedBlock) handleBlockDragMove(e as any)
-    }
-    window.addEventListener('mousemove', handleGlobalMouseMove)
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp)
-      window.removeEventListener('mousemove', handleGlobalMouseMove)
-    }
-  }, [draggedBlock, tempDragTime, tempDragDate])
-
-
   // Block Dragging
 
-  const getPositionFromTime = (time: string) => {
-    const [h, m] = time.split(':').map(Number)
-    const mins = h * 60 + m
-    const startMins = 0 // Start at 00:00 for full day support?
-    // Current layout seems to start at 00:00 based on timeSlots.
-    // CSS grid: 80px per hour means 80/60 px per min.
-    return mins * (80 / 60)
-  }
-
-  const getTimeFromPosition = (y: number) => {
-    const pxPerMin = 80 / 60
-    const mins = y / pxPerMin
-    // Snap to 15
-    const snapped = Math.round(mins / 15) * 15
-    const h = Math.floor(snapped / 60)
-    const m = snapped % 60
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-
-  const getDayIndexFromX = (x: number) => {
+  const getDayIndexFromX = useCallback((x: number) => {
     if (!scrollContainerRef.current) return 0
     const rect = scrollContainerRef.current.getBoundingClientRect()
     const relativeX = x - rect.left + scrollContainerRef.current.scrollLeft
     const timeColWidth = 80
-    const dayColWidth = (scrollContainerRef.current.scrollWidth - timeColWidth) / 7
-    return Math.max(0, Math.min(6, Math.floor((relativeX - timeColWidth) / dayColWidth)))
-  }
+    const dayColWidth =
+      (scrollContainerRef.current.scrollWidth - timeColWidth) / 7
+    return Math.max(
+      0,
+      Math.min(6, Math.floor((relativeX - timeColWidth) / dayColWidth))
+    )
+  }, [])
 
   const handleBlockDragStart = (e: React.MouseEvent, block: CalendarBlock) => {
     e.preventDefault()
@@ -320,46 +311,59 @@ export function CalendarWeekView({
     setTempDragTime(tStr)
   }
 
-  const handleBlockDragMove = (e: React.MouseEvent) => {
-    if (!draggedBlock) return
-    e.preventDefault()
+  const handleBlockDragMove = useCallback(
+    (e: React.MouseEvent | MouseEvent) => {
+      if (!draggedBlock) return
+      e.preventDefault()
 
-    // Y Axis -> Time
-    const startYPos = getPositionFromTime(dragStartBlockTime)
-    const currentYPos = startYPos + (e.clientY - dragStartY)
-    // Clamp to 0 - 24h (24*80 = 1920)
-    const clampedY = Math.max(0, Math.min(1920, currentYPos))
-    const newTime = getTimeFromPosition(clampedY)
+      // Y Axis -> Time
+      const startYPos = getPositionFromTime(dragStartBlockTime)
+      const currentYPos = startYPos + (e.clientY - dragStartY)
+      // Clamp to 0 - 24h (24*80 = 1920)
+      const clampedY = Math.max(0, Math.min(1920, currentYPos))
+      const newTime = getTimeFromPosition(clampedY)
 
-    // X Axis -> Day
-    const startDayIdx = getDayIndexFromX(dragStartX)
-    const currentDayIdx = getDayIndexFromX(e.clientX)
-    const dayDelta = currentDayIdx - startDayIdx
+      // X Axis -> Day
+      const startDayIdx = getDayIndexFromX(dragStartX)
+      const currentDayIdx = getDayIndexFromX(e.clientX)
+      const dayDelta = currentDayIdx - startDayIdx
 
-    // Calc new date
-    const baseDate = new Date(dragStartBlockDate) // YYYY-MM-DD local
-    // Add delta
-    // Use simple date math
-    const newDate = new Date(baseDate)
-    newDate.setDate(baseDate.getDate() + dayDelta)
-    const newDateStr = getDateStr(newDate)
+      // Calc new date
+      const baseDate = new Date(dragStartBlockDate) // YYYY-MM-DD local
+      // Add delta
+      // Use simple date math
+      const newDate = new Date(baseDate)
+      newDate.setDate(baseDate.getDate() + dayDelta)
+      const newDateStr = getDateStr(newDate)
 
-    setTempDragTime(newTime)
-    setTempDragDate(newDateStr)
-  }
+      setTempDragTime(newTime)
+      setTempDragDate(newDateStr)
+    },
+    [
+      draggedBlock,
+      dragStartBlockTime,
+      dragStartBlockDate,
+      dragStartY,
+      dragStartX,
+      getDayIndexFromX
+    ]
+  )
 
-  const handleBlockDragEnd = () => {
+  const handleBlockDragEnd = useCallback(() => {
     if (!draggedBlock) return
 
     // Did it change?
-    if (tempDragTime === dragStartBlockTime && tempDragDate === dragStartBlockDate) {
+    if (
+      tempDragTime === dragStartBlockTime &&
+      tempDragDate === dragStartBlockDate
+    ) {
       setDraggedBlock(null)
       return
     }
 
     // Apply change
     // We need to construct the NEW timestamps relative to the move
-    // We only update the 'startTime' of the block effectively, 
+    // We only update the 'startTime' of the block effectively,
     // but we need to map that back to the FLIGHT fields (Arrival vs Departure).
 
     const flight = draggedBlock.flight
@@ -383,7 +387,7 @@ export function CalendarWeekView({
 
     if (draggedBlock.type === 'arrival') {
       // Moving arrival block -> Update Arrival Time
-      // Keep departure time relative? Or fixed? 
+      // Keep departure time relative? Or fixed?
       // Context: "Move flight". Usually shifts the whole schedule.
       // But if split details, maybe just arrival?
       // Let's shift BOTH if it's an arrival move, to maintain turnaround time?
@@ -393,11 +397,10 @@ export function CalendarWeekView({
         const oldArr = new Date(flight.arrivalTime).getTime()
         updatedFlight.arrivalTime = new Date(oldArr + deltaMs).toISOString()
       }
-      // Also shift departure to keep ground time constant? 
+      // Also shift departure to keep ground time constant?
       // Yes, usually desired behavior in drag-drop unless specified otherwise.
       const oldDep = new Date(flight.departureTime).getTime()
       updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
-
     } else if (draggedBlock.type === 'departure') {
       // Moving departure block -> Update Departure Time
       // If we move departure, do we move arrival?
@@ -405,8 +408,10 @@ export function CalendarWeekView({
       // Let's assume moving departure ONLY changes departure.
       const oldDep = new Date(flight.departureTime).getTime()
       updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
-
-    } else if (draggedBlock.type === 'quick_turn' || draggedBlock.type === 'stay') {
+    } else if (
+      draggedBlock.type === 'quick_turn' ||
+      draggedBlock.type === 'stay'
+    ) {
       // QT/Stay -> Shift both
       if (flight.arrivalTime) {
         const oldArr = new Date(flight.arrivalTime).getTime()
@@ -420,7 +425,31 @@ export function CalendarWeekView({
     setDraggedBlock(null)
     setTempDragTime('')
     setTempDragDate('')
-  }
+  }, [
+    draggedBlock,
+    tempDragTime,
+    tempDragDate,
+    dragStartBlockTime,
+    dragStartBlockDate,
+    onEditFlight
+  ])
+
+  // Global listeners so drag continues even if the pointer leaves the block
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (draggedBlock) handleBlockDragEnd()
+      setIsDragging(false)
+    }
+    window.addEventListener('mouseup', handleGlobalMouseUp)
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (draggedBlock) handleBlockDragMove(e)
+    }
+    window.addEventListener('mousemove', handleGlobalMouseMove)
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp)
+      window.removeEventListener('mousemove', handleGlobalMouseMove)
+    }
+  }, [draggedBlock, handleBlockDragEnd, handleBlockDragMove])
 
   // --- Slot Interactions ---
 
@@ -437,7 +466,11 @@ export function CalendarWeekView({
     setShowAddButton(false)
   }
 
-  const handleCreate = (day: string, time: string, type: 'arrival' | 'departure') => {
+  const handleCreate = (
+    day: string,
+    time: string,
+    type: 'arrival' | 'departure'
+  ) => {
     const ts = `${day}T${time}:00`
     const baseDate = new Date(ts)
 
@@ -466,26 +499,36 @@ export function CalendarWeekView({
 
   const getStatusColor = (status: Flight['status']) => {
     switch (status) {
-      case 'arrived': return theme === 'dark' ? 'bg-green-900/40 border-green-700 text-green-100' : 'bg-green-100 border-green-300 text-green-900'
-      case 'departed': return theme === 'dark' ? 'bg-blue-900/40 border-blue-700 text-blue-100' : 'bg-blue-100 border-blue-300 text-blue-900'
-      default: return theme === 'dark' ? 'bg-slate-800 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-900'
+      case 'arrived':
+        return theme === 'dark'
+          ? 'bg-green-900/40 border-green-700 text-green-100'
+          : 'bg-green-100 border-green-300 text-green-900'
+      case 'departed':
+        return theme === 'dark'
+          ? 'bg-blue-900/40 border-blue-700 text-blue-100'
+          : 'bg-blue-100 border-blue-300 text-blue-900'
+      default:
+        return theme === 'dark'
+          ? 'bg-slate-800 border-slate-600 text-slate-200'
+          : 'bg-white border-slate-300 text-slate-900'
     }
   }
 
   return (
     <div className="space-y-6 select-none">
       {/* Height constraint/overflow handled by parent properly? check. */}
-      <div className={`rounded-lg border overflow-hidden flex flex-col h-[800px] ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
-
+      <div
+        className={`rounded-lg border overflow-hidden flex flex-col h-[800px] ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
           <Button variant="ghost" onClick={() => onWeekChange(weekOffset - 1)}>
             <ChevronLeft className="w-4 h-4 mr-2" /> Prev
           </Button>
           <div className="text-center font-bold text-lg">
-            {weekDays[0] && weekDays[6] && (
-              `${weekDays[0].toLocaleDateString()} - ${weekDays[6].toLocaleDateString()}`
-            )}
+            {weekDays[0] &&
+              weekDays[6] &&
+              `${weekDays[0].toLocaleDateString()} - ${weekDays[6].toLocaleDateString()}`}
           </div>
           <Button variant="ghost" onClick={() => onWeekChange(weekOffset + 1)}>
             Next <ChevronRight className="w-4 h-4 ml-2" />
@@ -503,10 +546,16 @@ export function CalendarWeekView({
           <div className="min-w-[1000px] relative">
             {/* Header Row (Days) */}
             <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-20 bg-inherit border-b">
-              <div className="p-4 border-r"></div>
-              {weekDays.map(d => (
-                <div key={d.toString()} className="p-2 text-center border-r font-semibold">
-                  {d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
+              <div className="p-4 border-r" />
+              {weekDays.map((d) => (
+                <div
+                  key={d.toString()}
+                  className="p-2 text-center border-r font-semibold"
+                >
+                  {d.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    day: 'numeric'
+                  })}
                 </div>
               ))}
             </div>
@@ -515,8 +564,11 @@ export function CalendarWeekView({
             <div className="grid grid-cols-[80px_repeat(7,1fr)] relative">
               {/* Time Col */}
               <div className="border-r">
-                {timeSlots.map(t => (
-                  <div key={t} className="h-20 border-b text-xs p-1 text-right text-muted-foreground mr-1">
+                {timeSlots.map((t) => (
+                  <div
+                    key={t}
+                    className="h-20 border-b text-xs p-1 text-right text-muted-foreground mr-1"
+                  >
                     {t}
                   </div>
                 ))}
@@ -526,7 +578,7 @@ export function CalendarWeekView({
               {weekDays.map((date, idx) => {
                 const dStr = getDateStr(date)
                 // Find blocks for this day
-                const dayBlocks = blocks.filter(b => {
+                const dayBlocks = blocks.filter((b) => {
                   // Interactive drag override
                   if (draggedBlock && draggedBlock.id === b.id) {
                     return tempDragDate === dStr
@@ -537,7 +589,7 @@ export function CalendarWeekView({
                 return (
                   <div key={dStr} className="relative border-r min-h-[1920px]">
                     {/* Grid Lines */}
-                    {timeSlots.map(t => (
+                    {timeSlots.map((t) => (
                       <div
                         key={t}
                         className="h-20 border-b border-slate-200/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors"
@@ -545,18 +597,36 @@ export function CalendarWeekView({
                         onMouseLeave={handleSlotLeave}
                       >
                         {/* Add Buttons */}
-                        {hoveredSlot?.day === dStr && hoveredSlot?.time === t && showAddButton && (
-                          <div className="absolute ml-2 mt-2 flex gap-1 z-30">
-                            <button onClick={() => handleCreate(dStr, t, 'arrival')} className="p-1 bg-green-500 rounded text-white shadow hover:scale-110 transition"><PlaneLanding size={14} /></button>
-                            <button onClick={() => handleCreate(dStr, t, 'departure')} className="p-1 bg-blue-500 rounded text-white shadow hover:scale-110 transition"><PlaneTakeoff size={14} /></button>
-                          </div>
-                        )}
+                        {hoveredSlot?.day === dStr &&
+                          hoveredSlot?.time === t &&
+                          showAddButton && (
+                            <div className="absolute ml-2 mt-2 flex gap-1 z-30">
+                              <button
+                                type="button"
+                                onClick={() => handleCreate(dStr, t, 'arrival')}
+                                className="p-1 bg-green-500 rounded text-white shadow hover:scale-110 transition"
+                              >
+                                <PlaneLanding size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCreate(dStr, t, 'departure')
+                                }
+                                className="p-1 bg-blue-500 rounded text-white shadow hover:scale-110 transition"
+                              >
+                                <PlaneTakeoff size={14} />
+                              </button>
+                            </div>
+                          )}
                       </div>
                     ))}
                     {/* Blocks */}
-                    {dayBlocks.map(block => {
+                    {dayBlocks.map((block) => {
                       const isDrag = draggedBlock?.id === block.id
-                      const time = isDrag ? tempDragTime : getTimeStr(new Date(block.startTime))
+                      const time = isDrag
+                        ? tempDragTime
+                        : getTimeStr(new Date(block.startTime))
                       const top = getPositionFromTime(time)
 
                       // Calculate duration from start/end times
@@ -570,8 +640,8 @@ export function CalendarWeekView({
                       return (
                         <div
                           key={block.id}
-                          className={`absolute left-1 right-1 rounded p-2 text-xs border shadow-sm flight-block cursor-move overflow-hidden 
-                                      ${getStatusColor(block.flight.status)} 
+                          className={`absolute left-1 right-1 rounded p-2 text-xs border shadow-sm flight-block cursor-move overflow-hidden
+                                      ${getStatusColor(block.flight.status)}
                                       ${isStay ? 'opacity-80' : ''}`}
                           style={{
                             top,
@@ -582,13 +652,22 @@ export function CalendarWeekView({
                           onMouseDown={(e) => handleBlockDragStart(e, block)}
                         >
                           <div className="flex gap-1 font-bold">
-                            {block.type === 'arrival' && <PlaneLanding size={12} />}
-                            {block.type === 'departure' && <PlaneTakeoff size={12} />}
+                            {block.type === 'arrival' && (
+                              <PlaneLanding size={12} />
+                            )}
+                            {block.type === 'departure' && (
+                              <PlaneTakeoff size={12} />
+                            )}
                             {block.type === 'quick_turn' && (
-                              <span className="flex"><PlaneLanding size={12} />/<PlaneTakeoff size={12} /></span>
+                              <span className="flex">
+                                <PlaneLanding size={12} />/
+                                <PlaneTakeoff size={12} />
+                              </span>
                             )}
                             {block.type === 'stay' && (
-                              <span className="text-[10px] uppercase font-mono bg-black/20 px-1 rounded">STAY</span>
+                              <span className="text-[10px] uppercase font-mono bg-black/20 px-1 rounded">
+                                STAY
+                              </span>
                             )}
                             <span>{block.flight.tailNumber}</span>
                           </div>
@@ -597,11 +676,14 @@ export function CalendarWeekView({
                           </div>
                           {block.type !== 'stay' && (
                             <div className="truncate opacity-75">
-                              {block.type === 'arrival' ? `Arr: ${block.flight.origin}` : `Dep: ${block.flight.destination}`}
+                              {block.type === 'arrival'
+                                ? `Arr: ${block.flight.origin}`
+                                : `Dep: ${block.flight.destination}`}
                             </div>
                           )}
 
                           <button
+                            type="button"
                             className="absolute top-1 right-1 p-1 hover:bg-black/10 rounded"
                             onMouseDown={(e) => {
                               e.stopPropagation()
@@ -626,7 +708,10 @@ export function CalendarWeekView({
         <FlightFormDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          onSubmit={(f) => { onEditFlight(f); setEditDialogOpen(false) }}
+          onSubmit={(f) => {
+            onEditFlight(f)
+            setEditDialogOpen(false)
+          }}
           initialData={editingFlight}
           theme={theme}
         />

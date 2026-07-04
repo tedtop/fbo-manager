@@ -1,5 +1,10 @@
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate
+} from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
 export type TruckSheetRow = Tables<'truck_sheets'>
 export type TruckSheetInsert = TablesInsert<'truck_sheets'>
@@ -46,7 +51,11 @@ export async function createTruckSheet(
   db: SupabaseClient<Database>,
   sheet: TruckSheetInsert
 ): Promise<TruckSheetRow> {
-  const { data, error } = await db.from('truck_sheets').insert(sheet).select().single()
+  const { data, error } = await db
+    .from('truck_sheets')
+    .insert(sheet)
+    .select()
+    .single()
   if (error) throw error
   return data
 }
@@ -79,7 +88,10 @@ export async function createTruckMeterReadings(
   readings: TruckMeterReadingInsert[]
 ): Promise<TruckMeterReadingRow[]> {
   if (readings.length === 0) return []
-  const { data, error } = await db.from('truck_meter_readings').insert(readings).select()
+  const { data, error } = await db
+    .from('truck_meter_readings')
+    .insert(readings)
+    .select()
   if (error) throw error
   return data
 }

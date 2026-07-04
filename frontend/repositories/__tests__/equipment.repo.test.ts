@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
 import {
   createEquipment,
   deleteEquipment,
   findAllEquipment,
   findEquipmentById,
-  updateEquipment,
+  updateEquipment
 } from '@/repositories/equipment.repo'
+import { createTestClient } from '@/tests/support/client'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -25,7 +25,7 @@ describe('equipment.repo', () => {
     const created = await createEquipment(db, {
       equipment_id: 'EQ-100',
       equipment_name: 'Truck 1',
-      equipment_type: 'fuel_truck',
+      equipment_type: 'fuel_truck'
     })
     expect(created.id).toBeTypeOf('number')
     expect(created.status).toBe('available')
@@ -36,11 +36,22 @@ describe('equipment.repo', () => {
   })
 
   it('orders results by equipment_name', async () => {
-    await createEquipment(db, { equipment_id: 'EQ-2', equipment_name: 'Zebra Truck', equipment_type: 'fuel_truck' })
-    await createEquipment(db, { equipment_id: 'EQ-1', equipment_name: 'Alpha Truck', equipment_type: 'fuel_truck' })
+    await createEquipment(db, {
+      equipment_id: 'EQ-2',
+      equipment_name: 'Zebra Truck',
+      equipment_type: 'fuel_truck'
+    })
+    await createEquipment(db, {
+      equipment_id: 'EQ-1',
+      equipment_name: 'Alpha Truck',
+      equipment_type: 'fuel_truck'
+    })
 
     const all = await findAllEquipment(db)
-    expect(all.map((e) => e.equipment_name)).toEqual(['Alpha Truck', 'Zebra Truck'])
+    expect(all.map((e) => e.equipment_name)).toEqual([
+      'Alpha Truck',
+      'Zebra Truck'
+    ])
   })
 
   it('returns null (not an error) when finding a nonexistent id', async () => {
@@ -52,7 +63,7 @@ describe('equipment.repo', () => {
     const created = await createEquipment(db, {
       equipment_id: 'EQ-3',
       equipment_name: 'GPU 1',
-      equipment_type: 'gpu',
+      equipment_type: 'gpu'
     })
     const found = await findEquipmentById(db, created.id)
     expect(found?.equipment_id).toBe('EQ-3')
@@ -62,9 +73,11 @@ describe('equipment.repo', () => {
     const created = await createEquipment(db, {
       equipment_id: 'EQ-4',
       equipment_name: 'Tug 1',
-      equipment_type: 'tug',
+      equipment_type: 'tug'
     })
-    const updated = await updateEquipment(db, created.id, { status: 'maintenance' })
+    const updated = await updateEquipment(db, created.id, {
+      status: 'maintenance'
+    })
     expect(updated.status).toBe('maintenance')
   })
 
@@ -72,7 +85,7 @@ describe('equipment.repo', () => {
     const created = await createEquipment(db, {
       equipment_id: 'EQ-5',
       equipment_name: 'Stairs 1',
-      equipment_type: 'stairs',
+      equipment_type: 'stairs'
     })
     await deleteEquipment(db, created.id)
     const found = await findEquipmentById(db, created.id)
@@ -85,7 +98,7 @@ describe('equipment.repo', () => {
         equipment_id: 'EQ-6',
         equipment_name: 'Mystery',
         // @ts-expect-error intentionally invalid to prove the DB constraint is live
-        equipment_type: 'not_a_real_type',
+        equipment_type: 'not_a_real_type'
       })
     ).rejects.toThrow()
   })

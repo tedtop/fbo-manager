@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
 const client = new Anthropic() // reads ANTHROPIC_API_KEY from process.env
 
@@ -109,7 +109,7 @@ const READING_TYPES: ExtractedReadingType[] = [
   'tank_fill',
   'transfer_in',
   'transfer_out',
-  'other',
+  'other'
 ]
 
 function str(v: unknown): string {
@@ -118,7 +118,10 @@ function str(v: unknown): string {
 
 export async function POST(req: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'ANTHROPIC_API_KEY not configured' },
+      { status: 500 }
+    )
   }
 
   let formData: FormData
@@ -147,8 +150,22 @@ export async function POST(req: NextRequest) {
 
   // biome-ignore lint/suspicious/noExplicitAny: SDK types for document blocks
   const fileBlock: any = isPdf
-    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
-    : { type: 'image', source: { type: 'base64', media_type: file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: base64 } }
+    ? {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+      }
+    : {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: file.type as
+            | 'image/jpeg'
+            | 'image/png'
+            | 'image/webp'
+            | 'image/gif',
+          data: base64
+        }
+      }
 
   let message: Anthropic.Message
   try {
@@ -158,22 +175,23 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: 'user',
-          content: [
-            fileBlock,
-            { type: 'text', text: EXTRACT_PROMPT },
-          ],
-        },
-      ],
+          content: [fileBlock, { type: 'text', text: EXTRACT_PROMPT }]
+        }
+      ]
     })
   } catch (err) {
     console.error('[OCR truck-sheet] Claude API error:', err)
     return NextResponse.json(
-      { error: 'Extraction failed. Check ANTHROPIC_API_KEY and model availability.' },
+      {
+        error:
+          'Extraction failed. Check ANTHROPIC_API_KEY and model availability.'
+      },
       { status: 502 }
     )
   }
 
-  const rawText = message.content[0]?.type === 'text' ? message.content[0].text : ''
+  const rawText =
+    message.content[0]?.type === 'text' ? message.content[0].text : ''
 
   const jsonMatch = rawText.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
@@ -198,14 +216,19 @@ export async function POST(req: NextRequest) {
   const result: ExtractedTruckSheet = {
     sheet_date: parsed.sheet_date ? str(parsed.sheet_date) : null,
     truck_number: str(parsed.truck_number),
-    fuel_type: fuelType === 'jet_a' || fuelType === 'avgas' ? (fuelType as 'jet_a' | 'avgas') : '',
+    fuel_type:
+      fuelType === 'jet_a' || fuelType === 'avgas'
+        ? (fuelType as 'jet_a' | 'avgas')
+        : '',
     gallons_down: str(parsed.gallons_down),
     starting_gallons: str(parsed.starting_gallons),
     front_meter_start: str(parsed.front_meter_start),
     rear_meter_start: str(parsed.rear_meter_start),
     fueler_initials: str(parsed.fueler_initials).toUpperCase(),
     readings: (parsed.readings ?? []).map((r) => ({
-      reading_type: READING_TYPES.includes(r.reading_type) ? r.reading_type : 'other',
+      reading_type: READING_TYPES.includes(r.reading_type)
+        ? r.reading_type
+        : 'other',
       customer: str(r.customer),
       tail_number: str(r.tail_number).toUpperCase().replace(/[\s-]/g, ''),
       aircraft_type: str(r.aircraft_type).toUpperCase(),
@@ -220,9 +243,9 @@ export async function POST(req: NextRequest) {
       line_tech_initials: str(r.line_tech_initials).toUpperCase(),
       invoice_number: str(r.invoice_number),
       service_time: str(r.service_time),
-      notes: str(r.notes),
+      notes: str(r.notes)
     })),
-    raw_text: rawText,
+    raw_text: rawText
   }
 
   return NextResponse.json(result)

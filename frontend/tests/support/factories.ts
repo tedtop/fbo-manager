@@ -1,5 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { createAircraft } from '@/repositories/aircraft.repo'
 import { createCustomer } from '@/repositories/customers.repo'
 import { createEquipment } from '@/repositories/equipment.repo'
@@ -7,6 +5,8 @@ import { createFlight } from '@/repositories/flights.repo'
 import { createFueler } from '@/repositories/fuelers.repo'
 import { createParkingLocation } from '@/repositories/parking.repo'
 import { createTank } from '@/repositories/tanks.repo'
+import type { Database } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 let counter = 0
 /** Monotonic-ish suffix so parallel-within-a-file fixtures never collide on unique text PKs. */
@@ -29,7 +29,7 @@ export async function makeUser(
       first_name: 'Test',
       last_name: 'User',
       role: 'line',
-      ...overrides,
+      ...overrides
     })
     .select()
     .single()
@@ -45,7 +45,7 @@ export async function makeAircraft(
     tail_number: unique('N').toUpperCase(),
     aircraft_type_icao: 'B738',
     aircraft_type_display: 'Boeing 737-800',
-    ...overrides,
+    ...overrides
   })
 }
 
@@ -57,18 +57,20 @@ export async function makeEquipment(
     equipment_id: unique('EQ-'),
     equipment_name: 'Test Fuel Truck',
     equipment_type: 'fuel_truck',
-    ...overrides,
+    ...overrides
   })
 }
 
 export async function makeParkingLocation(
   db: Db,
-  overrides: Partial<Database['public']['Tables']['parking_location']['Insert']> = {}
+  overrides: Partial<
+    Database['public']['Tables']['parking_location']['Insert']
+  > = {}
 ) {
   return createParkingLocation(db, {
     description: 'Test ramp spot',
     display_order: 1,
-    ...overrides,
+    ...overrides
   })
 }
 
@@ -85,7 +87,7 @@ export async function makeTraining(
     .insert({
       training_name: unique('Training '),
       validity_period_days: 365,
-      ...overrides,
+      ...overrides
     })
     .select()
     .single()
@@ -101,7 +103,7 @@ export async function makeFueler(
   return createFueler(db, {
     user_id: user.id,
     fueler_name: unique('Fueler '),
-    ...overrides,
+    ...overrides
   })
 }
 
@@ -109,12 +111,15 @@ export async function makeFlight(
   db: Db,
   overrides: Partial<Database['public']['Tables']['flight']['Insert']> = {}
 ) {
-  const [aircraft, creator] = await Promise.all([makeAircraft(db), makeUser(db)])
+  const [aircraft, creator] = await Promise.all([
+    makeAircraft(db),
+    makeUser(db)
+  ])
   return createFlight(db, {
     aircraft_id: aircraft.tail_number,
     departure_time: new Date().toISOString(),
     created_by_id: creator.id,
-    ...overrides,
+    ...overrides
   })
 }
 
@@ -124,7 +129,7 @@ export async function makeCustomer(
 ) {
   return createCustomer(db, {
     name: unique('Customer '),
-    ...overrides,
+    ...overrides
   })
 }
 
@@ -141,7 +146,7 @@ export async function makeProduct(
       price: 10,
       product_type: 'product',
       is_active: true,
-      ...overrides,
+      ...overrides
     })
     .select()
     .single()
@@ -162,6 +167,6 @@ export async function makeTank(
     max_level_inches: 100,
     usable_min_inches: 5,
     usable_max_inches: 95,
-    ...overrides,
+    ...overrides
   })
 }

@@ -205,7 +205,11 @@ export type Database = {
           notes: string
           location_id: number | null
           created_by_id: number
-          created_by_source: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
+          created_by_source:
+            | 'qt'
+            | 'front-desk'
+            | 'line-department'
+            | 'google-calendar'
           fueled_at: string | null
           created_at: string
           modified_at: string
@@ -235,7 +239,11 @@ export type Database = {
           notes?: string
           location_id?: number | null
           created_by_id?: number
-          created_by_source?: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
+          created_by_source?:
+            | 'qt'
+            | 'front-desk'
+            | 'line-department'
+            | 'google-calendar'
           fueled_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['flight']['Insert']>
@@ -593,7 +601,18 @@ export type Database = {
           id: number
           equipment_id: string
           equipment_name: string
-          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'golf_cart' | 'staff_vehicle' | 'other'
+          equipment_type:
+            | 'fuel_truck'
+            | 'tug'
+            | 'gpu'
+            | 'air_start'
+            | 'belt_loader'
+            | 'stairs'
+            | 'lavatory_service'
+            | 'water_service'
+            | 'golf_cart'
+            | 'staff_vehicle'
+            | 'other'
           manufacturer: string
           model: string
           serial_number: string
@@ -609,7 +628,18 @@ export type Database = {
           id?: number
           equipment_id: string
           equipment_name: string
-          equipment_type: 'fuel_truck' | 'tug' | 'gpu' | 'air_start' | 'belt_loader' | 'stairs' | 'lavatory_service' | 'water_service' | 'golf_cart' | 'staff_vehicle' | 'other'
+          equipment_type:
+            | 'fuel_truck'
+            | 'tug'
+            | 'gpu'
+            | 'air_start'
+            | 'belt_loader'
+            | 'stairs'
+            | 'lavatory_service'
+            | 'water_service'
+            | 'golf_cart'
+            | 'staff_vehicle'
+            | 'other'
           manufacturer?: string
           model?: string
           serial_number?: string
@@ -793,7 +823,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'equipment'
             referencedColumns: ['id']
-          },
+          }
         ]
       }
       truck_meter_readings: {
@@ -801,7 +831,12 @@ export type Database = {
           id: number
           truck_sheet_id: number
           line_number: number
-          reading_type: 'fueling' | 'tank_fill' | 'transfer_in' | 'transfer_out' | 'other'
+          reading_type:
+            | 'fueling'
+            | 'tank_fill'
+            | 'transfer_in'
+            | 'transfer_out'
+            | 'other'
           customer: string | null
           tail_number: string | null
           aircraft_type: string | null
@@ -824,7 +859,12 @@ export type Database = {
           id?: number
           truck_sheet_id: number
           line_number: number
-          reading_type?: 'fueling' | 'tank_fill' | 'transfer_in' | 'transfer_out' | 'other'
+          reading_type?:
+            | 'fueling'
+            | 'tank_fill'
+            | 'transfer_in'
+            | 'transfer_out'
+            | 'other'
           customer?: string | null
           tail_number?: string | null
           aircraft_type?: string | null
@@ -842,7 +882,9 @@ export type Database = {
           flight_id?: number | null
           notes?: string | null
         }
-        Update: Partial<Database['public']['Tables']['truck_meter_readings']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['truck_meter_readings']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'truck_meter_readings_truck_sheet_id_fkey'
@@ -850,7 +892,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'truck_sheets'
             referencedColumns: ['id']
-          },
+          }
         ]
       }
       profiles: {
@@ -931,7 +973,9 @@ export type Database = {
             | 'users'
           access_level: 'view' | 'manage'
         }
-        Update: Partial<Database['public']['Tables']['module_permissions']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['module_permissions']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'module_permissions_role_id_fkey'
@@ -983,10 +1027,21 @@ export type Database = {
           tail_number: string | null
           aircraft_type: string | null
           flight_id: number | null
-          payment_method: 'cash' | 'eom' | 'roa' | 'check' | 'credit_card' | null
+          payment_method:
+            | 'cash'
+            | 'eom'
+            | 'roa'
+            | 'check'
+            | 'credit_card'
+            | null
           check_number: string | null
           paid_at: string | null
-          settled_via: 'cash' | 'check' | 'credit_card' | 'account_credit' | null
+          settled_via:
+            | 'cash'
+            | 'check'
+            | 'credit_card'
+            | 'account_credit'
+            | null
           settlement_reference: string | null
           salesman_initials: string | null
           total: number
@@ -1005,10 +1060,21 @@ export type Database = {
           tail_number?: string | null
           aircraft_type?: string | null
           flight_id?: number | null
-          payment_method?: 'cash' | 'eom' | 'roa' | 'check' | 'credit_card' | null
+          payment_method?:
+            | 'cash'
+            | 'eom'
+            | 'roa'
+            | 'check'
+            | 'credit_card'
+            | null
           check_number?: string | null
           paid_at?: string | null
-          settled_via?: 'cash' | 'check' | 'credit_card' | 'account_credit' | null
+          settled_via?:
+            | 'cash'
+            | 'check'
+            | 'credit_card'
+            | 'account_credit'
+            | null
           settlement_reference?: string | null
           salesman_initials?: string | null
           total?: number
@@ -1030,7 +1096,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'flight'
             referencedColumns: ['id']
-          },
+          }
         ]
       }
       invoice_line_items: {
@@ -1067,7 +1133,9 @@ export type Database = {
           requested_amount?: string | null
           service_time?: string | null
         }
-        Update: Partial<Database['public']['Tables']['invoice_line_items']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['invoice_line_items']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'invoice_line_items_invoice_id_fkey'
@@ -1089,7 +1157,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'truck_meter_readings'
             referencedColumns: ['id']
-          },
+          }
         ]
       }
       invoice_fuel_readings: {
@@ -1108,7 +1176,9 @@ export type Database = {
           reading_start: number
           reading_end: number
         }
-        Update: Partial<Database['public']['Tables']['invoice_fuel_readings']['Insert']>
+        Update: Partial<
+          Database['public']['Tables']['invoice_fuel_readings']['Insert']
+        >
         Relationships: [
           {
             foreignKeyName: 'invoice_fuel_readings_line_item_id_fkey'
@@ -1116,7 +1186,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'invoice_line_items'
             referencedColumns: ['id']
-          },
+          }
         ]
       }
     }

@@ -1,19 +1,25 @@
 'use client'
 
-import { TankFormDialog } from '@/components/fuel-farm/tank-form-dialog'
-import { TankVisualCard, HorizontalTankCard } from '@/components/fuel-farm/tank-visual-card'
 import { JetATrend } from '@/components/fuel-farm/jet-a-trend'
-import { useTanks } from '@/hooks/use-tanks'
-import type { TankInsert, TankWithLatestReading } from '@/repositories/tanks.repo'
-import { createTankReading } from '@/repositories/tank-readings.repo'
-import { inchesToGallons } from '@/lib/gallons-tables'
-import { createClient } from '@/lib/supabase/client'
-import { ConcurrencyConflictError } from '@/lib/concurrency'
+import { TankFormDialog } from '@/components/fuel-farm/tank-form-dialog'
+import {
+  HorizontalTankCard,
+  TankVisualCard
+} from '@/components/fuel-farm/tank-visual-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useTanks } from '@/hooks/use-tanks'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
+import { inchesToGallons } from '@/lib/gallons-tables'
+import { createClient } from '@/lib/supabase/client'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
+import { createTankReading } from '@/repositories/tank-readings.repo'
+import type {
+  TankInsert,
+  TankWithLatestReading
+} from '@/repositories/tanks.repo'
 import { Fuel } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -33,9 +39,12 @@ function sortTanks(tanks: TankWithLatestReading[]) {
 }
 
 export default function FuelFarmPage() {
-  const { tanks, loading, error, createTank, updateTank, deleteTank, refetch } = useTanks()
+  const { tanks, loading, error, createTank, updateTank, deleteTank, refetch } =
+    useTanks()
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingTank, setEditingTank] = useState<TankWithLatestReading | null>(null)
+  const [editingTank, setEditingTank] = useState<TankWithLatestReading | null>(
+    null
+  )
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -79,7 +88,10 @@ export default function FuelFarmPage() {
     setDialogOpen(true)
   }
 
-  const handleUpdateTank = async (data: TankInsert, expectedModifiedAt?: string) => {
+  const handleUpdateTank = async (
+    data: TankInsert,
+    expectedModifiedAt?: string
+  ) => {
     if (!editingTank) return
     try {
       await updateTank(
@@ -118,7 +130,9 @@ export default function FuelFarmPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-muted-foreground">Loading fuel farm...</div>
+        <div className="text-lg text-muted-foreground">
+          Loading fuel farm...
+        </div>
       </div>
     )
   }
@@ -130,7 +144,9 @@ export default function FuelFarmPage() {
   const totalJetAGallons = tanks
     .filter((t) => t.fuel_type === 'jet_a' && t.tank_id !== 'LF')
     .reduce((sum, tank) => {
-      const level = tank.latest_reading ? Number.parseFloat(tank.latest_reading.level) : 0
+      const level = tank.latest_reading
+        ? Number.parseFloat(tank.latest_reading.level)
+        : 0
       return sum + inchesToGallons(tank.tank_id, level)
     }, 0)
 
@@ -140,15 +156,24 @@ export default function FuelFarmPage() {
         <div>
           <div className="flex items-center gap-3">
             <Fuel className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Fuel Farm Levels</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              Fuel Farm Levels
+            </h1>
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">Real-time tank level monitoring</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Real-time tank level monitoring
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <Link href="/fuel-dispatch">Fuel Dispatch</Link>
           </Button>
-          <Button onClick={() => { setEditingTank(null); setDialogOpen(true) }}>
+          <Button
+            onClick={() => {
+              setEditingTank(null)
+              setDialogOpen(true)
+            }}
+          >
             New Tank
           </Button>
         </div>
@@ -158,12 +183,16 @@ export default function FuelFarmPage() {
         <Card className="bg-card border-border px-5 py-3">
           <div className="flex items-center gap-4">
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Jet A (T2–T7)</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                Total Jet A (T2–T7)
+              </div>
               <div className="text-2xl font-bold text-cyan-400">
                 {totalJetAGallons.toLocaleString()} gal
               </div>
             </div>
-            <Badge className="bg-cyan-100 text-cyan-800 border-cyan-300">Jet A</Badge>
+            <Badge className="bg-cyan-100 text-cyan-800 border-cyan-300">
+              Jet A
+            </Badge>
           </div>
         </Card>
       )}
@@ -172,7 +201,9 @@ export default function FuelFarmPage() {
       {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
       {error && (
         <Card className="bg-destructive/10 border-destructive/20 p-4">
-          <p className="text-sm text-destructive">Failed to load fuel tank data</p>
+          <p className="text-sm text-destructive">
+            Failed to load fuel tank data
+          </p>
         </Card>
       )}
 
@@ -187,7 +218,11 @@ export default function FuelFarmPage() {
       {standardTanks.length > 0 && (
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           {standardTanks.map((tank) => (
-            <TankVisualCard key={tank.tank_id} tank={tank} onUpdateLevel={handleUpdateLevel} />
+            <TankVisualCard
+              key={tank.tank_id}
+              tank={tank}
+              onUpdateLevel={handleUpdateLevel}
+            />
           ))}
         </div>
       )}
@@ -204,7 +239,11 @@ export default function FuelFarmPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {specialTanks.map((tank) => (
-              <HorizontalTankCard key={tank.tank_id} tank={tank} onUpdateLevel={handleUpdateLevel} />
+              <HorizontalTankCard
+                key={tank.tank_id}
+                tank={tank}
+                onUpdateLevel={handleUpdateLevel}
+              />
             ))}
           </div>
         </div>
@@ -212,7 +251,9 @@ export default function FuelFarmPage() {
 
       {tanks.length === 0 && !error && (
         <Card className="p-8 text-center bg-card border-border">
-          <div className="text-muted-foreground">No tanks found. Create a tank to get started.</div>
+          <div className="text-muted-foreground">
+            No tanks found. Create a tank to get started.
+          </div>
         </Card>
       )}
 

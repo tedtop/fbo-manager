@@ -1,7 +1,3 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeEquipment } from '@/tests/support/factories'
 import {
   createTruckMeterReadings,
   createTruckSheet,
@@ -10,8 +6,12 @@ import {
   findAllTruckSheets,
   findTruckSheetById,
   updateTruckMeterReading,
-  updateTruckSheet,
+  updateTruckSheet
 } from '@/repositories/truck-sheets.repo'
+import { createTestClient } from '@/tests/support/client'
+import { makeEquipment } from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -34,12 +34,22 @@ describe('truck-sheets.repo', () => {
       sheet_date: '2026-07-01',
       fuel_truck_id: truck.id,
       truck_number: 'T-1',
-      fuel_type: 'jet_a',
+      fuel_type: 'jet_a'
     })
 
     await createTruckMeterReadings(db, [
-      { truck_sheet_id: sheet.id, line_number: 2, tail_number: 'N222', gallons_pumped: 100 },
-      { truck_sheet_id: sheet.id, line_number: 1, tail_number: 'N111', gallons_pumped: 50 },
+      {
+        truck_sheet_id: sheet.id,
+        line_number: 2,
+        tail_number: 'N222',
+        gallons_pumped: 100
+      },
+      {
+        truck_sheet_id: sheet.id,
+        line_number: 1,
+        tail_number: 'N111',
+        gallons_pumped: 50
+      }
     ])
 
     const found = await findTruckSheetById(db, sheet.id)
@@ -53,9 +63,11 @@ describe('truck-sheets.repo', () => {
       sheet_date: '2026-07-02',
       fuel_truck_id: truck.id,
       truck_number: 'T-2',
-      fuel_type: 'avgas',
+      fuel_type: 'avgas'
     })
-    await createTruckMeterReadings(db, [{ truck_sheet_id: sheet.id, line_number: 1 }])
+    await createTruckMeterReadings(db, [
+      { truck_sheet_id: sheet.id, line_number: 1 }
+    ])
 
     const [found] = await findAllTruckSheets(db)
     expect(found.id).toBe(sheet.id)
@@ -68,7 +80,7 @@ describe('truck-sheets.repo', () => {
         sheet_date: '2026-07-03',
         fuel_truck_id: 999_999,
         truck_number: 'GHOST',
-        fuel_type: 'jet_a',
+        fuel_type: 'jet_a'
       })
     ).rejects.toThrow()
   })
@@ -79,13 +91,15 @@ describe('truck-sheets.repo', () => {
       sheet_date: '2026-07-04',
       fuel_truck_id: truck.id,
       truck_number: 'T-4',
-      fuel_type: 'jet_a',
+      fuel_type: 'jet_a'
     })
 
     await new Promise((resolve) => setTimeout(resolve, 10))
     const updated = await updateTruckSheet(db, sheet.id, { notes: 'reviewed' })
     expect(updated.notes).toBe('reviewed')
-    expect(new Date(updated.updated_at).getTime()).toBeGreaterThan(new Date(sheet.created_at).getTime())
+    expect(new Date(updated.updated_at).getTime()).toBeGreaterThan(
+      new Date(sheet.created_at).getTime()
+    )
   })
 
   it('updates and deletes an individual meter reading', async () => {
@@ -94,11 +108,15 @@ describe('truck-sheets.repo', () => {
       sheet_date: '2026-07-05',
       fuel_truck_id: truck.id,
       truck_number: 'T-5',
-      fuel_type: 'jet_a',
+      fuel_type: 'jet_a'
     })
-    const [reading] = await createTruckMeterReadings(db, [{ truck_sheet_id: sheet.id, line_number: 1 }])
+    const [reading] = await createTruckMeterReadings(db, [
+      { truck_sheet_id: sheet.id, line_number: 1 }
+    ])
 
-    const updated = await updateTruckMeterReading(db, reading.id, { gallons_pumped: 250 })
+    const updated = await updateTruckMeterReading(db, reading.id, {
+      gallons_pumped: 250
+    })
     expect(Number(updated.gallons_pumped)).toBe(250)
 
     await deleteTruckMeterReading(db, reading.id)
@@ -112,9 +130,11 @@ describe('truck-sheets.repo', () => {
       sheet_date: '2026-07-06',
       fuel_truck_id: truck.id,
       truck_number: 'T-6',
-      fuel_type: 'jet_a',
+      fuel_type: 'jet_a'
     })
-    await createTruckMeterReadings(db, [{ truck_sheet_id: sheet.id, line_number: 1 }])
+    await createTruckMeterReadings(db, [
+      { truck_sheet_id: sheet.id, line_number: 1 }
+    ])
 
     await deleteTruckSheet(db, sheet.id)
     expect(await findTruckSheetById(db, sheet.id)).toBeNull()

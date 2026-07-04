@@ -2,16 +2,19 @@
 
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import { useTheme } from '@/components/navigation-wrapper'
-import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
-import { useTransactions } from '@/hooks/use-transactions'
-import { useFuelers } from '@/hooks/use-fuelers'
-import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useFuelers } from '@/hooks/use-fuelers'
+import { useSession } from '@/hooks/use-session'
+import { useTransactions } from '@/hooks/use-transactions'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
-import { useSession } from '@/hooks/use-session'
+import type {
+  TransactionInsert,
+  TransactionWithRelations
+} from '@/repositories/transactions.repo'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -40,9 +43,7 @@ export default function FuelDispatchPage() {
     }
   }, [status, router])
 
-  const handleCreateTransaction = async (
-    data: TransactionInsert
-  ) => {
+  const handleCreateTransaction = async (data: TransactionInsert) => {
     try {
       await createTransaction(data)
       setSuccessMessage('Transaction created successfully')
@@ -96,14 +97,10 @@ export default function FuelDispatchPage() {
   }
 
   const unassignedTx = transactions.filter(
-    (t: any) => !t.fueler_assignments || t.fueler_assignments.length === 0
+    (t) => !t.fueler_assignments || t.fueler_assignments.length === 0
   )
-  const inProgressTx = transactions.filter(
-    (t: any) => t.progress === 'in_progress'
-  )
-  const completedTx = transactions.filter(
-    (t: any) => t.progress === 'completed'
-  )
+  const inProgressTx = transactions.filter((t) => t.progress === 'in_progress')
+  const completedTx = transactions.filter((t) => t.progress === 'completed')
 
   const getProgressBadge = (progress: string) => {
     switch (progress) {
@@ -209,12 +206,12 @@ export default function FuelDispatchPage() {
         <div className="px-6 py-5">
           <h2 className="text-lg font-semibold text-foreground">
             Active Fuelers (
-            {fuelers.filter((f: any) => f.status === 'active').length})
+            {fuelers.filter((f) => f.status === 'active').length})
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {fuelers
-              .filter((f: any) => f.status === 'active')
-              .map((fueler: any) => (
+              .filter((f) => f.status === 'active')
+              .map((fueler) => (
                 <Card
                   key={fueler.id}
                   className="p-3 bg-muted/20 border-border hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer"
@@ -265,17 +262,17 @@ export default function FuelDispatchPage() {
               </tr>
             </thead>
             <tbody className="bg-card divide-y divide-border">
-              {transactions.map((transaction: any) => (
+              {transactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-muted/10">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                     {transaction.ticket_number}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                    {transaction.flight_details?.callsign || 'N/A'}
+                    {transaction.flight?.call_sign || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                     {Number.parseFloat(
-                      transaction.quantity_gallons
+                      transaction.quantity_gallons ?? '0'
                     ).toLocaleString()}{' '}
                     gal
                   </td>
@@ -287,13 +284,11 @@ export default function FuelDispatchPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                     {transaction.fueler_assignments?.length > 0 ? (
                       <div className="flex flex-col space-y-1">
-                        {transaction.fueler_assignments.map(
-                          (assignment: any, idx: number) => (
-                            <span key={idx} className="text-xs">
-                              {assignment.fueler_name || 'Unknown'}
-                            </span>
-                          )
-                        )}
+                        {transaction.fueler_assignments.map((assignment) => (
+                          <span key={assignment.id} className="text-xs">
+                            {assignment.fueler?.fueler_name || 'Unknown'}
+                          </span>
+                        ))}
                       </div>
                     ) : (
                       <span className="text-warning font-medium">
@@ -322,8 +317,12 @@ export default function FuelDispatchPage() {
                       onClick={async () => {
                         if (!confirm('Delete this transaction?')) return
                         try {
-                          await updateTransaction(transaction.id, { progress: 'completed' })
-                        } catch (e) { console.error(e) }
+                          await updateTransaction(transaction.id, {
+                            progress: 'completed'
+                          })
+                        } catch (e) {
+                          console.error(e)
+                        }
                       }}
                     >
                       Delete

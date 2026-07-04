@@ -6,8 +6,8 @@ import useEmblaCarousel, {
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import * as React from 'react'
 
-import { cn } from '../../lib/utils'
 import { Button } from '@/components/ui/button'
+import { cn } from '../../lib/utils'
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
@@ -76,7 +76,7 @@ function Carousel({
   }, [api])
 
   const handleKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
+    (event: React.KeyboardEvent<HTMLElement>) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
         scrollPrev()
@@ -118,16 +118,15 @@ function Carousel({
         canScrollNext
       }}
     >
-      <div
+      <section
         onKeyDownCapture={handleKeyDown}
         className={cn('relative', className)}
-        role="region"
         aria-roledescription="carousel"
         data-slot="carousel"
         {...props}
       >
         {children}
-      </div>
+      </section>
     </CarouselContext.Provider>
   )
 }

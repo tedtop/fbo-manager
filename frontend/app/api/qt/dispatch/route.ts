@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 
-const QT_DISPATCH_URL = 'https://go.qttechnologies.com/Portal/Dispatch/GetDispatchDetail'
+const QT_DISPATCH_URL =
+  'https://go.qttechnologies.com/Portal/Dispatch/GetDispatchDetail'
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,27 +27,32 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        Accept: 'application/json, text/javascript, */*; q=0.01',
         'Accept-Encoding': 'gzip, deflate, br, zstd',
         'Accept-Language': 'en-US,en;q=0.8',
         'Cache-Control': 'no-cache',
-        'Origin': 'https://go.qttechnologies.com',
-        'Pragma': 'no-cache',
-        'Referer': 'https://go.qttechnologies.com/Portal/Dispatch/ListDispatch?view=tab',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+        Origin: 'https://go.qttechnologies.com',
+        Pragma: 'no-cache',
+        Referer:
+          'https://go.qttechnologies.com/Portal/Dispatch/ListDispatch?view=tab',
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
         'X-Requested-With': 'XMLHttpRequest',
-        'Cookie': qtCookies
+        Cookie: qtCookies
       },
       body: JSON.stringify({
         CompanyLocationID,
-        UserID,
-      }),
+        UserID
+      })
     })
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         return NextResponse.json(
-          { success: false, error: 'Authentication failed - please login again' },
+          {
+            success: false,
+            error: 'Authentication failed - please login again'
+          },
           { status: 401 }
         )
       }

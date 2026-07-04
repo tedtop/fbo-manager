@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type FuelerAssignmentRow = Tables<'fueler_assignment'>
 export type FuelerAssignmentInsert = TablesInsert<'fueler_assignment'>

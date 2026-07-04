@@ -82,6 +82,7 @@ export function FuelerAssignDialog({
               const isAssigned = assignedFuelerIds.includes(fueler.id)
               return (
                 <button
+                  type="button"
                   key={fueler.id}
                   onClick={() => handleToggle(fueler.id)}
                   disabled={saving === fueler.id}

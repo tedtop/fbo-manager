@@ -193,16 +193,22 @@ export function CompactToolbar({
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <label
+                    htmlFor="toolbar-status-filter"
+                    className="text-xs font-medium text-muted-foreground mb-1.5 block"
+                  >
                     Status
                   </label>
                   <Select
                     value={filters.status}
                     onValueChange={(value) =>
-                      onFiltersChange({ ...filters, status: value as any })
+                      onFiltersChange({
+                        ...filters,
+                        status: value as FlightFilters['status']
+                      })
                     }
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger id="toolbar-status-filter" className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -218,16 +224,25 @@ export function CompactToolbar({
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <label
+                    htmlFor="toolbar-date-range-filter"
+                    className="text-xs font-medium text-muted-foreground mb-1.5 block"
+                  >
                     Date Range
                   </label>
                   <Select
                     value={filters.dateRange}
                     onValueChange={(value) =>
-                      onFiltersChange({ ...filters, dateRange: value as any })
+                      onFiltersChange({
+                        ...filters,
+                        dateRange: value as FlightFilters['dateRange']
+                      })
                     }
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger
+                      id="toolbar-date-range-filter"
+                      className="h-9"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -240,9 +255,9 @@ export function CompactToolbar({
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <span className="text-xs font-medium text-muted-foreground mb-1.5 block">
                     Required Services
-                  </label>
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {serviceOptions.map((service) => (
                       <Badge

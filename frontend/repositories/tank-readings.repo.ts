@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type TankReadingRow = Tables<'tank_level_readings'>
 export type TankReadingInsert = TablesInsert<'tank_level_readings'>
@@ -25,7 +25,7 @@ export async function findReadingsByTankId(
 export async function findReadingsByTankIds(
   db: SupabaseClient<Database>,
   tankIds: string[],
-  days: number  // 0 = all history
+  days: number // 0 = all history
 ): Promise<TankReadingRow[]> {
   let q = db
     .from('tank_level_readings')

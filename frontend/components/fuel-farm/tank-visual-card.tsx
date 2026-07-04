@@ -1,13 +1,18 @@
 'use client'
 
-import type { TankWithLatestReading } from '@/repositories/tanks.repo'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 import { inchesToGallons } from '@/lib/gallons-tables'
+import { cn } from '@/lib/utils'
+import type { TankWithLatestReading } from '@/repositories/tanks.repo'
 import { useState } from 'react'
+
+const GAUGE_TICKS = [...Array(9)].map((_, i) => ({
+  top: i * 12.5,
+  isMajor: i % 2 === 0
+}))
 
 interface TankVisualCardProps {
   tank: TankWithLatestReading
@@ -16,12 +21,17 @@ interface TankVisualCardProps {
   onBlurInput?: () => void
 }
 
-function useTankCardState(tank: TankWithLatestReading, onUpdateLevel: TankVisualCardProps['onUpdateLevel']) {
+function useTankCardState(
+  tank: TankWithLatestReading,
+  onUpdateLevel: TankVisualCardProps['onUpdateLevel']
+) {
   const [inputValue, setInputValue] = useState('')
   const [updating, setUpdating] = useState(false)
   const [showPlaceholder, setShowPlaceholder] = useState(true)
 
-  const currentLevel = tank.latest_reading ? Number.parseFloat(tank.latest_reading.level) : 0
+  const currentLevel = tank.latest_reading
+    ? Number.parseFloat(tank.latest_reading.level)
+    : 0
   const maxLevel = Number.parseFloat(tank.usable_max_inches)
   const minLevel = Number.parseFloat(tank.usable_min_inches)
   const percentage = Math.round((currentLevel / maxLevel) * 100)
@@ -35,7 +45,10 @@ function useTankCardState(tank: TankWithLatestReading, onUpdateLevel: TankVisual
   const parseFootInchToInches = (input: string): number => {
     const footInchMatch = input.match(/^(\d+(?:\.\d+)?)'(\d+(?:\.\d+)?)"?$/)
     if (footInchMatch) {
-      return Number.parseFloat(footInchMatch[1]) * 12 + Number.parseFloat(footInchMatch[2])
+      return (
+        Number.parseFloat(footInchMatch[1]) * 12 +
+        Number.parseFloat(footInchMatch[2])
+      )
     }
     const feetOnlyMatch = input.match(/^(\d+(?:\.\d+)?)'$/)
     if (feetOnlyMatch) {
@@ -54,7 +67,7 @@ function useTankCardState(tank: TankWithLatestReading, onUpdateLevel: TankVisual
     if (!inputValue.trim()) return
 
     let level = parseFootInchToInches(inputValue.trim())
-    if (isNaN(level)) return
+    if (Number.isNaN(level)) return
 
     if (level < minLevel) {
       alert(`${tank.tank_id} must be at least ${minLevel}"`)
@@ -84,14 +97,33 @@ function useTankCardState(tank: TankWithLatestReading, onUpdateLevel: TankVisual
   }
 
   return {
-    inputValue, setInputValue, updating, showPlaceholder, setShowPlaceholder,
-    currentLevel, maxLevel, minLevel, percentage, levelHeight, currentGallons,
-    isAvgas, isT7, isLF,
-    handleInputChange, handleUpdate, handleKeyPress, formatLastUpdated,
+    inputValue,
+    setInputValue,
+    updating,
+    showPlaceholder,
+    setShowPlaceholder,
+    currentLevel,
+    maxLevel,
+    minLevel,
+    percentage,
+    levelHeight,
+    currentGallons,
+    isAvgas,
+    isT7,
+    isLF,
+    handleInputChange,
+    handleUpdate,
+    handleKeyPress,
+    formatLastUpdated
   }
 }
 
-export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput }: TankVisualCardProps) {
+export function TankVisualCard({
+  tank,
+  onUpdateLevel,
+  onFocusInput,
+  onBlurInput
+}: TankVisualCardProps) {
   const s = useTankCardState(tank, onUpdateLevel)
 
   return (
@@ -105,7 +137,9 @@ export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput 
       <div className="p-4 text-center space-y-4">
         {/* Header */}
         <div>
-          <div className="text-2xl font-bold text-foreground">{tank.tank_id}</div>
+          <div className="text-2xl font-bold text-foreground">
+            {tank.tank_id}
+          </div>
           <Badge
             className={cn(
               'mt-1 text-xs',
@@ -130,24 +164,30 @@ export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput 
             style={{ height: `${Math.min(s.levelHeight, 100)}%` }}
           />
           <div className="absolute left-0 top-0 h-full w-full pointer-events-none">
-            {[...Array(9)].map((_, i) => {
-              const isMajor = i % 2 === 0
-              return (
-                <div
-                  key={i}
-                  className={cn('absolute left-0 bg-muted-foreground/50', isMajor ? 'w-3 h-0.5' : 'w-2 h-px')}
-                  style={{ top: `${i * 12.5}%` }}
-                />
-              )
-            })}
+            {GAUGE_TICKS.map((tick) => (
+              <div
+                key={tick.top}
+                className={cn(
+                  'absolute left-0 bg-muted-foreground/50',
+                  tick.isMajor ? 'w-3 h-0.5' : 'w-2 h-px'
+                )}
+                style={{ top: `${tick.top}%` }}
+              />
+            ))}
           </div>
         </div>
 
         {/* Level Info */}
         <div>
-          <div className="text-3xl font-bold text-foreground">{s.currentLevel.toFixed(1)}"</div>
-          <div className="text-sm text-muted-foreground">{s.percentage}% ({s.maxLevel}" max)</div>
-          <div className="text-sm text-muted-foreground">{s.currentGallons.toLocaleString()} gal</div>
+          <div className="text-3xl font-bold text-foreground">
+            {s.currentLevel.toFixed(1)}"
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {s.percentage}% ({s.maxLevel}" max)
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {s.currentGallons.toLocaleString()} gal
+          </div>
         </div>
 
         {/* Update Section */}
@@ -159,8 +199,14 @@ export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput 
             value={s.inputValue}
             onChange={s.handleInputChange}
             onKeyPress={s.handleKeyPress}
-            onFocus={() => { s.setShowPlaceholder(false); onFocusInput?.() }}
-            onBlur={() => { s.setShowPlaceholder(true); onBlurInput?.() }}
+            onFocus={() => {
+              s.setShowPlaceholder(false)
+              onFocusInput?.()
+            }}
+            onBlur={() => {
+              s.setShowPlaceholder(true)
+              onBlurInput?.()
+            }}
             className="text-center text-sm"
             disabled={s.updating}
           />
@@ -180,7 +226,12 @@ export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput 
   )
 }
 
-export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurInput }: TankVisualCardProps) {
+export function HorizontalTankCard({
+  tank,
+  onUpdateLevel,
+  onFocusInput,
+  onBlurInput
+}: TankVisualCardProps) {
   const s = useTankCardState(tank, onUpdateLevel)
 
   return (
@@ -195,7 +246,9 @@ export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurIn
         {/* Header row */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-2xl font-bold text-foreground">{tank.tank_id}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {tank.tank_id}
+            </div>
             <Badge
               className={cn(
                 'text-xs',
@@ -208,9 +261,15 @@ export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurIn
             </Badge>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-foreground">{s.currentLevel.toFixed(1)}"</div>
-            <div className="text-xs text-muted-foreground">{s.percentage}% ({s.maxLevel}" max)</div>
-            <div className="text-xs text-muted-foreground">{s.currentGallons.toLocaleString()} gal</div>
+            <div className="text-2xl font-bold text-foreground">
+              {s.currentLevel.toFixed(1)}"
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {s.percentage}% ({s.maxLevel}" max)
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {s.currentGallons.toLocaleString()} gal
+            </div>
           </div>
         </div>
 
@@ -225,7 +284,7 @@ export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurIn
             )}
             style={{
               width: `${Math.min(s.levelHeight, 100)}%`,
-              borderRadius: s.levelHeight >= 98 ? '9999px' : '9999px 0 0 9999px',
+              borderRadius: s.levelHeight >= 98 ? '9999px' : '9999px 0 0 9999px'
             }}
           />
           {/* Quarter-mark tick lines */}
@@ -247,8 +306,14 @@ export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurIn
             value={s.inputValue}
             onChange={s.handleInputChange}
             onKeyPress={s.handleKeyPress}
-            onFocus={() => { s.setShowPlaceholder(false); onFocusInput?.() }}
-            onBlur={() => { s.setShowPlaceholder(true); onBlurInput?.() }}
+            onFocus={() => {
+              s.setShowPlaceholder(false)
+              onFocusInput?.()
+            }}
+            onBlur={() => {
+              s.setShowPlaceholder(true)
+              onBlurInput?.()
+            }}
             className="text-sm w-36"
             disabled={s.updating}
           />

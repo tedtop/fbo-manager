@@ -2,13 +2,13 @@
 
 import { createClient } from '@/lib/supabase/client'
 import {
+  type AircraftInsert,
+  type AircraftRow,
+  type AircraftUpdate,
   createAircraft,
   deleteAircraft,
   findAllAircraft,
-  updateAircraft,
-  type AircraftInsert,
-  type AircraftRow,
-  type AircraftUpdate
+  updateAircraft
 } from '@/repositories/aircraft.repo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -32,7 +32,10 @@ export function useAircraft() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ tailNumber, updates }: { tailNumber: string; updates: AircraftUpdate }) =>
+    mutationFn: ({
+      tailNumber,
+      updates
+    }: { tailNumber: string; updates: AircraftUpdate }) =>
       updateAircraft(db, tailNumber, updates),
     onSuccess: () => qc.invalidateQueries({ queryKey: aircraftKeys.all })
   })
@@ -43,7 +46,9 @@ export function useAircraft() {
   })
 
   const findByTailNumber = (tailNumber: string): AircraftRow | undefined =>
-    query.data?.find((a) => a.tail_number.toLowerCase() === tailNumber.toLowerCase())
+    query.data?.find(
+      (a) => a.tail_number.toLowerCase() === tailNumber.toLowerCase()
+    )
 
   return {
     aircraft: query.data ?? [],
@@ -75,7 +80,8 @@ export function useAircraft() {
           fleet_id: ''
         }
       }),
-    deleteAircraft: (tailNumber: string) => deleteMutation.mutateAsync(tailNumber),
+    deleteAircraft: (tailNumber: string) =>
+      deleteMutation.mutateAsync(tailNumber),
     findByTailNumber,
     refetch: query.refetch
   }

@@ -1,5 +1,10 @@
+import type {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate
+} from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
 export type ParkingLocationRow = Tables<'parking_location'>
 export type ParkingLocationInsert = TablesInsert<'parking_location'>
@@ -9,7 +14,10 @@ export async function findAllParkingLocations(
   db: SupabaseClient<Database>,
   activeOnly = true
 ): Promise<ParkingLocationRow[]> {
-  let query = db.from('parking_location').select('*').order('display_order', { ascending: false })
+  let query = db
+    .from('parking_location')
+    .select('*')
+    .order('display_order', { ascending: false })
   if (activeOnly) {
     query = query.gt('display_order', 0)
   }
@@ -35,7 +43,11 @@ export async function createParkingLocation(
   db: SupabaseClient<Database>,
   location: ParkingLocationInsert
 ): Promise<ParkingLocationRow> {
-  const { data, error } = await db.from('parking_location').insert(location).select().single()
+  const { data, error } = await db
+    .from('parking_location')
+    .insert(location)
+    .select()
+    .single()
   if (error) throw error
   return data
 }

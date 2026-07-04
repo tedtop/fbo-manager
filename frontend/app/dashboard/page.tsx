@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { findAllTanks } from '@/repositories/tanks.repo'
-import { findAllFlights } from '@/repositories/flights.repo'
-import { findAllTransactions } from '@/repositories/transactions.repo'
 import { findAllCertifications } from '@/repositories/certifications.repo'
-import { toTankDomain } from '@/types/domain/tanks'
+import { findAllFlights } from '@/repositories/flights.repo'
+import { findAllTanks } from '@/repositories/tanks.repo'
+import { findAllTransactions } from '@/repositories/transactions.repo'
 import { toCertificationDomain } from '@/types/domain/certifications'
+import { toTankDomain } from '@/types/domain/tanks'
 import Link from 'next/link'
 
 async function getDashboardData() {
@@ -16,10 +16,13 @@ async function getDashboardData() {
     today.setHours(0, 0, 0, 0)
 
     const [tankRows, flightRows, txRows, certRows] = await Promise.all([
-      findAllTanks(supabase as any),
-      findAllFlights(supabase as any, { today: true }),
-      findAllTransactions(supabase as any, { progress: 'started' }),
-      findAllCertifications(supabase as any, { status: 'expiring_soon', days: 7 })
+      findAllTanks(supabase),
+      findAllFlights(supabase, { today: true }),
+      findAllTransactions(supabase, { progress: 'started' }),
+      findAllCertifications(supabase, {
+        status: 'expiring_soon',
+        days: 7
+      })
     ])
 
     return {
@@ -35,7 +38,8 @@ async function getDashboardData() {
 }
 
 export default async function DashboardPage() {
-  const { tanks, flights, transactions, certifications } = await getDashboardData()
+  const { tanks, flights, transactions, certifications } =
+    await getDashboardData()
 
   const criticalTanks = tanks.filter((t) => t.status === 'critical').length
   const warningTanks = tanks.filter((t) => t.status === 'warning').length
@@ -60,18 +64,47 @@ export default async function DashboardPage() {
           <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <svg
+                  className="h-8 w-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
                 </svg>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="truncate text-sm font-medium text-gray-500">Fuel Tanks</dt>
-                  <dd className="mt-1 text-3xl font-semibold text-gray-900">{tanks.length}</dd>
+                  <dt className="truncate text-sm font-medium text-gray-500">
+                    Fuel Tanks
+                  </dt>
+                  <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                    {tanks.length}
+                  </dd>
                   <dd className="mt-1 flex items-center text-sm">
-                    {criticalTanks > 0 && <span className="text-red-600 font-medium">{criticalTanks} Critical</span>}
-                    {warningTanks > 0 && <span className={`${criticalTanks > 0 ? 'ml-2' : ''} text-yellow-600 font-medium`}>{warningTanks} Warning</span>}
-                    {criticalTanks === 0 && warningTanks === 0 && <span className="text-green-600 font-medium">All Good</span>}
+                    {criticalTanks > 0 && (
+                      <span className="text-red-600 font-medium">
+                        {criticalTanks} Critical
+                      </span>
+                    )}
+                    {warningTanks > 0 && (
+                      <span
+                        className={`${criticalTanks > 0 ? 'ml-2' : ''} text-yellow-600 font-medium`}
+                      >
+                        {warningTanks} Warning
+                      </span>
+                    )}
+                    {criticalTanks === 0 && warningTanks === 0 && (
+                      <span className="text-green-600 font-medium">
+                        All Good
+                      </span>
+                    )}
                   </dd>
                 </dl>
               </div>
@@ -79,56 +112,114 @@ export default async function DashboardPage() {
           </div>
         </Link>
 
-        <Link href="/" className="overflow-hidden rounded-lg bg-white shadow hover:shadow-md transition-shadow">
+        <Link
+          href="/"
+          className="overflow-hidden rounded-lg bg-white shadow hover:shadow-md transition-shadow"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg
+                  className="h-8 w-8 text-indigo-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
                 </svg>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="truncate text-sm font-medium text-gray-500">Today's Flights</dt>
-                  <dd className="mt-1 text-3xl font-semibold text-gray-900">{todaysFlights}</dd>
-                  <dd className="mt-1 text-sm text-gray-600">Active schedule</dd>
+                  <dt className="truncate text-sm font-medium text-gray-500">
+                    Today's Flights
+                  </dt>
+                  <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                    {todaysFlights}
+                  </dd>
+                  <dd className="mt-1 text-sm text-gray-600">
+                    Active schedule
+                  </dd>
                 </dl>
               </div>
             </div>
           </div>
         </Link>
 
-        <Link href="/dispatch" className="overflow-hidden rounded-lg bg-white shadow hover:shadow-md transition-shadow">
+        <Link
+          href="/dispatch"
+          className="overflow-hidden rounded-lg bg-white shadow hover:shadow-md transition-shadow"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="h-8 w-8 text-yellow-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="truncate text-sm font-medium text-gray-500">Pending Dispatch</dt>
-                  <dd className="mt-1 text-3xl font-semibold text-gray-900">{unassignedTransactions}</dd>
-                  <dd className="mt-1 text-sm text-gray-600">Needs assignment</dd>
+                  <dt className="truncate text-sm font-medium text-gray-500">
+                    Pending Dispatch
+                  </dt>
+                  <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                    {unassignedTransactions}
+                  </dd>
+                  <dd className="mt-1 text-sm text-gray-600">
+                    Needs assignment
+                  </dd>
                 </dl>
               </div>
             </div>
           </div>
         </Link>
 
-        <Link href="/training" className="overflow-hidden rounded-lg bg-white shadow hover:shadow-md transition-shadow">
+        <Link
+          href="/training"
+          className="overflow-hidden rounded-lg bg-white shadow hover:shadow-md transition-shadow"
+        >
           <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="h-8 w-8 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="truncate text-sm font-medium text-gray-500">Expiring Soon</dt>
-                  <dd className="mt-1 text-3xl font-semibold text-gray-900">{expiringCertifications}</dd>
+                  <dt className="truncate text-sm font-medium text-gray-500">
+                    Expiring Soon
+                  </dt>
+                  <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                    {expiringCertifications}
+                  </dd>
                   <dd className="mt-1 text-sm text-gray-600">Within 7 days</dd>
                 </dl>
               </div>
@@ -141,13 +232,22 @@ export default async function DashboardPage() {
         <div className="px-6 py-5">
           <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Link href="/dispatch" className="rounded-md bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-500">
+            <Link
+              href="/dispatch"
+              className="rounded-md bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
+            >
               Assign Fuelers
             </Link>
-            <Link href="/" className="rounded-md bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+            <Link
+              href="/"
+              className="rounded-md bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
               View Flights
             </Link>
-            <Link href="/fuel-farm" className="rounded-md bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+            <Link
+              href="/fuel-farm"
+              className="rounded-md bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
               Monitor Tanks
             </Link>
           </div>
@@ -158,7 +258,9 @@ export default async function DashboardPage() {
         <div className="px-6 py-5">
           <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
           <div className="mt-4">
-            <p className="text-sm text-gray-600">Activity tracking coming soon...</p>
+            <p className="text-sm text-gray-600">
+              Activity tracking coming soon...
+            </p>
           </div>
         </div>
       </div>

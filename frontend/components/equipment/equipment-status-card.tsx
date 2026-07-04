@@ -1,8 +1,8 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { StatusBadge, type EquipmentStatus } from './status-badge'
 import type { EquipmentDomain } from '@/types/domain/equipment'
+import { type EquipmentStatus, StatusBadge } from './status-badge'
 
 export const EQUIPMENT_TYPES = [
   'fuel_truck',
@@ -15,41 +15,47 @@ export const EQUIPMENT_TYPES = [
   'water_service',
   'golf_cart',
   'staff_vehicle',
-  'other',
+  'other'
 ] as const
 
 export const TYPE_ICONS: Record<string, string> = {
-  fuel_truck:       '🚛',
-  tug:              '🚜',
-  gpu:              '⚡',
-  air_start:        '💨',
-  belt_loader:      '🧰',
-  stairs:           '🪜',
+  fuel_truck: '🚛',
+  tug: '🚜',
+  gpu: '⚡',
+  air_start: '💨',
+  belt_loader: '🧰',
+  stairs: '🪜',
   lavatory_service: '🚿',
-  water_service:    '💧',
-  golf_cart:        '⛳',
-  staff_vehicle:    '🚗',
-  other:            '🔧',
+  water_service: '💧',
+  golf_cart: '⛳',
+  staff_vehicle: '🚗',
+  other: '🔧'
 }
 
 const STATUS_BORDER: Record<string, string> = {
-  available:      'border-l-green-500',
-  in_use:         'border-l-yellow-500',
-  maintenance:    'border-l-yellow-500',
-  out_of_service: 'border-l-red-500',
+  available: 'border-l-green-500',
+  in_use: 'border-l-yellow-500',
+  maintenance: 'border-l-yellow-500',
+  out_of_service: 'border-l-red-500'
 }
 
 export function formatTypeLabel(type: string): string {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function formatDate(dateStr: string | null): string | null {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(dateStr).toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
 }
 
 function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
+  return Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
+  )
 }
 
 interface EquipmentStatusCardProps {
@@ -58,7 +64,11 @@ interface EquipmentStatusCardProps {
   onEdit: (equipment: EquipmentDomain) => void
 }
 
-export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: EquipmentStatusCardProps) {
+export function EquipmentStatusCard({
+  equipment: eq,
+  onStatusChange,
+  onEdit
+}: EquipmentStatusCardProps) {
   const icon = TYPE_ICONS[eq.equipment_type] ?? '🔧'
   const borderColor = STATUS_BORDER[eq.status] ?? 'border-l-border'
   const maintenanceDate = formatDate(eq.next_maintenance_date)
@@ -78,10 +88,16 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
       {/* Header row */}
       <div className="flex items-start justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xl flex-shrink-0" aria-hidden="true">{icon}</span>
+          <span className="text-xl flex-shrink-0" aria-hidden="true">
+            {icon}
+          </span>
           <div className="min-w-0">
-            <p className="font-semibold text-foreground truncate">{eq.equipment_name}</p>
-            <p className="text-xs text-muted-foreground">{formatTypeLabel(eq.equipment_type)}</p>
+            <p className="font-semibold text-foreground truncate">
+              {eq.equipment_name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatTypeLabel(eq.equipment_type)}
+            </p>
           </div>
         </div>
         <button
@@ -97,7 +113,7 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
       <div>
         <StatusBadge
           status={eq.status as EquipmentStatus}
-          onStatusChange={s => onStatusChange(eq.id, s)}
+          onStatusChange={(s) => onStatusChange(eq.id, s)}
         />
       </div>
 
@@ -109,8 +125,10 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
             <span
               className={cn(
                 'font-medium',
-                eq.maintenanceStatus === 'overdue' && 'text-red-600 dark:text-red-400',
-                eq.maintenanceStatus === 'due_soon' && 'text-yellow-600 dark:text-yellow-400',
+                eq.maintenanceStatus === 'overdue' &&
+                  'text-red-600 dark:text-red-400',
+                eq.maintenanceStatus === 'due_soon' &&
+                  'text-yellow-600 dark:text-yellow-400',
                 eq.maintenanceStatus === 'current' && 'text-foreground'
               )}
             >
@@ -132,7 +150,11 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
       {/* Footer */}
       <p className="text-xs text-muted-foreground border-t border-border pt-2 mt-auto">
         Last seen{' '}
-        {lastSeen === 0 ? 'today' : lastSeen === 1 ? 'yesterday' : `${lastSeen} days ago`}
+        {lastSeen === 0
+          ? 'today'
+          : lastSeen === 1
+            ? 'yesterday'
+            : `${lastSeen} days ago`}
       </p>
     </div>
   )

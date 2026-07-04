@@ -3,7 +3,7 @@ import {
   DEV_USERS,
   E2E_SUPABASE_SERVICE_ROLE_KEY,
   E2E_SUPABASE_URL,
-  assertSafeE2ETarget,
+  assertSafeE2ETarget
 } from './env'
 
 /**
@@ -20,37 +20,55 @@ export async function seedDevUsers(): Promise<void> {
   assertSafeE2ETarget(E2E_SUPABASE_URL)
 
   const admin = createClient(E2E_SUPABASE_URL, E2E_SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    auth: { persistSession: false, autoRefreshToken: false }
   })
 
   for (const { email, password, role } of Object.values(DEV_USERS)) {
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    })
+    const { data: created, error: createError } =
+      await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true
+      })
 
     let userId = created?.user?.id
     if (createError) {
-      if (!/already been registered|already exists/i.test(createError.message)) {
-        throw new Error(`seedDevUsers: failed to create ${email}: ${createError.message}`)
+      if (
+        !/already been registered|already exists/i.test(createError.message)
+      ) {
+        throw new Error(
+          `seedDevUsers: failed to create ${email}: ${createError.message}`
+        )
       }
-      const { data: list, error: listError } = await admin.auth.admin.listUsers()
+      const { data: list, error: listError } =
+        await admin.auth.admin.listUsers()
       if (listError) throw listError
       userId = list.users.find((u) => u.email === email)?.id
     }
-    if (!userId) throw new Error(`seedDevUsers: could not resolve auth user id for ${email}`)
+    if (!userId)
+      throw new Error(
+        `seedDevUsers: could not resolve auth user id for ${email}`
+      )
 
     const { data: roleRow, error: roleError } = await admin
       .from('roles')
       .select('id')
       .eq('name', role)
       .single()
-    if (roleError) throw new Error(`seedDevUsers: role "${role}" not found: ${roleError.message}`)
+    if (roleError)
+      throw new Error(
+        `seedDevUsers: role "${role}" not found: ${roleError.message}`
+      )
 
     const { error: grantError } = await admin
       .from('user_roles')
-      .upsert({ user_id: userId, role_id: roleRow.id }, { onConflict: 'user_id,role_id' })
-    if (grantError) throw new Error(`seedDevUsers: failed to grant ${role} to ${email}: ${grantError.message}`)
+      .upsert(
+        { user_id: userId, role_id: roleRow.id },
+        { onConflict: 'user_id,role_id' }
+      )
+    if (grantError)
+      throw new Error(
+        `seedDevUsers: failed to grant ${role} to ${email}: ${grantError.message}`
+      )
   }
 }

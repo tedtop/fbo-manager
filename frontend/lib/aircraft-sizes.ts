@@ -69,7 +69,7 @@ const AIRCRAFT_TYPE_SIZES: Record<string, AircraftSizeCategory> = {
   CRJ9: 'large', // CRJ-900
   E170: 'large', // Embraer 170
   E175: 'large', // Embraer 175
-  E190: 'large', // Embraer 190
+  E190: 'large' // Embraer 190
 }
 
 // Size category to display properties
@@ -77,23 +77,23 @@ const SIZE_PROPERTIES: Record<AircraftSizeCategory, AircraftSize> = {
   small: {
     category: 'small',
     iconSize: 24,
-    displayScale: 0.8,
+    displayScale: 0.8
   },
   medium: {
     category: 'medium',
     iconSize: 32,
-    displayScale: 1.0,
+    displayScale: 1.0
   },
   large: {
     category: 'large',
     iconSize: 40,
-    displayScale: 1.3,
+    displayScale: 1.3
   },
   jumbo: {
     category: 'jumbo',
     iconSize: 48,
-    displayScale: 1.6,
-  },
+    displayScale: 1.6
+  }
 }
 
 /**

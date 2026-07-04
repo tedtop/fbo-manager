@@ -1,7 +1,7 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
 import { inchesToGallons } from '@/lib/gallons-tables'
+import { createClient } from '@/lib/supabase/client'
 import { findReadingsByTankIds } from '@/repositories/tank-readings.repo'
 import { useQuery } from '@tanstack/react-query'
 
@@ -32,7 +32,7 @@ function aggregateDailyTotals(
       const gallons = JET_A_TREND_TANK_IDS.reduce((sum, id) => {
         return sum + inchesToGallons(id, tankState[id] ?? 0)
       }, 0)
-      return { date: day, gallons }  // date is ISO "YYYY-MM-DD" for tooltip formatting
+      return { date: day, gallons } // date is ISO "YYYY-MM-DD" for tooltip formatting
     })
 }
 
@@ -42,13 +42,17 @@ export function useJetAHistory(days: number) {
   const query = useQuery({
     queryKey: ['jet-a-history', days],
     queryFn: async () => {
-      const readings = await findReadingsByTankIds(db, JET_A_TREND_TANK_IDS, days)
+      const readings = await findReadingsByTankIds(
+        db,
+        JET_A_TREND_TANK_IDS,
+        days
+      )
       return aggregateDailyTotals(readings)
-    },
+    }
   })
 
   return {
     data: query.data ?? [],
-    loading: query.isLoading,
+    loading: query.isLoading
   }
 }

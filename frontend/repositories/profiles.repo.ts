@@ -1,17 +1,23 @@
 import type { Database, Tables, TablesUpdate } from '@/types/database'
-import type { ProfileWithRoles } from '@/types/domain/users'
+import type { ProfileWithRoles, RoleRow } from '@/types/domain/users'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type ProfileRow = Tables<'profiles'>
 export type ProfileUpdate = TablesUpdate<'profiles'>
+
+type ProfileWithRoleJoinRow = ProfileRow & {
+  roles: Array<{ role: RoleRow | null }>
+}
 
 const PROFILE_WITH_ROLES_SELECT = `
   *,
   roles:user_roles(role:roles(*))
 `
 
-function mapProfileWithRoles(row: any): ProfileWithRoles {
-  const roles = (row.roles ?? []).map((ur: any) => ur.role).filter(Boolean)
+function mapProfileWithRoles(row: ProfileWithRoleJoinRow): ProfileWithRoles {
+  const roles = (row.roles ?? [])
+    .map((ur) => ur.role)
+    .filter((role): role is RoleRow => role !== null)
   return { ...row, roles }
 }
 

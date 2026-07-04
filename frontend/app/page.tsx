@@ -4,17 +4,17 @@ import { CalendarWeekView } from '@/components/flight-operations/calendar-week-v
 import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
 import { FlightBoard } from '@/components/flight-operations/flight-board'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
-import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import type {
   Flight,
   FlightFilters
 } from '@/components/flight-operations/types'
+import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import { useTheme } from '@/components/navigation-wrapper'
 import { useFlights } from '@/hooks/use-flights'
-import { useTransactions } from '@/hooks/use-transactions'
-import { useToast } from '@/hooks/use-toast'
-import { ErrorMessage } from '@/messages/error-message'
 import { useSession } from '@/hooks/use-session'
+import { useToast } from '@/hooks/use-toast'
+import { useTransactions } from '@/hooks/use-transactions'
+import { ErrorMessage } from '@/messages/error-message'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -30,16 +30,16 @@ export default function FlightOperationsPage() {
   const dateParams =
     view === 'calendar'
       ? (() => {
-        const today = new Date()
-        const startDate = new Date(today)
-        startDate.setDate(today.getDate() - 28) // 4 weeks back
-        const endDate = new Date(today)
-        endDate.setDate(today.getDate() + 28) // 4 weeks forward
-        return {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0]
-        }
-      })()
+          const today = new Date()
+          const startDate = new Date(today)
+          startDate.setDate(today.getDate() - 28) // 4 weeks back
+          const endDate = new Date(today)
+          endDate.setDate(today.getDate() + 28) // 4 weeks forward
+          return {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0]
+          }
+        })()
       : undefined // Don't filter by date for split view - show all flights
 
   const { flights, loading, error, createFlight, updateFlight, deleteFlight } =
@@ -120,7 +120,9 @@ export default function FlightOperationsPage() {
     setFuelDialogOpen(true)
   }
 
-  const handleFuelOrderSubmit = async (data: import('@/repositories/transactions.repo').TransactionInsert) => {
+  const handleFuelOrderSubmit = async (
+    data: import('@/repositories/transactions.repo').TransactionInsert
+  ) => {
     try {
       await createTransaction(data)
       toast({ title: 'Fuel order created' })
@@ -178,7 +180,7 @@ export default function FlightOperationsPage() {
         view={view}
         theme={theme}
         onViewChange={handleViewChange}
-        onThemeChange={() => { }}
+        onThemeChange={() => {}}
         filters={filters}
         onFiltersChange={setFilters}
         onAddFlight={() => setIsAddDialogOpen(true)}
@@ -246,7 +248,9 @@ export default function FlightOperationsPage() {
           if (!open) setFuelFlight(null)
         }}
         onSubmit={handleFuelOrderSubmit}
-        defaultFlightId={fuelFlight ? Number(fuelFlight.id.replace('manual-', '')) : null}
+        defaultFlightId={
+          fuelFlight ? Number(fuelFlight.id.replace('manual-', '')) : null
+        }
         defaultTailNumber={fuelFlight?.tailNumber}
       />
     </div>

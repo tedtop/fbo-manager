@@ -1,18 +1,21 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
-import { createEquipment, findAllEquipment } from '@/repositories/equipment.repo'
-import {
-  createTruckMeterReadings,
-  createTruckSheet,
-  type TruckMeterReadingInsert,
-} from '@/repositories/truck-sheets.repo'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
   ExtractedReading,
-  ExtractedTruckSheet,
+  ExtractedTruckSheet
 } from '@/app/api/ocr/truck-sheet/route'
 import { truckSheetKeys } from '@/hooks/use-truck-sheets'
+import { createClient } from '@/lib/supabase/client'
+import {
+  createEquipment,
+  findAllEquipment
+} from '@/repositories/equipment.repo'
+import {
+  type TruckMeterReadingInsert,
+  createTruckMeterReadings,
+  createTruckSheet
+} from '@/repositories/truck-sheets.repo'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 export type { ExtractedReading, ExtractedTruckSheet }
 
@@ -56,7 +59,10 @@ function nextId(prefix: string): string {
 export function mergeExtractions(
   pages: { file: File; extraction: ExtractedTruckSheet }[]
 ): ReviewSheet[] {
-  const groups = new Map<string, { file: File; extraction: ExtractedTruckSheet }[]>()
+  const groups = new Map<
+    string,
+    { file: File; extraction: ExtractedTruckSheet }[]
+  >()
   for (const page of pages) {
     const key = page.extraction.truck_number || page.file.name
     const group = groups.get(key) ?? []
@@ -93,9 +99,9 @@ export function mergeExtractions(
         p.extraction.readings.map((r) => ({
           ...r,
           id: nextId('reading'),
-          include: true,
+          include: true
         }))
-      ),
+      )
     })
   }
   return sheets.sort((a, b) => a.truck_number.localeCompare(b.truck_number))
@@ -106,13 +112,16 @@ export function useTruckSheetExtract() {
     mutationFn: async (file: File): Promise<ExtractedTruckSheet> => {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch('/api/ocr/truck-sheet', { method: 'POST', body: form })
+      const res = await fetch('/api/ocr/truck-sheet', {
+        method: 'POST',
+        body: form
+      })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
         throw new Error(err.error ?? 'Extraction failed')
       }
       return res.json()
-    },
+    }
   })
 }
 
@@ -134,7 +143,9 @@ export function useTruckSheetCommit() {
       const created: number[] = []
       for (const sheet of sheets) {
         if (!sheet.truck_number || !sheet.sheet_date || !sheet.fuel_type) {
-          throw new Error('Each sheet needs a truck number, date, and fuel type before import')
+          throw new Error(
+            'Each sheet needs a truck number, date, and fuel type before import'
+          )
         }
 
         let fuelTruckId = trucksById.get(sheet.truck_number)
@@ -143,7 +154,7 @@ export function useTruckSheetCommit() {
             equipment_id: sheet.truck_number,
             equipment_name: `Fuel Truck ${sheet.truck_number}`,
             equipment_type: 'fuel_truck',
-            notes: `Fuel: ${sheet.fuel_type === 'jet_a' ? 'Jet A' : 'Avgas 100LL'}. Auto-created by truck sheet import.`,
+            notes: `Fuel: ${sheet.fuel_type === 'jet_a' ? 'Jet A' : 'Avgas 100LL'}. Auto-created by truck sheet import.`
           })
           fuelTruckId = truck.id
           trucksById.set(sheet.truck_number, fuelTruckId)
@@ -161,7 +172,7 @@ export function useTruckSheetCommit() {
           rear_meter_start: toNumber(sheet.rear_meter_start),
           fueler_initials: sheet.fueler_initials || null,
           page_count: sheet.page_count,
-          ocr_raw: sheet.ocr_raw,
+          ocr_raw: sheet.ocr_raw
         })
 
         // 3. Bulk-insert the meter readings
@@ -185,7 +196,7 @@ export function useTruckSheetCommit() {
             line_tech_initials: r.line_tech_initials || null,
             invoice_number: r.invoice_number || null,
             service_time: r.service_time || null,
-            notes: r.notes || null,
+            notes: r.notes || null
           }))
         await createTruckMeterReadings(db, inserts)
         created.push(sheetRow.id)
@@ -195,6 +206,6 @@ export function useTruckSheetCommit() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: truckSheetKeys.all })
-    },
+    }
   })
 }

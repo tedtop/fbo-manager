@@ -7,7 +7,12 @@ import { seedDevUsers } from './seed'
 
 seedDevUsers()
   .then(() => {
-    console.log('Seeded dev users:', Object.values(DEV_USERS).map((u) => u.email).join(', '))
+    console.log(
+      'Seeded dev users:',
+      Object.values(DEV_USERS)
+        .map((u) => u.email)
+        .join(', ')
+    )
   })
   .catch((err) => {
     console.error(err)

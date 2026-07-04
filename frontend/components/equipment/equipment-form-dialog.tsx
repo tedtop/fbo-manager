@@ -69,6 +69,7 @@ export function EquipmentFormDialog({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (!open) return
     if (equipment) {
       setForm({
         equipment_id: equipment.equipment_id,

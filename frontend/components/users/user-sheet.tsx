@@ -1,7 +1,5 @@
 'use client'
 
-import type { ProfileWithRoles } from '@/types/domain/users'
-import type { RoleWithPermissions } from '@/types/domain/users'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -15,6 +13,8 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { ErrorMessage } from '@/messages/error-message'
+import type { ProfileWithRoles } from '@/types/domain/users'
+import type { RoleWithPermissions } from '@/types/domain/users'
 import { useEffect, useState } from 'react'
 
 export interface UserFormData {

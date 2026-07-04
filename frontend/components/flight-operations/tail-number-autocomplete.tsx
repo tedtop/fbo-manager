@@ -1,10 +1,10 @@
 'use client'
 
-import type { AircraftRow as Aircraft } from '@/repositories/aircraft.repo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import type { AircraftRow as Aircraft } from '@/repositories/aircraft.repo'
 import { Check, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -111,6 +111,7 @@ export function TailNumberAutocomplete({
         >
           {filteredAircraft.map((a) => (
             <button
+              type="button"
               key={a.tail_number}
               onClick={() => handleSelectAircraft(a)}
               className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground flex items-center justify-between text-sm"
@@ -129,6 +130,7 @@ export function TailNumberAutocomplete({
 
           {showCreateButton && (
             <button
+              type="button"
               onClick={handleCreateNew}
               className="w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground flex items-center gap-2 text-sm border-t border-border"
             >

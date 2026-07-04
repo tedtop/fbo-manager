@@ -1,5 +1,5 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { type SupabaseClient, createClient } from '@supabase/supabase-js'
 
 // Standard local-dev demo keys that ship with every `supabase init` project — these are
 // NOT secrets, they're baked into the Supabase CLI's default local JWT signing config and
@@ -12,8 +12,10 @@ const LOCAL_SERVICE_ROLE_KEY =
 const LOCAL_URL = 'http://127.0.0.1:54321'
 
 export const TEST_SUPABASE_URL = process.env.SUPABASE_TEST_URL ?? LOCAL_URL
-const TEST_SERVICE_ROLE_KEY = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY ?? LOCAL_SERVICE_ROLE_KEY
-export const TEST_ANON_KEY = process.env.SUPABASE_TEST_ANON_KEY ?? LOCAL_ANON_KEY
+const TEST_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_TEST_SERVICE_ROLE_KEY ?? LOCAL_SERVICE_ROLE_KEY
+export const TEST_ANON_KEY =
+  process.env.SUPABASE_TEST_ANON_KEY ?? LOCAL_ANON_KEY
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
 
@@ -36,13 +38,7 @@ export function assertSafeTestTarget(url: string): void {
 
   if (process.env.SUPABASE_TEST_ALLOW_REMOTE !== 'yes-i-am-sure') {
     throw new Error(
-      `Refusing to run repository tests against "${url}" — this suite calls resetDatabase(), ` +
-        'which deletes every row in every table it knows about (tanks, transactions, users, ' +
-        'invoices, ...). This is only safe against the local Supabase stack (127.0.0.1).\n\n' +
-        'If you really mean to point this at a different disposable instance (e.g. a CI-only ' +
-        'throwaway DB, never the live/shared project), set BOTH:\n' +
-        '  SUPABASE_TEST_URL=<url>\n' +
-        '  SUPABASE_TEST_ALLOW_REMOTE=yes-i-am-sure'
+      `Refusing to run repository tests against "${url}" — this suite calls resetDatabase(), which deletes every row in every table it knows about (tanks, transactions, users, invoices, ...). This is only safe against the local Supabase stack (127.0.0.1).\n\nIf you really mean to point this at a different disposable instance (e.g. a CI-only throwaway DB, never the live/shared project), set BOTH:\n  SUPABASE_TEST_URL=<url>\n  SUPABASE_TEST_ALLOW_REMOTE=yes-i-am-sure`
     )
   }
 }
@@ -61,6 +57,6 @@ export function assertSafeTestTarget(url: string): void {
 export function createTestClient(): SupabaseClient<Database> {
   assertSafeTestTarget(TEST_SUPABASE_URL)
   return createClient<Database>(TEST_SUPABASE_URL, TEST_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    auth: { persistSession: false, autoRefreshToken: false }
   })
 }

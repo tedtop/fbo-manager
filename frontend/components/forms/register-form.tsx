@@ -1,8 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-import { registerFormSchema } from '@/lib/validation'
-import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -14,10 +11,13 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { registerFormSchema } from '@/lib/validation'
+import { useAuth } from '@/providers/auth-provider'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plane } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 

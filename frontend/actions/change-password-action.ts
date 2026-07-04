@@ -12,7 +12,9 @@ export async function changePasswordAction(
   const supabase = await createClient()
 
   // Re-authenticate with current password before changing
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
   if (!user?.email) return false
 
   const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -21,7 +23,9 @@ export async function changePasswordAction(
   })
   if (signInError) return 'Current password is incorrect'
 
-  const { error } = await supabase.auth.updateUser({ password: data.passwordNew })
+  const { error } = await supabase.auth.updateUser({
+    password: data.passwordNew
+  })
   if (error) return error.message
 
   return true

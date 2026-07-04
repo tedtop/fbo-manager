@@ -1,15 +1,19 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createTestClient } from '@/tests/support/client'
-import { resetDatabase } from '@/tests/support/reset'
-import { makeEquipment, makeFlight, makeFueler } from '@/tests/support/factories'
 import { assignFuelerToTransaction } from '@/repositories/fueler-assignments.repo'
 import {
   createTransaction,
   deleteTransaction,
   findAllTransactions,
   findTransactionById,
-  updateTransaction,
+  updateTransaction
 } from '@/repositories/transactions.repo'
+import { createTestClient } from '@/tests/support/client'
+import {
+  makeEquipment,
+  makeFlight,
+  makeFueler
+} from '@/tests/support/factories'
+import { resetDatabase } from '@/tests/support/reset'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const db = createTestClient()
 
@@ -24,12 +28,15 @@ describe('transactions.repo', () => {
 
   it('joins flight and fuel_truck (equipment) on findTransactionById', async () => {
     const flight = await makeFlight(db, { call_sign: 'FBO123' })
-    const truck = await makeEquipment(db, { equipment_name: 'Truck 42', equipment_type: 'fuel_truck' })
+    const truck = await makeEquipment(db, {
+      equipment_name: 'Truck 42',
+      equipment_type: 'fuel_truck'
+    })
 
     const tx = await createTransaction(db, {
       ticket_number: 'TICKET-1',
       flight_id: flight.id,
-      fuel_truck_id: truck.id,
+      fuel_truck_id: truck.id
     })
 
     const found = await findTransactionById(db, tx.id)
@@ -40,15 +47,23 @@ describe('transactions.repo', () => {
   it('joins fueler_assignments with the nested fueler record', async () => {
     const tx = await createTransaction(db, { ticket_number: 'TICKET-2' })
     const fueler = await makeFueler(db, { fueler_name: 'Assigned Fueler' })
-    await assignFuelerToTransaction(db, { transaction_id: tx.id, fueler_id: fueler.id })
+    await assignFuelerToTransaction(db, {
+      transaction_id: tx.id,
+      fueler_id: fueler.id
+    })
 
     const found = await findTransactionById(db, tx.id)
     expect(found?.fueler_assignments).toHaveLength(1)
-    expect(found?.fueler_assignments[0].fueler?.fueler_name).toBe('Assigned Fueler')
+    expect(found?.fueler_assignments[0].fueler?.fueler_name).toBe(
+      'Assigned Fueler'
+    )
   })
 
   it('filters by progress', async () => {
-    const started = await createTransaction(db, { ticket_number: 'A', progress: 'started' })
+    const started = await createTransaction(db, {
+      ticket_number: 'A',
+      progress: 'started'
+    })
     await createTransaction(db, { ticket_number: 'B', progress: 'completed' })
 
     const results = await findAllTransactions(db, { progress: 'started' })
@@ -57,7 +72,10 @@ describe('transactions.repo', () => {
 
   it('filters by flightId', async () => {
     const flight = await makeFlight(db)
-    const linked = await createTransaction(db, { ticket_number: 'LINKED', flight_id: flight.id })
+    const linked = await createTransaction(db, {
+      ticket_number: 'LINKED',
+      flight_id: flight.id
+    })
     await createTransaction(db, { ticket_number: 'UNLINKED' })
 
     const results = await findAllTransactions(db, { flightId: flight.id })
@@ -65,7 +83,10 @@ describe('transactions.repo', () => {
   })
 
   it('filters by source', async () => {
-    const manual = await createTransaction(db, { ticket_number: 'MANUAL', source: 'manual' })
+    const manual = await createTransaction(db, {
+      ticket_number: 'MANUAL',
+      source: 'manual'
+    })
     await createTransaction(db, { ticket_number: 'QT', source: 'qt' })
 
     const results = await findAllTransactions(db, { source: 'manual' })
@@ -73,8 +94,13 @@ describe('transactions.repo', () => {
   })
 
   it('updates and deletes a transaction', async () => {
-    const tx = await createTransaction(db, { ticket_number: 'EDIT-ME', progress: 'started' })
-    const updated = await updateTransaction(db, tx.id, { progress: 'completed' })
+    const tx = await createTransaction(db, {
+      ticket_number: 'EDIT-ME',
+      progress: 'started'
+    })
+    const updated = await updateTransaction(db, tx.id, {
+      progress: 'completed'
+    })
     expect(updated.progress).toBe('completed')
 
     await deleteTransaction(db, tx.id)

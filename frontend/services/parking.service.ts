@@ -1,12 +1,12 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import {
+  type ParkingLocationInsert,
+  type ParkingLocationUpdate,
   createParkingLocation,
   softDeleteParkingLocation,
-  updateParkingLocation,
-  type ParkingLocationInsert,
-  type ParkingLocationUpdate
+  updateParkingLocation
 } from '@/repositories/parking.repo'
+import type { Database } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function archiveParkingLocation(
   db: SupabaseClient<Database>,

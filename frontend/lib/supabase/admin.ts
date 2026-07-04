@@ -1,3 +1,4 @@
+import { getSupabaseUrl } from '@/lib/supabase/env'
 import type { Database } from '@/types/database'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
@@ -13,14 +14,10 @@ export function createAdminClient() {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured')
   }
 
-  return createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
+  return createSupabaseClient<Database>(getSupabaseUrl(), serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
     }
-  )
+  })
 }
