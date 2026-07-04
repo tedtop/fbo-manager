@@ -46,6 +46,18 @@ rather than changing since it touches how aircraft records get created/matched.
 no search/filter. Fine at current roster size; would need a search box if the fueler
 list grows significantly. Not urgent, noting for later.
 
+### 4. Tank delete exists in code but has no UI affordance
+
+`app/fuel-farm/page.tsx` implements `handleDeleteTank` (with a `confirm()` guard) and
+`tanks.repo.ts` has a tested `deleteTank`, but nothing in the UI ever calls it — tanks
+cannot be deleted from the app at all. During the E2E pass the same was true of
+*editing* tanks (`handleEditTank` and the tank form's whole edit-with-concurrency path
+were unreachable); that was clearly a regression from the visual-card redesign, so an
+Edit button was restored on each tank card. Delete is left unwired pending a decision:
+should tanks be deletable from the UI at all (physical tanks rarely disappear — maybe
+deactivation is the right model), and if so it should get an `AlertDialog` confirmation
+per `docs/ui-conventions.md` rather than the current `confirm()`.
+
 ## Answered
 
 _(none yet)_
