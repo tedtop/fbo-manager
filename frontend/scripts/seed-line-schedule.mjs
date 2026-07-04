@@ -1,5 +1,29 @@
 // Seed the Line Service department with employees + schedules.
-// Employees/shift patterns transcribed from the posted paper schedule ("Starting Nov 6th").
+//
+// !!! SEED / STARTING DATA — NOT VERIFIED — NEEDS HUMAN REVIEW !!!
+// Employees/shift patterns transcribed from a photo of the physically-posted schedule
+// sheet (header handwritten "Starting Nov 6th"). The photo was rotated/handwritten and
+// this is a best-effort reading — treat every shift below as a starting point, not
+// ground truth, until someone checks it against the physical posting. This replaces an
+// earlier, less-accurate transcription pass that briefly lived here; several employees'
+// shift lists changed as a result (see notes inline).
+//
+// Known data-quality flags to resolve against the physical sheet:
+//   - Several employees' listed shifts don't sum to their annotated "~N hrs/wk" (e.g.
+//     Carson reads as ~60hrs from 6 listed 10hr shifts against a "~40" annotation; Jake,
+//     John, and Michael all read well under their annotated hours). Left as transcribed
+//     rather than dropping/adding shifts to force the totals to reconcile.
+//   - Garret L.'s row was mostly illegible/marked over in the photo — seeded with NO
+//     shifts (roster entry only) rather than guessing. Needs re-checking against the
+//     posted sheet.
+//   - One row's name was entirely blacked out in the photo. Seeded as a clearly-marked
+//     "Unknown (redacted)" placeholder identity (see EMPLOYEES below) — do NOT treat
+//     "Redacted" as a real surname. Needs identification from the physical posting.
+//   - Ted T.'s row carried an asterisk on the sheet, likely denoting an ownership/admin
+//     flag. There's no such flag in the department_member schema (dept_role is only
+//     lead/supervisor/member), so it isn't represented here — flagging for a schema/UX
+//     decision rather than guessing at a mapping.
+//
 // Idempotent: safe to re-run. Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in env.
 //
 // Usage: cd frontend && set -a && source .env.local && set +a && node scripts/seed-line-schedule.mjs
@@ -8,14 +32,17 @@ import { createClient } from '@supabase/supabase-js'
 
 const DEFAULT_PASSWORD = 'FBOline2026!'
 const EMAIL_DOMAIN = 'example.com'
-// Mondays of the weeks to seed (covers June + July 2026 for week/month views)
+// Mondays of the weeks to seed (chosen to cover "today" for demoing month/week views;
+// unrelated to the sheet's handwritten "Starting Nov 6th" header, which doesn't fall on
+// a Monday in any nearby year — the calendar alignment of that header note vs. these
+// seeded weeks hasn't been verified and may need reconciling with the physical posting).
 const WEEK_STARTS = ['2026-06-15', '2026-06-22', '2026-06-29', '2026-07-06', '2026-07-13', '2026-07-20']
 
 // day: 0=Mon ... 6=Sun
 const EMPLOYEES = [
   {
     first: 'Keith', last: 'L.', tag: 'KL-40', deptRole: 'lead', title: 'Lead Supervisor', hours: 40,
-    shifts: [[0, '10:00', '20:00'], [1, '10:00', '20:00'], [5, '10:00', '20:00'], [6, '10:00', '20:00']],
+    shifts: [[0, '10:00', '20:00'], [5, '10:00', '20:00'], [6, '10:00', '20:00']],
   },
   {
     first: 'Kelby', last: 'G.', tag: 'KG-40', deptRole: 'supervisor', title: 'Supervisor', hours: 40,
@@ -27,31 +54,43 @@ const EMPLOYEES = [
   },
   {
     first: 'Carson', last: 'S.', tag: 'CS-40', deptRole: 'member', title: '', hours: 40,
-    shifts: [[2, '12:00', '22:00'], [3, '12:00', '22:00'], [4, '12:00', '22:00'], [5, '12:00', '22:00'], [6, '22:00', '03:00']],
+    shifts: [[0, '12:00', '22:00'], [1, '12:00', '22:00'], [2, '12:00', '22:00'], [3, '12:00', '22:00'], [4, '12:00', '22:00'], [5, '12:00', '22:00']],
   },
   {
+    // Marked with an asterisk on the sheet — see data-quality flags above. Overnight
+    // shifts (end_time <= start_time) cross midnight into the next day.
     first: 'Ted', last: 'T.', tag: 'TT-40', deptRole: 'member', title: '', hours: 40,
-    shifts: [[0, '22:00', '08:00'], [1, '22:00', '08:00'], [2, '22:00', '08:00'], [6, '12:00', '22:00']],
+    shifts: [[0, '22:00', '08:00'], [1, '22:00', '08:00'], [6, '22:00', '03:00']],
   },
   {
+    // Shift cells were mostly illegible/marked over in the photo — seeded with no
+    // shifts rather than guessing. Roster entry only; needs re-checking against the
+    // physical posting.
     first: 'Garret', last: 'L.', tag: 'GL-40', deptRole: 'member', title: '', hours: 40,
-    shifts: [[0, '12:00', '22:00'], [1, '12:00', '22:00'], [5, '12:00', '22:00'], [6, '12:00', '22:00']],
+    shifts: [],
   },
   {
     first: 'Tate', last: 'T.', tag: 'TT-30', deptRole: 'member', title: '', hours: 30,
-    shifts: [[3, '14:00', '21:00'], [4, '14:00', '21:00'], [5, '14:00', '21:00'], [6, '14:00', '21:00']],
+    shifts: [[4, '14:00', '21:00'], [5, '14:00', '21:00'], [6, '14:00', '21:00']],
   },
   {
     first: 'Jake', last: 'R.', tag: 'JR-32', deptRole: 'member', title: '', hours: 32,
-    shifts: [[0, '05:00', '15:00'], [1, '05:00', '15:00'], [6, '05:00', '15:00']],
+    shifts: [[0, '05:00', '15:00'], [4, '05:00', '15:00']],
   },
   {
     first: 'John', last: 'H.', tag: 'JH-40', deptRole: 'member', title: '', hours: 40,
-    shifts: [[2, '10:00', '20:00'], [3, '10:00', '20:00'], [4, '10:00', '20:00'], [5, '08:00', '18:00']],
+    shifts: [[0, '10:00', '20:00'], [1, '10:00', '20:00']],
   },
   {
     first: 'Michael', last: 'P.', tag: 'MP-40', deptRole: 'member', title: '', hours: 40,
-    shifts: [[5, '05:00', '15:00'], [6, '05:00', '15:00']],
+    shifts: [[5, '08:00', '18:00'], [6, '05:00', '15:00']],
+  },
+  {
+    // This row's name was entirely blacked out in the photo. Placeholder identity only
+    // — do not treat "Redacted" as a real surname. Needs identification from the
+    // physical posting before this seed is trusted.
+    first: 'Unknown', last: 'Redacted', tag: 'UNKNOWN-REDACTED', deptRole: 'member', title: '(redacted — needs identification)', hours: null,
+    shifts: [[0, '08:00', '18:00'], [1, '11:00', '21:00'], [2, '10:00', '20:00'], [3, '10:00', '20:00']],
   },
 ]
 

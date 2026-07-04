@@ -485,41 +485,6 @@ export type Database = {
           }
         ]
       }
-      department_member: {
-        Row: {
-          id: number
-          department_id: number
-          user_id: number
-          dept_role: 'lead' | 'supervisor' | 'member'
-          title: string
-          target_weekly_hours: number | null
-          display_order: number
-          is_active: boolean
-          created_at: string
-          modified_at: string
-        }
-        Insert: {
-          id?: number
-          department_id: number
-          user_id: number
-          dept_role?: 'lead' | 'supervisor' | 'member'
-          title?: string
-          target_weekly_hours?: number | null
-          display_order?: number
-          is_active?: boolean
-        }
-        Update: Partial<
-          Database['public']['Tables']['department_member']['Insert']
-        >
-        Relationships: [
-          {
-            foreignKeyName: 'department_member_user_id_fkey'
-            columns: ['user_id']
-            referencedRelation: 'users'
-            referencedColumns: ['id']
-          }
-        ]
-      }
       fuel_transaction: {
         Row: {
           id: number
