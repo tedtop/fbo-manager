@@ -1,7 +1,12 @@
 import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 import { ADMIN_STORAGE_STATE, USER_STORAGE_STATE } from './e2e/global-setup'
-import { E2E_BASE_URL, E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_URL } from './e2e/support/env'
+import {
+  E2E_BASE_URL,
+  E2E_SUPABASE_ANON_KEY,
+  E2E_SUPABASE_SERVICE_ROLE_KEY,
+  E2E_SUPABASE_URL,
+} from './e2e/support/env'
 
 /**
  * Full-stack E2E layer: drives the real Next.js app in a real browser against the same
@@ -59,6 +64,9 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
       SUPABASE_URL: E2E_SUPABASE_URL,
       SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
+      // Server-side admin routes (app/api/users/*) need the service-role key — this is
+      // the standard local-CLI demo key, same one the specs' DB-verification client uses.
+      SUPABASE_SERVICE_ROLE_KEY: E2E_SUPABASE_SERVICE_ROLE_KEY,
       NEXT_TELEMETRY_DISABLED: '1',
     },
   },
