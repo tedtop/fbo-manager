@@ -77,9 +77,11 @@ export default function FuelDispatchMonitorPage() {
     toast({ title: 'Fuel order created' })
   }
 
-  const handleUpdate = async (data: TransactionInsert) => {
+  // expectedModifiedAt must flow through to the repo's compare-and-swap guard —
+  // dropping it here silently disables conflict detection (docs/edit-concurrency.md).
+  const handleUpdate = async (data: TransactionInsert, expectedModifiedAt?: string) => {
     if (!editTx) return
-    await updateTransaction(editTx.id, data)
+    await updateTransaction(editTx.id, data, expectedModifiedAt)
     toast({ title: 'Fuel order updated' })
     setEditTx(null)
   }
@@ -94,14 +96,25 @@ export default function FuelDispatchMonitorPage() {
     toast({ title: `Order ${progress === 'completed' ? 'completed' : progress === 'in_progress' ? 'started' : 'updated'}` })
   }
 
+  // The assign dialog renders from the assignTx snapshot, so after a write the list
+  // must be refetched and the snapshot rebound — otherwise the dialog never reflects
+  // the new assignment and the card list stays stale until a full reload.
+  const refreshAssignTx = async (txId: number) => {
+    const { data } = await txRefetch()
+    const fresh = data?.find((t) => t.id === txId)
+    if (fresh) setAssignTx(fresh)
+  }
+
   const handleAssign = async (fuelerId: number) => {
     if (!assignTx) return
     await assignFueler(db, assignTx.id, fuelerId)
+    await refreshAssignTx(assignTx.id)
   }
 
   const handleRemoveAssign = async (fuelerId: number) => {
     if (!assignTx) return
     await removeFueler(db, assignTx.id, fuelerId)
+    await refreshAssignTx(assignTx.id)
   }
 
   const openCreate = () => {

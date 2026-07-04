@@ -136,6 +136,7 @@ export function FuelOrderCard({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Edit order"
             onClick={() => onEdit(transaction)}
             className="h-6 text-xs"
           >
@@ -144,6 +145,7 @@ export function FuelOrderCard({
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Delete order"
             onClick={() => onDelete(transaction.id)}
             className="h-6 text-xs text-destructive hover:bg-destructive/10"
           >
