@@ -2,14 +2,17 @@
 
 import { createClient } from '@/lib/supabase/client'
 import {
+  type EquipmentInsert,
+  type EquipmentUpdate,
   createEquipment,
   deleteEquipment,
   findAllEquipment,
-  updateEquipment,
-  type EquipmentInsert,
-  type EquipmentUpdate
+  updateEquipment
 } from '@/repositories/equipment.repo'
-import { toEquipmentDomain, type EquipmentDomain } from '@/types/domain/equipment'
+import {
+  type EquipmentDomain,
+  toEquipmentDomain
+} from '@/types/domain/equipment'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export const equipmentKeys = {
@@ -35,13 +38,21 @@ export function useEquipment() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: number; updates: EquipmentUpdate }) =>
-      updateEquipment(db, id, updates),
+    mutationFn: ({
+      id,
+      updates,
+      expectedModifiedAt
+    }: {
+      id: number
+      updates: EquipmentUpdate
+      expectedModifiedAt?: string
+    }) => updateEquipment(db, id, updates, expectedModifiedAt),
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey: equipmentKeys.lists() })
       const prev = qc.getQueryData<EquipmentDomain[]>(equipmentKeys.lists())
-      qc.setQueryData<EquipmentDomain[]>(equipmentKeys.lists(), old =>
-        old?.map(e => e.id === id ? { ...e, ...updates } : e) ?? []
+      qc.setQueryData<EquipmentDomain[]>(
+        equipmentKeys.lists(),
+        (old) => old?.map((e) => (e.id === id ? { ...e, ...updates } : e)) ?? []
       )
       return { prev }
     },
@@ -57,12 +68,16 @@ export function useEquipment() {
   })
 
   return {
-    equipment: query.data ?? [] as EquipmentDomain[],
+    equipment: query.data ?? ([] as EquipmentDomain[]),
     loading: query.isLoading,
     error: query.error,
-    createEquipment: (equipment: EquipmentInsert) => createMutation.mutateAsync(equipment),
-    updateEquipment: (id: number, updates: EquipmentUpdate) =>
-      updateMutation.mutateAsync({ id, updates }),
+    createEquipment: (equipment: EquipmentInsert) =>
+      createMutation.mutateAsync(equipment),
+    updateEquipment: (
+      id: number,
+      updates: EquipmentUpdate,
+      expectedModifiedAt?: string
+    ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
     deleteEquipment: (id: number) => deleteMutation.mutateAsync(id),
     refetch: query.refetch
   }

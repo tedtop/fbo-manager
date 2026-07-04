@@ -2,11 +2,13 @@
 
 import { Button } from '@/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import { useFuelers } from '@/hooks/use-fuelers'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
@@ -40,29 +42,41 @@ export function FuelerAssignDialog({
         await onAssign(fuelerId)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update assignment')
+      setError(
+        err instanceof Error ? err.message : 'Failed to update assignment'
+      )
     } finally {
       setSaving(null)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Assign Fuelers</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+      >
+        <SheetHeader className="border-b border-border p-4">
+          <SheetTitle>Assign Fuelers</SheetTitle>
+          <SheetDescription>
+            Tap a fueler to add or remove them from this transaction.
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-2">
+        <div className="flex-1 space-y-2 overflow-y-auto p-4">
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
           {loading ? (
-            <div className="text-sm text-muted-foreground">Loading fuelers...</div>
+            <div className="text-sm text-muted-foreground">
+              Loading fuelers...
+            </div>
           ) : fuelers.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No active fuelers found.</div>
+            <div className="text-sm text-muted-foreground">
+              No active fuelers found.
+            </div>
           ) : (
             fuelers.map((fueler) => {
               const isAssigned = assignedFuelerIds.includes(fueler.id)
@@ -79,12 +93,14 @@ export function FuelerAssignDialog({
                   )}
                 >
                   <span className="font-medium">{fueler.fueler_name}</span>
-                  <span className={cn(
-                    'text-xs px-2 py-0.5 rounded-full',
-                    isAssigned
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  )}>
+                  <span
+                    className={cn(
+                      'text-xs px-2 py-0.5 rounded-full',
+                      isAssigned
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    )}
+                  >
                     {isAssigned ? 'Assigned' : 'Add'}
                   </span>
                 </button>
@@ -93,12 +109,16 @@ export function FuelerAssignDialog({
           )}
         </div>
 
-        <div className="flex justify-end pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <SheetFooter className="border-t border-border p-4 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
             Done
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

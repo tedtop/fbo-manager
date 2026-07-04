@@ -1,19 +1,8 @@
 services:
-  # db service removed - using Supabase instead
-  testdb:
-    image: postgres:15-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: testpass
-      POSTGRES_USER: testuser
-      POSTGRES_DB: api
-    ports:
-      - "5433:5432"
-    volumes:
-      - testdb_data:/var/lib/postgresql/data
-    # Used only for local isolated test runs: `LOCAL_TEST_DB=1`
+  # No app-level db service - the frontend talks to Supabase directly (local Supabase
+  # CLI stack for dev/test, hosted Supabase project for prod). See frontend/tests/README.md.
   web:
-    command: bash -c "pnpm install -r && pnpm --filter web dev"
+    command: bash -c "pnpm install && pnpm dev"
     build:
       context: frontend
     volumes:
@@ -23,9 +12,6 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - ./frontend/apps/web/.env.local
+      - ./frontend/.env.local
     environment:
       - CI=true
-
-volumes:
-  testdb_data:
