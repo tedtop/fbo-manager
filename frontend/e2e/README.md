@@ -46,8 +46,8 @@ the whole suite:
 
 1. `e2e/support/seed.ts` creates those two accounts via the Supabase Admin API against the
    local stack (idempotent — safe to run against an already-seeded stack) and grants them
-   roles from `frontend/scripts/user-management-schema.sql` (Administrator / Line Technician),
-   which is applied as `supabase/migrations/20260703000200_user_management_schema.sql`.
+   roles (Administrator / Line Technician) seeded by
+   `supabase/migrations/20260703000200_user_management_schema.sql`.
 2. For each account, launches a real browser, clicks the real dev-login button (a real
    `supabase.auth.signInWithPassword` call, real cookies), and saves the session to
    `e2e/.auth/{admin,user}.json` (gitignored).

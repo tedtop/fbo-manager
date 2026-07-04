@@ -55,21 +55,26 @@ project has since fully decoupled from Django — see the no-Django convention f
 below.)
 
 Before this feature, `modified_at` was **not** being updated by frontend writes at all.
-`frontend/scripts/modified-at-triggers.sql` adds a `BEFORE UPDATE` Postgres trigger
-(`set_modified_at()`) on `fuel_tank` and `fuel_transaction` so `modified_at` updates at the
-database level regardless of write path. It also registers both tables with the
-`supabase_realtime` publication so `postgres_changes` events actually fire for them. Run it
-directly against the live Supabase DB (`psql` or the Supabase SQL Editor) — like every other
-schema change in this project, it's a plain SQL script, not a Django migration.
+`frontend/supabase/migrations/20260703000300_modified_at_triggers.sql` adds a `BEFORE UPDATE`
+Postgres trigger (`set_modified_at()`) on `fuel_tank` and `fuel_transaction` so `modified_at`
+updates at the database level regardless of write path. It also registers both tables with the
+`supabase_realtime` publication so `postgres_changes` events actually fire for them. Schema for
+this project lives entirely in `frontend/supabase/migrations/` — applied locally via
+`pnpm supabase:reset` and to staging/prod via `supabase db push`; there is no separate manual-SQL
+step for schema changes.
 
 **If you adopt this pattern for another table, check first whether that table has a comparable
-trigger.** As of this writing, no other table has one — `modified_at`/`created_at` fields
-elsewhere (equipment, training, invoicing, user management, etc.) have the same silent-gap risk if
-they're written to directly via Supabase without a trigger. Add a trigger for your table using the
-existing `set_modified_at()` function (it's generic — a two-line
-`CREATE TRIGGER ... EXECUTE FUNCTION set_modified_at();` in a new `frontend/scripts/*.sql` file,
-not a new pattern), and add the table to `supabase_realtime` the same way, before wiring up the
-hook. Don't assume a trigger exists just because one table has it.
+trigger.** As of this writing, `fuel_tank`, `fuel_transaction`, and `equipment` have one (folded
+into `frontend/supabase/migrations/20260703000300_modified_at_triggers.sql`, except for
+`equipment`'s, which still only exists as the standalone
+`frontend/scripts/equipment-modified-at-trigger.sql` — a leftover from before schema management
+moved to migrations; it should get folded into a migration too as a follow-up). Other tables'
+`modified_at`/`created_at` fields (training, invoicing, user management, etc.) have the same
+silent-gap risk if they're written to directly via Supabase without a trigger. Add a trigger for
+your table using the existing `set_modified_at()` function (it's generic — a two-line
+`CREATE TRIGGER ... EXECUTE FUNCTION set_modified_at();` in a new migration under
+`frontend/supabase/migrations/`), and add the table to `supabase_realtime` the same way, before
+wiring up the hook. Don't assume a trigger exists just because one table has it.
 
 ## Using the hook
 
@@ -106,7 +111,12 @@ an `.eq('modified_at', expectedModifiedAt)` guard, throwing `ConcurrencyConflict
 
 - `frontend/components/fuel-farm/tank-form-dialog.tsx` / `frontend/app/fuel-farm/page.tsx`
 - `frontend/components/fuel-dispatch/transaction-form-dialog.tsx` / `frontend/app/dispatch/page.tsx`
+- `frontend/components/equipment/equipment-form-dialog.tsx` / `frontend/app/equipment/page.tsx`
 
-This pass intentionally only wires up these two modules. Roll the pattern out to other
+This pass intentionally only wires up these three modules so far. Roll the pattern out to other
 `Sheet`/`Dialog` edit forms incrementally, checking the `modified_at` trigger situation for each
-table first.
+table first. Note the equipment status board's single-tap quick status change
+(`handleStatusChange` in `app/equipment/page.tsx`) intentionally does **not** go through
+`useRecordEditSession` — it's a one-field, momentary action outside the edit Sheet, and forcing
+the full compare-and-swap flow there would be worse UX for negligible benefit. Only the full edit
+form gets the guard.

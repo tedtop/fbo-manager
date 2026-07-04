@@ -1,17 +1,17 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import type { InvoiceWithItems, SettledVia } from '@/repositories/invoices.repo'
 import { Banknote, CreditCard, FileCheck, Landmark } from 'lucide-react'
 import { useState } from 'react'
@@ -62,11 +62,14 @@ export function SettleInvoiceDialog({
   const [reference, setReference] = useState('')
 
   return (
-    <Dialog open={invoice != null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Settle account invoice</DialogTitle>
-          <DialogDescription>
+    <Sheet open={invoice != null} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+      >
+        <SheetHeader className="border-b border-border p-4">
+          <SheetTitle>Settle account invoice</SheetTitle>
+          <SheetDescription>
             {invoice && (
               <>
                 Ticket #{invoice.invoice_number} · {invoice.customer_name} ·{' '}
@@ -79,57 +82,64 @@ export function SettleInvoiceDialog({
                   : ''}
               </>
             )}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <RadioGroup
-          value={settledVia}
-          onValueChange={(v) => setSettledVia(v as SettledVia)}
-          className="gap-2"
-        >
-          {OPTIONS.map((option) => (
-            <Label
-              key={option.value}
-              htmlFor={`settle-${option.value}`}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-accent has-[:checked]:border-primary"
-            >
-              <RadioGroupItem
-                value={option.value}
-                id={`settle-${option.value}`}
-              />
-              {option.icon}
-              <span className="font-medium">{option.label}</span>
-            </Label>
-          ))}
-        </RadioGroup>
-
-        <div className="space-y-1">
-          <Label
-            htmlFor="settle-reference"
-            className="text-xs text-muted-foreground"
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          <RadioGroup
+            value={settledVia}
+            onValueChange={(v) => setSettledVia(v as SettledVia)}
+            className="gap-2"
           >
-            Reference (check #, confirmation, etc.)
-          </Label>
-          <Input
-            id="settle-reference"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            placeholder="Optional"
-          />
+            {OPTIONS.map((option) => (
+              <Label
+                key={option.value}
+                htmlFor={`settle-${option.value}`}
+                className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-accent has-[:checked]:border-primary"
+              >
+                <RadioGroupItem
+                  value={option.value}
+                  id={`settle-${option.value}`}
+                />
+                {option.icon}
+                <span className="font-medium">{option.label}</span>
+              </Label>
+            ))}
+          </RadioGroup>
+
+          <div className="space-y-1">
+            <Label
+              htmlFor="settle-reference"
+              className="text-xs text-muted-foreground"
+            >
+              Reference (check #, confirmation, etc.)
+            </Label>
+            <Input
+              id="settle-reference"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Optional"
+            />
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <SheetFooter className="flex-col gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
           <Button
             disabled={settling}
             onClick={() => onConfirm(settledVia, reference.trim() || null)}
+            className="w-full sm:w-auto"
           >
             {settling ? 'Recording…' : 'Confirm settlement'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

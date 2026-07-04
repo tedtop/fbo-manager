@@ -2,15 +2,8 @@
 
 import type React from 'react'
 
-import { useAircraft } from '@/hooks/use-aircraft'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -20,7 +13,16 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { useAircraft } from '@/hooks/use-aircraft'
 import { useEffect, useState } from 'react'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import type { Flight } from './types'
@@ -167,7 +169,8 @@ export function FlightFormDialog({
     // Ensure aircraft exists or update it
     if (formData.tailNumber) {
       const existingAircraft = aircraft.find(
-        (a) => a.tail_number.toLowerCase() === formData.tailNumber!.toLowerCase()
+        (a) =>
+          a.tail_number.toLowerCase() === formData.tailNumber!.toLowerCase()
       )
 
       try {
@@ -236,297 +239,284 @@ export function FlightFormDialog({
   ]
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-card-foreground">
-        <DialogHeader>
-          <DialogTitle className="text-card-foreground">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+      >
+        <SheetHeader className="border-b border-border p-4">
+          <SheetTitle>
             {initialData ? 'Edit Flight' : 'Add New Flight'}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="tailNumber" className="text-card-foreground">
-                Tail Number *
-              </Label>
-              <TailNumberAutocomplete
-                value={formData.tailNumber || ''}
-                onChange={handleTailNumberChange}
-                aircraft={aircraft}
-                onCreateNew={handleCreateNewAircraft}
-                disabled={aircraftLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Start typing to search existing aircraft or create new
-              </p>
-            </div>
+          </SheetTitle>
+          <SheetDescription>
+            {initialData
+              ? 'Update this flight’s details.'
+              : 'Log a new arrival, departure, or quick turn.'}
+          </SheetDescription>
+        </SheetHeader>
 
-            <div className="space-y-2">
-              <Label htmlFor="aircraftType" className="text-card-foreground">
-                Aircraft Type *
-              </Label>
-              <Input
-                id="aircraftType"
-                value={formData.aircraftType || ''}
-                onChange={(e) => handleAircraftTypeChange(e.target.value)}
-                onFocus={() => setIsEditingAircraftType(true)}
-                required
-                className="bg-background border-border text-foreground"
-                placeholder="e.g., Boeing 737, Citation X"
-              />
-              {isEditingAircraftType && formData.tailNumber && (
-                <p className="text-xs text-blue-500">
-                  ✓ This will update the aircraft type for {formData.tailNumber}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tailNumber">Tail Number *</Label>
+                <TailNumberAutocomplete
+                  value={formData.tailNumber || ''}
+                  onChange={handleTailNumberChange}
+                  aircraft={aircraft}
+                  onCreateNew={handleCreateNewAircraft}
+                  disabled={aircraftLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Start typing to search existing aircraft or create new
                 </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="type" className="text-card-foreground">
-                Type *
-              </Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, type: value as any })
-                }
-              >
-                <SelectTrigger className="bg-background border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background border-border text-foreground">
-                  <SelectItem value="arrival">Arrival</SelectItem>
-                  <SelectItem value="departure">Departure</SelectItem>
-                  <SelectItem value="quick_turn">Quick Turn</SelectItem>
-                  <SelectItem value="overnight">Overnight</SelectItem>
-                  <SelectItem value="long_term">Long Term</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status" className="text-card-foreground">
-                Status *
-              </Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, status: value as any })
-                }
-              >
-                <SelectTrigger className="bg-background border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background border-border text-foreground">
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="en-route">En Route</SelectItem>
-                  <SelectItem value="arrived">Arrived</SelectItem>
-                  <SelectItem value="departed">Departed</SelectItem>
-                  <SelectItem value="delayed">Delayed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="date" className="text-card-foreground">
-              Date *
-            </Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="bg-background border-border text-foreground"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-card-foreground">Ground Time (24hr) *</Label>
-            <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="arrivalTime"
-                    className="text-sm text-muted-foreground flex items-center gap-2"
-                  >
-                    <span className="inline-block w-2 h-2 rounded-full bg-success"></span>
-                    Arrival Time
-                  </Label>
-                  <Input
-                    id="arrivalTime"
-                    type="time"
-                    value={arrivalTime}
-                    onChange={(e) => setArrivalTime(e.target.value)}
-                    disabled={formData.type === 'departure'}
-                    required={
-                      formData.type === 'arrival' ||
-                      formData.type === 'quick_turn' ||
-                      formData.type === 'overnight' ||
-                      formData.type === 'long_term'
-                    }
-                    className="bg-background border-border text-foreground disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="departureTime"
-                    className="text-sm text-muted-foreground flex items-center gap-2"
-                  >
-                    <span className="inline-block w-2 h-2 rounded-full bg-accent"></span>
-                    Departure Time
-                  </Label>
-                  <Input
-                    id="departureTime"
-                    type="time"
-                    value={departureTime}
-                    onChange={(e) => setDepartureTime(e.target.value)}
-                    disabled={formData.type === 'arrival'}
-                    required={
-                      formData.type === 'departure' ||
-                      formData.type === 'quick_turn' ||
-                      formData.type === 'overnight' ||
-                      formData.type === 'long_term'
-                    }
-                    className="bg-background border-border text-foreground disabled:opacity-50"
-                  />
-                </div>
               </div>
 
-              {arrivalTime && departureTime && (
-                <div className="text-sm text-muted-foreground text-center pt-2 border-t border-border">
-                  Ground time: {calculateGroundTime(arrivalTime, departureTime)}
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="aircraftType">Aircraft Type *</Label>
+                <Input
+                  id="aircraftType"
+                  value={formData.aircraftType || ''}
+                  onChange={(e) => handleAircraftTypeChange(e.target.value)}
+                  onFocus={() => setIsEditingAircraftType(true)}
+                  required
+                  placeholder="e.g., Boeing 737, Citation X"
+                />
+                {isEditingAircraftType && formData.tailNumber && (
+                  <p className="text-xs text-blue-500">
+                    ✓ This will update the aircraft type for{' '}
+                    {formData.tailNumber}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="type">Type *</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, type: value as any })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="arrival">Arrival</SelectItem>
+                    <SelectItem value="departure">Departure</SelectItem>
+                    <SelectItem value="quick_turn">Quick Turn</SelectItem>
+                    <SelectItem value="overnight">Overnight</SelectItem>
+                    <SelectItem value="long_term">Long Term</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status *</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, status: value as any })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="en-route">En Route</SelectItem>
+                    <SelectItem value="arrived">Arrived</SelectItem>
+                    <SelectItem value="departed">Departed</SelectItem>
+                    <SelectItem value="delayed">Delayed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="origin" className="text-card-foreground">
-                Origin
-              </Label>
+              <Label htmlFor="date">Date *</Label>
               <Input
-                id="origin"
-                value={formData.origin || ''}
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label>Ground Time (24hr) *</Label>
+              <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="arrivalTime"
+                      className="text-sm text-muted-foreground flex items-center gap-2"
+                    >
+                      <span className="inline-block w-2 h-2 rounded-full bg-success"></span>
+                      Arrival Time
+                    </Label>
+                    <Input
+                      id="arrivalTime"
+                      type="time"
+                      value={arrivalTime}
+                      onChange={(e) => setArrivalTime(e.target.value)}
+                      disabled={formData.type === 'departure'}
+                      required={
+                        formData.type === 'arrival' ||
+                        formData.type === 'quick_turn' ||
+                        formData.type === 'overnight' ||
+                        formData.type === 'long_term'
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="departureTime"
+                      className="text-sm text-muted-foreground flex items-center gap-2"
+                    >
+                      <span className="inline-block w-2 h-2 rounded-full bg-accent"></span>
+                      Departure Time
+                    </Label>
+                    <Input
+                      id="departureTime"
+                      type="time"
+                      value={departureTime}
+                      onChange={(e) => setDepartureTime(e.target.value)}
+                      disabled={formData.type === 'arrival'}
+                      required={
+                        formData.type === 'departure' ||
+                        formData.type === 'quick_turn' ||
+                        formData.type === 'overnight' ||
+                        formData.type === 'long_term'
+                      }
+                    />
+                  </div>
+                </div>
+
+                {arrivalTime && departureTime && (
+                  <div className="text-sm text-muted-foreground text-center pt-2 border-t border-border">
+                    Ground time:{' '}
+                    {calculateGroundTime(arrivalTime, departureTime)}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="origin">Origin</Label>
+                <Input
+                  id="origin"
+                  value={formData.origin || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, origin: e.target.value })
+                  }
+                  placeholder="ICAO code"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="destination">Destination</Label>
+                <Input
+                  id="destination"
+                  value={formData.destination || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, destination: e.target.value })
+                  }
+                  placeholder="ICAO code"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contactName">Contact Name</Label>
+              <Input
+                id="contactName"
+                value={formData.contactName || ''}
                 onChange={(e) =>
-                  setFormData({ ...formData, origin: e.target.value })
+                  setFormData({ ...formData, contactName: e.target.value })
                 }
-                placeholder="ICAO code"
-                className="bg-background border-border text-foreground"
+                placeholder="Pilot or contact person"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="destination" className="text-card-foreground">
-                Destination
-              </Label>
-              <Input
-                id="destination"
-                value={formData.destination || ''}
+              <Label htmlFor="contactNotes">Contact Notes</Label>
+              <Textarea
+                id="contactNotes"
+                value={formData.contactNotes || ''}
                 onChange={(e) =>
-                  setFormData({ ...formData, destination: e.target.value })
+                  setFormData({ ...formData, contactNotes: e.target.value })
                 }
-                placeholder="ICAO code"
-                className="bg-background border-border text-foreground"
+                rows={2}
+                placeholder="Additional contact information or notes"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Services</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {services.map((service) => (
+                  <div key={service} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={service}
+                      checked={formData.services?.includes(service)}
+                      onCheckedChange={(checked) => {
+                        const newServices = checked
+                          ? [...(formData.services || []), service]
+                          : (formData.services || []).filter(
+                              (s) => s !== service
+                            )
+                        setFormData({ ...formData, services: newServices })
+                      }}
+                    />
+                    <label
+                      htmlFor={service}
+                      className="text-sm capitalize cursor-pointer"
+                    >
+                      {service.replace('_', ' ')}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes || ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+                rows={3}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="contactName" className="text-card-foreground">
-              Contact Name
-            </Label>
-            <Input
-              id="contactName"
-              value={formData.contactName || ''}
-              onChange={(e) =>
-                setFormData({ ...formData, contactName: e.target.value })
-              }
-              className="bg-background border-border text-foreground"
-              placeholder="Pilot or contact person"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contactNotes" className="text-card-foreground">
-              Contact Notes
-            </Label>
-            <Textarea
-              id="contactNotes"
-              value={formData.contactNotes || ''}
-              onChange={(e) =>
-                setFormData({ ...formData, contactNotes: e.target.value })
-              }
-              rows={2}
-              className="bg-background border-border text-foreground"
-              placeholder="Additional contact information or notes"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-card-foreground">Services</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {services.map((service) => (
-                <div key={service} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={service}
-                    checked={formData.services?.includes(service)}
-                    onCheckedChange={(checked) => {
-                      const newServices = checked
-                        ? [...(formData.services || []), service]
-                        : (formData.services || []).filter((s) => s !== service)
-                      setFormData({ ...formData, services: newServices })
-                    }}
-                  />
-                  <label
-                    htmlFor={service}
-                    className={`text-sm capitalize cursor-pointer text-card-foreground`}
-                  >
-                    {service.replace('_', ' ')}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-card-foreground">
-              Notes
-            </Label>
-            <Textarea
-              id="notes"
-              value={formData.notes || ''}
-              onChange={(e) =>
-                setFormData({ ...formData, notes: e.target.value })
-              }
-              rows={3}
-              className="bg-background border-border text-foreground"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
+          <SheetFooter className="flex-col gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
+            <Button type="submit" className="w-full sm:w-auto">
               {initialData ? 'Update Flight' : 'Add Flight'}
             </Button>
-          </div>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
