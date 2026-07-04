@@ -3,8 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Invoicing-side access to the truck-sheets tables (truck_sheets,
- * truck_meter_readings — owned by the Truck Sheets module, see
- * scripts/truck-sheets-schema.sql).
+ * truck_meter_readings — owned by the Truck Sheets module, defined in
+ * frontend/supabase/migrations/20260703000000_test_schema.sql).
  *
  * A truck_meter_readings row IS the fueling event. The OCR import creates
  * these from photographed sheets; digital ticket entry creates them here.
