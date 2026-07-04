@@ -696,6 +696,46 @@ export type Database = {
           }
         ]
       }
+      time_card_scan: {
+        Row: {
+          id: number
+          department_member_id: number | null
+          pay_period_start: string | null
+          pay_period_end: string | null
+          storage_bucket: string
+          storage_path: string
+          original_filename: string
+          content_type: string
+          byte_size: number | null
+          page_number: number | null
+          uploaded_by: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          department_member_id?: number | null
+          pay_period_start?: string | null
+          pay_period_end?: string | null
+          storage_bucket?: string
+          storage_path: string
+          original_filename: string
+          content_type: string
+          byte_size?: number | null
+          page_number?: number | null
+          uploaded_by?: string | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['time_card_scan']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'time_card_scan_department_member_id_fkey'
+            columns: ['department_member_id']
+            referencedRelation: 'department_member'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       customer: {
         Row: {
           id: number

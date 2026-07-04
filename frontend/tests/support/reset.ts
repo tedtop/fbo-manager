@@ -14,6 +14,7 @@ const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string
   { table: 'invoice', pk: 'id' },
   { table: 'product', pk: 'id' },
   { table: 'customer', pk: 'id' },
+  { table: 'time_card_scan', pk: 'id' },
   { table: 'schedule_shift', pk: 'id' },
   { table: 'department_member', pk: 'id' },
   { table: 'department', pk: 'id' },
