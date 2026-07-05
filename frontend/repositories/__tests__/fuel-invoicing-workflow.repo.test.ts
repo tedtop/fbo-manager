@@ -41,7 +41,7 @@ beforeEach(async () => {
   await resetDatabase(db)
 })
 
-const TODAY = '2026-07-03'
+const TODAY = new Date().toISOString().slice(0, 10)
 
 async function makeSheetWithReading(
   overrides: Partial<Parameters<typeof createTruckMeterReadings>[1][number]> = {}
