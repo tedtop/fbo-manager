@@ -30,6 +30,13 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
+  // The theme class must live on <html>, not just <main>: Sheet/Dialog/dropdown content
+  // portals to document.body, so anything scoped below <main> never reaches it and
+  // portaled panels would render light-themed in dark mode.
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
+
   // Save theme to localStorage when it changes
   const handleThemeChange = (newTheme: 'dark' | 'light') => {
     // Use View Transitions API for smooth theme change if available

@@ -216,8 +216,9 @@ export function TankFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Min Level (inches) *</Label>
+                <Label htmlFor="min_level_inches">Min Level (inches) *</Label>
                 <Input
+                  id="min_level_inches"
                   type="number"
                   step="0.01"
                   value={formData.min_level_inches as string}
@@ -232,8 +233,9 @@ export function TankFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Max Level (inches) *</Label>
+                <Label htmlFor="max_level_inches">Max Level (inches) *</Label>
                 <Input
+                  id="max_level_inches"
                   type="number"
                   step="0.01"
                   value={formData.max_level_inches as string}
@@ -251,8 +253,9 @@ export function TankFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Usable Min (inches) *</Label>
+                <Label htmlFor="usable_min_inches">Usable Min (inches) *</Label>
                 <Input
+                  id="usable_min_inches"
                   type="number"
                   step="0.01"
                   value={formData.usable_min_inches as string}
@@ -267,8 +270,9 @@ export function TankFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Usable Max (inches) *</Label>
+                <Label htmlFor="usable_max_inches">Usable Max (inches) *</Label>
                 <Input
+                  id="usable_max_inches"
                   type="number"
                   step="0.01"
                   value={formData.usable_max_inches as string}

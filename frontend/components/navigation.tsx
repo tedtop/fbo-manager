@@ -77,6 +77,7 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Toggle theme"
                 onClick={() =>
                   onThemeChange(theme === 'dark' ? 'light' : 'dark')
                 }

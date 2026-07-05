@@ -7,11 +7,13 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { inchesToGallons } from '@/lib/gallons-tables'
+import { Pencil } from 'lucide-react'
 import { useState } from 'react'
 
 interface TankVisualCardProps {
   tank: TankWithLatestReading
   onUpdateLevel: (tankId: string, level: number) => Promise<void>
+  onEdit?: (tank: TankWithLatestReading) => void
   onFocusInput?: () => void
   onBlurInput?: () => void
 }
@@ -91,7 +93,7 @@ function useTankCardState(tank: TankWithLatestReading, onUpdateLevel: TankVisual
   }
 }
 
-export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput }: TankVisualCardProps) {
+export function TankVisualCard({ tank, onUpdateLevel, onEdit, onFocusInput, onBlurInput }: TankVisualCardProps) {
   const s = useTankCardState(tank, onUpdateLevel)
 
   return (
@@ -174,13 +176,24 @@ export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput 
           <div className="text-xs text-muted-foreground">
             Updated: {s.formatLastUpdated(tank.latest_reading?.recorded_at)}
           </div>
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(tank)}
+              className="h-6 w-full text-xs text-muted-foreground"
+            >
+              <Pencil className="w-3 h-3 mr-1" />
+              Edit
+            </Button>
+          )}
         </div>
       </div>
     </Card>
   )
 }
 
-export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurInput }: TankVisualCardProps) {
+export function HorizontalTankCard({ tank, onUpdateLevel, onEdit, onFocusInput, onBlurInput }: TankVisualCardProps) {
   const s = useTankCardState(tank, onUpdateLevel)
 
   return (
@@ -262,6 +275,17 @@ export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurIn
           <div className="text-xs text-muted-foreground ml-auto">
             Updated: {s.formatLastUpdated(tank.latest_reading?.recorded_at)}
           </div>
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(tank)}
+              className="h-6 text-xs text-muted-foreground"
+            >
+              <Pencil className="w-3 h-3 mr-1" />
+              Edit
+            </Button>
+          )}
         </div>
       </div>
     </Card>

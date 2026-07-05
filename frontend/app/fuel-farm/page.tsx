@@ -187,7 +187,12 @@ export default function FuelFarmPage() {
       {standardTanks.length > 0 && (
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           {standardTanks.map((tank) => (
-            <TankVisualCard key={tank.tank_id} tank={tank} onUpdateLevel={handleUpdateLevel} />
+            <TankVisualCard
+              key={tank.tank_id}
+              tank={tank}
+              onUpdateLevel={handleUpdateLevel}
+              onEdit={handleEditTank}
+            />
           ))}
         </div>
       )}
@@ -204,7 +209,12 @@ export default function FuelFarmPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {specialTanks.map((tank) => (
-              <HorizontalTankCard key={tank.tank_id} tank={tank} onUpdateLevel={handleUpdateLevel} />
+              <HorizontalTankCard
+                key={tank.tank_id}
+                tank={tank}
+                onUpdateLevel={handleUpdateLevel}
+                onEdit={handleEditTank}
+              />
             ))}
           </div>
         </div>

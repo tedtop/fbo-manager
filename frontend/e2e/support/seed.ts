@@ -53,5 +53,35 @@ export async function seedDevUsers(): Promise<void> {
       .from('user_roles')
       .upsert({ user_id: userId, role_id: roleRow.id }, { onConflict: 'user_id,role_id' })
     if (grantError) throw new Error(`seedDevUsers: failed to grant ${role} to ${email}: ${grantError.message}`)
+
+    // The legacy Django-era `users` table is still the FK target for operational rows
+    // (flight.created_by_id, fueler assignments, training records, …), and the app
+    // resolves the signed-in account to it by email (hooks/use-current-user.ts) — so
+    // each dev account needs a matching row there too. `email` has no unique
+    // constraint, so select-then-insert rather than upsert.
+    const legacyRole = role === 'Administrator' ? 'admin' : 'line'
+    const { data: existingLegacy, error: legacyLookupError } = await admin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+    if (legacyLookupError) {
+      throw new Error(`seedDevUsers: legacy users lookup failed for ${email}: ${legacyLookupError.message}`)
+    }
+    if (!existingLegacy) {
+      const { error: legacyInsertError } = await admin.from('users').insert({
+        username: email.split('@')[0],
+        email,
+        first_name: legacyRole === 'admin' ? 'Dev' : 'Line',
+        last_name: legacyRole === 'admin' ? 'Admin' : 'Tech',
+        role: legacyRole,
+        password: 'supabase-auth-managed',
+        is_staff: legacyRole === 'admin',
+        is_superuser: legacyRole === 'admin',
+      })
+      if (legacyInsertError) {
+        throw new Error(`seedDevUsers: failed to seed legacy users row for ${email}: ${legacyInsertError.message}`)
+      }
+    }
   }
 }

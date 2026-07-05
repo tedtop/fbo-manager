@@ -93,17 +93,24 @@ export default function FlightOperationsPage() {
       await createFlight(flight)
     } catch (err) {
       console.error('Failed to create flight:', err)
+      toast({
+        title: 'Failed to create flight',
+        description: err instanceof Error ? err.message : 'The flight was not saved.',
+        variant: 'destructive'
+      })
     }
   }
 
   const handleEditFlight = async (flight: Flight) => {
-    console.log('handleEditFlight called with:', flight)
     try {
-      console.log('Calling updateFlight API with id:', flight.id)
-      const result = await updateFlight(flight.id, flight)
-      console.log('Update result:', result)
+      await updateFlight(flight.id, flight)
     } catch (err) {
       console.error('Failed to update flight:', err)
+      toast({
+        title: 'Failed to update flight',
+        description: err instanceof Error ? err.message : 'The change was not saved.',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -112,6 +119,11 @@ export default function FlightOperationsPage() {
       await deleteFlight(id)
     } catch (err) {
       console.error('Failed to delete flight:', err)
+      toast({
+        title: 'Failed to delete flight',
+        description: err instanceof Error ? err.message : 'The flight was not removed.',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -128,6 +140,11 @@ export default function FlightOperationsPage() {
       setFuelFlight(null)
     } catch (err) {
       console.error('Failed to create fuel order:', err)
+      toast({
+        title: 'Failed to create fuel order',
+        description: err instanceof Error ? err.message : 'The fuel order was not saved.',
+        variant: 'destructive'
+      })
     }
   }
 
