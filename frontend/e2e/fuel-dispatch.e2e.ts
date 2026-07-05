@@ -5,7 +5,7 @@ import { uniqueValue } from './support/unique'
 
 const db = createE2EDbClient()
 
-async function seedFuelOrder(overrides: { fuel_order_text?: string } = {}) {
+async function seedFuelOrder(overrides: { fuel_request?: string } = {}) {
   const ticket = uniqueValue('E2E-TKT-')
   const { data, error } = await db
     .from('fuel_transaction')
@@ -14,7 +14,7 @@ async function seedFuelOrder(overrides: { fuel_order_text?: string } = {}) {
       progress: 'started',
       source: 'manual',
       tail_number: `N${ticket.slice(-6).toUpperCase()}`,
-      fuel_order_text: overrides.fuel_order_text ?? null,
+      fuel_request: overrides.fuel_request ?? null,
     })
     .select()
     .single()
@@ -56,7 +56,7 @@ test.describe('Fuel dispatch — orders, concurrency, and fueler assignment pers
     })
     expect(row.tail_number).toBe('N100E2E')
     expect(row.fuel_type).toBe('jet_a')
-    expect(row.fuel_order_text).toBe('T/O + 500')
+    expect(row.fuel_request).toBe('T/O + 500')
     expect(Number(row.quantity_gallons)).toBe(500)
     expect(Number(row.quantity_lbs)).toBe(3350)
     // Density is derived client-side; 3350 / 500 = 6.7 must land in the DB too.
@@ -66,7 +66,7 @@ test.describe('Fuel dispatch — orders, concurrency, and fueler assignment pers
   })
 
   test('a concurrent edit is detected on save and Overwrite anyway wins', async ({ page }) => {
-    const seeded = await seedFuelOrder({ fuel_order_text: 'E2E original' })
+    const seeded = await seedFuelOrder({ fuel_request: 'E2E original' })
 
     await gotoFuelOrders(page)
     const card = page.locator('[data-slot="card"]').filter({ hasText: seeded.ticket_number })
@@ -78,7 +78,7 @@ test.describe('Fuel dispatch — orders, concurrency, and fueler assignment pers
     // (docs/edit-concurrency.md).
     const { error: concurrentError } = await db
       .from('fuel_transaction')
-      .update({ fuel_order_text: 'E2E concurrent edit' })
+      .update({ fuel_request: 'E2E concurrent edit' })
       .eq('id', seeded.id)
     if (concurrentError) throw concurrentError
 
@@ -105,7 +105,7 @@ test.describe('Fuel dispatch — orders, concurrency, and fueler assignment pers
     expect(Number(row.quantity_gallons)).toBe(777)
     // Overwrite semantics: our form state (loaded before the concurrent edit) replaces
     // the concurrent value wholesale.
-    expect(row.fuel_order_text).toBe('E2E original')
+    expect(row.fuel_request).toBe('E2E original')
   })
 
   test('assigning a fueler persists the assignment and starts the order', async ({ page }) => {
