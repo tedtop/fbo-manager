@@ -504,7 +504,19 @@ export type Database = {
           fuel_type: 'jet_a' | 'jet_a_plus' | 'avgas' | null
           source: 'qt' | 'flight_card' | 'manual'
           ordered_by_id: number | null
-          fuel_order_text: string | null
+          fuel_request: string | null
+          gallons_requested: string | null
+          gallons_delivered: string | null
+          customer_name: string | null
+          tank_reading_before_left: string | null
+          tank_reading_before_right: string | null
+          tank_reading_before_center: string | null
+          tank_reading_before_total: string | null
+          tank_reading_after_left: string | null
+          tank_reading_after_right: string | null
+          tank_reading_after_center: string | null
+          tank_reading_after_total: string | null
+          tank_reading_unit: 'lbs' | 'gal' | 'kg'
           created_at: string
           modified_at: string
           assigned_fueler_id: number | null
@@ -528,7 +540,19 @@ export type Database = {
           fuel_type?: 'jet_a' | 'jet_a_plus' | 'avgas' | null
           source?: 'qt' | 'flight_card' | 'manual'
           ordered_by_id?: number | null
-          fuel_order_text?: string | null
+          fuel_request?: string | null
+          gallons_requested?: number | string | null
+          gallons_delivered?: number | string | null
+          customer_name?: string | null
+          tank_reading_before_left?: number | string | null
+          tank_reading_before_right?: number | string | null
+          tank_reading_before_center?: number | string | null
+          tank_reading_before_total?: number | string | null
+          tank_reading_after_left?: number | string | null
+          tank_reading_after_right?: number | string | null
+          tank_reading_after_center?: number | string | null
+          tank_reading_after_total?: number | string | null
+          tank_reading_unit?: 'lbs' | 'gal' | 'kg'
         }
         Update: Partial<
           Database['public']['Tables']['fuel_transaction']['Insert']
@@ -895,6 +919,7 @@ export type Database = {
           invoice_number: string | null
           service_time: string | null
           flight_id: number | null
+          fuel_transaction_id: number | null
           notes: string | null
           created_at: string
         }
@@ -918,6 +943,7 @@ export type Database = {
           invoice_number?: string | null
           service_time?: string | null
           flight_id?: number | null
+          fuel_transaction_id?: number | null
           notes?: string | null
         }
         Update: Partial<Database['public']['Tables']['truck_meter_readings']['Insert']>
@@ -927,6 +953,13 @@ export type Database = {
             columns: ['truck_sheet_id']
             isOneToOne: false
             referencedRelation: 'truck_sheets'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'truck_meter_readings_fuel_transaction_id_fkey'
+            columns: ['fuel_transaction_id']
+            isOneToOne: false
+            referencedRelation: 'fuel_transaction'
             referencedColumns: ['id']
           },
         ]
@@ -1069,6 +1102,8 @@ export type Database = {
           salesman_initials: string | null
           total: number
           notes: string | null
+          number_source: 'live' | 'paper_book'
+          accounting_picked_up_at: string | null
           created_at: string
           updated_at: string
         }
@@ -1091,6 +1126,8 @@ export type Database = {
           salesman_initials?: string | null
           total?: number
           notes?: string | null
+          number_source?: 'live' | 'paper_book'
+          accounting_picked_up_at?: string | null
           updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['invoices']['Insert']>
@@ -1119,6 +1156,7 @@ export type Database = {
           item_type: 'fuel' | 'service' | 'fee' | 'product'
           product_id: number | null
           truck_meter_reading_id: number | null
+          fuel_transaction_id: number | null
           description: string
           quantity: number
           unit_price: number
@@ -1136,6 +1174,7 @@ export type Database = {
           item_type?: 'fuel' | 'service' | 'fee' | 'product'
           product_id?: number | null
           truck_meter_reading_id?: number | null
+          fuel_transaction_id?: number | null
           description: string
           quantity?: number
           unit_price?: number
@@ -1168,6 +1207,13 @@ export type Database = {
             referencedRelation: 'truck_meter_readings'
             referencedColumns: ['id']
           },
+          {
+            foreignKeyName: 'invoice_line_items_fuel_transaction_id_fkey'
+            columns: ['fuel_transaction_id']
+            isOneToOne: false
+            referencedRelation: 'fuel_transaction'
+            referencedColumns: ['id']
+          },
         ]
       }
       invoice_fuel_readings: {
@@ -1197,7 +1243,88 @@ export type Database = {
           },
         ]
       }
+      scanned_documents: {
+        Row: {
+          id: number
+          doc_type: 'truck_sheet' | 'invoice_slip'
+          storage_bucket: string
+          storage_path: string
+          original_filename: string
+          content_type: string
+          byte_size: number | null
+          page_number: number | null
+          truck_sheet_id: number | null
+          invoice_id: number | null
+          uploaded_by: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          doc_type: 'truck_sheet' | 'invoice_slip'
+          storage_bucket?: string
+          storage_path: string
+          original_filename: string
+          content_type: string
+          byte_size?: number | null
+          page_number?: number | null
+          truck_sheet_id?: number | null
+          invoice_id?: number | null
+          uploaded_by?: string | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['scanned_documents']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'scanned_documents_truck_sheet_id_fkey'
+            columns: ['truck_sheet_id']
+            isOneToOne: false
+            referencedRelation: 'truck_sheets'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'scanned_documents_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'invoices'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      app_error_log: {
+        Row: {
+          id: number
+          occurred_at: string
+          category: string
+          error_code: string
+          message: string
+          detail: string | null
+          context: Record<string, unknown> | null
+          user_id: string | null
+          source: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          occurred_at?: string
+          category: string
+          error_code: string
+          message: string
+          detail?: string | null
+          context?: Record<string, unknown> | null
+          user_id?: string | null
+          source?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['app_error_log']['Insert']>
+        Relationships: []
+      }
     }
+    // NOTE: the truck_sheet_running_totals view exists in the database (see
+    // scripts/fuel-invoicing-workflow-schema.sql) but is intentionally NOT
+    // declared here yet: adding a non-empty Views map flips supabase-js into
+    // strict schema typing for every existing query and surfaces unrelated
+    // embed-hint errors across the repos. Declare it (as TruckSheetRunningTotalRow
+    // below) when a repo actually queries it.
     Views: Record<string, never>
     Functions: {
       complete_certification: {
@@ -1225,3 +1352,20 @@ export type TablesInsert<T extends keyof Database['public']['Tables']> =
 
 export type TablesUpdate<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Update']
+
+/**
+ * Row shape of the truck_sheet_running_totals view (per-truck running fuel
+ * level derived from the ordered sheet rows, beside the hand-written value).
+ * Kept out of Database['public']['Views'] for now — see the note there.
+ */
+export interface TruckSheetRunningTotalRow {
+  reading_id: number
+  truck_sheet_id: number
+  sheet_date: string
+  truck_number: string
+  line_number: number
+  reading_type: 'fueling' | 'tank_fill' | 'transfer_in' | 'transfer_out' | 'other'
+  gallons_pumped: number | null
+  gallons_remaining_written: number | null
+  gallons_remaining_computed: number | null
+}

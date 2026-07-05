@@ -1,5 +1,4 @@
 -- User Management: profiles, roles, per-module permissions
--- Run this in the Supabase SQL Editor (supabase.com/dashboard -> SQL Editor).
 -- These tables are Supabase-native (not Django-managed).
 --
 -- Data model:
@@ -305,12 +304,8 @@ FROM auth.users u
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
--- 12. Bootstrap: grant the Administrator role to your own account
---     so you're not locked out of /users after running this script.
---     Replace the email below and run manually.
+-- 12. Bootstrap: granting the Administrator role to a specific real
+--     account requires a real email address and is a one-time,
+--     per-environment decision — not something to automate in a
+--     migration. See frontend/scripts/bootstrap-admin-role.sql.
 -- ============================================================
--- INSERT INTO user_roles (user_id, role_id, assigned_by)
--- SELECT p.id, r.id, p.id
--- FROM profiles p, roles r
--- WHERE p.email = 'you@example.com' AND r.name = 'Administrator'
--- ON CONFLICT (user_id, role_id) DO NOTHING;

@@ -95,6 +95,15 @@ describe('invoices.repo', () => {
     expect(Number(invoice.total)).toBe(75)
   })
 
+  it('rejects a second invoice with a duplicate invoice_number', async () => {
+    const input = baseInput({ invoiceNumber: 'DUP-1' })
+    await createInvoice(db, input)
+
+    await expect(createInvoice(db, baseInput({ invoiceNumber: 'DUP-1' }))).rejects.toThrow(
+      /duplicate key value violates unique constraint/i
+    )
+  })
+
   it('on-account payment methods (eom/roa) finalize to status=open, not paid', async () => {
     const input = baseInput({ paymentMethod: 'eom' })
     const invoice = await createInvoice(db, input)

@@ -2,6 +2,7 @@ import {
   type PositionReading,
   lineAmount
 } from '@/components/invoicing/ticket-math'
+import { handleWriteError } from '@/lib/db-errors'
 import {
   type TruckMeterReadingRow,
   deleteFuelingEvent,
@@ -15,6 +16,27 @@ export type InvoiceInsert = TablesInsert<'invoices'>
 export type InvoiceStatus = InvoiceRow['status']
 export type PaymentMethod = NonNullable<InvoiceRow['payment_method']>
 export type SettledVia = NonNullable<InvoiceRow['settled_via']>
+export type NumberSource = InvoiceRow['number_source']
+
+/**
+ * Classifies an invoice number by its shape: a bare 5-digit serial is a
+ * pre-printed paper-book number (airline books); everything else — dash
+ * format like '26-3330' first among them — is a live number issued by the
+ * accounting software. Only a default; callers can override explicitly.
+ */
+export function inferNumberSource(invoiceNumber: string): NumberSource {
+  return /^\d{5}$/.test(invoiceNumber.trim()) ? 'paper_book' : 'live'
+}
+
+/** Paper-book invoices whose top copy accounting hasn't collected yet. */
+export function isPendingAccountingPickup(
+  invoice: Pick<InvoiceRow, 'number_source' | 'accounting_picked_up_at'>
+): boolean {
+  return (
+    invoice.number_source === 'paper_book' &&
+    invoice.accounting_picked_up_at == null
+  )
+}
 
 export type LineItemRow = Tables<'invoice_line_items'>
 export type FuelReadingRow = Tables<'invoice_fuel_readings'>
@@ -33,6 +55,12 @@ export type MeterReadingWithSheet = TruckMeterReadingRow & {
 export type LineItemWithDetails = LineItemRow & {
   fuel_readings: FuelReadingRow[]
   meter_reading: MeterReadingWithSheet | null
+  fuel_transaction: {
+    id: number
+    ticket_number: string
+    tail_number: string | null
+    gallons_delivered: string | null
+  } | null
 }
 
 export type InvoiceWithItems = InvoiceRow & {
@@ -49,6 +77,9 @@ const INVOICE_SELECT = `
     meter_reading:truck_meter_reading_id (
       *,
       truck_sheet:truck_sheets ( id, truck_number, fuel_truck_id, sheet_date )
+    ),
+    fuel_transaction:fuel_transaction_id (
+      id, ticket_number, tail_number, gallons_delivered
     )
   )
 `
@@ -120,6 +151,14 @@ export async function suggestNextInvoiceNumber(
 }
 
 export interface FuelLineInput {
+  /**
+   * The dispatch record this line bills. A fuel_transaction becomes exactly
+   * ONE invoice line item — the partial unique index on
+   * invoice_line_items.fuel_transaction_id makes double-billing a database
+   * error, not a UI convention. When omitted but truckMeterReadingId is
+   * set, the reading's already-reconciled transaction (if any) is inherited.
+   */
+  fuelTransactionId?: number | null
   /** Bill an existing truck-sheet fueling event… */
   truckMeterReadingId?: number
   /** …or record a new one from digital ticket entry. */
@@ -166,6 +205,13 @@ export interface NewInvoiceInput {
     checkNumber: string | null
     salesmanInitials: string | null
     notes: string | null
+    /**
+     * 'live' = dash-format number ('26-3330') issued immediately by the
+     * accounting software; 'paper_book' = pre-printed 5-digit book serial
+     * ('21483', airlines), whose carbon copy accounting collects around
+     * midday. Omitted → inferred from the number's shape.
+     */
+    numberSource?: NumberSource
   }
   fuelLine: FuelLineInput | null
   serviceLines: ServiceLineInput[]
@@ -225,12 +271,25 @@ export async function createInvoice(
   //    real-world fuel delivery.
   let meterReadingId: number | null = null
   let createdFuelingId: number | null = null
+  let fuelTransactionId: number | null = fuelLine?.fuelTransactionId ?? null
   if (fuelLine) {
     if (fuelLine.replaceFuelingReadingId != null) {
       await deleteFuelingEvent(db, fuelLine.replaceFuelingReadingId)
     }
     if (fuelLine.truckMeterReadingId != null) {
       meterReadingId = fuelLine.truckMeterReadingId
+      // Billing a scanned sheet row that has already been reconciled with a
+      // dispatch record: the invoice line bills that transaction unless the
+      // caller explicitly chose one.
+      if (fuelTransactionId == null) {
+        const { data: linked, error: linkedError } = await db
+          .from('truck_meter_readings')
+          .select('fuel_transaction_id')
+          .eq('id', meterReadingId)
+          .single()
+        if (linkedError) throw linkedError
+        fuelTransactionId = linked.fuel_transaction_id
+      }
     } else if (fuelLine.newFueling) {
       const reading = await recordFuelingEvent(db, {
         fuelTruckId: fuelLine.newFueling.fuelTruckId,
@@ -281,7 +340,9 @@ export async function createInvoice(
       paid_at: paidAt,
       salesman_initials: header.salesmanInitials,
       total: invoiceTotal(input),
-      notes: header.notes
+      notes: header.notes,
+      number_source:
+        header.numberSource ?? inferNumberSource(header.invoiceNumber)
     })
     .select('id')
     .single()
@@ -308,6 +369,7 @@ export async function createInvoice(
           line_number: lineNumber++,
           item_type: 'fuel',
           truck_meter_reading_id: meterReadingId,
+          fuel_transaction_id: fuelTransactionId,
           description: FUEL_TYPE_LABELS[fuelLine.fuelType],
           quantity: fuelLine.quantityGallons,
           unit_price: fuelLine.pricePerGallon,
@@ -319,7 +381,23 @@ export async function createInvoice(
         })
         .select('id')
         .single()
-      if (fuelItemError) throw fuelItemError
+      if (fuelItemError) {
+        // Most likely uq_invoice_line_items_fuel_transaction (double-billing
+        // the same fuel_transaction) or the older
+        // uq_invoice_line_items_meter_reading — translated into a clear
+        // message and logged to app_error_log; see lib/db-errors.ts.
+        // handleWriteError always throws; the throw below is unreachable in
+        // practice but keeps TS's control-flow narrowing of `fuelItem` happy.
+        await handleWriteError(db, fuelItemError, {
+          source: 'invoices.repo.createInvoice',
+          context: {
+            invoice_id: invoice.id,
+            fuel_transaction_id: fuelTransactionId,
+            truck_meter_reading_id: meterReadingId
+          }
+        })
+        throw fuelItemError
+      }
       fuelLineItemId = fuelItem.id
     }
 
@@ -446,28 +524,57 @@ export async function settleInvoice(
 }
 
 /**
+ * Marks a paper-book invoice's carbon copy as collected by accounting (the
+ * midday box pickup). Until this runs, the invoice reads as "pending
+ * accounting pickup" — see isPendingAccountingPickup().
+ */
+export async function markAccountingPickedUp(
+  db: SupabaseClient<Database>,
+  id: number,
+  pickedUpAt: string = new Date().toISOString()
+): Promise<InvoiceWithItems> {
+  const { error } = await db
+    .from('invoices')
+    .update({
+      accounting_picked_up_at: pickedUpAt,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('number_source', 'paper_book')
+  if (error) throw error
+
+  const updated = await getInvoiceById(db, id)
+  if (!updated) throw new Error('Invoice not found after pickup update')
+  return updated
+}
+
+/**
  * Voids an invoice and releases its fueling event (clears the line-item
- * link and the invoice number stamped on the truck-sheet row) so the
- * event can be rebilled on a corrected ticket.
+ * links — both the truck-sheet row and the dispatch record — and the
+ * invoice number stamped on the truck-sheet row) so the event can be
+ * rebilled on a corrected ticket. Releasing fuel_transaction_id is what
+ * frees the uniqueness slot in uq_invoice_line_items_fuel_transaction.
  */
 export async function voidInvoice(
   db: SupabaseClient<Database>,
   invoice: InvoiceWithItems
 ): Promise<void> {
   const fuelLines = invoice.line_items.filter(
-    (li) => li.truck_meter_reading_id != null
+    (li) => li.truck_meter_reading_id != null || li.fuel_transaction_id != null
   )
 
   for (const line of fuelLines) {
-    const { error: unstampError } = await db
-      .from('truck_meter_readings')
-      .update({ invoice_number: null })
-      .eq('id', line.truck_meter_reading_id as number)
-    if (unstampError) throw unstampError
+    if (line.truck_meter_reading_id != null) {
+      const { error: unstampError } = await db
+        .from('truck_meter_readings')
+        .update({ invoice_number: null })
+        .eq('id', line.truck_meter_reading_id)
+      if (unstampError) throw unstampError
+    }
 
     const { error: unlinkError } = await db
       .from('invoice_line_items')
-      .update({ truck_meter_reading_id: null })
+      .update({ truck_meter_reading_id: null, fuel_transaction_id: null })
       .eq('id', line.id)
     if (unlinkError) throw unlinkError
   }
