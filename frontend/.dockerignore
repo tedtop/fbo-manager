@@ -1,0 +1,15 @@
+# Never let local secrets or build artifacts into a Docker build context/image.
+.env
+.env.*
+!.env.example
+
+node_modules
+.next
+.git
+.turbo
+
+# Test artifacts / dev-only tooling not needed in a production image.
+e2e/test-results
+e2e/playwright-report
+coverage
+*.log
