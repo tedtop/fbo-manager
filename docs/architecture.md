@@ -83,6 +83,13 @@ Two non-overlapping layers, both documented in their own READMEs:
 
 ## Deployment
 
-Docker on a VPS via CI/CD (not a serverless platform) — see `docker-compose.yaml` for
-the local dev shape. `NEXT_PUBLIC_*` env vars must be available at `next build` time,
-so CI needs to pass them as build args, not just runtime env vars.
+Railway (see `docs/deployment-railway.md` for the full runbook), building
+`frontend/` via Railway's Railpack auto-builder per `frontend/railway.json` —
+not a Dockerfile, and not the VPS/Docker plan originally scoped. A production
+`frontend/Dockerfile.prod` is kept as a documented alternative for Docker-based
+hosting if that's ever needed again. `docker-compose.yaml` remains dev-only
+(volume-mounts `frontend/` and runs `pnpm dev`) and is unrelated to either
+deploy path. `NEXT_PUBLIC_*` env vars must be available at `next build` time —
+Railway's builder exposes configured service variables to the build step
+automatically; the Dockerfile alternative requires explicit `ARG` declarations
+(see comments in `frontend/Dockerfile.prod`).
