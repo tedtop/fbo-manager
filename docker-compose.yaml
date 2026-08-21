@@ -5,6 +5,7 @@ services:
     command: bash -c "pnpm install && pnpm dev"
     build:
       context: frontend
+      dockerfile: Dockerfile.dev
     volumes:
       - ./frontend:/app
     expose:
