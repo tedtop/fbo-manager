@@ -60,8 +60,8 @@ Import from `@/components/ui/sheet` and follow this skeleton:
 
 Keep destructive confirmations as `AlertDialog` (or `Dialog` where already in place) — do not migrate them to `Sheet`. A slideout implies a workspace; a confirmation is a blocking question.
 
-## Status (as of 2026-07-03)
+## Status (as of 2026-11-01)
 
-Already `Sheet`: `equipment/equipment-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`, `flight-operations/flight-form-dialog.tsx`, `invoicing/fuel-ticket-sheet.tsx`, `parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`, `training/course-form-sheet.tsx`, `users/user-sheet.tsx`.
+Already `Sheet`: `equipment/equipment-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`, `flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx`, `invoicing/fuel-ticket-sheet.tsx`, `parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`, `training/course-form-sheet.tsx`, `users/user-sheet.tsx`. (All data-entry forms were actually migrated in commit f32b027, 2026-07-03; this status list had simply gone stale.)
 
-Still `Dialog` and pending migration to `Sheet` (data-entry forms, not read-only/confirmation): `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx`. Left as `Dialog` intentionally: `invoicing/invoice-detail-dialog.tsx` (read-only), `components/ui/command.tsx` (command palette), and the parking module generally (frozen — audit-only, do not change UX per `.omc/specs/deep-interview-fbo-manager-modules.md`).
+No remaining data-entry `Dialog`s pending migration. Left as `Dialog` intentionally: `invoicing/invoice-detail-dialog.tsx` (read-only), `components/ui/command.tsx` (command palette), and the parking module generally (frozen — audit-only, do not change UX per `.omc/specs/deep-interview-fbo-manager-modules.md`).

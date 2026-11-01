@@ -56,9 +56,6 @@ tool-call can hook into it without a rewrite.
   still only exists as `frontend/scripts/equipment-modified-at-trigger.sql` — a leftover from
   before schema management moved to migrations. Should get folded into a proper migration as a
   follow-up (see `docs/edit-concurrency.md`).
-- **Three forms still use `Dialog` instead of the house `Sheet` standard** for data entry:
-  `flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/fueler-assign-dialog.tsx`,
-  `invoicing/settle-invoice-dialog.tsx`. Tracked in `docs/ui-conventions.md`'s status section.
 - **Some domains have a tested repository layer but no dedicated CRUD form**: aircraft,
   customers, products, fuelers, certifications. Open question (intentional vs. gap) tracked in
   `docs/form-ux-questions.md`.
