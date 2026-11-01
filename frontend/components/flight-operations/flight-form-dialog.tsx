@@ -2,6 +2,7 @@
 
 import type React from 'react'
 
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -23,9 +24,11 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import type { FlightRow } from '@/repositories/flights.repo'
 import { useEffect, useState } from 'react'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
-import type { Flight } from './types'
+import { type Flight, apiFlightToComponentFlight } from './types'
 
 function calculateGroundTime(
   arrivalTime: string,
@@ -55,7 +58,10 @@ function calculateGroundTime(
 interface FlightFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (flight: Flight) => void
+  onSubmit: (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => void | Promise<void>
   initialData?: Flight
   theme: 'dark' | 'light'
 }
@@ -84,28 +90,35 @@ export function FlightFormDialog({
   const [departureTime, setDepartureTime] = useState('')
   const [isEditingAircraftType, setIsEditingAircraftType] = useState(false)
 
+  // Shared by the initialData effect below and the edit-session's "reload their changes"
+  // handler, so both populate the form the same way.
+  const applyFlightToForm = (flight: Flight) => {
+    setFormData(flight)
+
+    // Extract date and times from timestamps
+    if (flight.arrivalTime) {
+      const arrivalDate = new Date(flight.arrivalTime)
+      setDate(arrivalDate.toISOString().split('T')[0])
+      const hours = arrivalDate.getHours().toString().padStart(2, '0')
+      const minutes = arrivalDate.getMinutes().toString().padStart(2, '0')
+      setArrivalTime(`${hours}:${minutes}`)
+    }
+    if (flight.departureTime) {
+      const departureDate = new Date(flight.departureTime)
+      // Only set date if we don't have arrival time
+      if (!flight.arrivalTime) {
+        setDate(departureDate.toISOString().split('T')[0])
+      }
+      const hours = departureDate.getHours().toString().padStart(2, '0')
+      const minutes = departureDate.getMinutes().toString().padStart(2, '0')
+      setDepartureTime(`${hours}:${minutes}`)
+    }
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open is intentionally included so the form resets whenever the Sheet reopens; applyFlightToForm is a stable in-component helper
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData)
-
-      // Extract date and times from timestamps
-      if (initialData.arrivalTime) {
-        const arrivalDate = new Date(initialData.arrivalTime)
-        setDate(arrivalDate.toISOString().split('T')[0])
-        const hours = arrivalDate.getHours().toString().padStart(2, '0')
-        const minutes = arrivalDate.getMinutes().toString().padStart(2, '0')
-        setArrivalTime(`${hours}:${minutes}`)
-      }
-      if (initialData.departureTime) {
-        const departureDate = new Date(initialData.departureTime)
-        // Only set date if we don't have arrival time
-        if (!initialData.arrivalTime) {
-          setDate(departureDate.toISOString().split('T')[0])
-        }
-        const hours = departureDate.getHours().toString().padStart(2, '0')
-        const minutes = departureDate.getMinutes().toString().padStart(2, '0')
-        setDepartureTime(`${hours}:${minutes}`)
-      }
+      applyFlightToForm(initialData)
     } else {
       setFormData({
         type: 'arrival',
@@ -118,6 +131,40 @@ export function FlightFormDialog({
       setDepartureTime('')
     }
   }, [initialData, open])
+
+  const editSession = useRecordEditSession<FlightRow>({
+    table: 'flight',
+    recordId: initialData?.id ?? null,
+    modifiedAt: initialData?.updatedAt ?? null,
+    enabled: open && !!initialData,
+    onReload: (freshRow) => {
+      const reloaded = apiFlightToComponentFlight({
+        id: freshRow.id,
+        aircraft: freshRow.aircraft_id,
+        call_sign: freshRow.call_sign,
+        arrival_time: freshRow.arrival_time,
+        departure_time: freshRow.departure_time,
+        flight_status: freshRow.flight_status,
+        origin: freshRow.origin,
+        destination: freshRow.destination,
+        contact_name: freshRow.contact_name,
+        contact_notes: freshRow.contact_notes,
+        services: freshRow.services,
+        fuel_order_notes: freshRow.fuel_order_notes,
+        passenger_count: freshRow.passenger_count,
+        notes: freshRow.notes,
+        created_by_source: freshRow.created_by_source,
+        created_at: freshRow.created_at,
+        modified_at: freshRow.modified_at
+      })
+      // The raw row has no joined aircraft type (only the dedicated FLIGHT_SELECT query
+      // does); keep whatever was already shown rather than blanking it out.
+      if (!reloaded.aircraftType) {
+        reloaded.aircraftType = formData.aircraftType ?? ''
+      }
+      applyFlightToForm(reloaded)
+    }
+  })
 
   const handleTailNumberChange = (
     tailNumber: string,
@@ -226,7 +273,15 @@ export function FlightFormDialog({
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
-    onSubmit(flight)
+
+    if (initialData) {
+      const outcome = await editSession.save(async (expectedModifiedAt) => {
+        await onSubmit(flight, expectedModifiedAt)
+      })
+      if (outcome.status === 'conflict') return
+    } else {
+      await onSubmit(flight)
+    }
     onOpenChange(false)
   }
 
@@ -254,6 +309,15 @@ export function FlightFormDialog({
               : 'Log a new arrival, departure, or quick turn.'}
           </SheetDescription>
         </SheetHeader>
+
+        {initialData && (
+          <div className="px-4 pt-4">
+            <EditSessionStatus
+              editSession={editSession}
+              onOverwriteComplete={() => onOpenChange(false)}
+            />
+          </div>
+        )}
 
         <form
           onSubmit={handleSubmit}

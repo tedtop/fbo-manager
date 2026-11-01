@@ -104,7 +104,15 @@ export function useFlights(params?: {
   })
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Flight> }) => {
+    mutationFn: async ({
+      id,
+      updates,
+      expectedModifiedAt
+    }: {
+      id: string
+      updates: Partial<Flight>
+      expectedModifiedAt?: string
+    }) => {
       const requestData = componentFlightToApiRequest(updates)
       const dbUpdates: Record<string, any> = {}
       if (requestData.aircraft !== undefined) dbUpdates.aircraft_id = requestData.aircraft
@@ -122,7 +130,7 @@ export function useFlights(params?: {
       if (requestData.notes !== undefined) dbUpdates.notes = requestData.notes
       if (requestData.created_by_source !== undefined) dbUpdates.created_by_source = requestData.created_by_source
 
-      const row = await updateFlightRepo(db, Number(id), dbUpdates)
+      const row = await updateFlightRepo(db, Number(id), dbUpdates, expectedModifiedAt)
       return rowToFlight(row)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
@@ -138,8 +146,11 @@ export function useFlights(params?: {
     loading: query.isLoading,
     error: query.error,
     createFlight: (flight: Partial<Flight>) => createMutation.mutateAsync(flight),
-    updateFlight: (id: string, updates: Partial<Flight>) =>
-      updateMutation.mutateAsync({ id, updates }),
+    updateFlight: (
+      id: string,
+      updates: Partial<Flight>,
+      expectedModifiedAt?: string
+    ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
     deleteFlight: (id: string) => deleteMutation.mutateAsync(id),
     refetch: query.refetch
   }

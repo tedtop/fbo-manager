@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 
 export type FlightRow = Tables<'flight'>
 export type FlightInsert = TablesInsert<'flight'>
@@ -95,15 +96,20 @@ export async function createFlight(
 export async function updateFlight(
   db: SupabaseClient<Database>,
   id: number,
-  updates: FlightUpdate
+  updates: FlightUpdate,
+  expectedModifiedAt?: string
 ): Promise<FlightWithRelations> {
-  const { data, error } = await db
-    .from('flight')
-    .update(updates)
-    .eq('id', id)
-    .select(FLIGHT_SELECT)
-    .single()
-  if (error) throw error
+  let query = db.from('flight').update(updates).eq('id', id)
+  if (expectedModifiedAt) {
+    query = query.eq('modified_at', expectedModifiedAt)
+  }
+  const { data, error } = await query.select(FLIGHT_SELECT).single()
+  if (error) {
+    if (expectedModifiedAt && error.code === 'PGRST116') {
+      throw new ConcurrencyConflictError('flight', id)
+    }
+    throw error
+  }
   return data as FlightWithRelations
 }
 

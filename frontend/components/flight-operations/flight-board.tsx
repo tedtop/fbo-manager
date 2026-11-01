@@ -9,7 +9,10 @@ interface FlightBoardProps {
   theme: 'dark' | 'light'
   flights: Flight[]
   onAddFlight: (flight: Flight) => void
-  onEditFlight: (flight: Flight) => void
+  onEditFlight: (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => void | Promise<void>
   onDeleteFlight: (id: string) => void
   onOrderFuel?: (flight: Flight) => void
   filters: FilterType

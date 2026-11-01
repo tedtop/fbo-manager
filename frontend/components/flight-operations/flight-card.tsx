@@ -77,7 +77,7 @@ function getTimeRemaining(timestamp: string): {
 interface FlightCardProps {
   flight: Flight
   theme: 'dark' | 'light'
-  onEdit: (flight: Flight) => void
+  onEdit: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
   onDelete: (id: string) => void
   onOrderFuel?: (flight: Flight) => void
   isLinked?: boolean

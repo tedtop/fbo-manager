@@ -31,7 +31,7 @@ interface CalendarBlock {
 interface CalendarWeekViewProps {
   theme: 'dark' | 'light'
   flights: Flight[]
-  onEditFlight: (flight: Flight) => void
+  onEditFlight: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
   onDeleteFlight: (id: string) => void
   filters: FilterType
   weekOffset: number
@@ -626,7 +626,7 @@ export function CalendarWeekView({
         <FlightFormDialog
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
-          onSubmit={(f) => { onEditFlight(f); setEditDialogOpen(false) }}
+          onSubmit={onEditFlight}
           initialData={editingFlight}
           theme={theme}
         />

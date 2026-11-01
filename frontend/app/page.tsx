@@ -13,6 +13,7 @@ import { useTheme } from '@/components/navigation-wrapper'
 import { useFlights } from '@/hooks/use-flights'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useToast } from '@/hooks/use-toast'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { ErrorMessage } from '@/messages/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
@@ -96,13 +97,19 @@ export default function FlightOperationsPage() {
     }
   }
 
-  const handleEditFlight = async (flight: Flight) => {
+  const handleEditFlight = async (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => {
     console.log('handleEditFlight called with:', flight)
     try {
       console.log('Calling updateFlight API with id:', flight.id)
-      const result = await updateFlight(flight.id, flight)
+      const result = await updateFlight(flight.id, flight, expectedModifiedAt)
       console.log('Update result:', result)
     } catch (err) {
+      // Let the edit-concurrency conflict dialog in FlightFormDialog handle this —
+      // don't swallow it here like other, non-concurrency-aware errors below.
+      if (err instanceof ConcurrencyConflictError) throw err
       console.error('Failed to update flight:', err)
     }
   }
