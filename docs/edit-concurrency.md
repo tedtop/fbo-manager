@@ -64,11 +64,10 @@ this project lives entirely in `frontend/supabase/migrations/` — applied local
 step for schema changes.
 
 **If you adopt this pattern for another table, check first whether that table has a comparable
-trigger.** As of this writing, `fuel_tank`, `fuel_transaction`, and `equipment` have one (folded
-into `frontend/supabase/migrations/20260703000300_modified_at_triggers.sql`, except for
-`equipment`'s, which still only exists as the standalone
-`frontend/scripts/equipment-modified-at-trigger.sql` — a leftover from before schema management
-moved to migrations; it should get folded into a migration too as a follow-up). Other tables'
+trigger.** As of this writing, `fuel_tank` and `fuel_transaction` have theirs folded into
+`frontend/supabase/migrations/20260703000300_modified_at_triggers.sql`, and `equipment`'s is in
+its own migration, `frontend/supabase/migrations/20260704000300_equipment_modified_at_trigger.sql`.
+Other tables'
 `modified_at`/`created_at` fields (training, invoicing, user management, etc.) have the same
 silent-gap risk if they're written to directly via Supabase without a trigger. Add a trigger for
 your table using the existing `set_modified_at()` function (it's generic — a two-line

@@ -50,12 +50,6 @@ tool-call can hook into it without a rewrite.
 
 ## Known Gaps
 
-- **`equipment` modified_at trigger is a standalone script, not a migration.** `fuel_tank` and
-  `fuel_transaction` have their `set_modified_at()` trigger folded into
-  `frontend/supabase/migrations/20260703000300_modified_at_triggers.sql`, but `equipment`'s
-  still only exists as `frontend/scripts/equipment-modified-at-trigger.sql` — a leftover from
-  before schema management moved to migrations. Should get folded into a proper migration as a
-  follow-up (see `docs/edit-concurrency.md`).
 - **Three forms still use `Dialog` instead of the house `Sheet` standard** for data entry:
   `flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/fueler-assign-dialog.tsx`,
   `invoicing/settle-invoice-dialog.tsx`. Tracked in `docs/ui-conventions.md`'s status section.
