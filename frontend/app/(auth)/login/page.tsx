@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 export const metadata: Metadata = {
-  title: 'Login - Turbo'
+  title: 'Login'
 }
 
 export default function Login() {

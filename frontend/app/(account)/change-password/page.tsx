@@ -3,7 +3,7 @@ import { ChangePasswordForm } from '@/components/forms/change-password-form'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Change password - Turbo'
+  title: 'Change password'
 }
 
 export default function ChangePassword() {

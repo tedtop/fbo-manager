@@ -1,6 +1,7 @@
 import { NavigationWrapper } from '@/components/navigation-wrapper'
 import { AuthProvider } from '@/providers/auth-provider'
 import { QueryProvider } from '@/providers/query-provider'
+import type { Metadata } from 'next'
 import { Geist, Geist_Mono, Source_Serif_4 } from 'next/font/google'
 
 import '@/styles/globals.css'
@@ -21,6 +22,10 @@ const sourceSerif4 = Source_Serif_4({
   weight: ['200', '300', '400', '500', '600', '700', '800', '900'],
   variable: '--font-serif'
 })
+
+export const metadata: Metadata = {
+  title: { default: 'FBO Manager', template: '%s | FBO Manager' }
+}
 
 export default function RootLayout({
   children
