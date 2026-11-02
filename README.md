@@ -21,6 +21,46 @@ pnpm dev
 
 App runs at http://localhost:3000.
 
+## Shared live database: do not delete these tables
+
+The production Supabase project (`qkuhvlrdidhumyyxokil`, "Minuteman Dashboard") is **shared with a live
+application**, and this app's Fuel Farm and Fuel Dispatch screens read the same tables. They hold real
+records. Never drop, truncate, rename, reset, re-seed, or "clean up" them, and keep them out of any
+`supabase db push`, `db reset`, `db pull`/`db diff` output you apply, and any script that deletes rows.
+
+**Live / real data (hands off):**
+
+| Table | Rows (2026-11-02) | Why it is live |
+|---|---|---|
+| `tank_level_readings` | 3,030 | Sensor readings, still being written (latest 2026-11-01) |
+| `tank_level_min` | 8 | Per-tank minimum levels, updated with the readings |
+| `tank_level_readings_backup`, `tank_level_readings_django` | 0 | Companions of the above; leave in place |
+| `fuel_dispatch_history` | 2,551 | Dispatch history, written today |
+| `fuel_tank` | 7 | Real tank definitions |
+| `fuel_density_readings`, `fuel_gravity_readings` | 5, 0 | Real fuel measurements |
+| `qt_session`, `adsb_point_cache` | 1, 1 | Written by the other application today |
+| `users`, `roles`, `module_permissions` | 16, 4, 28 | Real logins and permissions (last login 2026-05) |
+| `users_groups`, `users_user_permissions`, `api_employeeshift` | 0 | Empty Django leftovers; kept for now (the `django_*` / `auth_*` tables were dropped 2026-11-02) |
+
+**This app's own tables** (mostly sample data, safe to change through reviewed migrations): `flight`,
+`aircraft`, `parking_location`, `equipment`, `schedule_shift`, `department`, `department_member`,
+`training*`, `invoice*`, `truck_sheets`, `truck_meter_readings`, `product`, `profiles`, and the other
+tables not listed above. `flight` holds 146 sample flights.
+
+**Unconfirmed, leave alone until the owner says otherwise:** `fueler` (2 rows, "John Doe" and "Fueler Debug", looks like test data, but Fuel Dispatch's assign-fueler dialog reads it and `fueler_assignment` / `fueler_training` reference it) and `terminal_gate` (4 rows, gates A1-B2 at terminal T1, created 2025-10-30 alongside the sample aircraft; nothing in this repo reads it, likely a Django-era leftover).
+
+Also never create, alter, or drop a table named `fuel_tank_readings`; it belongs to another application.
+
+**Rules for schema changes against live:**
+- Never run `supabase db push` against the linked project: the local migration history is not recorded
+  remotely, so it would replay `test_schema.sql` on live. Apply one reviewed migration at a time, in a
+  transaction, with `supabase db query --linked -f <file>`, then
+  `supabase migration repair --status applied <version>`.
+- Back up the affected table first. List the tables a migration touches in its header comment.
+- The local test reset (`frontend/tests/support/reset.ts`) refuses non-local URLs; do not weaken that guard.
+- This list was inferred from row counts and timestamps. Confirm with the owner before treating a table
+  as safe to remove.
+
 ## Testing
 
 Two non-overlapping layers, both against a real local Supabase stack — never mocks, never
