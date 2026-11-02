@@ -29,7 +29,6 @@ const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string
   { table: 'training', pk: 'id' },
   { table: 'fueler', pk: 'id' },
   { table: 'equipment', pk: 'id' },
-  { table: 'terminal_gate', pk: 'id' },
   { table: 'parking_location', pk: 'id' },
   { table: 'tank_level_readings', pk: 'id' },
   { table: 'fuel_tank', pk: 'tank_id' },

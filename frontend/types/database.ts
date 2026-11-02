@@ -163,30 +163,6 @@ export type Database = {
         >
         Relationships: []
       }
-      terminal_gate: {
-        Row: {
-          id: number
-          terminal_id: string
-          terminal_num: string
-          gate_number: string
-          location_id: string
-          display_order: number
-          created_at: string
-          modified_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
-        }
-        Insert: {
-          id?: number
-          terminal_id: string
-          terminal_num: string
-          gate_number: string
-          location_id?: string
-          display_order?: number
-        }
-        Update: Partial<Database['public']['Tables']['terminal_gate']['Insert']>
-        Relationships: []
-      }
       flight: {
         Row: {
           id: number
