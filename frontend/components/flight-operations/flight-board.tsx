@@ -3,6 +3,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMemo, useState } from 'react'
+import { filterFlights, partitionFlights } from './board-logic'
 import { FlightList, type FlightDeletePhase, ZAP_MS } from './flight-list'
 import type { FlightFilters as FilterType, Flight } from './types'
 
@@ -74,54 +75,12 @@ export function FlightBoard({
     setDeletePhase(id)
   }
 
-  const filteredFlights = useMemo(() => {
-    return flights.filter((flight) => {
-      // Filter by search
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        const matchesSearch =
-          flight.tailNumber.toLowerCase().includes(searchLower) ||
-          flight.aircraftType.toLowerCase().includes(searchLower) ||
-          flight.origin?.toLowerCase().includes(searchLower) ||
-          flight.destination?.toLowerCase().includes(searchLower) ||
-          flight.contactName?.toLowerCase().includes(searchLower)
-
-        if (!matchesSearch) return false
-      }
-
-      // Filter by status
-      if (filters.status !== 'all' && flight.status !== filters.status) {
-        return false
-      }
-
-      // Filter by services
-      if (filters.services.length > 0) {
-        const hasAllServices = filters.services.every((service) =>
-          flight.services.includes(service)
-        )
-        if (!hasAllServices) return false
-      }
-
-      return true
-    })
-  }, [filters, flights])
-
-  // Arrivals: Show arrival and quick_turn flights
-  const arrivals = filteredFlights.filter(
-    (f) =>
-      f.type === 'arrival' ||
-      f.type === 'quick_turn' ||
-      f.type === 'overnight' ||
-      f.type === 'long_term'
+  const filteredFlights = useMemo(
+    () => filterFlights(flights, filters),
+    [filters, flights]
   )
-  // Departures: Show departure and quick_turn flights
-  const departures = filteredFlights.filter(
-    (f) =>
-      f.type === 'departure' ||
-      f.type === 'quick_turn' ||
-      f.type === 'overnight' ||
-      f.type === 'long_term'
-  )
+
+  const { arrivals, departures } = partitionFlights(filteredFlights)
 
   // Identify linked flights (appear in both arrivals and departures)
   const linkedFlightIds = useMemo(() => {

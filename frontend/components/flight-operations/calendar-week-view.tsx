@@ -10,6 +10,7 @@ import {
   PlaneTakeoff,
   Plus
 } from 'lucide-react'
+import { weekRange } from './board-logic'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { FlightFilters as FilterType, Flight } from './types'
 
@@ -107,12 +108,7 @@ export function CalendarWeekView({
 
   const weekDays = useMemo(() => {
     const days = []
-    const today = new Date()
-    const currentDay = today.getDay() // 0 = Sunday
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - currentDay + weekOffset * 7)
-    // Normalize to start of day
-    startOfWeek.setHours(0, 0, 0, 0)
+    const { start: startOfWeek } = weekRange(new Date(), weekOffset)
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek)

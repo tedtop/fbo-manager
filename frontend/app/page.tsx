@@ -2,6 +2,7 @@
 
 import { CalendarWeekView } from '@/components/flight-operations/calendar-week-view'
 import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
+import { weekRange } from '@/components/flight-operations/board-logic'
 import { FlightBoard } from '@/components/flight-operations/flight-board'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
@@ -170,14 +171,10 @@ export default function FlightOperationsPage() {
   // Filter flights for Split View to match the selected week
   const weekInternalFlights = flights.filter((flight) => {
     const flightDate = new Date(flight.departureTime)
-    const today = new Date()
-    const currentDay = today.getDay() // 0 = Sunday
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - currentDay + weekOffset * 7)
-    startOfWeek.setHours(0, 0, 0, 0)
-
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 7)
+    const { start: startOfWeek, end: endOfWeek } = weekRange(
+      new Date(),
+      weekOffset
+    )
 
     return flightDate >= startOfWeek && flightDate < endOfWeek
   })
