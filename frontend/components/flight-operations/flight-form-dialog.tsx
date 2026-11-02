@@ -26,7 +26,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { FlightRow } from '@/repositories/flights.repo'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { AircraftTypeCombobox } from './aircraft-type-combobox'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import { type Flight, apiFlightToComponentFlight } from './types'
 
@@ -89,11 +90,27 @@ export function FlightFormDialog({
   const [arrivalTime, setArrivalTime] = useState('')
   const [departureTime, setDepartureTime] = useState('')
   const [isEditingAircraftType, setIsEditingAircraftType] = useState(false)
+  // ICAO code of the selected aircraft type; undefined until known (falls back to the aircraft record)
+  const [aircraftTypeIcao, setAircraftTypeIcao] = useState<string | undefined>()
+
+  const usageCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const a of aircraft) {
+      const code = a.aircraft_type_icao?.toUpperCase()
+      if (code && code !== 'UNKN') counts[code] = (counts[code] ?? 0) + 1
+    }
+    return counts
+  }, [aircraft])
 
   // Shared by the initialData effect below and the edit-session's "reload their changes"
   // handler, so both populate the form the same way.
   const applyFlightToForm = (flight: Flight) => {
     setFormData(flight)
+    setAircraftTypeIcao(
+      aircraft.find(
+        (a) => a.tail_number.toLowerCase() === flight.tailNumber.toLowerCase()
+      )?.aircraft_type_icao || undefined
+    )
 
     // Extract date and times from timestamps
     if (flight.arrivalTime) {
@@ -170,6 +187,13 @@ export function FlightFormDialog({
     tailNumber: string,
     aircraftType?: string
   ) => {
+    if (aircraftType) {
+      setAircraftTypeIcao(
+        aircraft.find(
+          (a) => a.tail_number.toLowerCase() === tailNumber.toLowerCase()
+        )?.aircraft_type_icao || undefined
+      )
+    }
     setFormData({
       ...formData,
       tailNumber,
@@ -180,6 +204,7 @@ export function FlightFormDialog({
   const handleCreateNewAircraft = async (tailNumber: string) => {
     try {
       const newAircraft = await createAircraft(tailNumber, 'Unknown')
+      setAircraftTypeIcao('UNKN')
       setFormData({
         ...formData,
         tailNumber: newAircraft.tail_number,
@@ -192,8 +217,10 @@ export function FlightFormDialog({
     }
   }
 
-  const handleAircraftTypeChange = (newType: string) => {
-    setFormData({ ...formData, aircraftType: newType })
+  const handleAircraftTypeChange = (display: string, icao: string) => {
+    setAircraftTypeIcao(icao)
+    setIsEditingAircraftType(true)
+    setFormData({ ...formData, aircraftType: display })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,6 +240,11 @@ export function FlightFormDialog({
       return
     }
 
+    if (!formData.aircraftType) {
+      alert('Please select an aircraft type')
+      return
+    }
+
     // Ensure aircraft exists or update it
     if (formData.tailNumber) {
       const existingAircraft = aircraft.find(
@@ -225,14 +257,21 @@ export function FlightFormDialog({
           // Create new aircraft if it doesn't exist
           await createAircraft(
             formData.tailNumber,
-            formData.aircraftType || 'Unknown'
+            formData.aircraftType || 'Unknown',
+            aircraftTypeIcao || 'UNKN'
           )
         } else if (
           formData.aircraftType &&
-          existingAircraft.aircraft_type_display !== formData.aircraftType
+          (existingAircraft.aircraft_type_display !== formData.aircraftType ||
+            (aircraftTypeIcao &&
+              existingAircraft.aircraft_type_icao !== aircraftTypeIcao))
         ) {
           // Update existing aircraft if type changed
-          await updateAircraft(formData.tailNumber, formData.aircraftType)
+          await updateAircraft(
+            formData.tailNumber,
+            formData.aircraftType,
+            aircraftTypeIcao ?? existingAircraft.aircraft_type_icao
+          )
         }
       } catch (err) {
         console.error('Failed to ensure aircraft exists:', err)
@@ -341,13 +380,12 @@ export function FlightFormDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="aircraftType">Aircraft Type *</Label>
-                <Input
+                <AircraftTypeCombobox
                   id="aircraftType"
                   value={formData.aircraftType || ''}
-                  onChange={(e) => handleAircraftTypeChange(e.target.value)}
-                  onFocus={() => setIsEditingAircraftType(true)}
-                  required
-                  placeholder="e.g., Boeing 737, Citation X"
+                  icao={aircraftTypeIcao}
+                  usageCounts={usageCounts}
+                  onSelect={handleAircraftTypeChange}
                 />
                 {isEditingAircraftType && formData.tailNumber && (
                   <p className="text-xs text-blue-500">
