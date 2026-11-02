@@ -84,6 +84,13 @@ pnpm test             # everything vitest covers
 pnpm test:watch       # watch mode while developing — reruns on save
 ```
 
+**Type check and lint** (run from `frontend/`):
+
+```bash
+pnpm tsc --noEmit     # typecheck, must exit 0
+pnpm lint             # Biome lint on the flight-operations files; lint:fix applies safe fixes
+```
+
 **End-to-end tests** (Playwright — drives the real app in a real browser through a real
 login, ends every spec with a direct DB read to prove the record actually persisted):
 

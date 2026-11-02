@@ -2,11 +2,9 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  // TEMPORARY: app is mid-breakage, unblock Railway deploys until it's fixed.
-  // See docs/deployment-railway.md. Re-enable both once lint/types are clean.
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // TEMPORARY: unblock Railway deploys. See docs/deployment-railway.md.
+  // Next 16 removed the `eslint` key; `pnpm tsc --noEmit` is now clean, so this
+  // can be dropped once the deploy is confirmed stable.
   typescript: {
     ignoreBuildErrors: true,
   },
