@@ -217,6 +217,7 @@ export type Database = {
           modified_at: string
           assigned_fueler_id: number | null
           available_at: string | null
+          deleted_at: string | null
         }
         Insert: {
           id?: number
@@ -243,6 +244,7 @@ export type Database = {
           created_by_id?: number
           created_by_source?: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
           fueled_at?: string | null
+          deleted_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['flight']['Insert']>
         Relationships: [

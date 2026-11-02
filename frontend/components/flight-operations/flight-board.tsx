@@ -1,7 +1,9 @@
 'use client'
 
+import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/hooks/use-toast'
 import { useMemo, useState } from 'react'
-import { FlightList } from './flight-list'
+import { FlightList, type FlightDeletePhase, ZAP_MS } from './flight-list'
 import type { FlightFilters as FilterType, Flight } from './types'
 
 interface FlightBoardProps {
@@ -13,10 +15,20 @@ interface FlightBoardProps {
     flight: Flight,
     expectedModifiedAt?: string
   ) => void | Promise<void>
-  onDeleteFlight: (id: string) => void
+  // Should reject if the delete fails; the card then comes back and an error toast shows.
+  onDeleteFlight: (id: string) => void | Promise<void>
+  // Called once a deleted card has finished its exit animation and can leave the list.
+  onDeleteExited?: (id: string) => void
   onOrderFuel?: (flight: Flight) => void
   filters: FilterType
+  loading?: boolean
 }
+
+// Minimum time a card spends fading into its skeleton, so the fade reads even when the save is instant.
+const DELETING_MIN_MS = 450
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 export function FlightBoard({
   mode,
@@ -24,10 +36,43 @@ export function FlightBoard({
   flights,
   onEditFlight,
   onDeleteFlight,
+  onDeleteExited,
   onOrderFuel,
-  filters
+  filters,
+  loading
 }: FlightBoardProps) {
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null)
+  const [deletePhases, setDeletePhases] = useState<
+    Record<string, FlightDeletePhase>
+  >({})
+  const { toast } = useToast()
+
+  const setDeletePhase = (id: string, phase?: FlightDeletePhase) =>
+    setDeletePhases((prev) => {
+      const { [id]: _, ...rest } = prev
+      return phase ? { ...rest, [id]: phase } : rest
+    })
+
+  // Keyed by flight id, so a flight shown in both columns (quick turn) animates in both.
+  const handleDelete = async (id: string) => {
+    if (deletePhases[id]) return
+    setDeletePhase(id, 'deleting')
+    try {
+      await Promise.all([onDeleteFlight(id), wait(DELETING_MIN_MS)])
+    } catch (err) {
+      setDeletePhase(id)
+      toast({
+        title: "Couldn't delete flight",
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive'
+      })
+      return
+    }
+    setDeletePhase(id, 'zapping')
+    await wait(ZAP_MS)
+    onDeleteExited?.(id)
+    setDeletePhase(id)
+  }
 
   const filteredFlights = useMemo(() => {
     return flights.filter((flight) => {
@@ -121,16 +166,22 @@ export function FlightBoard({
             <div className="flex items-center gap-3 pb-3 border-b border-border">
               <div className="w-2 h-2 rounded-full bg-success" />
               <h2 className="text-2xl font-bold text-foreground">Arrivals</h2>
-              <span className="text-sm text-muted-foreground">
-                ({arrivals.length})
-              </span>
+              {loading ? (
+                <Skeleton className="h-4 w-6" />
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  ({arrivals.length})
+                </span>
+              )}
             </div>
             <FlightList
               flights={arrivals}
               type="arrival"
               theme={theme}
               onEditFlight={onEditFlight}
-              onDeleteFlight={onDeleteFlight}
+              onDeleteFlight={handleDelete}
+              deletePhases={deletePhases}
+              loading={loading}
               onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedFlightIds}
               flightLinkColors={flightLinkColors}
@@ -143,16 +194,22 @@ export function FlightBoard({
             <div className="flex items-center gap-3 pb-3 border-b border-border">
               <div className="w-2 h-2 rounded-full bg-accent" />
               <h2 className="text-2xl font-bold text-foreground">Departures</h2>
-              <span className="text-sm text-muted-foreground">
-                ({departures.length})
-              </span>
+              {loading ? (
+                <Skeleton className="h-4 w-6" />
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  ({departures.length})
+                </span>
+              )}
             </div>
             <FlightList
               flights={departures}
               type="departure"
               theme={theme}
               onEditFlight={onEditFlight}
-              onDeleteFlight={onDeleteFlight}
+              onDeleteFlight={handleDelete}
+              deletePhases={deletePhases}
+              loading={loading}
               onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedFlightIds}
               flightLinkColors={flightLinkColors}
@@ -166,16 +223,22 @@ export function FlightBoard({
           <div className="flex items-center gap-3 pb-3 border-b border-border">
             <div className="w-2 h-2 rounded-full bg-success" />
             <h2 className="text-2xl font-bold text-foreground">Arrivals</h2>
-            <span className="text-sm text-muted-foreground">
-              ({arrivals.length})
-            </span>
+            {loading ? (
+              <Skeleton className="h-4 w-6" />
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                ({arrivals.length})
+              </span>
+            )}
           </div>
           <FlightList
             flights={arrivals}
             type="arrival"
             theme={theme}
             onEditFlight={onEditFlight}
-            onDeleteFlight={onDeleteFlight}
+            onDeleteFlight={handleDelete}
+            deletePhases={deletePhases}
+            loading={loading}
             onOrderFuel={onOrderFuel}
             linkedFlightIds={linkedFlightIds}
             flightLinkColors={flightLinkColors}
@@ -188,16 +251,22 @@ export function FlightBoard({
           <div className="flex items-center gap-3 pb-3 border-b border-border">
             <div className="w-2 h-2 rounded-full bg-accent" />
             <h2 className="text-2xl font-bold text-foreground">Departures</h2>
-            <span className="text-sm text-muted-foreground">
-              ({departures.length})
-            </span>
+            {loading ? (
+              <Skeleton className="h-4 w-6" />
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                ({departures.length})
+              </span>
+            )}
           </div>
           <FlightList
             flights={departures}
             type="departure"
             theme={theme}
             onEditFlight={onEditFlight}
-            onDeleteFlight={onDeleteFlight}
+            onDeleteFlight={handleDelete}
+            deletePhases={deletePhases}
+            loading={loading}
             onOrderFuel={onOrderFuel}
             linkedFlightIds={linkedFlightIds}
             flightLinkColors={flightLinkColors}

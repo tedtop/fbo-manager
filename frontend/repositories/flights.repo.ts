@@ -39,6 +39,7 @@ export async function findAllFlights(
   let query = db
     .from('flight')
     .select(FLIGHT_SELECT)
+    .is('deleted_at', null)
     .order('departure_time', { ascending: false })
 
   if (filters?.today) {
@@ -113,10 +114,14 @@ export async function updateFlight(
   return data as FlightWithRelations
 }
 
+// Soft delete: the row stays in the table with `deleted_at` set so it can be looked up later.
 export async function deleteFlight(
   db: SupabaseClient<Database>,
   id: number
 ): Promise<void> {
-  const { error } = await db.from('flight').delete().eq('id', id)
+  const { error } = await db
+    .from('flight')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) throw error
 }

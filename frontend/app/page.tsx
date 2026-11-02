@@ -9,6 +9,7 @@ import type {
   Flight,
   FlightFilters
 } from '@/components/flight-operations/types'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useTheme } from '@/components/navigation-wrapper'
 import { useFlights } from '@/hooks/use-flights'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -43,8 +44,15 @@ export default function FlightOperationsPage() {
       })()
       : undefined // Don't filter by date for split view - show all flights
 
-  const { flights, loading, error, createFlight, updateFlight, deleteFlight } =
-    useFlights(dateParams)
+  const {
+    flights,
+    loading,
+    error,
+    createFlight,
+    updateFlight,
+    deleteFlight,
+    forgetFlight
+  } = useFlights(dateParams)
   const { createTransaction } = useTransactions()
   const { toast } = useToast()
   const { theme } = useTheme()
@@ -114,11 +122,14 @@ export default function FlightOperationsPage() {
     }
   }
 
+  // Rethrows so the board can bring the card back and show an error. keepRow leaves the flight in
+  // the list until its exit animation finishes (the board then calls forgetFlight).
   const handleDeleteFlight = async (id: string) => {
     try {
-      await deleteFlight(id)
+      await deleteFlight(id, { keepRow: true })
     } catch (err) {
       console.error('Failed to delete flight:', err)
+      throw err
     }
   }
 
@@ -150,14 +161,6 @@ export default function FlightOperationsPage() {
   // Don't render if not authenticated (will redirect)
   if (status === 'unauthenticated') {
     return null
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-muted-foreground">Loading flights...</div>
-      </div>
-    )
   }
 
   if (error) {
@@ -199,7 +202,9 @@ export default function FlightOperationsPage() {
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
+          loading={loading}
           filters={filters}
         />
       )}
@@ -211,7 +216,9 @@ export default function FlightOperationsPage() {
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
+          loading={loading}
           filters={filters}
         />
       )}
@@ -223,11 +230,16 @@ export default function FlightOperationsPage() {
           onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
+          loading={loading}
           filters={filters}
         />
       )}
-      {view === 'calendar' && (
+      {view === 'calendar' && loading && (
+        <Skeleton className="h-[32rem] w-full" role="status" aria-label="Loading calendar" />
+      )}
+      {view === 'calendar' && !loading && (
         <CalendarWeekView
           theme={theme}
           flights={flights}

@@ -1,5 +1,15 @@
 'use client'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -42,6 +52,7 @@ import {
   Zap
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { FlightCardSkeletonBody } from './flight-card-skeleton'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { Flight } from './types'
 
@@ -84,6 +95,9 @@ interface FlightCardProps {
   linkColor?: string
   isHovered?: boolean
   onHover?: (id: string | null) => void
+  // 'deleting': content has faded into a skeleton while the delete is saved.
+  // 'zapping': saved; the card is playing its exit animation.
+  deleteState?: 'deleting' | 'zapping'
 }
 
 const statusConfig = {
@@ -189,9 +203,11 @@ export function FlightCard({
   isLinked,
   linkColor,
   isHovered,
-  onHover
+  onHover,
+  deleteState
 }: FlightCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isEditingServices, setIsEditingServices] = useState(false)
   const [passengerCount, setPassengerCount] = useState(
     flight.passengers?.toString() || ''
@@ -207,6 +223,10 @@ export function FlightCard({
   const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
 
   const status = statusConfig[flight.status]
+  const deleteLabel =
+    flight.status === 'departed' || flight.status === 'cancelled'
+      ? 'Clear'
+      : 'Delete'
   const isArrival =
     flight.type === 'arrival' ||
     flight.type === 'quick_turn' ||
@@ -270,12 +290,20 @@ export function FlightCard({
         className={cn(
           'bg-card border-border hover:border-primary/20 transition-all relative',
           isLinked && linkColor && `border-l-4 ${linkColor}`,
-          isHovered && 'ring-2 ring-offset-2 ring-primary/50'
+          isHovered && 'ring-2 ring-offset-2 ring-primary/50',
+          deleteState && 'pointer-events-none',
+          deleteState === 'zapping' && 'animate-flight-zap'
         )}
+        aria-busy={deleteState ? true : undefined}
         onMouseEnter={() => onHover?.(flight.id)}
         onMouseLeave={() => onHover?.(null)}
       >
-        <div className="p-1.5 space-y-1.5">
+        <div
+          className={cn(
+            'p-1.5 space-y-1.5 transition-opacity duration-300',
+            deleteState && 'opacity-0'
+          )}
+        >
           {/* Header with tail number, aircraft type, and status */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -637,17 +665,44 @@ export function FlightCard({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onDelete(flight.id)}
+              onClick={() => setIsDeleteDialogOpen(true)}
               className="h-6 text-xs text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="w-3 h-3 mr-1" />
-              {flight.status === 'departed' || flight.status === 'cancelled'
-                ? 'Clear'
-                : 'Delete'}
+              {deleteLabel}
             </Button>
           </div>
         </div>
+        {deleteState && (
+          <FlightCardSkeletonBody className="absolute inset-0 animate-in fade-in duration-300" />
+        )}
       </Card>
+
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteLabel} {flight.tailNumber || 'this flight'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the flight from the board. This cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(flight.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <FlightFormDialog
         open={isEditDialogOpen}

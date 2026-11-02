@@ -77,12 +77,22 @@ describe('flights.repo', () => {
     expect(results.map((f) => f.id)).toEqual([inRange.id])
   })
 
-  it('updates and deletes a flight', async () => {
+  it('updates a flight', async () => {
     const flight = await makeFlight(db, { flight_status: 'scheduled' })
     const updated = await updateFlight(db, flight.id, { flight_status: 'arrived' })
     expect(updated.flight_status).toBe('arrived')
+  })
+
+  it('soft-deletes a flight: hidden from the board query, still findable by id', async () => {
+    const kept = await makeFlight(db)
+    const flight = await makeFlight(db)
 
     await deleteFlight(db, flight.id)
-    expect(await findFlightById(db, flight.id)).toBeNull()
+
+    const active = await findAllFlights(db)
+    expect(active.map((f) => f.id)).toEqual([kept.id])
+
+    const found = await findFlightById(db, flight.id)
+    expect(found?.deleted_at).not.toBeNull()
   })
 })

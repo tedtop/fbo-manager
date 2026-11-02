@@ -136,10 +136,22 @@ export function useFlights(params?: {
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })
 
+  // With keepRow the flight stays in the cached lists after the soft delete, so the board can play
+  // its exit animation; the caller then drops it with forgetFlight.
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteFlightRepo(db, Number(id)),
-    onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
+    mutationFn: ({ id }: { id: string; keepRow?: boolean }) =>
+      deleteFlightRepo(db, Number(id)),
+    onSuccess: (_data, { keepRow }) => {
+      if (!keepRow) qc.invalidateQueries({ queryKey: flightKeys.all })
+    }
   })
+
+  const forgetFlight = (id: string) => {
+    qc.setQueriesData<Flight[]>({ queryKey: flightKeys.lists() }, (old) =>
+      old?.filter((f) => f.id !== id)
+    )
+    qc.invalidateQueries({ queryKey: flightKeys.all })
+  }
 
   return {
     flights: query.data ?? [],
@@ -151,7 +163,9 @@ export function useFlights(params?: {
       updates: Partial<Flight>,
       expectedModifiedAt?: string
     ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
-    deleteFlight: (id: string) => deleteMutation.mutateAsync(id),
+    deleteFlight: (id: string, options?: { keepRow?: boolean }) =>
+      deleteMutation.mutateAsync({ id, keepRow: options?.keepRow }),
+    forgetFlight,
     refetch: query.refetch
   }
 }
