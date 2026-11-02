@@ -9,9 +9,9 @@ services:
     volumes:
       - ./frontend:/app
     expose:
-      - "3000"
+      - "4000"
     ports:
-      - "3000:3000"
+      - "4000:4000"
     env_file:
       - ./frontend/.env.local
     environment:

@@ -19,7 +19,7 @@ pnpm supabase:start   # local Supabase stack (requires Docker), first run only
 pnpm dev
 ```
 
-App runs at http://localhost:3000.
+App runs at http://localhost:4000 (port 4000 so it does not clash with the Minuteman project on 3000).
 
 ## Shared live database: do not delete these tables
 
