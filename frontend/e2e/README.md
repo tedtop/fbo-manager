@@ -36,7 +36,7 @@ pnpm e2e:ui          # Playwright's interactive UI mode — best for writing/deb
 
 No `.env` file needed — `playwright.config.ts` launches `next dev` itself with
 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` injected directly, pointed at the
-local stack (`e2e/support/env.ts`), on port 3100 so it never collides with a real `pnpm dev`.
+local stack (`e2e/support/env.ts`), on port 4100 so it never collides with a real `pnpm dev`.
 
 ## How auth works
 
@@ -80,6 +80,7 @@ re-seeds the dev accounts automatically on the next run).
 | Equipment: create | `equipment.e2e.ts` | Simple CRUD form — the baseline smoke test proving the whole pipeline (login → form → DB) works |
 | Equipment: edit | `equipment.e2e.ts` | |
 | Invoicing: digital fuel ticket, "Complete ticket" | `invoicing.e2e.ts` | Highest priority — the exact form/bug class named in the 2026-07-03 handoff. Verifies the invoice, its line item, *and* the fueling event (`truck_meter_readings`) it creates as a side effect, plus the `invoice_number` stamped back onto that reading |
+| Flight board: seeded flights display, split/arrivals/departures toggle, tail-number search, status filter | `flight-board.e2e.ts` | Seeds via service role, cleans up its own rows. Pins known bugs F1 (both-times flights show in both columns) and F4 (date range filter is a no-op) with `KNOWN BUG` assertions that flip when B09/B13 land |
 
 **Not yet covered** — every other create/edit form in the app (aircraft, flights, parking
 locations, tanks/tank readings, trainings/certifications, fuelers, truck sheets manual entry,

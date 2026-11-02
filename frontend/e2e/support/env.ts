@@ -19,7 +19,7 @@ export const E2E_SUPABASE_SERVICE_ROLE_KEY =
 // anything but "localhost" by default (allowedDevOrigins) — 127.0.0.1 gets blocked even
 // though it's loopback, so this deliberately differs from the repo test suite's
 // 127.0.0.1-only convention.
-export const E2E_BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3100'
+export const E2E_BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:4100'
 
 /**
  * Same safety principle as tests/support/client.ts's assertSafeTestTarget: the E2E seed

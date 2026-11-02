@@ -1,0 +1,134 @@
+import { expect, test, type Page } from '@playwright/test'
+import { createE2EDbClient } from './support/db'
+import { uniqueValue } from './support/unique'
+
+const db = createE2EDbClient()
+
+// Three flights seeded straight into the DB (service role), tracked so afterAll only removes our own rows.
+// `flight.departure_time` is NOT NULL, so "arrival only" cannot exist in the DB: a flight with
+// arrival_time NULL is a pure departure, a flight with both times is a quick_turn (see F1 below).
+const tailTurn = uniqueValue('NE2E').toUpperCase() // arrival + departure, scheduled
+const tailDep = uniqueValue('NE2E').toUpperCase() // departure only, scheduled
+const tailDelayed = uniqueValue('NE2E').toUpperCase() // departure only, delayed
+const tails = [tailTurn, tailDep, tailDelayed]
+let userId: number
+
+test.beforeAll(async () => {
+  // created_by_id is NOT NULL on the local schema (F8) and references the legacy `users` table.
+  const { data: user, error: userError } = await db
+    .from('users')
+    .insert({
+      username: uniqueValue('e2e-flight-user-'),
+      password: 'test-password-hash',
+      first_name: 'E2E',
+      last_name: 'Board',
+      role: 'line',
+    })
+    .select()
+    .single()
+  if (userError) throw userError
+  userId = user.id
+
+  const { error: aircraftError } = await db
+    .from('aircraft')
+    .insert(tails.map((tail_number) => ({ tail_number, aircraft_type_icao: 'B738', aircraft_type_display: 'Boeing 737-800' })))
+  if (aircraftError) throw aircraftError
+
+  const now = Date.now()
+  const iso = (offsetMin: number) => new Date(now + offsetMin * 60_000).toISOString()
+  const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB' }
+  const { error: flightError } = await db.from('flight').insert([
+    { ...base, aircraft_id: tailTurn, arrival_time: iso(60), departure_time: iso(180), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailDep, departure_time: iso(240), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailDelayed, departure_time: iso(300), flight_status: 'delayed' },
+  ])
+  if (flightError) throw flightError
+})
+
+test.afterAll(async () => {
+  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('aircraft').delete().in('tail_number', tails)
+  await db.from('users').delete().eq('id', userId)
+})
+
+async function openBoard(page: Page) {
+  await page.goto('/')
+  await expect(page.getByText(tailTurn).first()).toBeVisible({ timeout: 15_000 })
+}
+
+const arrivalsHeading = (page: Page) => page.getByRole('heading', { name: 'Arrivals' })
+const departuresHeading = (page: Page) => page.getByRole('heading', { name: 'Departures' })
+
+test.describe('Flight board', () => {
+  test('seeded flights show on the split board', async ({ page }) => {
+    await openBoard(page)
+    await expect(arrivalsHeading(page)).toBeVisible()
+    await expect(departuresHeading(page)).toBeVisible()
+    for (const tail of tails) await expect(page.getByText(tail).first()).toBeVisible()
+
+    // Departure-only flights appear once (departures column only).
+    await expect(page.getByText(tailDep)).toHaveCount(1)
+    await expect(page.getByText(tailDelayed)).toHaveCount(1)
+
+    // KNOWN BUG F1: flips when B09/B13 land — a flight with both times lands in BOTH columns (quick_turn).
+    // Once fixed this should be a single card in one column.
+    await expect(page.getByText(tailTurn)).toHaveCount(2)
+  })
+
+  test('arrivals / departures / split toggle switches the layout', async ({ page }) => {
+    await openBoard(page)
+
+    await page.getByRole('button', { name: 'Departures Only' }).click()
+    await expect(arrivalsHeading(page)).toHaveCount(0)
+    await expect(departuresHeading(page)).toBeVisible()
+    await expect(page.getByText(tailDep)).toHaveCount(1)
+    await expect(page.getByText(tailTurn)).toHaveCount(1)
+
+    await page.getByRole('button', { name: 'Arrivals Only' }).click()
+    await expect(departuresHeading(page)).toHaveCount(0)
+    await expect(arrivalsHeading(page)).toBeVisible()
+    await expect(page.getByText(tailDep)).toHaveCount(0) // departure-only flight is not an arrival
+    // KNOWN BUG F1: flips when B09/B13 land — the both-times flight is shown in Arrivals too.
+    await expect(page.getByText(tailTurn)).toHaveCount(1)
+
+    await page.getByRole('button', { name: 'Split View' }).click()
+    await expect(arrivalsHeading(page)).toBeVisible()
+    await expect(departuresHeading(page)).toBeVisible()
+    await expect(page.getByText(tailDep)).toHaveCount(1)
+  })
+
+  test('search by tail number filters the board', async ({ page }) => {
+    await openBoard(page)
+    await page.getByPlaceholder('Search flights...').fill(tailDep)
+    await expect(page.getByText(tailDep)).toHaveCount(1)
+    await expect(page.getByText(tailTurn)).toHaveCount(0)
+    await expect(page.getByText(tailDelayed)).toHaveCount(0)
+
+    await page.getByPlaceholder('Search flights...').fill('')
+    await expect(page.getByText(tailTurn).first()).toBeVisible()
+  })
+
+  test('status filter narrows the board', async ({ page }) => {
+    await openBoard(page)
+    await page.getByRole('button', { name: 'Filters' }).click()
+    await page.getByRole('combobox').first().click() // Status select (first in the popover)
+    await page.getByRole('option', { name: 'Delayed' }).click()
+    await page.keyboard.press('Escape') // close the popover
+
+    await expect(page.getByText(tailDelayed)).toHaveCount(1)
+    await expect(page.getByText(tailDep)).toHaveCount(0)
+    await expect(page.getByText(tailTurn)).toHaveCount(0)
+  })
+
+  test('date range filter does nothing yet', async ({ page }) => {
+    await openBoard(page)
+    await page.getByRole('button', { name: 'Filters' }).click()
+    await page.getByRole('combobox').nth(1).click() // Date Range select
+    await page.getByRole('option', { name: 'Tomorrow' }).click()
+    await page.keyboard.press('Escape')
+
+    // KNOWN BUG F4: flips when B09/B13 land — dateRange is never applied, so "Tomorrow" still shows
+    // flights seeded for today. Once fixed, these should be hidden.
+    for (const tail of tails) await expect(page.getByText(tail).first()).toBeVisible()
+  })
+})
