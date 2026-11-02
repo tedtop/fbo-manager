@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['**/__tests__/**/*.test.ts'],
-    exclude: ['**/node_modules/**', '**/.next/**'],
+    exclude: ['**/node_modules/**', '**/.next/**', '**/.pnpm-store/**'],
     testTimeout: 15_000,
     hookTimeout: 30_000,
     // All repository integration tests share one local Supabase/Postgres instance and
