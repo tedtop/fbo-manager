@@ -1,6 +1,6 @@
 # RLS rollout and Django cleanup plan
 
-Status: **plan only, nothing in this document has been applied except where marked "done".**
+Status: Phase 0 and Phase 1 are applied to live (see Progress); Phases 2-4 are still plan only.
 Written 2026-11-02 from a read-only audit of the live project `qkuhvlrdidhumyyxokil`
 ("Minuteman Dashboard") and of `~/src/minuteman`.
 
@@ -13,11 +13,20 @@ Written 2026-11-02 from a read-only audit of the live project `qkuhvlrdidhumyyxo
   tank getters); RLS-off tables exposed real data (e.g. 146 flights, 228 shifts, 2,551 dispatch
   rows, 3,038 tank readings, 16 users). The 12 RLS-on tables showed 0 rows to anon (their
   policies work).
-- **Phase 1, written and tested locally, NOT applied to live:** `20261102000400_revoke_anon_access.sql`.
-  After `supabase db reset` (all migrations): smoke = 0 reachable / 34 denied; full suite 22 files,
-  201 tests passing; a signed-in local test user can still read `flight`, `aircraft`, `profiles`,
-  `roles` and call `has_module_access()`, while anon gets 401 on tables and the function.
-- Waiting on Ted's go-ahead to apply to live (open question 3).
+- **Phase 1, APPLIED TO LIVE 2026-11-02:** `20261102000400_revoke_anon_access.sql`, applied with
+  `supabase db query --linked -f`. Smoke on live afterwards: **anon reaches 0 of 48** (was 48 of 48).
+  Verified after: Minuteman reads all 7 of its tables with identical row counts and both RPC getters
+  return 200 as service_role; the logged-in admin session still loads the board (92 arrivals),
+  parking, fuel farm and line schedule. (The Users page shows "Access Restricted" for the dev admin,
+  but that predates this change: live `user_roles` has 0 rows, so nobody holds module access; see
+  B38.) Local: 22 test files / 201 tests pass after a clean `supabase db reset`.
+- **Django cleanup:** `20261102000100` applied (7 Django tables). `20261102000200` (drops
+  `terminal_gate`, `users_groups`, `users_user_permissions`, `api_employeeshift`) is written and
+  tested locally but was **blocked by the tool permission guard on live** (mass table delete), so it
+  is NOT applied. The 4 `terminal_gate` rows are backed up in
+  `docs/archive/terminal_gate-backup-2026-11-02.json`. Apply it yourself or allow the action, e.g.
+  `supabase db query --linked -f frontend/supabase/migrations/20261102000200_drop_terminal_gate_and_django_leftovers.sql`.
+- Next: Phase 2 (RLS + policies per table, B30), starting with Minuteman deny-all tables and `users`.
 - Tooling notes: `supabase db query --local -f` rejects multi-statement files (use
   `supabase migration up --local`/`db reset` locally); `--linked -f` handles them. The
   `supabase:push` script in `frontend/package.json` runs `supabase db push`, which must not be
