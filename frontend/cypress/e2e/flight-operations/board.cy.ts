@@ -1,6 +1,6 @@
 // Port of e2e/flight-board.e2e.ts (Playwright) plus filters, calendar and empty state (BACKLOG B08c).
 // Realtime insert is deliberately not covered here (blocked on B16).
-// KNOWN BUG tags (F3..F9, except F4 which landed in B13) pin today's behavior; each flips when the matching backlog item lands.
+// KNOWN BUG tags (F5..F9; F3 landed in B14, F4 in B13) pin today's behavior; each flips when the matching backlog item lands.
 // Classification (D2/D6): Arrivals = has a scheduled arrival, Departures = has a scheduled departure.
 const stamp = Date.now().toString(36).toUpperCase()
 const tailTurn = `CBT${stamp}` // arrival + departure, scheduled, hangar

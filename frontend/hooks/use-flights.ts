@@ -39,6 +39,7 @@ function rowToFlight(row: any): Flight {
     contact_notes: row.contact_notes,
     services: row.services,
     fuel_order_notes: row.fuel_order_notes,
+    location_id: row.location_id,
     passenger_count: row.passenger_count,
     notes: row.notes,
     created_by_source: row.created_by_source,
@@ -100,6 +101,7 @@ export function useFlights(params?: {
         contact_notes: requestData.contact_notes ?? '',
         services: requestData.services ?? [],
         fuel_order_notes: requestData.fuel_order_notes ?? '',
+        location_id: requestData.location_id,
         passenger_count: requestData.passenger_count,
         notes: requestData.notes ?? '',
         created_by_source: requestData.created_by_source ?? 'line-department'
@@ -135,6 +137,7 @@ export function useFlights(params?: {
       if (requestData.contact_notes !== undefined) dbUpdates.contact_notes = requestData.contact_notes
       if (requestData.services !== undefined) dbUpdates.services = requestData.services
       if (requestData.fuel_order_notes !== undefined) dbUpdates.fuel_order_notes = requestData.fuel_order_notes
+      if (requestData.location_id !== undefined) dbUpdates.location_id = requestData.location_id
       if (requestData.passenger_count !== undefined) dbUpdates.passenger_count = requestData.passenger_count
       if (requestData.notes !== undefined) dbUpdates.notes = requestData.notes
       if (requestData.created_by_source !== undefined) dbUpdates.created_by_source = requestData.created_by_source

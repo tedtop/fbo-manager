@@ -74,14 +74,14 @@ describe('apiFlightToComponentFlight', () => {
       expect(apiFlightToComponentFlight(baseRow).status).toBe('scheduled')
     })
 
-    // KNOWN BUG F3: flips when B10 lands (en-route has no DB representation)
-    it('KNOWN BUG F3: en-route round-trips to scheduled, never back to en-route', () => {
-      const backend = mapStatusToBackend('en-route')
-      expect(backend).toBe('scheduled')
-      expect(apiFlightToComponentFlight({ ...baseRow, flight_status: backend }).status).toBe(
-        'scheduled'
-      )
-    })
+    // F3 fixed (B14): the DB has no en-route status, so the UI no longer offers one; every UI status round-trips.
+    it.each(['scheduled', 'arrived', 'departed', 'delayed', 'cancelled'] as const)(
+      '%s round-trips through the DB value unchanged',
+      (status) => {
+        const backend = mapStatusToBackend(status)
+        expect(apiFlightToComponentFlight({ ...baseRow, flight_status: backend }).status).toBe(status)
+      }
+    )
   })
 
   describe('type inference', () => {
@@ -262,10 +262,6 @@ describe('componentFlightToApiRequest', () => {
     })
   })
 
-  it('maps en-route to scheduled (KNOWN BUG F3: flips when B10 lands)', () => {
-    expect(componentFlightToApiRequest({ status: 'en-route' }).flight_status).toBe('scheduled')
-  })
-
   it('adds a MAN- call_sign only for manual- ids', () => {
     expect(componentFlightToApiRequest({ id: 'manual-1' }).call_sign).toMatch(/^MAN-\d+$/)
     expect(componentFlightToApiRequest({ id: '42' }).call_sign).toBeUndefined()
@@ -289,5 +285,96 @@ describe('componentFlightToApiRequest', () => {
 
   it('sends a present-but-unset time as null', () => {
     expect(componentFlightToApiRequest({ arrivalTime: undefined }).scheduled_arrival_time).toBeNull()
+  })
+})
+
+describe('F3 field round-trip (B14)', () => {
+  const fullRow: FlightRow = {
+    id: 11,
+    aircraft: 'N999ZZ',
+    aircraft_type_display: 'Gulfstream G650',
+    call_sign: 'GLF1',
+    scheduled_arrival_time: '2026-03-10T10:00:00Z',
+    scheduled_departure_time: '2026-03-10T11:00:00Z',
+    actual_arrival_time: '2026-03-10T10:07:00Z',
+    actual_departure_time: '2026-03-10T11:02:00Z',
+    is_quick_turn: true,
+    flight_status: 'delayed',
+    origin: 'KSFO',
+    destination: 'KLAX',
+    contact_name: 'Jane',
+    contact_notes: 'crew car',
+    services: ['fuel', 'hangar'],
+    fuel_order_notes: 'Jet A 800 gal, top off',
+    location_id: 42,
+    passenger_count: 4,
+    notes: 'VIP',
+    created_by_source: 'front-desk',
+    created_at: '2026-03-01T00:00:00Z',
+  }
+
+  it('maps fuel_order_notes and location_id onto the Flight', () => {
+    const f = apiFlightToComponentFlight(fullRow)
+    expect(f.fuelOrderNotes).toBe('Jet A 800 gal, top off')
+    expect(f.locationId).toBe(42)
+  })
+
+  it('round-trips every mapped field through the update request', () => {
+    const f = apiFlightToComponentFlight(fullRow)
+    const r = componentFlightToApiRequest(f)
+    expect(r).toMatchObject({
+      aircraft: 'N999ZZ',
+      scheduled_arrival_time: '2026-03-10T10:00:00Z',
+      scheduled_departure_time: '2026-03-10T11:00:00Z',
+      actual_arrival_time: '2026-03-10T10:07:00Z',
+      actual_departure_time: '2026-03-10T11:02:00Z',
+      is_quick_turn: true,
+      flight_status: 'delayed',
+      origin: 'KSFO',
+      destination: 'KLAX',
+      contact_name: 'Jane',
+      contact_notes: 'crew car',
+      services: ['fuel', 'hangar'],
+      fuel_order_notes: 'Jet A 800 gal, top off',
+      location_id: 42,
+      passenger_count: 4,
+      notes: 'VIP',
+      created_by_source: 'front-desk',
+    })
+  })
+
+  it('null/empty fuel_order_notes and null location_id map to unset', () => {
+    const f = apiFlightToComponentFlight({ ...fullRow, fuel_order_notes: null, location_id: null })
+    expect(f.fuelOrderNotes).toBeUndefined()
+    expect(f.locationId).toBeUndefined()
+    expect(apiFlightToComponentFlight({ ...fullRow, fuel_order_notes: '' }).fuelOrderNotes).toBeUndefined()
+  })
+
+  it('nulls in the row (times, optional text) do not throw and stay unset', () => {
+    const f = apiFlightToComponentFlight({
+      id: 1,
+      created_at: 'c',
+      scheduled_arrival_time: null,
+      scheduled_departure_time: '2026-03-10T11:00:00Z',
+      actual_arrival_time: null,
+      actual_departure_time: null,
+      is_quick_turn: null,
+      passenger_count: null,
+    })
+    expect(f.actualArrivalTime).toBeUndefined()
+    expect(f.actualDepartureTime).toBeUndefined()
+    expect(f.isQuickTurn).toBe(false)
+    expect(f.passengers).toBeUndefined()
+  })
+
+  it('an update that does not touch the fields omits fuel_order_notes and location_id', () => {
+    const r = componentFlightToApiRequest({ notes: 'changed' })
+    expect(r).toEqual({ notes: 'changed' })
+    expect('fuel_order_notes' in r).toBe(false)
+    expect('location_id' in r).toBe(false)
+  })
+
+  it('an explicit empty fuelOrderNotes is sent so the field can be cleared', () => {
+    expect(componentFlightToApiRequest({ fuelOrderNotes: '' }).fuel_order_notes).toBe('')
   })
 })

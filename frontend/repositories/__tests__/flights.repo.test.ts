@@ -3,6 +3,10 @@ import { createTestClient } from '@/tests/support/client'
 import { resetDatabase } from '@/tests/support/reset'
 import { makeAircraft, makeFlight, makeParkingLocation, makeUser } from '@/tests/support/factories'
 import { withTz } from '@/tests/support/with-tz'
+import {
+  apiFlightToComponentFlight,
+  componentFlightToApiRequest,
+} from '@/components/flight-operations/types'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import {
   createFlight,
@@ -235,6 +239,43 @@ describe('flights.repo', () => {
       flight_status: 'scheduled',
       created_by_id: 1,
     })
+  })
+
+  it('F3: fuel_order_notes and location_id round-trip through the hook mapping and survive an unrelated update', async () => {
+    const aircraft = await makeAircraft(db)
+    const location = await makeParkingLocation(db)
+    await makeUser(db, { id: 1, username: 'default-flight-creator' })
+
+    const created = await createFlight(db, {
+      ...formPayload(aircraft.tail_number),
+      fuel_order_notes: 'Jet A 500 gal',
+      location_id: location.id,
+    } as Parameters<typeof createFlight>[1])
+    expect(created.fuel_order_notes).toBe('Jet A 500 gal')
+    expect(created.location_id).toBe(location.id)
+
+    // Adapter -> update request -> repo, the same path the board uses.
+    const flight = apiFlightToComponentFlight({
+      id: created.id,
+      aircraft: created.aircraft_id,
+      fuel_order_notes: created.fuel_order_notes,
+      location_id: created.location_id,
+      created_at: created.created_at,
+    })
+    expect(flight).toMatchObject({ fuelOrderNotes: 'Jet A 500 gal', locationId: location.id })
+
+    // Unrelated edit (a notes-only update) must not wipe either column.
+    const req = componentFlightToApiRequest({ notes: 'edited' })
+    const updated = await updateFlight(db, created.id, { notes: req.notes })
+    expect(updated.notes).toBe('edited')
+    expect(updated.fuel_order_notes).toBe('Jet A 500 gal')
+    expect(updated.location_id).toBe(location.id)
+
+    // Editing the notes themselves persists.
+    const req2 = componentFlightToApiRequest({ fuelOrderNotes: 'Jet A 900 gal' })
+    const again = await updateFlight(db, created.id, { fuel_order_notes: req2.fuel_order_notes })
+    expect(again.fuel_order_notes).toBe('Jet A 900 gal')
+    expect(again.location_id).toBe(location.id)
   })
 
   it('update with a stale expectedModifiedAt throws ConcurrencyConflictError and leaves the row unchanged', async () => {

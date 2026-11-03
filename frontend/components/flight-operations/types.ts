@@ -22,6 +22,7 @@ export interface FlightRow {
   contact_notes?: string | null
   services?: string[] | null
   fuel_order_notes?: string | null
+  location_id?: number | null
   passenger_count?: number | null
   notes?: string | null
   created_by_source?: string | null
@@ -42,7 +43,6 @@ export type FlightType =
 
 export type FlightStatus =
   | 'scheduled'
-  | 'en-route'
   | 'arrived'
   | 'departed'
   | 'delayed'
@@ -134,8 +134,6 @@ export function mapStatusToBackend(status: FlightStatus): BackendFlightStatus {
   switch (status) {
     case 'scheduled':
       return 'scheduled'
-    case 'en-route':
-      return 'scheduled' // DB doesn't have en-route, use scheduled
     case 'arrived':
       return 'arrived'
     case 'departed':
@@ -218,6 +216,8 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     passengers: (apiFlight as any).passenger_count || undefined,
     services: (apiFlight as any).services || [],
     notes: (apiFlight as any).notes || undefined,
+    fuelOrderNotes: apiFlight.fuel_order_notes || undefined,
+    locationId: apiFlight.location_id ?? undefined,
     duration, // Calculated from arrival and departure times
     source: ((apiFlight as any).created_by_source as FlightSource) || 'qt',
     createdBy,
@@ -290,6 +290,14 @@ export function componentFlightToApiRequest(
 
   if (flight.notes !== undefined) {
     result.notes = flight.notes
+  }
+
+  if (flight.fuelOrderNotes !== undefined) {
+    result.fuel_order_notes = flight.fuelOrderNotes
+  }
+
+  if (flight.locationId !== undefined) {
+    result.location_id = flight.locationId
   }
 
   if (flight.source !== undefined) {

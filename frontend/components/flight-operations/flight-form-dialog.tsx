@@ -202,6 +202,7 @@ export function FlightFormDialog({
         contact_notes: freshRow.contact_notes,
         services: freshRow.services,
         fuel_order_notes: freshRow.fuel_order_notes,
+        location_id: freshRow.location_id,
         passenger_count: freshRow.passenger_count,
         notes: freshRow.notes,
         created_by_source: freshRow.created_by_source,
@@ -352,6 +353,8 @@ export function FlightFormDialog({
       contactNotes: formData.contactNotes,
       services: formData.services || [],
       notes: formData.notes,
+      fuelOrderNotes: formData.fuelOrderNotes ?? '',
+      locationId: initialData?.locationId,
       source: formData.source || 'line-department',
       duration: 45, // Will be calculated by the type conversion function
       createdBy: initialData?.createdBy || {
@@ -477,7 +480,6 @@ export function FlightFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="en-route">En Route</SelectItem>
                     <SelectItem value="arrived">Arrived</SelectItem>
                     <SelectItem value="departed">Departed</SelectItem>
                     <SelectItem value="delayed">Delayed</SelectItem>
@@ -698,6 +700,19 @@ export function FlightFormDialog({
                   setFormData({ ...formData, notes: e.target.value })
                 }
                 rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fuelOrderNotes">Fuel order notes</Label>
+              <Textarea
+                id="fuelOrderNotes"
+                value={formData.fuelOrderNotes || ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, fuelOrderNotes: e.target.value })
+                }
+                rows={2}
+                placeholder="Fuel type, quantity, special instructions"
               />
             </div>
           </div>

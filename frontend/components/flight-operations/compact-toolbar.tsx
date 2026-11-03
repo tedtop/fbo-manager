@@ -208,7 +208,6 @@ export function CompactToolbar({
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="en-route">En Route</SelectItem>
                       <SelectItem value="arrived">Arrived</SelectItem>
                       <SelectItem value="departed">Departed</SelectItem>
                       <SelectItem value="delayed">Delayed</SelectItem>

@@ -107,10 +107,6 @@ const statusConfig = {
     label: 'Scheduled',
     color: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
   },
-  'en-route': {
-    label: 'En Route',
-    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-  },
   arrived: {
     label: 'Arrived',
     color: 'bg-green-500/10 text-green-500 border-green-500/20'

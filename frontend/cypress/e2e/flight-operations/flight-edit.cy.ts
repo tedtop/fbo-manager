@@ -15,7 +15,9 @@ const tailEditFail = `CE5${stamp}`
 const tailStatusFail = `CE6${stamp}`
 const tailCancel = `CE7${stamp}`
 const tailDeparted = `CE8${stamp}`
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted]
+const tailFuel = `CE9${stamp}`
+const tailMenu = `CEA${stamp}`
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted, tailFuel, tailMenu]
 const ids: Record<string, number> = {}
 
 const card = (tail: string) => cy.contains('[data-slot="card"]', tail)
@@ -84,6 +86,42 @@ describe('Flight edit, status change, delete', () => {
     card(tailEdit).contains('edited by cypress').should('not.exist')
     cy.reload()
     card(tailEdit).contains('edited by cypress').should('be.visible')
+  })
+
+  // F3 fixed (B14): fuel_order_notes is a form field and survives an unrelated edit.
+  it('fuel order notes entered in the form persist and survive an unrelated edit', () => {
+    openBoard(tailFuel)
+    openEditSheet(tailFuel)
+    cy.get('#fuelOrderNotes').clear().type('Jet A 500 gal, top off')
+    cy.contains('button', 'Update Flight').click()
+    cy.contains('Edit Flight').should('not.exist')
+    cy.task('getFlightByTail', tailFuel).should((row: FlightRow) => {
+      expect(row.fuel_order_notes).to.eq('Jet A 500 gal, top off')
+    })
+
+    // Reload so the form is seeded from the stored row, then change something else.
+    cy.reload()
+    cy.contains(tailFuel, { timeout: 15_000 }).should('be.visible')
+    openEditSheet(tailFuel)
+    cy.get('#fuelOrderNotes').should('have.value', 'Jet A 500 gal, top off')
+    cy.get('#origin').clear().type('KTEB')
+    cy.contains('button', 'Update Flight').click()
+    cy.contains('Edit Flight').should('not.exist')
+    cy.task('getFlightByTail', tailFuel).should((row: FlightRow) => {
+      expect(row.origin).to.eq('KTEB')
+      expect(row.fuel_order_notes).to.eq('Jet A 500 gal, top off')
+    })
+  })
+
+  // F3 fixed (B14): the DB has no en-route status, so the card offers only the real ones.
+  it('status dropdown offers only real statuses', () => {
+    openBoard(tailMenu)
+    card(tailMenu).contains('Scheduled').click()
+    cy.get('[role="menuitem"]').should('have.length', 5)
+    cy.get('[role="menuitem"]').then(($items) => {
+      expect([...$items].map((el) => el.textContent?.trim())).to.deep.eq(['Scheduled', 'Arrived', 'Departed', 'Delayed', 'Cancelled'])
+    })
+    cy.contains('[role="menuitem"]', 'En Route').should('not.exist')
   })
 
   it('status dropdown on the card persists the new status', () => {

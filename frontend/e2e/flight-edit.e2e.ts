@@ -17,7 +17,9 @@ const tailEditFail = uniqueValue('NF2E').toUpperCase()
 const tailStatusFail = uniqueValue('NF2E').toUpperCase()
 const tailCancel = uniqueValue('NF2E').toUpperCase()
 const tailDeparted = uniqueValue('NF2E').toUpperCase()
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted]
+const tailFuel = uniqueValue('NF2E').toUpperCase()
+const tailMenu = uniqueValue('NF2E').toUpperCase()
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted, tailFuel, tailMenu]
 const ids: Record<string, number> = {}
 let userId: number
 
@@ -141,6 +143,41 @@ test.describe('Flight edit, status change, delete', () => {
     await expect(card(page, tailEdit).getByText('edited by e2e')).toHaveCount(0)
     await page.reload()
     await expect(card(page, tailEdit).getByText('edited by e2e')).toBeVisible({ timeout: 15_000 })
+  })
+
+  // F3 fixed (B14): fuel_order_notes is a form field and survives an unrelated edit.
+  test('fuel order notes entered in the form persist and survive an unrelated edit', async ({ page }) => {
+    await openBoard(page, tailFuel)
+    await openEditSheet(page, tailFuel)
+    await page.getByLabel('Fuel order notes').fill('Jet A 500 gal, top off')
+    await page.getByRole('button', { name: 'Update Flight' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
+    await waitForDbRow(async () => {
+      const row = await readFlight(tailFuel)
+      return row.fuel_order_notes === 'Jet A 500 gal, top off' ? row : null
+    })
+
+    // Reload so the form is seeded from the stored row, then change something else.
+    await page.reload()
+    await expect(page.getByText(tailFuel).first()).toBeVisible({ timeout: 15_000 })
+    await openEditSheet(page, tailFuel)
+    await expect(page.getByLabel('Fuel order notes')).toHaveValue('Jet A 500 gal, top off')
+    await page.locator('#origin').fill('KTEB')
+    await page.getByRole('button', { name: 'Update Flight' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
+    const after = await waitForDbRow(async () => {
+      const row = await readFlight(tailFuel)
+      return row.origin === 'KTEB' ? row : null
+    })
+    expect(after.fuel_order_notes).toBe('Jet A 500 gal, top off')
+  })
+
+  // F3 fixed (B14): the DB has no en-route status, so the card offers only the real ones.
+  test('status dropdown offers only real statuses', async ({ page }) => {
+    await openBoard(page, tailMenu)
+    await card(page, tailMenu).getByText('Scheduled', { exact: true }).click()
+    await expect(page.getByRole('menuitem')).toHaveText(['Scheduled', 'Arrived', 'Departed', 'Delayed', 'Cancelled'])
+    await expect(page.getByRole('menuitem', { name: 'En Route' })).toHaveCount(0)
   })
 
   test('status dropdown on the card persists the new status', async ({ page }) => {
