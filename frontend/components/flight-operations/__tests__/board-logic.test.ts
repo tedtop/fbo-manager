@@ -1,5 +1,6 @@
+import { withTz } from '@/tests/support/with-tz'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { filterFlights, partitionFlights, weekRange } from '../board-logic'
+import { filterFlights, partitionFlights, weekDateParams, weekRange } from '../board-logic'
 import type { Flight, FlightFilters } from '../types'
 
 function makeFlight(overrides: Partial<Flight> = {}): Flight {
@@ -255,13 +256,65 @@ describe('weekRange', () => {
     expect(end).toEqual(new Date(2026, 2, 15))
   })
 
-  // KNOWN BUG F5-adjacent: results are runtime-local, so same instant gives different weeks per TZ
-  it('is timezone dependent: the same instant falls in different weeks in different zones', () => {
+  // weekRange is local-calendar by design (F5): the same instant falls in different weeks per zone
+  it('follows the local zone: the same instant falls in different weeks in different zones', () => {
     const instant = new Date('2026-06-14T03:00:00Z') // Sun 03:00Z
     process.env.TZ = 'UTC'
     const utcStart = weekRange(instant, 0).start.toISOString()
     process.env.TZ = 'America/New_York' // still Sat 23:00 local
     const nyStart = weekRange(instant, 0).start.toISOString()
     expect(utcStart).not.toBe(nyStart)
+  })
+})
+
+describe('weekDateParams (F5: calendar window follows weekOffset in local dates)', () => {
+  it('current week: Sunday..Saturday as local date strings', () => {
+    withTz('America/Phoenix', () => {
+      // Wed 2026-03-11 12:00 local
+      expect(weekDateParams(new Date(2026, 2, 11, 12), 0)).toEqual({
+        startDate: '2026-03-08',
+        endDate: '2026-03-14',
+      })
+    })
+  })
+
+  it('moves by whole weeks, far beyond the old fixed +-28 days window', () => {
+    withTz('America/Phoenix', () => {
+      const now = new Date(2026, 2, 11, 12)
+      expect(weekDateParams(now, 6)).toEqual({ startDate: '2026-04-19', endDate: '2026-04-25' })
+      expect(weekDateParams(now, -10)).toEqual({ startDate: '2025-12-28', endDate: '2026-01-03' })
+    })
+  })
+
+  it('uses the LOCAL date near midnight, not the UTC date (Phoenix Sat 23:30 is Sun in UTC)', () => {
+    withTz('America/Phoenix', () => {
+      const satNight = new Date(2026, 2, 14, 23, 30) // Sat Mar 14 23:30 MST = Sun 06:30Z
+      expect(weekDateParams(satNight, 0).startDate).toBe('2026-03-08')
+    })
+  })
+
+  it('weeks spanning Denver DST change stay Sunday..Saturday', () => {
+    withTz('America/Denver', () => {
+      expect(weekDateParams(new Date(2026, 2, 4, 12), 1)).toEqual({
+        startDate: '2026-03-08',
+        endDate: '2026-03-14',
+      })
+      expect(weekDateParams(new Date(2026, 10, 1, 12), 0)).toEqual({
+        startDate: '2026-11-01',
+        endDate: '2026-11-07',
+      })
+    })
+  })
+
+  it('week-view route and calendar agree: both derive from weekRange', () => {
+    withTz('America/Denver', () => {
+      const now = new Date(2026, 2, 11, 12)
+      for (const off of [-3, 0, 5]) {
+        const { start } = weekRange(now, off)
+        expect(weekDateParams(now, off).startDate).toBe(
+          `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+        )
+      }
+    })
   })
 })

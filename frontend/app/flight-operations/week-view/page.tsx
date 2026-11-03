@@ -1,5 +1,6 @@
 'use client'
 
+import { weekDateParams } from '@/components/flight-operations/board-logic'
 import { CalendarWeekView } from '@/components/flight-operations/calendar-week-view'
 import type {
   Flight,
@@ -11,18 +12,8 @@ import { useState } from 'react'
 export default function WeekViewPage() {
   const [weekOffset, setWeekOffset] = useState(0)
 
-  // Calculate date range for the visible week
-  // CalendarWeekView logic: starts from today + offset * 7
-  const today = new Date()
-  const start = new Date(today)
-  start.setDate(today.getDate() + weekOffset * 7)
-
-  // End date is start + 7 days
-  const end = new Date(start)
-  end.setDate(start.getDate() + 7)
-
-  const startDate = start.toISOString().split('T')[0]
-  const endDate = end.toISOString().split('T')[0]
+  // Same local Sunday-start week the calendar renders (CalendarWeekView uses weekRange too)
+  const { startDate, endDate } = weekDateParams(new Date(), weekOffset)
 
   const { flights, loading, error, updateFlight, deleteFlight } = useFlights({
     startDate,

@@ -10,6 +10,7 @@ import {
   PlaneTakeoff,
   Plus
 } from 'lucide-react'
+import { parseLocalDate } from '@/lib/local-date'
 import { weekRange } from './board-logic'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { FlightFilters as FilterType, Flight } from './types'
@@ -52,6 +53,12 @@ function getTimeStr(date: Date): string {
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
+}
+
+function parseLocalDateTime(day: string, time: string): Date {
+  const [y, m, d] = day.split('-').map(Number)
+  const [h, min] = time.split(':').map(Number)
+  return new Date(y, m - 1, d, h, min)
 }
 
 function parseLocalTimestamp(timestamp: string): Date {
@@ -333,7 +340,7 @@ export function CalendarWeekView({
     const dayDelta = currentDayIdx - startDayIdx
 
     // Calc new date
-    const baseDate = new Date(dragStartBlockDate) // YYYY-MM-DD local
+    const baseDate = parseLocalDate(dragStartBlockDate) // YYYY-MM-DD local (not UTC midnight)
     // Add delta
     // Use simple date math
     const newDate = new Date(baseDate)
@@ -440,8 +447,9 @@ export function CalendarWeekView({
   }
 
   const handleCreate = (day: string, time: string, type: 'arrival' | 'departure') => {
-    const ts = `${day}T${time}:00`
-    const baseDate = new Date(ts)
+    // day/time are local; store real instants (UTC ISO), not offset-less strings
+    const baseDate = parseLocalDateTime(day, time)
+    const ts = baseDate.toISOString()
 
     const newF: Partial<Flight> = {
       type: type === 'arrival' ? 'arrival' : 'departure',
@@ -455,7 +463,7 @@ export function CalendarWeekView({
       newF.arrivalTime = ts
       // Default 1h later dep
       const dep = new Date(baseDate.getTime() + 3600000)
-      newF.departureTime = dep.toISOString().slice(0, 16)
+      newF.departureTime = dep.toISOString()
     } else {
       newF.departureTime = ts
     }

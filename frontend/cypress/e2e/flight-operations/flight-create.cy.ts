@@ -1,9 +1,15 @@
 // Port of e2e/flight-create.e2e.ts (Playwright) plus departure-only, validation and cancel (BACKLOG B08d).
-// KNOWN BUG / NOT YET tags pin today's behavior; each flips when the matching backlog item lands:
-//   F2 times stored as UTC wall-clock (B10),
+// NOT YET tags pin today's behavior; each flips when the matching backlog item lands:
 //   NOT YET: alert() for the aircraft-type validation instead of toasts (B11), hangar pull preset (B24).
 // B09b: QT checkbox (preselected, departure = arrival + 1 h), optional scheduled times, actual times.
-// Assertions on stored instants are computed with the browser's own Date, so they hold in any timezone.
+// B10: times are stored as real instants. Expected instants are computed with the browser's own Date from the
+// local date + time ("YYYY-MM-DDTHH:mm:ss" without an offset is local), so they hold in any timezone.
+const localInstant = (day: string, hhmm: string) => new Date(`${day}T${hhmm}:00`).toISOString()
+const addDays = (day: string, n: number) => {
+  const [y, m, d] = day.split('-').map(Number)
+  const next = new Date(y, m - 1, d + n)
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+}
 import type { Database } from '../../../types/database'
 
 type FlightRow = Database['public']['Tables']['flight']['Row']
@@ -15,7 +21,8 @@ const tailDep = `CC3${stamp}` // existing aircraft, departure only
 const tailCancel = `CC4${stamp}` // typed then cancelled: nothing may be created
 const tailArr = `CC5${stamp}` // existing aircraft, arrival only (return)
 const tailActual = `CC6${stamp}` // existing aircraft, scheduled + actual times
-const tails = [tailNew, tailTurn, tailDep, tailCancel, tailArr, tailActual]
+const tailLate = `CC7${stamp}` // existing aircraft, 23:30 local quick turn (midnight rollover)
+const tails = [tailNew, tailTurn, tailDep, tailCancel, tailArr, tailActual, tailLate]
 
 let date: string // the sheet's default date (today), read from the form
 
@@ -52,6 +59,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.task('seedAircraft', tailDep)
     cy.task('seedAircraft', tailArr)
     cy.task('seedAircraft', tailActual)
+    cy.task('seedAircraft', tailLate)
   })
 
   after(() => {
@@ -88,11 +96,9 @@ describe('Add Flight sheet persists real rows', () => {
       expect(flight.flight_status).to.eq('scheduled')
       expect([...(flight.services ?? [])].sort()).to.deep.eq(['catering', 'fuel'])
       // (date read from the sheet)
-        // KNOWN BUG F2: flips when B10 lands - times are sent with no timezone offset, so Postgres
-        // stores the wall-clock value as UTC. Once fixed this must equal the local 14:30 instant.
-        expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(`${date}T14:30:00.000Z`)
+        expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(localInstant(date, '14:30'))
         // QT is preselected: departure = arrival + 1 h (F1: no more fabricated +45 min).
-        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(`${date}T15:30:00.000Z`)
+        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(localInstant(date, '15:30'))
         expect(flight.is_quick_turn).to.eq(true)
     })
 
@@ -127,9 +133,8 @@ describe('Add Flight sheet persists real rows', () => {
       expect(flight.destination).to.eq('KMIA')
       expect(flight.services).to.deep.eq(['hangar'])
       // (date read from the sheet)
-        // KNOWN BUG F2: stored as UTC wall-clock, no offset applied.
-        expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(`${date}T09:00:00.000Z`)
-        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(`${date}T11:20:00.000Z`)
+        expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(localInstant(date, '09:00'))
+        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(localInstant(date, '11:20'))
         expect(flight.is_quick_turn).to.eq(false)
     })
     cy.task('getAircraft', tailTurn).should('have.property', 'aircraft_type_icao', 'B738')
@@ -157,8 +162,7 @@ describe('Add Flight sheet persists real rows', () => {
       expect(flight.is_quick_turn).to.eq(false)
       expect(flight.origin).to.eq('KPBI')
       // (date read from the sheet)
-        // KNOWN BUG F2: UTC wall-clock again.
-        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(`${date}T16:45:00.000Z`)
+        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(localInstant(date, '16:45'))
     })
     cy.contains(tailDep, { timeout: 15_000 }).should('be.visible')
     cy.get('body').should(($b) => {
@@ -208,12 +212,54 @@ describe('Add Flight sheet persists real rows', () => {
 
     cy.task('getFlightByTail', tailActual).then((flight: FlightRow) => {
       expect(flight.is_quick_turn).to.eq(true)
-      expect(new Date(flight.actual_arrival_time as string).toISOString()).to.eq(`${date}T10:07:00.000Z`)
-      expect(new Date(flight.actual_departure_time as string).toISOString()).to.eq(`${date}T11:02:00.000Z`)
+      expect(new Date(flight.actual_arrival_time as string).toISOString()).to.eq(localInstant(date, '10:07'))
+      expect(new Date(flight.actual_departure_time as string).toISOString()).to.eq(localInstant(date, '11:02'))
     })
     cy.contains('[data-slot="card"]', tailActual, { timeout: 15_000 }).within(() => {
       cy.contains('QT').should('be.visible')
       cy.contains(/Actual (arr|dep):/).should('be.visible')
+    })
+  })
+
+  it('a 23:30 local quick turn keeps its date and time after reload, and editing does not shift it (B10)', () => {
+    failOnAlert()
+    openAddFlightSheet()
+    cy.get('#date').invoke('val').then((v) => {
+      date = v as string
+    })
+    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailLate)
+    pickAircraftType('b738', /B738/)
+    cy.get('#arrivalTime').type('23:30')
+    cy.get('#departureTime').should('have.value', '00:30') // QT rolls past midnight
+    submit()
+    cy.contains('h2', 'Add New Flight').should('not.exist')
+
+    // Stored instants: local 23:30 on the chosen date, local 00:30 on the next local date.
+    cy.task('getFlightByTail', tailLate).then((flight: FlightRow) => {
+      expect(new Date(flight.scheduled_arrival_time as string).toISOString()).to.eq(localInstant(date, '23:30'))
+      expect(new Date(flight.scheduled_departure_time as string).toISOString()).to.eq(localInstant(addDays(date, 1), '00:30'))
+    })
+
+    // After a reload the board still shows 23:30 on the same date (card label is "MM/DD HH:mm").
+    cy.reload()
+    const label = (day: string, hhmm: string) => `${day.slice(5, 7)}/${day.slice(8, 10)} ${hhmm}`
+    cy.contains('[data-slot="card"]', tailLate, { timeout: 15_000 }).should('be.visible')
+    cy.contains(label(date, '23:30')).should('be.visible')
+    cy.contains(label(addDays(date, 1), '00:30')).should('be.visible')
+
+    // Edit round-trip: the form shows the same local date/times and saving leaves the instants unchanged.
+    cy.contains('[data-slot="card"]', tailLate).contains('button', 'Edit').click()
+    cy.contains('Edit Flight').should('be.visible')
+    cy.get('#date').should('have.value', date)
+    cy.get('#arrivalTime').should('have.value', '23:30')
+    cy.get('#departureTime').should('have.value', '00:30')
+    cy.get('#origin').clear().type('KTEB')
+    cy.contains('button', 'Update Flight').click()
+    cy.contains('Edit Flight').should('not.exist')
+    cy.task('getFlightByTail', tailLate).should((flight: FlightRow) => {
+      expect(flight.origin).to.eq('KTEB')
+      expect(new Date(flight.scheduled_arrival_time as string).toISOString()).to.eq(localInstant(date, '23:30'))
+      expect(new Date(flight.scheduled_departure_time as string).toISOString()).to.eq(localInstant(addDays(date, 1), '00:30'))
     })
   })
 

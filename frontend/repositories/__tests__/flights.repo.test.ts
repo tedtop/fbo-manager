@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createTestClient } from '@/tests/support/client'
 import { resetDatabase } from '@/tests/support/reset'
 import { makeAircraft, makeFlight, makeParkingLocation, makeUser } from '@/tests/support/factories'
+import { withTz } from '@/tests/support/with-tz'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import {
   createFlight,
@@ -97,12 +98,63 @@ describe('flights.repo', () => {
     expect(found?.deleted_at).not.toBeNull()
   })
 
-  it('includes flights on endDate up to 23:59:59 and excludes the next day', async () => {
-    const lastMoment = await makeFlight(db, { scheduled_departure_time: '2026-03-31T23:59:00.000Z' })
-    await makeFlight(db, { scheduled_departure_time: '2026-04-01T00:30:00.000Z' })
+  // B10 / F5: startDate/endDate are LOCAL calendar days converted to UTC instants:
+  // [local 00:00 of startDate, local 00:00 of the day after endDate).
+  it('Phoenix (UTC-7): endDate is the local day, so 17:30 local on endDate is in and 00:00 local next day is out', () => {
+    return withTz('America/Phoenix', async () => {
+      // Mar 31 17:30 local = Apr 1 00:30Z (was wrongly excluded when the bound was UTC 23:59:59)
+      const lateLocalDay = await makeFlight(db, { scheduled_departure_time: '2026-04-01T00:30:00.000Z' })
+      const lastMinute = await makeFlight(db, { scheduled_departure_time: '2026-04-01T06:59:00.000Z' }) // Mar 31 23:59 local
+      await makeFlight(db, { scheduled_departure_time: '2026-04-01T07:00:00.000Z' }) // Apr 1 00:00 local: out
+      const firstMinute = await makeFlight(db, { scheduled_departure_time: '2026-03-01T07:00:00.000Z' }) // Mar 1 00:00 local
+      await makeFlight(db, { scheduled_departure_time: '2026-03-01T06:59:00.000Z' }) // Feb 28 23:59 local: out
 
-    const results = await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-31' })
-    expect(results.map((f) => f.id)).toEqual([lastMoment.id])
+      const results = await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-31' })
+      expect(results.map((f) => f.id).sort()).toEqual([lateLocalDay.id, lastMinute.id, firstMinute.id].sort())
+    })
+  })
+
+  it('Denver: bounds follow DST (start 07:00Z in MST, end-exclusive 06:00Z in MDT)', () => {
+    return withTz('America/Denver', async () => {
+      const inFirst = await makeFlight(db, { scheduled_departure_time: '2026-03-01T07:00:00.000Z' })
+      await makeFlight(db, { scheduled_departure_time: '2026-03-01T06:59:00.000Z' })
+      const inLast = await makeFlight(db, { scheduled_departure_time: '2026-04-01T05:59:00.000Z' })
+      await makeFlight(db, { scheduled_departure_time: '2026-04-01T06:00:00.000Z' })
+
+      const results = await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-31' })
+      expect(results.map((f) => f.id).sort()).toEqual([inFirst.id, inLast.id].sort())
+    })
+  })
+
+  it('a 23:30 local flight is found on its own local day, not the next (Phoenix)', () => {
+    return withTz('America/Phoenix', async () => {
+      const flight = await makeFlight(db, { scheduled_departure_time: '2026-03-11T06:30:00.000Z' }) // Mar 10 23:30 local
+      const onDay = await findAllFlights(db, { startDate: '2026-03-10', endDate: '2026-03-10' })
+      expect(onDay.map((f) => f.id)).toEqual([flight.id])
+      const nextDay = await findAllFlights(db, { startDate: '2026-03-11', endDate: '2026-03-11' })
+      expect(nextDay).toEqual([])
+    })
+  })
+
+  it('range filter also matches arrival-only flights (NULL departure) by scheduled arrival', () => {
+    return withTz('America/Phoenix', async () => {
+      const arrOnly = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-10T20:00:00.000Z',
+        scheduled_departure_time: null,
+      })
+      await makeFlight(db, { scheduled_arrival_time: '2026-05-10T20:00:00.000Z', scheduled_departure_time: null })
+
+      const results = await findAllFlights(db, { startDate: '2026-03-08', endDate: '2026-03-14' })
+      expect(results.map((f) => f.id)).toEqual([arrOnly.id])
+    })
+  })
+
+  it('a far-future week (> 4 weeks out) is returned when that week is requested', () => {
+    return withTz('America/Phoenix', async () => {
+      const future = await makeFlight(db, { scheduled_departure_time: '2026-12-16T18:00:00.000Z' })
+      const results = await findAllFlights(db, { startDate: '2026-12-13', endDate: '2026-12-19' })
+      expect(results.map((f) => f.id)).toEqual([future.id])
+    })
   })
 
   it('combines the date range and status filters', async () => {

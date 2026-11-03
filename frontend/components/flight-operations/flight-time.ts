@@ -1,6 +1,8 @@
 // Pure time logic for the flight form (BACKLOG B09b, docs/PLAN.md D2/D6). Times are "HH:mm" strings
 // as held by <input type="time">; "" means blank.
 
+import { formatLocalDate, formatLocalTime } from '@/lib/local-date'
+
 export const QUICK_TURN_MINUTES = 60
 
 export interface ScheduledTimesState {
@@ -71,19 +73,28 @@ export function isQuickTurnSaved(state: ScheduledTimesState): boolean {
   return state.quickTurn && !!state.arrival && !!state.departure
 }
 
-// `date` is "YYYY-MM-DD". A time earlier than `notBefore` ("HH:mm") is taken to be on the next day, so
-// a QT arrival at 23:30 gets a 00:30 departure on the following date.
+// `date` is a local "YYYY-MM-DD", `time` a local "HH:mm". Returns the real instant as a UTC ISO string
+// (Date.toISOString) so Postgres timestamptz stores exactly what the user meant. A time earlier than
+// `notBefore` ("HH:mm") is taken to be on the next local day, so a QT arrival at 23:30 gets a 00:30
+// departure on the following date. The next day is local calendar arithmetic (DST-safe), not +24 h.
 export function buildTimestamp(
   date: string,
   time: string,
   notBefore?: string
 ): string | undefined {
   if (!time) return undefined
-  let day = date
-  if (notBefore && time < notBefore) {
-    const d = new Date(`${date}T00:00:00Z`)
-    d.setUTCDate(d.getUTCDate() + 1)
-    day = d.toISOString().slice(0, 10)
-  }
-  return `${day}T${time}:00`
+  const [y, mo, d] = date.split('-').map(Number)
+  const [h, mi] = time.split(':').map(Number)
+  const dayShift = notBefore && time < notBefore ? 1 : 0
+  const instant = new Date(y, mo - 1, d + dayShift, h, mi)
+  return Number.isNaN(instant.getTime()) ? undefined : instant.toISOString()
+}
+
+// Splits a stored instant back into the local "YYYY-MM-DD" / "HH:mm" the form fields hold.
+export function toDateInput(timestamp?: string): string {
+  return timestamp ? formatLocalDate(new Date(timestamp)) : ''
+}
+
+export function toTimeInput(timestamp?: string): string {
+  return timestamp ? formatLocalTime(new Date(timestamp)) : ''
 }

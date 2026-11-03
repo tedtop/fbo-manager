@@ -1,3 +1,4 @@
+import { addLocalDays, formatLocalDate } from '@/lib/local-date'
 import type { Flight, FlightFilters } from './types'
 
 // Pure board logic, extracted verbatim from flight-board.tsx and app/page.tsx (no behavior change).
@@ -56,7 +57,7 @@ export function weekRange(
   date: Date,
   weekOffset: number
 ): { start: Date; end: Date } {
-  // F5: uses local-time getDay/setDate/setHours, so results depend on the runtime timezone (and DST).
+  // Local-time getDay/setDate/setHours: calendar arithmetic in the runtime zone, so DST-safe.
   const currentDay = date.getDay() // 0 = Sunday
   const start = new Date(date)
   start.setDate(date.getDate() - currentDay + weekOffset * 7)
@@ -66,4 +67,14 @@ export function weekRange(
   end.setDate(start.getDate() + 7)
 
   return { start, end }
+}
+
+// Query params for the week shown by weekRange(date, weekOffset): local "YYYY-MM-DD" first and last
+// (inclusive) day. The repo converts these to UTC instants at local day boundaries.
+export function weekDateParams(
+  date: Date,
+  weekOffset: number
+): { startDate: string; endDate: string } {
+  const startDate = formatLocalDate(weekRange(date, weekOffset).start)
+  return { startDate, endDate: addLocalDays(startDate, 6) }
 }

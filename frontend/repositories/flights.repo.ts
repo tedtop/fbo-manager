@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
+import { formatLocalDate, localDayStartIso, localNextDayStartIso } from '@/lib/local-date'
 
 export type FlightRow = Tables<'flight'>
 export type FlightInsert = TablesInsert<'flight'>
@@ -42,21 +43,29 @@ export async function findAllFlights(
     .is('deleted_at', null)
     .order('scheduled_departure_time', { ascending: false })
 
+  // Range bounds are local calendar days converted to UTC instants: [local 00:00 of start, local 00:00 of
+  // the day after end). A flight matches when its scheduled arrival OR departure falls inside, so
+  // arrival-only and departure-only flights are both found.
+  let rangeStart: string | undefined
+  let rangeEnd: string | undefined
   if (filters?.today) {
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    const end = new Date()
-    end.setHours(23, 59, 59, 999)
-    query = query
-      .gte('scheduled_departure_time', start.toISOString())
-      .lte('scheduled_departure_time', end.toISOString())
+    const today = formatLocalDate(new Date())
+    rangeStart = localDayStartIso(today)
+    rangeEnd = localNextDayStartIso(today)
   } else {
-    if (filters?.startDate) {
-      query = query.gte('scheduled_departure_time', filters.startDate)
+    if (filters?.startDate) rangeStart = localDayStartIso(filters.startDate)
+    if (filters?.endDate) rangeEnd = localNextDayStartIso(filters.endDate)
+  }
+  if (rangeStart || rangeEnd) {
+    const inRange = (column: string) => {
+      const parts = []
+      if (rangeStart) parts.push(`${column}.gte.${rangeStart}`)
+      if (rangeEnd) parts.push(`${column}.lt.${rangeEnd}`)
+      return parts.length > 1 ? `and(${parts.join(',')})` : parts[0]
     }
-    if (filters?.endDate) {
-      query = query.lte('scheduled_departure_time', `${filters.endDate}T23:59:59`)
-    }
+    query = query.or(
+      `${inRange('scheduled_arrival_time')},${inRange('scheduled_departure_time')}`
+    )
   }
 
   if (filters?.status) {

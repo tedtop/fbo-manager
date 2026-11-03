@@ -1,3 +1,4 @@
+import { toInstantIso } from '@/lib/local-date'
 import type { Database } from '@/types/database'
 
 type BackendFlightStatus =
@@ -254,10 +255,13 @@ export function componentFlightToApiRequest(
     result.origin = flight.origin
   }
 
-  // Times pass through directly. A time key that is present but unset means "cleared" and is sent as
+  // Times are sent as UTC instants (offset-less local strings are converted). A time key that is present but unset means "cleared" and is sent as
   // null (e.g. the form blanking the departure); a key that is absent is left alone.
   for (const [key, column] of TIME_COLUMNS) {
-    if (key in flight) result[column] = flight[key] ?? null
+    if (key in flight) {
+      const value = flight[key]
+      result[column] = value ? toInstantIso(value) : null
+    }
   }
 
   if (flight.isQuickTurn !== undefined) {

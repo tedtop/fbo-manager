@@ -2,7 +2,7 @@
 
 import { CalendarWeekView } from '@/components/flight-operations/calendar-week-view'
 import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
-import { weekRange } from '@/components/flight-operations/board-logic'
+import { weekDateParams, weekRange } from '@/components/flight-operations/board-logic'
 import { FlightBoard } from '@/components/flight-operations/flight-board'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
@@ -29,20 +29,11 @@ export default function FlightOperationsPage() {
   >('split')
   const [weekOffset, setWeekOffset] = useState(0)
 
-  // Calculate date range based on view
+  // Calendar view loads exactly the visible (local, Sunday-start) week, so navigating weeks always
+  // fetches that week's flights. endDate is the last day of the week (inclusive).
   const dateParams =
     view === 'calendar'
-      ? (() => {
-        const today = new Date()
-        const startDate = new Date(today)
-        startDate.setDate(today.getDate() - 28) // 4 weeks back
-        const endDate = new Date(today)
-        endDate.setDate(today.getDate() + 28) // 4 weeks forward
-        return {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0]
-        }
-      })()
+      ? weekDateParams(new Date(), weekOffset)
       : undefined // Don't filter by date for split view - show all flights
 
   const {

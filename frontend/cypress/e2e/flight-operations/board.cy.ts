@@ -1,6 +1,6 @@
 // Port of e2e/flight-board.e2e.ts (Playwright) plus filters, calendar and empty state (BACKLOG B08c).
 // Realtime insert is deliberately not covered here (blocked on B16).
-// KNOWN BUG tags (F2..F9) pin today's behavior; each flips when the matching backlog item lands.
+// KNOWN BUG tags (F3..F9) pin today's behavior; each flips when the matching backlog item lands.
 // Classification (D2/D6): Arrivals = has a scheduled arrival, Departures = has a scheduled departure.
 const stamp = Date.now().toString(36).toUpperCase()
 const tailTurn = `CBT${stamp}` // arrival + departure, scheduled, hangar
@@ -9,7 +9,8 @@ const tailDelayed = `CBL${stamp}` // departure only, delayed, fuel
 const tailArr = `CBA${stamp}` // arrival only (return), scheduled
 const tailNext = `CBN${stamp}` // departure exactly one week from now (next calendar week)
 const tailPrev = `CBP${stamp}` // departure exactly one week ago (previous calendar week)
-const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev]
+const tailFar = `CBF${stamp}` // departure exactly six weeks from now (beyond the old +-4 week window)
+const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev, tailFar]
 
 const DAY = 24 * 60
 
@@ -41,6 +42,7 @@ describe('Flight board', () => {
     cy.task('seedFlight', { tail: tailDelayed, departureInMin: 300, status: 'delayed', services: ['fuel'] })
     cy.task('seedFlight', { tail: tailNext, departureInMin: 7 * DAY })
     cy.task('seedFlight', { tail: tailPrev, departureInMin: -7 * DAY })
+    cy.task('seedFlight', { tail: tailFar, departureInMin: 42 * DAY })
   })
 
   after(() => {
@@ -163,6 +165,17 @@ describe('Flight board', () => {
         cy.contains(tailPrev).should('exist')
         cy.contains(tailTurn).should('not.exist')
       })
+    })
+
+    // B10 / F5: the calendar loads the visible week (not a fixed today +-28 days), so any week is reachable.
+    it('navigating more than 4 weeks ahead loads that week\'s flights', () => {
+      cy.contains(tailFar).should('not.exist')
+      for (let week = 1; week <= 6; week++) {
+        cy.contains('button', 'Next').click()
+        cy.contains('button', 'Next').should('be.visible') // calendar remounts after the week's load
+        if (week < 6) cy.contains(tailFar).should('not.exist')
+      }
+      cy.contains(tailFar, { timeout: 15_000 }).should('exist')
     })
 
     it('search and status filters apply to the calendar', () => {

@@ -1,3 +1,4 @@
+import { withTz } from '@/tests/support/with-tz'
 import { describe, expect, it } from 'vitest'
 import {
   apiFlightToComponentFlight,
@@ -238,25 +239,25 @@ describe('componentFlightToApiRequest', () => {
   it('sends a present-but-unset time as null (cleared) and leaves absent keys alone', () => {
     const r = componentFlightToApiRequest({
       arrivalTime: undefined,
-      departureTime: '2026-03-10T11:00:00',
+      departureTime: '2026-03-10T11:00:00Z',
       actualArrivalTime: undefined,
     })
     expect(r).toEqual({
       scheduled_arrival_time: null,
-      scheduled_departure_time: '2026-03-10T11:00:00',
+      scheduled_departure_time: '2026-03-10T11:00:00Z',
       actual_arrival_time: null,
     })
   })
 
   it('maps actual times and the quick-turn flag', () => {
     const r = componentFlightToApiRequest({
-      actualArrivalTime: '2026-03-10T10:07:00',
-      actualDepartureTime: '2026-03-10T11:02:00',
+      actualArrivalTime: '2026-03-10T10:07:00Z',
+      actualDepartureTime: '2026-03-10T11:02:00Z',
       isQuickTurn: true,
     })
     expect(r).toMatchObject({
-      actual_arrival_time: '2026-03-10T10:07:00',
-      actual_departure_time: '2026-03-10T11:02:00',
+      actual_arrival_time: '2026-03-10T10:07:00Z',
+      actual_departure_time: '2026-03-10T11:02:00Z',
       is_quick_turn: true,
     })
   })
@@ -270,14 +271,23 @@ describe('componentFlightToApiRequest', () => {
     expect(componentFlightToApiRequest({ id: '42' }).call_sign).toBeUndefined()
   })
 
-  // KNOWN BUG F2: flips when B09/B13 land (timestamps should carry a timezone offset)
-  it('KNOWN BUG F2: passes timestamps through verbatim, offset-less local strings stay offset-less', () => {
-    const r = componentFlightToApiRequest({
-      arrivalTime: '2026-03-10T09:00',
-      departureTime: '2026-03-10T11:30:00',
+  // F2 fixed (B10): timestamps are sent as UTC instants
+  it('converts offset-less local strings to UTC instants and keeps explicit offsets', () => {
+    withTz('America/Phoenix', () => {
+      const r = componentFlightToApiRequest({
+        arrivalTime: '2026-03-10T09:00',
+        departureTime: '2026-03-10T11:30:00',
+        actualArrivalTime: '2026-03-10T09:05:00Z',
+        actualDepartureTime: '2026-03-10T11:40:00-07:00',
+      })
+      expect(r.scheduled_arrival_time).toBe('2026-03-10T16:00:00.000Z')
+      expect(r.scheduled_departure_time).toBe('2026-03-10T18:30:00.000Z')
+      expect(r.actual_arrival_time).toBe('2026-03-10T09:05:00Z')
+      expect(r.actual_departure_time).toBe('2026-03-10T11:40:00-07:00')
     })
-    expect(r.scheduled_arrival_time).toBe('2026-03-10T09:00')
-    expect(r.scheduled_departure_time).toBe('2026-03-10T11:30:00')
-    expect(r.scheduled_arrival_time).not.toMatch(/(Z|[+-]\d{2}:?\d{2})$/)
+  })
+
+  it('sends a present-but-unset time as null', () => {
+    expect(componentFlightToApiRequest({ arrivalTime: undefined }).scheduled_arrival_time).toBeNull()
   })
 })

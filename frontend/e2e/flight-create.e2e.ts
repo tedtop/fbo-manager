@@ -4,9 +4,12 @@ import { uniqueValue } from './support/unique'
 
 const db = createE2EDbClient()
 
-// Fixed UTC-5 browser zone (no DST) so the F2 pins below are deterministic: the form sends naive
-// wall-clock timestamps, which Postgres stores as UTC regardless of the browser zone.
-test.use({ timezoneId: 'Etc/GMT+5' })
+// Fixed UTC-7 browser zone (America/Phoenix, no DST) so stored-instant assertions are deterministic:
+// the form sends the local date+time as a real instant (B10/F2), so local 14:30 is 21:30Z.
+test.use({ timezoneId: 'America/Phoenix' })
+
+// The UTC instant for a local Phoenix wall-clock time on `date` ("YYYY-MM-DD").
+const phoenixInstant = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-07:00`).toISOString()
 
 const tailNew = uniqueValue('NC2E').toUpperCase() // does not exist yet: form must create the aircraft
 const tailExisting = uniqueValue('NC2E').toUpperCase() // seeded below
@@ -90,13 +93,11 @@ test.describe('Add Flight sheet persists real rows', () => {
     expect(flight.flight_status).toBe('scheduled')
     expect([...(flight.services ?? [])].sort()).toEqual(['catering', 'fuel'])
 
-    // KNOWN BUG F2: flips when B10 lands — times are sent with no timezone offset, so Postgres
-    // stores the wall-clock value as UTC regardless of the browser's zone. Once fixed, the stored
-    // instant must equal the local 14:30 on the chosen date.
-    expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(`${date}T14:30:00.000Z`)
+    // F2 (B10): the stored instant is the local 14:30 on the chosen date.
+    expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(phoenixInstant(date, '14:30'))
 
     // QT is preselected: departure = arrival + 1 h (F1: no more fabricated +45 min), saved as a quick turn.
-    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T15:30:00.000Z`)
+    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(phoenixInstant(date, '15:30'))
     expect(flight.is_quick_turn).toBe(true)
 
     await expect(page.getByText(tailNew).first()).toBeVisible({ timeout: 15_000 })
@@ -123,9 +124,8 @@ test.describe('Add Flight sheet persists real rows', () => {
     expect(flight.origin).toBe('KBOS')
     expect(flight.destination).toBe('KMIA')
     expect(flight.services).toEqual(['hangar'])
-    // KNOWN BUG F2: flips when B10 lands — stored as UTC wall-clock, no offset applied.
-    expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(`${date}T09:00:00.000Z`)
-    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T11:20:00.000Z`)
+    expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(phoenixInstant(date, '09:00'))
+    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(phoenixInstant(date, '11:20'))
     expect(flight.is_quick_turn).toBe(false)
 
     const { data: aircraft } = await db.from('aircraft').select('aircraft_type_icao').eq('tail_number', tailExisting).single()
@@ -186,8 +186,8 @@ test.describe('Add Flight sheet persists real rows', () => {
 
     const flight = await readFlight(tailActual)
     expect(flight.is_quick_turn).toBe(true)
-    expect(new Date(flight.actual_arrival_time as string).toISOString()).toBe(`${date}T10:07:00.000Z`)
-    expect(new Date(flight.actual_departure_time as string).toISOString()).toBe(`${date}T11:02:00.000Z`)
+    expect(new Date(flight.actual_arrival_time as string).toISOString()).toBe(phoenixInstant(date, '10:07'))
+    expect(new Date(flight.actual_departure_time as string).toISOString()).toBe(phoenixInstant(date, '11:02'))
 
     await expect(page.getByText(tailActual).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('QT', { exact: true }).first()).toBeVisible()

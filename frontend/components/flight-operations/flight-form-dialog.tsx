@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
+import { formatLocalDate } from '@/lib/local-date'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { FlightRow } from '@/repositories/flights.repo'
 import { useEffect, useMemo, useState } from 'react'
@@ -35,19 +36,13 @@ import {
   applyQuickTurnChange,
   buildTimestamp,
   isQuickTurnSaved,
+  toDateInput,
+  toTimeInput,
   validateScheduledTimes
 } from './flight-time'
 import { type Flight, apiFlightToComponentFlight } from './types'
 
 // Local "HH:mm" of an ISO timestamp, '' when absent.
-function toTimeInput(timestamp?: string): string {
-  if (!timestamp) return ''
-  const d = new Date(timestamp)
-  const hours = d.getHours().toString().padStart(2, '0')
-  const minutes = d.getMinutes().toString().padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
 function calculateGroundTime(
   arrivalTime: string,
   departureTime: string
@@ -102,7 +97,7 @@ export function FlightFormDialog({
     services: [],
     source: 'line-department'
   })
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]) // Separate date state
+  const [date, setDate] = useState(formatLocalDate(new Date())) // Separate date state (local calendar date)
   const [arrivalTime, setArrivalTime] = useState('')
   const [departureTime, setDepartureTime] = useState('')
   // QT is preselected for new flights (D2): departure follows arrival + 1 h until edited by hand
@@ -152,7 +147,7 @@ export function FlightFormDialog({
     // Extract date and times from timestamps (date from the arrival, else the departure)
     const dateSource = flight.arrivalTime ?? flight.departureTime
     if (dateSource) {
-      setDate(new Date(dateSource).toISOString().split('T')[0])
+      setDate(toDateInput(dateSource))
     }
     setScheduled({
       arrival: toTimeInput(flight.arrivalTime),
@@ -173,7 +168,7 @@ export function FlightFormDialog({
         services: [],
         source: 'line-department'
       })
-      setDate(new Date().toISOString().split('T')[0])
+      setDate(formatLocalDate(new Date()))
       setScheduled({ arrival: '', departure: '', quickTurn: true })
       setActualArrivalTime('')
       setActualDepartureTime('')
