@@ -100,6 +100,25 @@ pnpm e2e              # headless, all specs
 pnpm e2e:ui           # Playwright's interactive UI — best while writing/debugging a spec
 ```
 
+**Cypress** (arrivals/departures module only, per `docs/PLAN.md` D9 — Playwright stays the
+default for every other module). Specs live in `frontend/cypress/e2e/flight-operations/*.cy.ts`;
+`cypress.config.ts` has tasks `seedDevUsers`, `seedFlight` and `cleanFlights` (service role,
+local stack only, reusing `e2e/support/*`), and `cy.login()` logs in through the real login form
+via `cy.session`. Cypress does not start the app, so run its own dev server on port 4210
+(never 3000/3100/4000/4100) pointed at the local stack:
+
+```bash
+pnpm exec cypress install                       # first time: downloads the Cypress binary
+# terminal 1 (anon key = LOCAL_ANON_KEY in e2e/support/env.ts)
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key> \
+  SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_ANON_KEY=<local anon key> pnpm exec next dev -p 4210
+# terminal 2
+pnpm cypress:run      # headless
+pnpm cypress:open     # interactive runner
+```
+
+Override the target with `CYPRESS_BASE_URL`. Videos/screenshots are git-ignored.
+
 **When done:**
 
 ```bash

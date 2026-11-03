@@ -21,7 +21,9 @@
     "supabase:push": "supabase db push",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "e2e:seed": "tsx e2e/support/run-seed.ts"
+    "e2e:seed": "tsx e2e/support/run-seed.ts",
+    "cypress:run": "cypress run",
+    "cypress:open": "cypress open"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
@@ -90,6 +92,7 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
+    "cypress": "^16.2.1",
     "dotenv": "^16.4.5",
     "postcss": "^8.4.49",
     "supabase": "2.109.0",

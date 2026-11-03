@@ -95,3 +95,8 @@ flight-board-ui/
 
 # Nimbalyst local workspace files
 nimbalyst-local/
+
+# Cypress (frontend/cypress) — run artifacts
+frontend/cypress/videos/
+frontend/cypress/screenshots/
+frontend/cypress/downloads/
