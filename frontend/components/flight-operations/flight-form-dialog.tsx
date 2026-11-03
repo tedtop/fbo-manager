@@ -25,6 +25,8 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
 import { formatLocalDate } from '@/lib/local-date'
+import { useToast } from '@/hooks/use-toast'
+import { describeError } from '@/lib/error-message'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { FlightRow } from '@/repositories/flights.repo'
 import { useEffect, useMemo, useState } from 'react'
@@ -104,7 +106,10 @@ export function FlightFormDialog({
   const [quickTurn, setQuickTurn] = useState(true)
   const [actualArrivalTime, setActualArrivalTime] = useState('')
   const [actualDepartureTime, setActualDepartureTime] = useState('')
+  const { toast } = useToast()
   const [timeError, setTimeError] = useState<string | null>(null)
+  const [typeError, setTypeError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const setScheduled = (next: {
     arrival: string
@@ -242,11 +247,16 @@ export function FlightFormDialog({
       setIsEditingAircraftType(true)
     } catch (error) {
       console.error('Failed to create aircraft:', error)
-      alert('Failed to create new aircraft. Please try again.')
+      toast({
+        title: "Couldn't create aircraft",
+        description: describeError(error),
+        variant: 'destructive'
+      })
     }
   }
 
   const handleAircraftTypeChange = (display: string, icao: string) => {
+    setTypeError(null)
     setAircraftTypeIcao(icao)
     setIsEditingAircraftType(true)
     setFormData({ ...formData, aircraftType: display })
@@ -279,9 +289,10 @@ export function FlightFormDialog({
     const savedQuickTurn = isQuickTurnSaved(scheduled)
 
     if (!formData.aircraftType) {
-      alert('Please select an aircraft type')
+      setTypeError('Please select an aircraft type')
       return
     }
+    setTypeError(null)
 
     // Ensure aircraft exists or update it
     if (formData.tailNumber) {
@@ -352,15 +363,23 @@ export function FlightFormDialog({
       updatedAt: new Date().toISOString()
     }
 
-    if (initialData) {
-      const outcome = await editSession.save(async (expectedModifiedAt) => {
-        await onSubmit(flight, expectedModifiedAt)
-      })
-      if (outcome.status === 'conflict') return
-    } else {
-      await onSubmit(flight)
+    // The page handler shows the error toast and rethrows; keep the sheet open with the input intact.
+    setSaving(true)
+    try {
+      if (initialData) {
+        const outcome = await editSession.save(async (expectedModifiedAt) => {
+          await onSubmit(flight, expectedModifiedAt)
+        })
+        if (outcome.status === 'conflict') return
+      } else {
+        await onSubmit(flight)
+      }
+      onOpenChange(false)
+    } catch {
+      // Already surfaced by the caller's toast.
+    } finally {
+      setSaving(false)
     }
-    onOpenChange(false)
   }
 
   const services = [
@@ -426,6 +445,15 @@ export function FlightFormDialog({
                   usageCounts={usageCounts}
                   onSelect={handleAircraftTypeChange}
                 />
+                {typeError && (
+                  <p
+                    id="typeError"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {typeError}
+                  </p>
+                )}
                 {isEditingAircraftType && formData.tailNumber && (
                   <p className="text-xs text-blue-500">
                     ✓ This will update the aircraft type for{' '}
@@ -683,8 +711,8 @@ export function FlightFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" className="w-full sm:w-auto">
-              {initialData ? 'Update Flight' : 'Add Flight'}
+            <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+              {saving ? 'Saving...' : initialData ? 'Update Flight' : 'Add Flight'}
             </Button>
           </SheetFooter>
         </form>

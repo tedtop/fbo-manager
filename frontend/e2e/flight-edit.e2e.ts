@@ -13,7 +13,9 @@ const tailEdit = uniqueValue('NF2E').toUpperCase()
 const tailStatus = uniqueValue('NF2E').toUpperCase()
 const tailDelete = uniqueValue('NF2E').toUpperCase()
 const tailConflict = uniqueValue('NF2E').toUpperCase()
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict]
+const tailEditFail = uniqueValue('NF2E').toUpperCase()
+const tailStatusFail = uniqueValue('NF2E').toUpperCase()
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail]
 const ids: Record<string, number> = {}
 let userId: number
 
@@ -73,6 +75,21 @@ async function openEditSheet(page: Page, tail: string) {
   await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeVisible()
 }
 
+const toastLocator = (page: Page, text: string): Locator => page.getByRole('status').filter({ hasText: text })
+
+// Fails every PATCH to /rest/v1/flight (update / status change) with a PostgREST-style 500.
+async function failFlightUpdates(page: Page) {
+  await page.route(/\/rest\/v1\/flight(\?|$)/, (route) =>
+    route.request().method() === 'PATCH'
+      ? route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 'XX000', message: 'forced e2e failure', details: null, hint: null })
+        })
+      : route.continue()
+  )
+}
+
 async function readFlight(tail: string) {
   const { data, error } = await db.from('flight').select('*').eq('id', ids[tail]).single()
   if (error) throw error
@@ -100,6 +117,7 @@ test.describe('Flight edit, status change, delete', () => {
     })
     await page.getByRole('button', { name: 'Update Flight' }).click()
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
+    await expect(toastLocator(page, 'Flight updated')).toBeVisible()
 
     const after = await waitForDbRow(async () => {
       const row = await readFlight(tailEdit)
@@ -129,6 +147,7 @@ test.describe('Flight edit, status change, delete', () => {
 
     await card(page, tailStatus).getByText('Scheduled', { exact: true }).click()
     await page.getByRole('menuitem', { name: 'Delayed' }).click()
+    await expect(toastLocator(page, 'Flight updated')).toBeVisible()
 
     const row = await waitForDbRow(async () => {
       const r = await readFlight(tailStatus)
@@ -150,6 +169,7 @@ test.describe('Flight edit, status change, delete', () => {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
 
     await expect(page.getByText(tailDelete)).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByText('Flight deleted', { exact: true })).toBeVisible()
 
     const row = await waitForDbRow(async () => {
       const r = await readFlight(tailDelete)
@@ -196,5 +216,39 @@ test.describe('Flight edit, status change, delete', () => {
     await expect(page.locator('#origin')).toHaveValue('KAAA')
     await expect(page.locator('#notes')).toHaveValue('changed by someone else')
     expect((await readFlight(tailConflict)).modified_at).toBe(bumped.modified_at)
+  })
+
+  test('failed edit shows an error toast, keeps the sheet open with the typed input, writes nothing', async ({ page }) => {
+    const before = await readFlight(tailEditFail)
+    await openBoard(page, tailEditFail)
+    await openEditSheet(page, tailEditFail)
+    await failFlightUpdates(page)
+    page.on('dialog', (d) => {
+      throw new Error(`Unexpected alert: ${d.message()}`)
+    })
+
+    await page.locator('#origin').fill('KFAIL')
+    await page.getByRole('button', { name: 'Update Flight' }).click()
+
+    const toast = toastLocator(page, "Couldn't update flight")
+    await expect(toast).toBeVisible({ timeout: 10_000 })
+    await expect(toast).toContainText('forced e2e failure')
+    await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeVisible()
+    await expect(page.locator('#origin')).toHaveValue('KFAIL')
+    const after = await readFlight(tailEditFail)
+    expect(after.origin).toBe('KAAA')
+    expect(after.modified_at).toBe(before.modified_at)
+  })
+
+  test('failed status change shows an error toast and the status is unchanged', async ({ page }) => {
+    await openBoard(page, tailStatusFail)
+    await failFlightUpdates(page)
+    await card(page, tailStatusFail).getByText('Scheduled', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Delayed' }).click()
+
+    const toast = toastLocator(page, "Couldn't update flight")
+    await expect(toast).toBeVisible({ timeout: 10_000 })
+    await expect(toast).toContainText('forced e2e failure')
+    expect((await readFlight(tailStatusFail)).flight_status).toBe('scheduled')
   })
 })

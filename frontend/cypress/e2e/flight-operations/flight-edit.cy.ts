@@ -1,7 +1,7 @@
 // Port of e2e/flight-edit.e2e.ts (Playwright): edit persists, status dropdown, soft delete, and the
 // edit-concurrency conflict dialog (PR #43). One seeded departure-only flight per test so tests never
 // interfere and tail text maps to exactly one card.
-// KNOWN BUG / NOT YET tags pin today's behavior; each flips when the matching backlog item lands.
+// KNOWN BUG tags pin today's behavior; each flips when the matching backlog item lands.
 import type { Database } from '../../../types/database'
 
 type FlightRow = Database['public']['Tables']['flight']['Row']
@@ -11,7 +11,9 @@ const tailEdit = `CE1${stamp}`
 const tailStatus = `CE2${stamp}`
 const tailDelete = `CE3${stamp}`
 const tailConflict = `CE4${stamp}`
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict]
+const tailEditFail = `CE5${stamp}`
+const tailStatusFail = `CE6${stamp}`
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail]
 const ids: Record<string, number> = {}
 
 const card = (tail: string) => cy.contains('[data-slot="card"]', tail)
@@ -59,6 +61,7 @@ describe('Flight edit, status change, delete', () => {
       cy.get('#hangar').click()
       cy.contains('button', 'Update Flight').click()
       cy.contains('Edit Flight').should('not.exist')
+      cy.contains('[role="status"]', 'Flight updated').should('be.visible')
 
       cy.task('getFlightByTail', tailEdit).should((after: FlightRow) => {
         expect(after.origin).to.eq('KTEB')
@@ -93,7 +96,7 @@ describe('Flight edit, status change, delete', () => {
       expect(row.deleted_at).to.eq(null)
     })
     card(tailStatus).contains('Delayed').should('be.visible')
-    // NOT YET (B11): no success/error toast on status change.
+    cy.contains('[role="status"]', 'Flight updated').should('be.visible')
     cy.reload()
     card(tailStatus).contains('Delayed').should('be.visible')
   })
@@ -105,6 +108,8 @@ describe('Flight edit, status change, delete', () => {
     cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
 
     cy.contains(tailDelete).should('not.exist')
+    // Not [role="status"]: the AlertDialog briefly hides the rest of the page from the a11y tree.
+    cy.contains('Flight deleted').should('be.visible')
     cy.task('getFlightByTail', tailDelete).should((row: FlightRow) => {
       // Soft delete: the row is still there, just stamped.
       expect(row.id).to.eq(ids[tailDelete])
@@ -113,6 +118,42 @@ describe('Flight edit, status change, delete', () => {
     cy.reload()
     cy.contains(tailConflict, { timeout: 15_000 }).should('exist')
     cy.contains(tailDelete).should('not.exist')
+  })
+
+  const failPatches = () =>
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/flight' }, {
+      statusCode: 500,
+      body: { code: 'XX000', message: 'forced cypress failure', details: null, hint: null }
+    })
+
+  it('failed edit shows an error toast, keeps the sheet open with the typed input, writes nothing', () => {
+    cy.task('getFlightByTail', tailEditFail).then((before: FlightRow) => {
+      openBoard(tailEditFail)
+      openEditSheet(tailEditFail)
+      failPatches()
+      cy.get('#origin').clear().type('KFAIL')
+      cy.contains('button', 'Update Flight').click()
+      cy.contains('[role="status"]', "Couldn't update flight", { timeout: 10_000 })
+        .should('contain.text', 'forced cypress failure')
+      cy.contains('Edit Flight').should('be.visible')
+      cy.get('#origin').should('have.value', 'KFAIL')
+      cy.task('getFlightByTail', tailEditFail).should((after: FlightRow) => {
+        expect(after.origin).to.eq('KAAA')
+        expect(after.modified_at).to.eq(before.modified_at)
+      })
+    })
+  })
+
+  it('failed status change shows an error toast and the status is unchanged', () => {
+    openBoard(tailStatusFail)
+    failPatches()
+    card(tailStatusFail).contains('Scheduled').click()
+    cy.contains('[role="menuitem"]', 'Delayed').click()
+    cy.contains('[role="status"]', "Couldn't update flight", { timeout: 10_000 })
+      .should('contain.text', 'forced cypress failure')
+    cy.task('getFlightByTail', tailStatusFail).should((row: FlightRow) => {
+      expect(row.flight_status).to.eq('scheduled')
+    })
   })
 
   it('edit conflict: row changed behind the dialog shows the conflict UI and keeps the other write', () => {

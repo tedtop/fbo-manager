@@ -1,7 +1,6 @@
 'use client'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/hooks/use-toast'
 import { useMemo, useState } from 'react'
 import { filterFlights, partitionFlights } from './board-logic'
 import { FlightList, type FlightDeletePhase, ZAP_MS } from './flight-list'
@@ -46,7 +45,6 @@ export function FlightBoard({
   const [deletePhases, setDeletePhases] = useState<
     Record<string, FlightDeletePhase>
   >({})
-  const { toast } = useToast()
 
   const setDeletePhase = (id: string, phase?: FlightDeletePhase) =>
     setDeletePhases((prev) => {
@@ -60,13 +58,9 @@ export function FlightBoard({
     setDeletePhase(id, 'deleting')
     try {
       await Promise.all([onDeleteFlight(id), wait(DELETING_MIN_MS)])
-    } catch (err) {
+    } catch {
+      // The page handler already showed the error toast; just bring the card back.
       setDeletePhase(id)
-      toast({
-        title: "Couldn't delete flight",
-        description: err instanceof Error ? err.message : undefined,
-        variant: 'destructive'
-      })
       return
     }
     setDeletePhase(id, 'zapping')

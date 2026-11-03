@@ -1,6 +1,6 @@
 // Port of e2e/flight-create.e2e.ts (Playwright) plus departure-only, validation and cancel (BACKLOG B08d).
 // NOT YET tags pin today's behavior; each flips when the matching backlog item lands:
-//   NOT YET: alert() for the aircraft-type validation instead of toasts (B11), hangar pull preset (B24).
+//   NOT YET: hangar pull preset (B24).
 // B09b: QT checkbox (preselected, departure = arrival + 1 h), optional scheduled times, actual times.
 // B10: times are stored as real instants. Expected instants are computed with the browser's own Date from the
 // local date + time ("YYYY-MM-DDTHH:mm:ss" without an offset is local), so they hold in any timezone.
@@ -22,7 +22,8 @@ const tailCancel = `CC4${stamp}` // typed then cancelled: nothing may be created
 const tailArr = `CC5${stamp}` // existing aircraft, arrival only (return)
 const tailActual = `CC6${stamp}` // existing aircraft, scheduled + actual times
 const tailLate = `CC7${stamp}` // existing aircraft, 23:30 local quick turn (midnight rollover)
-const tails = [tailNew, tailTurn, tailDep, tailCancel, tailArr, tailActual, tailLate]
+const tailFail = `CC8${stamp}` // existing aircraft, forced 500 on insert then a retry succeeds
+const tails = [tailNew, tailTurn, tailDep, tailCancel, tailArr, tailActual, tailLate, tailFail]
 
 let date: string // the sheet's default date (today), read from the form
 
@@ -60,6 +61,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.task('seedAircraft', tailArr)
     cy.task('seedAircraft', tailActual)
     cy.task('seedAircraft', tailLate)
+    cy.task('seedAircraft', tailFail)
   })
 
   after(() => {
@@ -276,17 +278,54 @@ describe('Add Flight sheet persists real rows', () => {
     cy.task('getFlightByTail', tailCancel).should('eq', null)
   })
 
-  it('submitting with no aircraft type shows a browser alert and creates nothing', () => {
+  it('submitting with no aircraft type shows an inline message (no alert) and creates nothing', () => {
     const alertStub = cy.stub().as('alert')
     cy.on('window:alert', alertStub)
     openAddFlightSheet()
     cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailCancel)
     cy.get('#arrivalTime').type('10:00')
     submit()
-    // NOT YET (B11): validation is a window.alert(), not an inline error/toast. Flips when B11 lands.
-    cy.get('@alert').should('have.been.calledWith', 'Please select an aircraft type')
+    cy.get('#typeError').should('contain.text', 'aircraft type')
+    cy.get('@alert').should('not.have.been.called')
     cy.contains('h2', 'Add New Flight').should('be.visible')
     cy.task('getFlightByTail', tailCancel).should('eq', null)
+  })
+
+  it('a failed insert shows an error toast, keeps the sheet open with input, creates nothing; retry succeeds', () => {
+    failOnAlert()
+    let fail = true
+    cy.intercept({ method: 'POST', pathname: '/rest/v1/flight' }, (req) => {
+      if (fail) {
+        req.reply({
+          statusCode: 500,
+          body: { code: 'XX000', message: 'forced cypress failure', details: null, hint: null }
+        })
+      }
+    })
+    openAddFlightSheet()
+    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailFail)
+    pickAircraftType('b738', /B738/)
+    cy.get('#origin').type('KFAIL')
+    cy.get('#arrivalTime').type('09:15')
+    submit()
+
+    cy.contains('[role="status"]', "Couldn't create flight", { timeout: 10_000 })
+      .should('contain.text', 'forced cypress failure')
+    cy.contains('h2', 'Add New Flight').should('be.visible')
+    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).should('have.value', tailFail)
+    cy.get('#origin').should('have.value', 'KFAIL')
+    cy.task('getFlightByTail', tailFail).should('eq', null)
+
+    // Recovers: same sheet, same input, now saves and says so.
+    cy.then(() => {
+      fail = false
+    })
+    submit()
+    cy.contains('h2', 'Add New Flight').should('not.exist')
+    cy.contains('[role="status"]', 'Flight created').should('be.visible')
+    cy.task('getFlightByTail', tailFail).should((row: FlightRow | null) => {
+      expect(row?.origin).to.eq('KFAIL')
+    })
   })
 
   it('cancelling the sheet creates no flight or aircraft', () => {

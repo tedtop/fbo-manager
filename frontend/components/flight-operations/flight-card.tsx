@@ -268,12 +268,15 @@ export function FlightCard({
   }
 
   const saveChanges = () => {
-    onEdit({
-      ...flight,
-      services: localServices,
-      notes: localNotes,
-      passengers: passengerCount ? Number.parseInt(passengerCount) : undefined
-    })
+    // Failures are toasted by the page handler; swallow the rethrow so it isn't unhandled.
+    void Promise.resolve(
+      onEdit({
+        ...flight,
+        services: localServices,
+        notes: localNotes,
+        passengers: passengerCount ? Number.parseInt(passengerCount) : undefined
+      })
+    ).catch(() => {})
     setIsEditingServices(false)
   }
 
@@ -384,10 +387,12 @@ export function FlightCard({
                     <DropdownMenuItem
                       key={statusKey}
                       onClick={() => {
-                        onEdit({
-                          ...flight,
-                          status: statusKey
-                        })
+                        void Promise.resolve(
+                          onEdit({
+                            ...flight,
+                            status: statusKey
+                          })
+                        ).catch(() => {})
                       }}
                       className="text-xs"
                     >

@@ -425,7 +425,7 @@ export function CalendarWeekView({
       }
     }
 
-    onEditFlight(updatedFlight)
+    void Promise.resolve(onEditFlight(updatedFlight)).catch(() => {})
     setDraggedBlock(null)
     setTempDragTime('')
     setTempDragDate('')

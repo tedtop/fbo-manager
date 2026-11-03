@@ -7,10 +7,13 @@ import type {
   FlightFilters
 } from '@/components/flight-operations/types'
 import { useFlights } from '@/hooks/use-flights'
+import { useToast } from '@/hooks/use-toast'
+import { describeError } from '@/lib/error-message'
 import { useState } from 'react'
 
 export default function WeekViewPage() {
   const [weekOffset, setWeekOffset] = useState(0)
+  const { toast } = useToast()
 
   // Same local Sunday-start week the calendar renders (CalendarWeekView uses weekRange too)
   const { startDate, endDate } = weekDateParams(new Date(), weekOffset)
@@ -27,22 +30,26 @@ export default function WeekViewPage() {
     services: []
   })
 
+  const fail = (title: string, err: unknown): never => {
+    toast({ title, description: describeError(err), variant: 'destructive' })
+    throw err
+  }
+
   const handleEditFlight = async (flight: Flight) => {
-    console.log('handleEditFlight called with:', flight)
     try {
-      console.log('Calling updateFlight API with id:', flight.id)
-      const result = await updateFlight(flight.id, flight)
-      console.log('Update result:', result)
+      await updateFlight(flight.id, flight)
+      toast({ title: 'Flight updated' })
     } catch (err) {
-      console.error('Failed to update flight:', err)
+      fail("Couldn't update flight", err)
     }
   }
 
   const handleDeleteFlight = async (id: string) => {
     try {
       await deleteFlight(id)
+      toast({ title: 'Flight deleted' })
     } catch (err) {
-      console.error('Failed to delete flight:', err)
+      fail("Couldn't delete flight", err)
     }
   }
 

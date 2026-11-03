@@ -16,6 +16,7 @@ import { useFlights } from '@/hooks/use-flights'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useToast } from '@/hooks/use-toast'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
+import { describeError } from '@/lib/error-message'
 import { ErrorMessage } from '@/messages/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
@@ -89,11 +90,19 @@ export default function FlightOperationsPage() {
     localStorage.setItem('flightViewPreference', validView)
   }
 
+  // Handlers show the toast and rethrow, so the form sheet (and the card) can tell the save failed
+  // and stay open with the user's input.
   const handleAddFlight = async (flight: Flight) => {
     try {
       await createFlight(flight)
+      toast({ title: 'Flight created' })
     } catch (err) {
-      console.error('Failed to create flight:', err)
+      toast({
+        title: "Couldn't create flight",
+        description: describeError(err),
+        variant: 'destructive'
+      })
+      throw err
     }
   }
 
@@ -101,26 +110,33 @@ export default function FlightOperationsPage() {
     flight: Flight,
     expectedModifiedAt?: string
   ) => {
-    console.log('handleEditFlight called with:', flight)
     try {
-      console.log('Calling updateFlight API with id:', flight.id)
-      const result = await updateFlight(flight.id, flight, expectedModifiedAt)
-      console.log('Update result:', result)
+      await updateFlight(flight.id, flight, expectedModifiedAt)
+      toast({ title: 'Flight updated' })
     } catch (err) {
-      // Let the edit-concurrency conflict dialog in FlightFormDialog handle this —
-      // don't swallow it here like other, non-concurrency-aware errors below.
+      // Let the edit-concurrency conflict dialog in FlightFormDialog handle this (its own UI, no toast).
       if (err instanceof ConcurrencyConflictError) throw err
-      console.error('Failed to update flight:', err)
+      toast({
+        title: "Couldn't update flight",
+        description: describeError(err),
+        variant: 'destructive'
+      })
+      throw err
     }
   }
 
-  // Rethrows so the board can bring the card back and show an error. keepRow leaves the flight in
+  // Rethrows so the board can bring the card back. keepRow leaves the flight in
   // the list until its exit animation finishes (the board then calls forgetFlight).
   const handleDeleteFlight = async (id: string) => {
     try {
       await deleteFlight(id, { keepRow: true })
+      toast({ title: 'Flight deleted' })
     } catch (err) {
-      console.error('Failed to delete flight:', err)
+      toast({
+        title: "Couldn't delete flight",
+        description: describeError(err),
+        variant: 'destructive'
+      })
       throw err
     }
   }
@@ -137,7 +153,12 @@ export default function FlightOperationsPage() {
       setFuelDialogOpen(false)
       setFuelFlight(null)
     } catch (err) {
-      console.error('Failed to create fuel order:', err)
+      toast({
+        title: "Couldn't create fuel order",
+        description: describeError(err),
+        variant: 'destructive'
+      })
+      throw err
     }
   }
 

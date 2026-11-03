@@ -1,4 +1,5 @@
 import { NavigationWrapper } from '@/components/navigation-wrapper'
+import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/providers/auth-provider'
 import { QueryProvider } from '@/providers/query-provider'
 import type { Metadata } from 'next'
@@ -38,6 +39,7 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <NavigationWrapper>{children}</NavigationWrapper>
+            <Toaster />
           </AuthProvider>
         </QueryProvider>
       </body>

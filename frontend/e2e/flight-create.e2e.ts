@@ -17,7 +17,9 @@ const tailDepOnly = uniqueValue('NC2E').toUpperCase() // hangar pull: departure 
 const tailArrOnly = uniqueValue('NC2E').toUpperCase() // return: arrival only
 const tailActual = uniqueValue('NC2E').toUpperCase() // scheduled + actual times
 const tailNone = uniqueValue('NC2E').toUpperCase() // no times: validation, nothing created
-const seeded = [tailExisting, tailDepOnly, tailArrOnly, tailActual, tailNone]
+const tailFail = uniqueValue('NC2E').toUpperCase() // forced 500 on insert, then a retry succeeds
+const tailNoType = uniqueValue('NC2E').toUpperCase() // no aircraft type: inline message
+const seeded = [tailExisting, tailDepOnly, tailArrOnly, tailActual, tailNone, tailFail, tailNoType]
 const tails = [tailNew, ...seeded]
 
 test.beforeAll(async () => {
@@ -51,7 +53,7 @@ async function pickAircraftType(page: Page, search: string, optionName: RegExp) 
 }
 
 async function submitAndExpectClosed(page: Page) {
-  // alert() (validation / swallowed failures) must not fire during a clean create.
+  // alert() must never fire (validation is inline, failures are toasts).
   page.once('dialog', (d) => {
     throw new Error(`Unexpected alert: ${d.message()}`)
   })
@@ -210,5 +212,62 @@ test.describe('Add Flight sheet persists real rows', () => {
     expect(alerted).toBe(false)
     const { data } = await db.from('flight').select('id').eq('aircraft_id', tailNone)
     expect(data ?? []).toHaveLength(0)
+  })
+
+  test('a failed insert shows an error toast, keeps the sheet open with input, creates nothing; retry succeeds', async ({ page }) => {
+    await openAddFlightSheet(page)
+    page.on('dialog', (d) => {
+      throw new Error(`Unexpected alert: ${d.message()}`)
+    })
+    const isFlightInsert = (url: URL, method: string) => method === 'POST' && /\/rest\/v1\/flight$/.test(url.pathname)
+    await page.route(/\/rest\/v1\/flight(\?|$)/, (route) => {
+      const req = route.request()
+      if (isFlightInsert(new URL(req.url()), req.method())) {
+        return route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 'XX000', message: 'forced e2e failure', details: null, hint: null })
+        })
+      }
+      return route.continue()
+    })
+
+    await page.getByPlaceholder('e.g., N12345').fill(tailFail)
+    await pickAircraftType(page, 'b738', /B738/)
+    await page.locator('#origin').fill('KFAIL')
+    await page.locator('#arrivalTime').fill('09:15')
+    await page.getByRole('button', { name: 'Add Flight', exact: true }).last().click()
+
+    const toast = page.getByRole('status').filter({ hasText: "Couldn't create flight" })
+    await expect(toast).toBeVisible({ timeout: 10_000 })
+    await expect(toast).toContainText('forced e2e failure')
+    await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeVisible()
+    await expect(page.getByPlaceholder('e.g., N12345')).toHaveValue(tailFail)
+    await expect(page.locator('#origin')).toHaveValue('KFAIL')
+    const { data } = await db.from('flight').select('id').eq('aircraft_id', tailFail)
+    expect(data ?? []).toHaveLength(0)
+
+    // Network recovers: the same sheet, same input, now saves and says so.
+    await page.unroute(/\/rest\/v1\/flight(\?|$)/)
+    await page.getByRole('button', { name: 'Add Flight', exact: true }).last().click()
+    await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeHidden({ timeout: 10_000 })
+    await expect(page.getByRole('status').filter({ hasText: 'Flight created' })).toBeVisible()
+    const row = await readFlight(tailFail)
+    expect(row.origin).toBe('KFAIL')
+  })
+
+  test('submitting with no aircraft type shows an inline message and no alert', async ({ page }) => {
+    await openAddFlightSheet(page)
+    let alerted = false
+    page.on('dialog', (d) => {
+      alerted = true
+      void d.dismiss()
+    })
+    await page.getByPlaceholder('e.g., N12345').fill(tailNoType)
+    await page.locator('#arrivalTime').fill('10:00')
+    await page.getByRole('button', { name: 'Add Flight', exact: true }).last().click()
+    await expect(page.locator('#typeError')).toContainText(/aircraft type/i)
+    await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeVisible()
+    expect(alerted).toBe(false)
   })
 })
