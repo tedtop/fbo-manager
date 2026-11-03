@@ -226,10 +226,6 @@ export function FlightCard({
   const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
 
   const status = statusConfig[flight.status]
-  const deleteLabel =
-    flight.status === 'departed' || flight.status === 'cancelled'
-      ? 'Clear'
-      : 'Delete'
   const isArrival = column
     ? column === 'arrival'
     : flight.type === 'arrival' ||
@@ -701,7 +697,7 @@ export function FlightCard({
               className="h-6 text-xs text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="w-3 h-3 mr-1" />
-              {deleteLabel}
+              Delete
             </Button>
           </div>
         </div>
@@ -717,11 +713,12 @@ export function FlightCard({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {deleteLabel} {flight.tailNumber || 'this flight'}?
+              Delete {flight.tailNumber || 'this flight'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the flight from the board. It stays in the database,
-              so it can be looked up later.
+              {flight.tailNumber || 'This flight'} will be removed from the
+              board. The record is kept in the database, so an admin can
+              restore it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -730,7 +727,7 @@ export function FlightCard({
               onClick={() => onDelete(flight.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteLabel}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

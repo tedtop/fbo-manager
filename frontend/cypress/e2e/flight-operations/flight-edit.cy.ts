@@ -13,7 +13,9 @@ const tailDelete = `CE3${stamp}`
 const tailConflict = `CE4${stamp}`
 const tailEditFail = `CE5${stamp}`
 const tailStatusFail = `CE6${stamp}`
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail]
+const tailCancel = `CE7${stamp}`
+const tailDeparted = `CE8${stamp}`
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted]
 const ids: Record<string, number> = {}
 
 const card = (tail: string) => cy.contains('[data-slot="card"]', tail)
@@ -32,7 +34,7 @@ const openEditSheet = (tail: string) => {
 describe('Flight edit, status change, delete', () => {
   before(() => {
     for (const tail of tails) {
-      cy.task('seedFlight', { tail, departureInMin: 360 }).then((id) => {
+      cy.task('seedFlight', { tail, departureInMin: 360, status: tail === tailDeparted ? 'departed' : 'scheduled' }).then((id) => {
         ids[tail] = id as number
       })
     }
@@ -104,7 +106,7 @@ describe('Flight edit, status change, delete', () => {
   it('delete removes the card and soft-deletes the row', () => {
     openBoard(tailDelete)
     card(tailDelete).contains('button', 'Delete').click()
-    cy.get('[role="alertdialog"]').should('contain.text', tailDelete)
+    cy.get('[role="alertdialog"]').should('contain.text', `Delete ${tailDelete}?`)
     cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
 
     cy.contains(tailDelete).should('not.exist')
@@ -118,6 +120,32 @@ describe('Flight edit, status change, delete', () => {
     cy.reload()
     cy.contains(tailConflict, { timeout: 15_000 }).should('exist')
     cy.contains(tailDelete).should('not.exist')
+  })
+
+  it('cancelling the delete confirmation leaves the card and the row untouched', () => {
+    openBoard(tailCancel)
+    card(tailCancel).contains('button', 'Delete').click()
+    cy.get('[role="alertdialog"]').should('contain.text', `Delete ${tailCancel}?`)
+    cy.get('[role="alertdialog"]').should('contain.text', 'removed from the board')
+    cy.get('[role="alertdialog"]').contains('button', 'Cancel').click()
+    cy.get('[role="alertdialog"]').should('not.exist')
+    card(tailCancel).should('be.visible')
+    cy.task('getFlightByTail', tailCancel).its('deleted_at').should('eq', null)
+    cy.reload()
+    card(tailCancel).should('be.visible')
+  })
+
+  it('a departed flight uses the same Delete wording and soft-deletes after confirming', () => {
+    openBoard(tailDeparted)
+    card(tailDeparted).contains('button', 'Clear').should('not.exist')
+    card(tailDeparted).contains('button', 'Delete').click()
+    cy.get('[role="alertdialog"]').should('contain.text', `Delete ${tailDeparted}?`)
+    cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
+    cy.contains('Flight deleted').should('be.visible')
+    cy.contains(tailDeparted).should('not.exist')
+    cy.task('getFlightByTail', tailDeparted).should((row: FlightRow) => {
+      expect(row.deleted_at).to.be.a('string')
+    })
   })
 
   const failPatches = () =>

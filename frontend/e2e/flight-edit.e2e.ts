@@ -15,7 +15,9 @@ const tailDelete = uniqueValue('NF2E').toUpperCase()
 const tailConflict = uniqueValue('NF2E').toUpperCase()
 const tailEditFail = uniqueValue('NF2E').toUpperCase()
 const tailStatusFail = uniqueValue('NF2E').toUpperCase()
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail]
+const tailCancel = uniqueValue('NF2E').toUpperCase()
+const tailDeparted = uniqueValue('NF2E').toUpperCase()
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted]
 const ids: Record<string, number> = {}
 let userId: number
 
@@ -49,7 +51,7 @@ test.beforeAll(async () => {
         origin: 'KAAA',
         destination: 'KBBB',
         scheduled_departure_time: departure,
-        flight_status: 'scheduled' as const,
+        flight_status: aircraft_id === tailDeparted ? ('departed' as const) : ('scheduled' as const),
       }))
     )
     .select('id, aircraft_id')
@@ -165,7 +167,7 @@ test.describe('Flight edit, status change, delete', () => {
   test('delete removes the card and soft-deletes the row', async ({ page }) => {
     await openBoard(page, tailDelete)
     await card(page, tailDelete).getByRole('button', { name: 'Delete' }).click()
-    await expect(page.getByRole('alertdialog')).toContainText(tailDelete)
+    await expect(page.getByRole('alertdialog')).toContainText(`Delete ${tailDelete}?`)
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
 
     await expect(page.getByText(tailDelete)).toHaveCount(0, { timeout: 15_000 })
@@ -182,6 +184,38 @@ test.describe('Flight edit, status change, delete', () => {
     await page.reload()
     await expect(page.getByText(tailConflict).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(tailDelete)).toHaveCount(0)
+  })
+
+  test('cancelling the delete confirmation leaves the card and the row untouched', async ({ page }) => {
+    await openBoard(page, tailCancel)
+    await card(page, tailCancel).getByRole('button', { name: 'Delete' }).click()
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog).toContainText(`Delete ${tailCancel}?`)
+    await expect(dialog).toContainText('removed from the board')
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toBeHidden()
+
+    await expect(card(page, tailCancel)).toBeVisible()
+    expect((await readFlight(tailCancel)).deleted_at).toBeNull()
+    await page.reload()
+    await expect(card(page, tailCancel)).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('a departed flight uses the same Delete wording and soft-deletes after confirming', async ({ page }) => {
+    await openBoard(page, tailDeparted)
+    await expect(card(page, tailDeparted).getByRole('button', { name: 'Clear' })).toHaveCount(0)
+    await card(page, tailDeparted).getByRole('button', { name: 'Delete' }).click()
+    const dialog = page.getByRole('alertdialog')
+    await expect(dialog).toContainText(`Delete ${tailDeparted}?`)
+    await dialog.getByRole('button', { name: 'Delete' }).click()
+
+    await expect(page.getByText('Flight deleted', { exact: true })).toBeVisible()
+    await expect(page.getByText(tailDeparted)).toHaveCount(0, { timeout: 15_000 })
+    const row = await waitForDbRow(async () => {
+      const r = await readFlight(tailDeparted)
+      return r.deleted_at ? r : null
+    })
+    expect(row.id).toBe(ids[tailDeparted])
   })
 
   test('edit conflict: row changed behind the dialog shows the conflict UI and keeps the other write', async ({ page }) => {
