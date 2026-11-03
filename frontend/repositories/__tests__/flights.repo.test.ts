@@ -135,44 +135,43 @@ describe('flights.repo', () => {
     expect(flight.created_by?.username).toBe('creator-1')
   })
 
-  // F8: created_by_id is NOT NULL with no default on the local schema, and the flight form's
-  // create path (hooks/use-flights.ts createMutation) never sends it. Pins current behavior.
-  it('F8: create without created_by_id is rejected by the local schema (not-null violation)', async () => {
-    const aircraft = await makeAircraft(db)
-    await expect(
-      createFlight(db, {
-        aircraft_id: aircraft.tail_number,
-        departure_time: new Date().toISOString(),
-      } as Parameters<typeof createFlight>[1])
-    ).rejects.toMatchObject({ code: '23502' })
+  // F8: live has flight.created_by_id DEFAULT 1 (every form-created flight is attributed to user 1,
+  // see B17); the local schema mirrors that via migration 20261102000500. The flight form's create
+  // path (hooks/use-flights.ts createMutation) never sends created_by_id.
+  // KNOWN BUG F9: flips when B17 lands real creator attribution.
+  const formPayload = (tail: string) => ({
+    aircraft_id: tail,
+    call_sign: 'N123AB',
+    arrival_time: '2026-03-10T14:00:00.000Z',
+    departure_time: '2026-03-10T14:45:00.000Z',
+    flight_status: 'scheduled' as const,
+    origin: 'KSFO',
+    destination: 'KLAX',
+    contact_name: 'Jane Pilot',
+    contact_notes: 'Needs crew car',
+    services: ['fuel', 'lav'],
+    fuel_order_notes: '',
+    passenger_count: 4,
+    notes: 'VIP',
+    created_by_source: 'line-department' as const,
   })
 
-  it('F8: the exact payload the flight form sends on create fails without created_by_id', async () => {
+  it('F8: create without created_by_id needs the default user (id 1) to exist, else FK violation', async () => {
     const aircraft = await makeAircraft(db)
-    // Shape built by createMutation in hooks/use-flights.ts (no created_by_id).
-    const formPayload = {
-      aircraft_id: aircraft.tail_number,
-      call_sign: 'N123AB',
-      arrival_time: '2026-03-10T14:00:00.000Z',
-      departure_time: '2026-03-10T14:45:00.000Z',
-      flight_status: 'scheduled' as const,
-      origin: 'KSFO',
-      destination: 'KLAX',
-      contact_name: 'Jane Pilot',
-      contact_notes: 'Needs crew car',
-      services: ['fuel', 'lav'],
-      fuel_order_notes: '',
-      passenger_count: 4,
-      notes: 'VIP',
-      created_by_source: 'line-department' as const,
-    }
-
+    // resetDatabase wipes `users`, so the default user 1 does not exist here.
     await expect(
-      createFlight(db, formPayload as Parameters<typeof createFlight>[1])
-    ).rejects.toMatchObject({ code: '23502' })
+      createFlight(db, formPayload(aircraft.tail_number) as Parameters<typeof createFlight>[1])
+    ).rejects.toMatchObject({ code: '23503' })
+  })
 
-    const creator = await makeUser(db)
-    const created = await createFlight(db, { ...formPayload, created_by_id: creator.id })
+  it('F8/F9: the exact form payload succeeds and is attributed to default user 1', async () => {
+    const aircraft = await makeAircraft(db)
+    await makeUser(db, { id: 1, username: 'default-flight-creator' })
+
+    const created = await createFlight(
+      db,
+      formPayload(aircraft.tail_number) as Parameters<typeof createFlight>[1]
+    )
     expect(created).toMatchObject({
       call_sign: 'N123AB',
       origin: 'KSFO',
@@ -182,6 +181,7 @@ describe('flights.repo', () => {
       passenger_count: 4,
       created_by_source: 'line-department',
       flight_status: 'scheduled',
+      created_by_id: 1,
     })
   })
 
