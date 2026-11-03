@@ -14,6 +14,7 @@ type SeedFlightOptions = {
   arrivalInMin?: number
   departureInMin?: number
   status?: 'scheduled' | 'arrived' | 'departed' | 'cancelled' | 'delayed' | 'planned'
+  services?: string[]
 }
 
 export default defineConfig({
@@ -32,7 +33,7 @@ export default defineConfig({
         },
 
         /** Inserts one aircraft + one flight via the service role. Returns the created flight id. */
-        async seedFlight({ tail, arrivalInMin, departureInMin = 180, status = 'scheduled' }: SeedFlightOptions) {
+        async seedFlight({ tail, arrivalInMin, departureInMin = 180, status = 'scheduled', services }: SeedFlightOptions) {
           const db = createE2EDbClient()
           const iso = (min: number) => new Date(Date.now() + min * 60_000).toISOString()
 
@@ -59,6 +60,7 @@ export default defineConfig({
               arrival_time: arrivalInMin === undefined ? null : iso(arrivalInMin),
               departure_time: iso(departureInMin),
               flight_status: status,
+              ...(services ? { services } : {}),
             })
             .select('id')
             .single()

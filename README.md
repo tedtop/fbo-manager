@@ -109,7 +109,7 @@ via `cy.session`. Cypress does not start the app, so run its own dev server on p
 
 ```bash
 pnpm exec cypress install                       # first time: downloads the Cypress binary
-# terminal 1 (anon key = LOCAL_ANON_KEY in e2e/support/env.ts)
+# terminal 1 (anon key = the multi-line LOCAL_ANON_KEY constant in e2e/support/env.ts; set all four vars or the app 500s)
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key> \
   SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_ANON_KEY=<local anon key> pnpm exec next dev -p 4210
 # terminal 2
