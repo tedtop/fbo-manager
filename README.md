@@ -104,11 +104,20 @@ pnpm e2e:ui           # Playwright's interactive UI — best while writing/debug
 default for every other module). Specs live in `frontend/cypress/e2e/flight-operations/*.cy.ts`;
 `cypress.config.ts` has tasks `seedDevUsers`, `seedFlight` and `cleanFlights` (service role,
 local stack only, reusing `e2e/support/*`), and `cy.login()` logs in through the real login form
-via `cy.session`. Cypress does not start the app, so run its own dev server on port 4210
-(never 3000/3100/4000/4100) pointed at the local stack:
+via `cy.session`. `mobile.cy.ts` runs the key flows at 390x844. Cypress does not start the app, so
+the one-command entry starts its own dev server on port 4210 (never 3000/3100/4000/4100) pointed at
+the local stack, runs Cypress headless, and always stops that server:
 
 ```bash
+pnpm supabase:start                             # local stack must be up
 pnpm exec cypress install                       # first time: downloads the Cypress binary
+pnpm test:cypress                               # starts next dev -p 4210, runs headless, stops it
+pnpm test:cypress --spec 'cypress/e2e/flight-operations/mobile.cy.ts'   # extra args go to cypress run
+```
+
+Manual two-terminal alternative (e.g. for `cypress:open`):
+
+```bash
 # terminal 1 (anon key = the multi-line LOCAL_ANON_KEY constant in e2e/support/env.ts; set all four vars or the app 500s)
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key> \
   SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_ANON_KEY=<local anon key> pnpm exec next dev -p 4210
