@@ -688,8 +688,8 @@ export function FlightCard({
               {deleteLabel} {flight.tailNumber || 'this flight'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the flight from the board. This cannot
-              be undone.
+              This removes the flight from the board. It stays in the database,
+              so it can be looked up later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
