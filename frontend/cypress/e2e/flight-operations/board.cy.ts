@@ -1,6 +1,6 @@
 // Port of e2e/flight-board.e2e.ts (Playwright) plus filters, calendar and empty state (BACKLOG B08c).
 // Realtime insert is deliberately not covered here (blocked on B16).
-// KNOWN BUG tags (F3..F9) pin today's behavior; each flips when the matching backlog item lands.
+// KNOWN BUG tags (F3..F9, except F4 which landed in B13) pin today's behavior; each flips when the matching backlog item lands.
 // Classification (D2/D6): Arrivals = has a scheduled arrival, Departures = has a scheduled departure.
 const stamp = Date.now().toString(36).toUpperCase()
 const tailTurn = `CBT${stamp}` // arrival + departure, scheduled, hangar
@@ -10,9 +10,26 @@ const tailArr = `CBA${stamp}` // arrival only (return), scheduled
 const tailNext = `CBN${stamp}` // departure exactly one week from now (next calendar week)
 const tailPrev = `CBP${stamp}` // departure exactly one week ago (previous calendar week)
 const tailFar = `CBF${stamp}` // departure exactly six weeks from now (beyond the old +-4 week window)
-const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev, tailFar]
+const tailTomorrow = `CBM${stamp}` // departure tomorrow (local day), noon
+const tailMonth = `CBX${stamp}` // departure 30 days out (outside the default -1..+14 day fetch window)
+const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev, tailFar, tailTomorrow, tailMonth]
 
 const DAY = 24 * 60
+const MIN = 60_000
+// Minutes from now until `offsetMin` from now, clamped into today's local day (00:05..23:55) so the
+// "today" seeds do not spill into tomorrow late in the evening.
+const todayMin = (offsetMin: number) => {
+  const now = Date.now()
+  const d = new Date(now)
+  const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const t = Math.min(dayStart + DAY * MIN - 5 * MIN, Math.max(dayStart + 5 * MIN, now + offsetMin * MIN))
+  return (t - now) / MIN
+}
+// Minutes from now until local noon `days` calendar days ahead (DST-safe).
+const noonMin = (days: number) => {
+  const d = new Date()
+  return (new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, 12).getTime() - d.getTime()) / MIN
+}
 
 const openBoard = () => {
   cy.login()
@@ -36,13 +53,15 @@ describe('Flight board', () => {
   Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop'))
 
   before(() => {
-    cy.task('seedFlight', { tail: tailTurn, arrivalInMin: 60, departureInMin: 120, services: ['hangar'], isQuickTurn: true })
-    cy.task('seedFlight', { tail: tailArr, arrivalInMin: 90, departureInMin: null })
-    cy.task('seedFlight', { tail: tailDep, departureInMin: 240 })
-    cy.task('seedFlight', { tail: tailDelayed, departureInMin: 300, status: 'delayed', services: ['fuel'] })
+    cy.task('seedFlight', { tail: tailTurn, arrivalInMin: todayMin(60), departureInMin: todayMin(120), services: ['hangar'], isQuickTurn: true })
+    cy.task('seedFlight', { tail: tailArr, arrivalInMin: todayMin(90), departureInMin: null })
+    cy.task('seedFlight', { tail: tailDep, departureInMin: todayMin(240) })
+    cy.task('seedFlight', { tail: tailDelayed, departureInMin: todayMin(300), status: 'delayed', services: ['fuel'] })
     cy.task('seedFlight', { tail: tailNext, departureInMin: 7 * DAY })
     cy.task('seedFlight', { tail: tailPrev, departureInMin: -7 * DAY })
     cy.task('seedFlight', { tail: tailFar, departureInMin: 42 * DAY })
+    cy.task('seedFlight', { tail: tailTomorrow, departureInMin: noonMin(1) })
+    cy.task('seedFlight', { tail: tailMonth, departureInMin: noonMin(30) })
   })
 
   after(() => {
@@ -117,13 +136,39 @@ describe('Flight board', () => {
       cy.contains(tailDelayed).should('exist')
     })
 
-    it('date range filter does nothing yet', () => {
+    // B13 / F4: the date range filters by LOCAL day; the list fetch is bounded (-1..+14 days) until "All Dates".
+    it('default view is today only: tomorrow and 30-days-out flights are not shown', () => {
+      for (const t of [tailTurn, tailDep, tailDelayed, tailArr]) cy.contains(t).should('exist')
+      cy.contains(tailTomorrow).should('not.exist')
+      cy.contains(tailMonth).should('not.exist')
+    })
+
+    it('Tomorrow shows only tomorrow\'s flights', () => {
       openFilters()
       filterSelect('Date Range', 'Tomorrow')
       cy.get('body').type('{esc}')
-      // KNOWN BUG F4: flips when B09/B13 land - dateRange is never applied, so "Tomorrow" still shows
-      // flights seeded for today. Once fixed, these should be hidden.
-      for (const t of [tailTurn, tailDep, tailDelayed]) cy.contains(t).should('exist')
+      cy.contains(tailTomorrow).should('exist')
+      for (const t of [tailTurn, tailDep, tailDelayed, tailArr, tailMonth]) cy.contains(t).should('not.exist')
+    })
+
+    it('Today shows only today\'s flights', () => {
+      openFilters()
+      filterSelect('Date Range', 'Tomorrow')
+      filterSelect('Date Range', 'Today')
+      cy.get('body').type('{esc}')
+      for (const t of [tailTurn, tailDep, tailDelayed, tailArr]) cy.contains(t).should('exist')
+      cy.contains(tailTomorrow).should('not.exist')
+      cy.contains(tailMonth).should('not.exist')
+    })
+
+    it('All Dates opts in to the unbounded fetch and includes a flight 30 days out', () => {
+      cy.contains(tailMonth).should('not.exist')
+      openFilters()
+      filterSelect('Date Range', 'All Dates')
+      cy.get('body').type('{esc}')
+      cy.contains(tailMonth, { timeout: 15_000 }).should('exist')
+      cy.contains(tailTomorrow).should('exist')
+      cy.contains(tailTurn).should('exist')
     })
 
     it('shows the empty state when nothing matches', () => {

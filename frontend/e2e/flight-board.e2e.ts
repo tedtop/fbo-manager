@@ -11,7 +11,9 @@ const tailTurn = uniqueValue('NE2E').toUpperCase() // arrival + departure, sched
 const tailDep = uniqueValue('NE2E').toUpperCase() // departure only, scheduled
 const tailDelayed = uniqueValue('NE2E').toUpperCase() // departure only, delayed
 const tailArr = uniqueValue('NE2E').toUpperCase() // arrival only (return), scheduled
-const tails = [tailTurn, tailDep, tailDelayed, tailArr]
+const tailTomorrow = uniqueValue('NE2E').toUpperCase() // departure tomorrow (local day)
+const tailMonth = uniqueValue('NE2E').toUpperCase() // departure 30 days out (outside the default fetch window)
+const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailTomorrow, tailMonth]
 let userId: number
 
 test.beforeAll(async () => {
@@ -37,13 +39,25 @@ test.beforeAll(async () => {
 
   const now = Date.now()
   const iso = (offsetMin: number) => new Date(now + offsetMin * 60_000).toISOString()
+  // Local calendar day offset at 12:00 local (DST-safe, and never near a midnight edge).
+  const noonInDays = (days: number) => {
+    const d = new Date()
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, 12).toISOString()
+  }
+  // Today's flights are seeded at now+1h..+5h, so near the end of the local day they would spill into
+  // tomorrow. Clamp them to 00:05..23:55 of today to keep the date assertions deterministic.
+  const startOfToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime()
+  const today = (offsetMin: number) =>
+    new Date(Math.min(startOfToday + 24 * 3600_000 - 5 * 60_000, Math.max(startOfToday + 5 * 60_000, now + offsetMin * 60_000))).toISOString()
   // is_quick_turn is set explicitly: a bulk insert sends null for keys missing from some rows.
   const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false }
   const { error: flightError } = await db.from('flight').insert([
-    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: iso(60), scheduled_departure_time: iso(120), is_quick_turn: true, flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailArr, scheduled_arrival_time: iso(90), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailDep, scheduled_departure_time: iso(240), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailDelayed, scheduled_departure_time: iso(300), flight_status: 'delayed' },
+    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: today(60), scheduled_departure_time: today(120), is_quick_turn: true, flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailArr, scheduled_arrival_time: today(90), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailDep, scheduled_departure_time: today(240), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailDelayed, scheduled_departure_time: today(300), flight_status: 'delayed' },
+    { ...base, aircraft_id: tailTomorrow, scheduled_departure_time: noonInDays(1), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailMonth, scheduled_departure_time: noonInDays(30), flight_status: 'scheduled' },
   ])
   if (flightError) throw flightError
 })
@@ -67,7 +81,7 @@ test.describe('Flight board', () => {
     await openBoard(page)
     await expect(arrivalsHeading(page)).toBeVisible()
     await expect(departuresHeading(page)).toBeVisible()
-    for (const tail of tails) await expect(page.getByText(tail).first()).toBeVisible()
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr]) await expect(page.getByText(tail).first()).toBeVisible()
 
     // Departure-only flights appear once (departures column only).
     await expect(page.getByText(tailDep)).toHaveCount(1)
@@ -126,15 +140,44 @@ test.describe('Flight board', () => {
     await expect(page.getByText(tailTurn)).toHaveCount(0)
   })
 
-  test('date range filter does nothing yet', async ({ page }) => {
-    await openBoard(page)
+  // B13 / F4: the toolbar date range filters by LOCAL day, and the list fetch is bounded (-1..+14 days)
+  // until "All Dates" opts in to the unbounded fetch.
+  async function pickDateRange(page: Page, option: string) {
     await page.getByRole('button', { name: 'Filters' }).click()
     await page.getByRole('combobox').nth(1).click() // Date Range select
-    await page.getByRole('option', { name: 'Tomorrow' }).click()
+    await page.getByRole('option', { name: option }).click()
     await page.keyboard.press('Escape')
+  }
 
-    // KNOWN BUG F4: flips when B09/B13 land — dateRange is never applied, so "Tomorrow" still shows
-    // flights seeded for today. Once fixed, these should be hidden.
-    for (const tail of tails) await expect(page.getByText(tail).first()).toBeVisible()
+  test('default view is today only: tomorrow and 30-days-out flights are not shown', async ({ page }) => {
+    await openBoard(page)
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr]) await expect(page.getByText(tail).first()).toBeVisible()
+    await expect(page.getByText(tailTomorrow)).toHaveCount(0)
+    await expect(page.getByText(tailMonth)).toHaveCount(0)
+  })
+
+  test('Tomorrow shows only tomorrow\'s flights', async ({ page }) => {
+    await openBoard(page)
+    await pickDateRange(page, 'Tomorrow')
+    await expect(page.getByText(tailTomorrow).first()).toBeVisible()
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr, tailMonth]) await expect(page.getByText(tail)).toHaveCount(0)
+  })
+
+  test('Today shows only today\'s flights', async ({ page }) => {
+    await openBoard(page)
+    await pickDateRange(page, 'Tomorrow')
+    await pickDateRange(page, 'Today')
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr]) await expect(page.getByText(tail).first()).toBeVisible()
+    await expect(page.getByText(tailTomorrow)).toHaveCount(0)
+    await expect(page.getByText(tailMonth)).toHaveCount(0)
+  })
+
+  test('All Dates opts in to the unbounded fetch and includes a flight 30 days out', async ({ page }) => {
+    await openBoard(page)
+    await expect(page.getByText(tailMonth)).toHaveCount(0)
+    await pickDateRange(page, 'All Dates')
+    await expect(page.getByText(tailMonth).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(tailTomorrow).first()).toBeVisible()
+    await expect(page.getByText(tailTurn).first()).toBeVisible()
   })
 })

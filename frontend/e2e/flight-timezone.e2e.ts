@@ -125,6 +125,11 @@ test.describe('Timezone handling (B10)', () => {
     if (error) throw error
 
     await page.goto('/')
+    // The seeded flight is on a fixed future date: the default "Today" filter (B13) hides it.
+    await page.getByRole('button', { name: 'Filters' }).click()
+    await page.getByRole('combobox').nth(1).click() // Date Range select
+    await page.getByRole('option', { name: 'All Dates' }).click()
+    await page.keyboard.press('Escape')
     await expect(cards(page, tailEdit).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(cardLabel(date, '23:30'))).toBeVisible()
     await cards(page, tailEdit).first().getByRole('button', { name: 'Edit' }).click()

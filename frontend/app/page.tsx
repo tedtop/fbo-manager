@@ -2,7 +2,7 @@
 
 import { CalendarWeekView } from '@/components/flight-operations/calendar-week-view'
 import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
-import { weekDateParams, weekRange } from '@/components/flight-operations/board-logic'
+import { listFetchWindow, weekDateParams } from '@/components/flight-operations/board-logic'
 import { FlightBoard } from '@/components/flight-operations/flight-board'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
@@ -30,12 +30,22 @@ export default function FlightOperationsPage() {
   >('split')
   const [weekOffset, setWeekOffset] = useState(0)
 
+  const [filters, setFilters] = useState<FlightFilters>({
+    search: '',
+    status: 'all',
+    dateRange: 'today',
+    services: []
+  })
+
   // Calendar view loads exactly the visible (local, Sunday-start) week, so navigating weeks always
-  // fetches that week's flights. endDate is the last day of the week (inclusive).
+  // fetches that week's flights. endDate is the last day of the week (inclusive). The list views load a
+  // bounded window (listFetchWindow); choosing "All Dates" opts in to the unbounded fetch (its own query key).
   const dateParams =
     view === 'calendar'
       ? weekDateParams(new Date(), weekOffset)
-      : undefined // Don't filter by date for split view - show all flights
+      : filters.dateRange === 'all'
+        ? undefined
+        : listFetchWindow(new Date())
 
   const {
     flights,
@@ -49,12 +59,6 @@ export default function FlightOperationsPage() {
   const { createTransaction } = useTransactions()
   const { toast } = useToast()
   const { theme } = useTheme()
-  const [filters, setFilters] = useState<FlightFilters>({
-    search: '',
-    status: 'all',
-    dateRange: 'today',
-    services: []
-  })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [fuelDialogOpen, setFuelDialogOpen] = useState(false)
   const [fuelFlight, setFuelFlight] = useState<Flight | null>(null)
@@ -179,19 +183,6 @@ export default function FlightOperationsPage() {
   if (error) {
     return <ErrorMessage>{error.message}</ErrorMessage>
   }
-
-  // Filter flights for Split View to match the selected week
-  const weekInternalFlights = flights.filter((flight) => {
-    const flightDate = new Date(
-      (flight.departureTime ?? flight.arrivalTime) as string
-    )
-    const { start: startOfWeek, end: endOfWeek } = weekRange(
-      new Date(),
-      weekOffset
-    )
-
-    return flightDate >= startOfWeek && flightDate < endOfWeek
-  })
 
   return (
     <div className="space-y-4">

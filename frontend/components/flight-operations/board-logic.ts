@@ -1,15 +1,65 @@
-import { addLocalDays, formatLocalDate } from '@/lib/local-date'
+import { addLocalDays, formatLocalDate, parseLocalDate, toInstantIso } from '@/lib/local-date'
 import type { Flight, FlightFilters } from './types'
 
 // Pure board logic, extracted verbatim from flight-board.tsx and app/page.tsx (no behavior change).
 
+// Local-day [start, end) of the toolbar date range, or null for 'all'. today/tomorrow are local calendar
+// days; week is the Sunday-start local week containing `now` (same as weekRange).
+export function dateRangeBounds(
+  dateRange: FlightFilters['dateRange'],
+  now: Date
+): { start: Date; end: Date } | null {
+  const today = formatLocalDate(now)
+  switch (dateRange) {
+    case 'today':
+      return { start: parseLocalDate(today), end: parseLocalDate(addLocalDays(today, 1)) }
+    case 'tomorrow':
+      return {
+        start: parseLocalDate(addLocalDays(today, 1)),
+        end: parseLocalDate(addLocalDays(today, 2))
+      }
+    case 'week':
+      return weekRange(now, 0)
+    default:
+      return null
+  }
+}
+
+// A flight is on a day when its scheduled arrival OR departure falls in it (same rule as the repo's date
+// bounds). Actual times are used only when neither scheduled time is set.
+function flightInRange(flight: Flight, start: Date, end: Date): boolean {
+  const scheduled = [flight.arrivalTime, flight.departureTime].filter(Boolean) as string[]
+  const times = scheduled.length
+    ? scheduled
+    : ([flight.actualArrivalTime, flight.actualDepartureTime].filter(Boolean) as string[])
+  return times.some((t) => {
+    const ms = new Date(toInstantIso(t)).getTime()
+    return ms >= start.getTime() && ms < end.getTime()
+  })
+}
+
+// Default list fetch window: local yesterday .. today+14, widened so the current week (used by the
+// 'week' filter) is always inside it. Dates are local "YYYY-MM-DD", both inclusive.
+export function listFetchWindow(now: Date): { startDate: string; endDate: string } {
+  const today = formatLocalDate(now)
+  const week = weekDateParams(now, 0)
+  const yesterday = addLocalDays(today, -1)
+  const plus14 = addLocalDays(today, 14)
+  return {
+    startDate: week.startDate < yesterday ? week.startDate : yesterday,
+    endDate: week.endDate > plus14 ? week.endDate : plus14
+  }
+}
+
 export function filterFlights(
   flights: Flight[],
-  filters: FlightFilters
+  filters: FlightFilters,
+  now: Date = new Date()
 ): Flight[] {
-  // F4: filters.dateRange (today/tomorrow/week/all) is intentionally NOT applied here, matching the
-  // board's behavior today.
+  const bounds = dateRangeBounds(filters.dateRange, now)
   return flights.filter((flight) => {
+    if (bounds && !flightInRange(flight, bounds.start, bounds.end)) return false
+
     // Filter by search
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
