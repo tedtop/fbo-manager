@@ -26,6 +26,40 @@ export default defineConfig({
     defaultCommandTimeout: 10_000,
     setupNodeEvents(on) {
       on('task', {
+        /** Latest flight row for an aircraft tail (null if none). Used to verify what the UI really persisted. */
+        async getFlightByTail(tail: string) {
+          const db = createE2EDbClient()
+          const { data, error } = await db.from('flight').select('*').eq('aircraft_id', tail).order('id', { ascending: false }).limit(1)
+          if (error) throw new Error(`getFlightByTail: ${error.message}`)
+          return data?.[0] ?? null
+        },
+
+        /** Aircraft row for a tail (null if none). */
+        async getAircraft(tail: string) {
+          const db = createE2EDbClient()
+          const { data, error } = await db.from('aircraft').select('*').eq('tail_number', tail).maybeSingle()
+          if (error) throw new Error(`getAircraft: ${error.message}`)
+          return data
+        },
+
+        /** Simulates "someone else saved this flight" (bumps modified_at via the DB trigger). */
+        async touchFlight({ id, notes }: { id: number; notes: string }) {
+          const db = createE2EDbClient()
+          const { error } = await db.from('flight').update({ notes }).eq('id', id)
+          if (error) throw new Error(`touchFlight: ${error.message}`)
+          return null
+        },
+
+        /** Inserts a bare aircraft (no flight) so the create form can target an existing tail. */
+        async seedAircraft(tail: string) {
+          const db = createE2EDbClient()
+          const { error } = await db
+            .from('aircraft')
+            .insert({ tail_number: tail, aircraft_type_icao: 'B738', aircraft_type_display: 'Boeing 737-800' })
+          if (error) throw new Error(`seedAircraft: ${error.message}`)
+          return null
+        },
+
         /** Idempotently creates the two Quick Dev Login accounts (same as Playwright global-setup). */
         async seedDevUsers() {
           await seedDevUsers()
