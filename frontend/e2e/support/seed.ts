@@ -24,6 +24,16 @@ export async function seedDevUsers(): Promise<void> {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
+  // flight.created_by_id defaults to users.id 1 (live parity, migration 20261102000500); make sure
+  // that row exists even if a vitest reset wiped `users` since the migration ran.
+  const { error: defaultUserError } = await admin
+    .from('users')
+    .upsert(
+      { id: 1, username: 'default-flight-creator', password: 'not-a-real-password', first_name: 'Default', last_name: 'Creator', role: 'line' },
+      { onConflict: 'id', ignoreDuplicates: true }
+    )
+  if (defaultUserError) throw new Error(`seedDevUsers: failed to ensure users.id 1: ${defaultUserError.message}`)
+
   for (const { email, password, role } of Object.values(DEV_USERS)) {
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,

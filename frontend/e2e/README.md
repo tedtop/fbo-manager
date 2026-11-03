@@ -81,6 +81,7 @@ re-seeds the dev accounts automatically on the next run).
 | Equipment: edit | `equipment.e2e.ts` | |
 | Invoicing: digital fuel ticket, "Complete ticket" | `invoicing.e2e.ts` | Highest priority — the exact form/bug class named in the 2026-07-03 handoff. Verifies the invoice, its line item, *and* the fueling event (`truck_meter_readings`) it creates as a side effect, plus the `invoice_number` stamped back onto that reading |
 | Flight board: seeded flights display, split/arrivals/departures toggle, tail-number search, status filter | `flight-board.e2e.ts` | Seeds via service role, cleans up its own rows. Pins known bugs F1 (both-times flights show in both columns) and F4 (date range filter is a no-op) with `KNOWN BUG` assertions that flip when B09/B13 land |
+| Flight board: Add Flight sheet creates flights | `flight-create.e2e.ts` | Drives the real sheet: arrival with a NEW tail (creates the aircraft with ICAO GLF6 via the type combobox) and a quick turn for an existing aircraft; asserts flight and aircraft rows by service-role DB read. Pins F1 (fabricated arrival+45min departure) and F2 (times stored without timezone offset; browser zone fixed to UTC-5) with `KNOWN BUG` assertions that flip when B09/B10 land. Relies on local migration `20261102000500` (flight.created_by_id default 1, live parity) |
 
 **Not yet covered** — every other create/edit form in the app (aircraft, flights, parking
 locations, tanks/tank readings, trainings/certifications, fuelers, truck sheets manual entry,
