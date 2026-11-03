@@ -11,6 +11,9 @@ export interface FlightRow {
   call_sign?: string | null
   scheduled_arrival_time?: string | null
   scheduled_departure_time?: string | null
+  actual_arrival_time?: string | null
+  actual_departure_time?: string | null
+  is_quick_turn?: boolean | null
   flight_status?: BackendFlightStatus
   origin?: string | null
   destination?: string | null
@@ -59,11 +62,14 @@ export interface Flight {
   callSign?: string // call_sign
 
   // Timing (direct from database - no derived fields)
-  arrivalTime?: string // scheduled_arrival_time (ISO timestamp)
-  departureTime: string // scheduled_departure_time (ISO timestamp; nullable in DB since B09, always set by the form until B09b)
+  arrivalTime?: string // scheduled_arrival_time (ISO timestamp; unset for a departure-only / hangar-pull flight)
+  departureTime?: string // scheduled_departure_time (ISO timestamp; unset for an arrival-only / return flight)
+  actualArrivalTime?: string // actual_arrival_time
+  actualDepartureTime?: string // actual_departure_time
+  isQuickTurn: boolean // is_quick_turn: departure = arrival + 1 h; shown in both columns
 
   // Flight details
-  type: FlightType // derived from scheduled_arrival_time and scheduled_departure_time presence
+  type: FlightType // derived from which scheduled times are set and is_quick_turn
   status: FlightStatus // flight_status
   origin?: string // origin
   destination?: string // destination
@@ -161,10 +167,12 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
   const hasArrival = !!apiFlight.scheduled_arrival_time
   const hasDeparture = !!apiFlight.scheduled_departure_time
 
+  const isQuickTurn = !!apiFlight.is_quick_turn && hasArrival && hasDeparture
+
   let type: FlightType
   if (hasArrival && hasDeparture) {
-    // Has both times - it's a quick turn
-    type = 'quick_turn'
+    // Both times: a flagged quick turn, otherwise a longer stay (shown in both columns either way)
+    type = isQuickTurn ? 'quick_turn' : 'overnight'
   } else if (hasArrival) {
     type = 'arrival'
   } else {
@@ -194,7 +202,10 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     tailNumber: apiFlight.aircraft || '',
     aircraftType: (apiFlight as any).aircraft_type_display || '',
     arrivalTime: apiFlight.scheduled_arrival_time ?? undefined,
-    departureTime: apiFlight.scheduled_departure_time!,
+    departureTime: apiFlight.scheduled_departure_time ?? undefined,
+    actualArrivalTime: apiFlight.actual_arrival_time ?? undefined,
+    actualDepartureTime: apiFlight.actual_departure_time ?? undefined,
+    isQuickTurn,
     origin:
       apiFlight.origin ||
       (hasArrival ? apiFlight.destination : undefined) ||
@@ -213,6 +224,14 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     updatedAt: (apiFlight as any).modified_at || apiFlight.created_at
   }
 }
+
+const TIME_COLUMNS = [
+  ['arrivalTime', 'scheduled_arrival_time'],
+  ['departureTime', 'scheduled_departure_time'],
+  ['actualArrivalTime', 'actual_arrival_time'],
+  ['actualDepartureTime', 'actual_departure_time']
+] as const
+const TIME_COLUMN_NAMES = new Set<string>(TIME_COLUMNS.map(([, c]) => c))
 
 // Convert component flight to backend create/update request
 export function componentFlightToApiRequest(
@@ -235,13 +254,14 @@ export function componentFlightToApiRequest(
     result.origin = flight.origin
   }
 
-  // Pass through scheduled_arrival_time and scheduled_departure_time directly
-  if (flight.arrivalTime !== undefined) {
-    result.scheduled_arrival_time = flight.arrivalTime
+  // Times pass through directly. A time key that is present but unset means "cleared" and is sent as
+  // null (e.g. the form blanking the departure); a key that is absent is left alone.
+  for (const [key, column] of TIME_COLUMNS) {
+    if (key in flight) result[column] = flight[key] ?? null
   }
 
-  if (flight.departureTime !== undefined) {
-    result.scheduled_departure_time = flight.departureTime
+  if (flight.isQuickTurn !== undefined) {
+    result.is_quick_turn = flight.isQuickTurn
   }
 
   if (flight.status !== undefined) {
@@ -279,8 +299,9 @@ export function componentFlightToApiRequest(
     result.call_sign = `MAN-${Date.now()}`
   }
 
-  // Filter out any undefined/null values
+  // Filter out any undefined/null values (except cleared times)
   Object.keys(result).forEach((key) => {
+    if (TIME_COLUMN_NAMES.has(key)) return
     if (result[key] === undefined || result[key] === null) {
       delete result[key]
     }

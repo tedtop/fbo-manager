@@ -12,7 +12,9 @@ type SeedFlightOptions = {
   tail: string
   /** Minutes from now; omit for a departure-only flight (flight.scheduled_arrival_time NULL). */
   arrivalInMin?: number
-  departureInMin?: number
+  /** Minutes from now (default 180); null for an arrival-only flight (flight.scheduled_departure_time NULL). */
+  departureInMin?: number | null
+  isQuickTurn?: boolean
   status?: 'scheduled' | 'arrived' | 'departed' | 'cancelled' | 'delayed' | 'planned'
   services?: string[]
 }
@@ -67,7 +69,7 @@ export default defineConfig({
         },
 
         /** Inserts one aircraft + one flight via the service role. Returns the created flight id. */
-        async seedFlight({ tail, arrivalInMin, departureInMin = 180, status = 'scheduled', services }: SeedFlightOptions) {
+        async seedFlight({ tail, arrivalInMin, departureInMin = 180, status = 'scheduled', services, isQuickTurn }: SeedFlightOptions) {
           const db = createE2EDbClient()
           const iso = (min: number) => new Date(Date.now() + min * 60_000).toISOString()
 
@@ -92,7 +94,8 @@ export default defineConfig({
               origin: 'KAAA',
               destination: 'KBBB',
               scheduled_arrival_time: arrivalInMin === undefined ? null : iso(arrivalInMin),
-              scheduled_departure_time: iso(departureInMin),
+              scheduled_departure_time: departureInMin === null ? null : iso(departureInMin),
+              ...(isQuickTurn ? { is_quick_turn: true } : {}),
               flight_status: status,
               ...(services ? { services } : {}),
             })

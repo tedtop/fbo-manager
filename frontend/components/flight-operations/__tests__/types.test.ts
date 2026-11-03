@@ -84,28 +84,59 @@ describe('apiFlightToComponentFlight', () => {
   })
 
   describe('type inference', () => {
-    // KNOWN BUG F1: flips when B09 lands (both times should not always mean quick_turn)
-    it('KNOWN BUG F1: any flight with both times is quick_turn, even multi-day stays', () => {
+    const arr = '2026-03-10T10:00:00Z'
+
+    it('both times with is_quick_turn is a quick_turn', () => {
+      const f = apiFlightToComponentFlight({
+        ...baseRow,
+        scheduled_arrival_time: arr,
+        scheduled_departure_time: '2026-03-10T11:00:00Z',
+        is_quick_turn: true,
+      })
+      expect(f.type).toBe('quick_turn')
+      expect(f.isQuickTurn).toBe(true)
+    })
+
+    it('both times without is_quick_turn is a longer stay, no longer a quick turn (F1)', () => {
       const f = apiFlightToComponentFlight({
         ...baseRow,
         scheduled_arrival_time: '2026-03-08T10:00:00Z',
         scheduled_departure_time: '2026-03-12T10:00:00Z',
       })
-      expect(f.type).toBe('quick_turn')
+      expect(f.type).toBe('overnight')
+      expect(f.isQuickTurn).toBe(false)
     })
 
-    it('KNOWN BUG F1: departure-only row (scheduled_departure_time is NOT NULL) is departure', () => {
-      expect(apiFlightToComponentFlight(baseRow).type).toBe('departure')
+    it('departure-only (hangar pull) is departure with no arrival', () => {
+      const f = apiFlightToComponentFlight(baseRow)
+      expect(f.type).toBe('departure')
+      expect(f.arrivalTime).toBeUndefined()
     })
 
-    // KNOWN BUG F1: flips when B09 lands (arrival-only should be reachable)
-    it('KNOWN BUG F1: arrival-only type is only reachable with a missing scheduled_departure_time (impossible in DB)', () => {
+    it('arrival-only (return) is arrival and is null-safe without a departure', () => {
       const f = apiFlightToComponentFlight({
         id: 1,
         created_at: 'c',
-        scheduled_arrival_time: '2026-03-10T10:00:00Z',
+        scheduled_arrival_time: arr,
+        scheduled_departure_time: null,
       })
       expect(f.type).toBe('arrival')
+      expect(f.departureTime).toBeUndefined()
+    })
+
+    it('ignores is_quick_turn when a scheduled time is missing', () => {
+      const f = apiFlightToComponentFlight({ ...baseRow, is_quick_turn: true })
+      expect(f.isQuickTurn).toBe(false)
+    })
+
+    it('carries the actual times', () => {
+      const f = apiFlightToComponentFlight({
+        ...baseRow,
+        actual_arrival_time: '2026-03-10T10:07:00Z',
+        actual_departure_time: '2026-03-10T11:02:00Z',
+      })
+      expect(f.actualArrivalTime).toBe('2026-03-10T10:07:00Z')
+      expect(f.actualDepartureTime).toBe('2026-03-10T11:02:00Z')
     })
   })
 
@@ -202,6 +233,32 @@ describe('componentFlightToApiRequest', () => {
       notes: null as unknown as string,
     })
     expect(r).toEqual({ aircraft: 'N1' })
+  })
+
+  it('sends a present-but-unset time as null (cleared) and leaves absent keys alone', () => {
+    const r = componentFlightToApiRequest({
+      arrivalTime: undefined,
+      departureTime: '2026-03-10T11:00:00',
+      actualArrivalTime: undefined,
+    })
+    expect(r).toEqual({
+      scheduled_arrival_time: null,
+      scheduled_departure_time: '2026-03-10T11:00:00',
+      actual_arrival_time: null,
+    })
+  })
+
+  it('maps actual times and the quick-turn flag', () => {
+    const r = componentFlightToApiRequest({
+      actualArrivalTime: '2026-03-10T10:07:00',
+      actualDepartureTime: '2026-03-10T11:02:00',
+      isQuickTurn: true,
+    })
+    expect(r).toMatchObject({
+      actual_arrival_time: '2026-03-10T10:07:00',
+      actual_departure_time: '2026-03-10T11:02:00',
+      is_quick_turn: true,
+    })
   })
 
   it('maps en-route to scheduled (KNOWN BUG F3: flips when B10 lands)', () => {

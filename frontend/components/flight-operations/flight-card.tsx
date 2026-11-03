@@ -95,6 +95,8 @@ interface FlightCardProps {
   linkColor?: string
   isHovered?: boolean
   onHover?: (id: string | null) => void
+  // Board column the card is rendered in; decides whether it shows the arrival or the departure time.
+  column?: 'arrival' | 'departure'
   // 'deleting': content has faded into a skeleton while the delete is saved.
   // 'zapping': saved; the card is playing its exit animation.
   deleteState?: 'deleting' | 'zapping'
@@ -204,6 +206,7 @@ export function FlightCard({
   linkColor,
   isHovered,
   onHover,
+  column,
   deleteState
 }: FlightCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -227,11 +230,12 @@ export function FlightCard({
     flight.status === 'departed' || flight.status === 'cancelled'
       ? 'Clear'
       : 'Delete'
-  const isArrival =
-    flight.type === 'arrival' ||
-    flight.type === 'quick_turn' ||
-    flight.type === 'overnight' ||
-    flight.type === 'long_term'
+  const isArrival = column
+    ? column === 'arrival'
+    : flight.type === 'arrival' ||
+      flight.type === 'quick_turn' ||
+      flight.type === 'overnight' ||
+      flight.type === 'long_term'
   const isDeparture =
     flight.type === 'departure' ||
     flight.type === 'quick_turn' ||
@@ -349,6 +353,15 @@ export function FlightCard({
               <span className="text-sm text-muted-foreground">
                 {flight.aircraftType}
               </span>
+              {flight.isQuickTurn && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-semibold px-1.5 py-0"
+                  title="Quick turn"
+                >
+                  QT
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <DropdownMenu>
@@ -598,6 +611,20 @@ export function FlightCard({
                   isArrival ? flight.arrivalTime : flight.departureTime
                 )}
               </span>
+              {(isArrival
+                ? flight.actualArrivalTime
+                : flight.actualDepartureTime) && (
+                <span className="text-xs text-muted-foreground">
+                  {isArrival ? 'Actual arr:' : 'Actual dep:'}{' '}
+                  <span className="font-mono text-foreground">
+                    {formatTimestamp(
+                      isArrival
+                        ? flight.actualArrivalTime
+                        : flight.actualDepartureTime
+                    )}
+                  </span>
+                </span>
+              )}
               {countdown.text && (
                 <span
                   className={cn(

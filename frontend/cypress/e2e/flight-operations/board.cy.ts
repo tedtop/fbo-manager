@@ -1,13 +1,15 @@
 // Port of e2e/flight-board.e2e.ts (Playwright) plus filters, calendar and empty state (BACKLOG B08c).
 // Realtime insert is deliberately not covered here (blocked on B16).
-// KNOWN BUG tags (F1..F9) pin today's behavior; each flips when the matching backlog item lands.
+// KNOWN BUG tags (F2..F9) pin today's behavior; each flips when the matching backlog item lands.
+// Classification (D2/D6): Arrivals = has a scheduled arrival, Departures = has a scheduled departure.
 const stamp = Date.now().toString(36).toUpperCase()
 const tailTurn = `CBT${stamp}` // arrival + departure, scheduled, hangar
 const tailDep = `CBD${stamp}` // departure only, scheduled
 const tailDelayed = `CBL${stamp}` // departure only, delayed, fuel
+const tailArr = `CBA${stamp}` // arrival only (return), scheduled
 const tailNext = `CBN${stamp}` // departure exactly one week from now (next calendar week)
 const tailPrev = `CBP${stamp}` // departure exactly one week ago (previous calendar week)
-const tails = [tailTurn, tailDep, tailDelayed, tailNext, tailPrev]
+const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev]
 
 const DAY = 24 * 60
 
@@ -33,7 +35,8 @@ describe('Flight board', () => {
   Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop'))
 
   before(() => {
-    cy.task('seedFlight', { tail: tailTurn, arrivalInMin: 60, departureInMin: 180, services: ['hangar'] })
+    cy.task('seedFlight', { tail: tailTurn, arrivalInMin: 60, departureInMin: 120, services: ['hangar'], isQuickTurn: true })
+    cy.task('seedFlight', { tail: tailArr, arrivalInMin: 90, departureInMin: null })
     cy.task('seedFlight', { tail: tailDep, departureInMin: 240 })
     cy.task('seedFlight', { tail: tailDelayed, departureInMin: 300, status: 'delayed', services: ['fuel'] })
     cy.task('seedFlight', { tail: tailNext, departureInMin: 7 * DAY })
@@ -55,7 +58,8 @@ describe('Flight board', () => {
       // Departure-only flights appear once (departures column only).
       shownTimes(tailDep, 1)
       shownTimes(tailDelayed, 1)
-      // KNOWN BUG F1: flips when B09/B13 land - a flight with both times lands in BOTH columns (quick_turn).
+      shownTimes(tailArr, 1) // arrival-only flight appears once (arrivals column only)
+      // A quick turn lands in BOTH columns.
       shownTimes(tailTurn, 2)
     })
 
@@ -65,13 +69,14 @@ describe('Flight board', () => {
       cy.contains('h2', 'Departures').should('be.visible')
       cy.contains(tailDep).should('be.visible')
       cy.contains(tailTurn).should('be.visible')
+      cy.contains(tailArr).should('not.exist') // arrival-only flight is not a departure
 
       toolbar('Arrivals Only').click()
       cy.contains('h2', 'Departures').should('not.exist')
       cy.contains('h2', 'Arrivals').should('be.visible')
       cy.contains(tailDep).should('not.exist') // departure-only flight is not an arrival
-      // KNOWN BUG F1: flips when B09/B13 land - the both-times flight is shown in Arrivals too.
-      cy.contains(tailTurn).should('be.visible')
+      cy.contains(tailTurn).should('be.visible') // the quick turn is in Arrivals too
+      cy.contains(tailArr).should('be.visible')
 
       toolbar('Split View').click()
       cy.contains('h2', 'Arrivals').should('be.visible')

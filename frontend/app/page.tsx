@@ -170,7 +170,9 @@ export default function FlightOperationsPage() {
 
   // Filter flights for Split View to match the selected week
   const weekInternalFlights = flights.filter((flight) => {
-    const flightDate = new Date(flight.departureTime)
+    const flightDate = new Date(
+      (flight.departureTime ?? flight.arrivalTime) as string
+    )
     const { start: startOfWeek, end: endOfWeek } = weekRange(
       new Date(),
       weekOffset

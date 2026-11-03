@@ -39,26 +39,15 @@ export function filterFlights(
   })
 }
 
+// D2/D6: a flight is listed in Arrivals when it has a scheduled arrival and in Departures when it has a
+// scheduled departure. A quick turn always has both, so it lands in both columns; arrival-only (return)
+// and departure-only (hangar pull) flights land in just one.
 export function partitionFlights(flights: Flight[]): {
   arrivals: Flight[]
   departures: Flight[]
 } {
-  // Arrivals: arrival, quick_turn, overnight, long_term
-  const arrivals = flights.filter(
-    (f) =>
-      f.type === 'arrival' ||
-      f.type === 'quick_turn' ||
-      f.type === 'overnight' ||
-      f.type === 'long_term'
-  )
-  // Departures: departure, quick_turn, overnight, long_term
-  const departures = flights.filter(
-    (f) =>
-      f.type === 'departure' ||
-      f.type === 'quick_turn' ||
-      f.type === 'overnight' ||
-      f.type === 'long_term'
-  )
+  const arrivals = flights.filter((f) => !!f.arrivalTime)
+  const departures = flights.filter((f) => !!f.departureTime)
   return { arrivals, departures }
 }
 

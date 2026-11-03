@@ -5,12 +5,13 @@ import { uniqueValue } from './support/unique'
 const db = createE2EDbClient()
 
 // Three flights seeded straight into the DB (service role), tracked so afterAll only removes our own rows.
-// The DB now allows arrival-only rows (B09) but the form/board do not produce them yet (B09b/c), so
-// these seeds only use: scheduled_arrival_time NULL = pure departure, both times = quick_turn (see F1 below).
+// Classification (D2/D6): a flight is in Arrivals if it has a scheduled arrival and in Departures if it has a
+// scheduled departure, so a flight with both times lands in both columns, arrival-only or departure-only in one.
 const tailTurn = uniqueValue('NE2E').toUpperCase() // arrival + departure, scheduled
 const tailDep = uniqueValue('NE2E').toUpperCase() // departure only, scheduled
 const tailDelayed = uniqueValue('NE2E').toUpperCase() // departure only, delayed
-const tails = [tailTurn, tailDep, tailDelayed]
+const tailArr = uniqueValue('NE2E').toUpperCase() // arrival only (return), scheduled
+const tails = [tailTurn, tailDep, tailDelayed, tailArr]
 let userId: number
 
 test.beforeAll(async () => {
@@ -36,9 +37,11 @@ test.beforeAll(async () => {
 
   const now = Date.now()
   const iso = (offsetMin: number) => new Date(now + offsetMin * 60_000).toISOString()
-  const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB' }
+  // is_quick_turn is set explicitly: a bulk insert sends null for keys missing from some rows.
+  const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false }
   const { error: flightError } = await db.from('flight').insert([
-    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: iso(60), scheduled_departure_time: iso(180), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: iso(60), scheduled_departure_time: iso(120), is_quick_turn: true, flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailArr, scheduled_arrival_time: iso(90), flight_status: 'scheduled' },
     { ...base, aircraft_id: tailDep, scheduled_departure_time: iso(240), flight_status: 'scheduled' },
     { ...base, aircraft_id: tailDelayed, scheduled_departure_time: iso(300), flight_status: 'delayed' },
   ])
@@ -70,9 +73,11 @@ test.describe('Flight board', () => {
     await expect(page.getByText(tailDep)).toHaveCount(1)
     await expect(page.getByText(tailDelayed)).toHaveCount(1)
 
-    // KNOWN BUG F1: flips when B09/B13 land — a flight with both times lands in BOTH columns (quick_turn).
-    // Once fixed this should be a single card in one column.
+    // Arrival-only flights appear once (arrivals column only).
+    await expect(page.getByText(tailArr)).toHaveCount(1)
+    // A quick turn lands in BOTH columns, and shows its QT badge on both cards.
     await expect(page.getByText(tailTurn)).toHaveCount(2)
+    await expect(page.getByText('QT', { exact: true })).toHaveCount(2)
   })
 
   test('arrivals / departures / split toggle switches the layout', async ({ page }) => {
@@ -83,13 +88,14 @@ test.describe('Flight board', () => {
     await expect(departuresHeading(page)).toBeVisible()
     await expect(page.getByText(tailDep)).toHaveCount(1)
     await expect(page.getByText(tailTurn)).toHaveCount(1)
+    await expect(page.getByText(tailArr)).toHaveCount(0) // arrival-only flight is not a departure
 
     await page.getByRole('button', { name: 'Arrivals Only' }).click()
     await expect(departuresHeading(page)).toHaveCount(0)
     await expect(arrivalsHeading(page)).toBeVisible()
     await expect(page.getByText(tailDep)).toHaveCount(0) // departure-only flight is not an arrival
-    // KNOWN BUG F1: flips when B09/B13 land — the both-times flight is shown in Arrivals too.
-    await expect(page.getByText(tailTurn)).toHaveCount(1)
+    await expect(page.getByText(tailTurn)).toHaveCount(1) // the quick turn is in Arrivals too
+    await expect(page.getByText(tailArr)).toHaveCount(1)
 
     await page.getByRole('button', { name: 'Split View' }).click()
     await expect(arrivalsHeading(page)).toBeVisible()

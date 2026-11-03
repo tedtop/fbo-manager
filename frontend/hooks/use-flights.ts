@@ -29,6 +29,9 @@ function rowToFlight(row: any): Flight {
     call_sign: row.call_sign,
     scheduled_arrival_time: row.scheduled_arrival_time,
     scheduled_departure_time: row.scheduled_departure_time,
+    actual_arrival_time: row.actual_arrival_time,
+    actual_departure_time: row.actual_departure_time,
+    is_quick_turn: row.is_quick_turn,
     flight_status: row.flight_status as any,
     origin: row.origin,
     destination: row.destination,
@@ -87,6 +90,9 @@ export function useFlights(params?: {
         call_sign: requestData.call_sign,
         scheduled_arrival_time: requestData.scheduled_arrival_time,
         scheduled_departure_time: requestData.scheduled_departure_time,
+        actual_arrival_time: requestData.actual_arrival_time,
+        actual_departure_time: requestData.actual_departure_time,
+        is_quick_turn: requestData.is_quick_turn,
         flight_status: requestData.flight_status ?? 'scheduled',
         origin: requestData.origin ?? '',
         destination: requestData.destination ?? '',
@@ -119,6 +125,9 @@ export function useFlights(params?: {
       if (requestData.call_sign !== undefined) dbUpdates.call_sign = requestData.call_sign
       if (requestData.scheduled_arrival_time !== undefined) dbUpdates.scheduled_arrival_time = requestData.scheduled_arrival_time
       if (requestData.scheduled_departure_time !== undefined) dbUpdates.scheduled_departure_time = requestData.scheduled_departure_time
+      if (requestData.actual_arrival_time !== undefined) dbUpdates.actual_arrival_time = requestData.actual_arrival_time
+      if (requestData.actual_departure_time !== undefined) dbUpdates.actual_departure_time = requestData.actual_departure_time
+      if (requestData.is_quick_turn !== undefined) dbUpdates.is_quick_turn = requestData.is_quick_turn
       if (requestData.flight_status !== undefined) dbUpdates.flight_status = requestData.flight_status
       if (requestData.origin !== undefined) dbUpdates.origin = requestData.origin
       if (requestData.destination !== undefined) dbUpdates.destination = requestData.destination

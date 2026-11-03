@@ -391,16 +391,20 @@ export function CalendarWeekView({
       }
       // Also shift departure to keep ground time constant? 
       // Yes, usually desired behavior in drag-drop unless specified otherwise.
-      const oldDep = new Date(flight.departureTime).getTime()
-      updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+      if (flight.departureTime) {
+        const oldDep = new Date(flight.departureTime).getTime()
+        updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+      }
 
     } else if (draggedBlock.type === 'departure') {
       // Moving departure block -> Update Departure Time
       // If we move departure, do we move arrival?
       // Maybe not? Maybe we are just delaying departure.
       // Let's assume moving departure ONLY changes departure.
-      const oldDep = new Date(flight.departureTime).getTime()
-      updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+      if (flight.departureTime) {
+        const oldDep = new Date(flight.departureTime).getTime()
+        updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+      }
 
     } else if (draggedBlock.type === 'quick_turn' || draggedBlock.type === 'stay') {
       // QT/Stay -> Shift both
@@ -408,8 +412,10 @@ export function CalendarWeekView({
         const oldArr = new Date(flight.arrivalTime).getTime()
         updatedFlight.arrivalTime = new Date(oldArr + deltaMs).toISOString()
       }
-      const oldDep = new Date(flight.departureTime).getTime()
-      updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+      if (flight.departureTime) {
+        const oldDep = new Date(flight.departureTime).getTime()
+        updatedFlight.departureTime = new Date(oldDep + deltaMs).toISOString()
+      }
     }
 
     onEditFlight(updatedFlight)
@@ -441,7 +447,8 @@ export function CalendarWeekView({
       type: type === 'arrival' ? 'arrival' : 'departure',
       status: 'scheduled',
       tailNumber: '',
-      aircraftType: ''
+      aircraftType: '',
+      isQuickTurn: type === 'arrival'
     }
 
     if (type === 'arrival') {

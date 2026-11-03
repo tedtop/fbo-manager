@@ -1,13 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { filterFlights, partitionFlights, weekRange } from '../board-logic'
-import type { Flight, FlightFilters, FlightType } from '../types'
+import type { Flight, FlightFilters } from '../types'
 
 function makeFlight(overrides: Partial<Flight> = {}): Flight {
   return {
     id: '1',
     tailNumber: 'N123AB',
     aircraftType: 'C172',
+    arrivalTime: '2026-03-10T14:00:00Z',
     departureTime: '2026-03-10T15:00:00Z',
+    isQuickTurn: true,
     type: 'quick_turn',
     status: 'scheduled',
     services: [],
@@ -28,33 +30,57 @@ const noFilters: FlightFilters = {
 }
 
 describe('partitionFlights', () => {
-  const types: FlightType[] = [
-    'arrival',
-    'departure',
-    'quick_turn',
-    'overnight',
-    'long_term',
-  ]
-  const flights = types.map((type) => makeFlight({ id: type, type }))
+  const quickTurn = makeFlight({ id: 'qt' })
+  const stay = makeFlight({
+    id: 'stay',
+    type: 'overnight',
+    isQuickTurn: false,
+    departureTime: '2026-03-12T15:00:00Z',
+  })
+  const arrivalOnly = makeFlight({
+    id: 'arr',
+    type: 'arrival',
+    isQuickTurn: false,
+    departureTime: undefined,
+  })
+  const departureOnly = makeFlight({
+    id: 'dep',
+    type: 'departure',
+    isQuickTurn: false,
+    arrivalTime: undefined,
+  })
+  const flights = [quickTurn, stay, arrivalOnly, departureOnly]
 
-  it('puts arrival-only flights only in arrivals', () => {
-    const { arrivals, departures } = partitionFlights(flights)
-    expect(arrivals.map((f) => f.id)).toContain('arrival')
-    expect(departures.map((f) => f.id)).not.toContain('arrival')
+  it('puts a quick turn in both columns', () => {
+    const { arrivals, departures } = partitionFlights([quickTurn])
+    expect(arrivals.map((f) => f.id)).toEqual(['qt'])
+    expect(departures.map((f) => f.id)).toEqual(['qt'])
   })
 
-  it('puts departure-only flights only in departures', () => {
+  it('puts arrival-only (return) flights only in arrivals', () => {
     const { arrivals, departures } = partitionFlights(flights)
-    expect(departures.map((f) => f.id)).toContain('departure')
-    expect(arrivals.map((f) => f.id)).not.toContain('departure')
+    expect(arrivals.map((f) => f.id)).toContain('arr')
+    expect(departures.map((f) => f.id)).not.toContain('arr')
   })
 
-  it('puts quick_turn, overnight and long_term in both columns', () => {
+  it('puts departure-only (hangar pull) flights only in departures', () => {
     const { arrivals, departures } = partitionFlights(flights)
-    for (const id of ['quick_turn', 'overnight', 'long_term']) {
-      expect(arrivals.map((f) => f.id)).toContain(id)
-      expect(departures.map((f) => f.id)).toContain(id)
-    }
+    expect(departures.map((f) => f.id)).toContain('dep')
+    expect(arrivals.map((f) => f.id)).not.toContain('dep')
+  })
+
+  it('lists a non-QT flight with both times in both columns (it arrives and departs)', () => {
+    const { arrivals, departures } = partitionFlights([stay])
+    expect(arrivals.map((f) => f.id)).toEqual(['stay'])
+    expect(departures.map((f) => f.id)).toEqual(['stay'])
+  })
+
+  it('classifies by the scheduled times, not the derived type label', () => {
+    const { arrivals, departures } = partitionFlights([
+      makeFlight({ id: 'x', type: 'quick_turn', departureTime: undefined }),
+    ])
+    expect(arrivals.map((f) => f.id)).toEqual(['x'])
+    expect(departures).toEqual([])
   })
 
   it('returns empty columns for empty input', () => {
@@ -62,13 +88,9 @@ describe('partitionFlights', () => {
   })
 
   it('preserves input order', () => {
-    const { arrivals } = partitionFlights(flights)
-    expect(arrivals.map((f) => f.id)).toEqual([
-      'arrival',
-      'quick_turn',
-      'overnight',
-      'long_term',
-    ])
+    const { arrivals, departures } = partitionFlights(flights)
+    expect(arrivals.map((f) => f.id)).toEqual(['qt', 'stay', 'arr'])
+    expect(departures.map((f) => f.id)).toEqual(['qt', 'stay', 'dep'])
   })
 })
 

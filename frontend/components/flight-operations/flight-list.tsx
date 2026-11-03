@@ -108,6 +108,7 @@ export function FlightList({
                   linkColor={linkColor}
                   isHovered={isHovered}
                   onHover={onFlightHover}
+                  column={type}
                   deleteState={phase}
                 />
               </div>

@@ -29,7 +29,24 @@ import type { FlightRow } from '@/repositories/flights.repo'
 import { useEffect, useMemo, useState } from 'react'
 import { AircraftTypeCombobox } from './aircraft-type-combobox'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
+import {
+  applyArrivalChange,
+  applyDepartureChange,
+  applyQuickTurnChange,
+  buildTimestamp,
+  isQuickTurnSaved,
+  validateScheduledTimes
+} from './flight-time'
 import { type Flight, apiFlightToComponentFlight } from './types'
+
+// Local "HH:mm" of an ISO timestamp, '' when absent.
+function toTimeInput(timestamp?: string): string {
+  if (!timestamp) return ''
+  const d = new Date(timestamp)
+  const hours = d.getHours().toString().padStart(2, '0')
+  const minutes = d.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
 
 function calculateGroundTime(
   arrivalTime: string,
@@ -81,7 +98,6 @@ export function FlightFormDialog({
     loading: aircraftLoading
   } = useAircraft()
   const [formData, setFormData] = useState<Partial<Flight>>({
-    type: 'arrival',
     status: 'scheduled',
     services: [],
     source: 'line-department'
@@ -89,6 +105,27 @@ export function FlightFormDialog({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]) // Separate date state
   const [arrivalTime, setArrivalTime] = useState('')
   const [departureTime, setDepartureTime] = useState('')
+  // QT is preselected for new flights (D2): departure follows arrival + 1 h until edited by hand
+  const [quickTurn, setQuickTurn] = useState(true)
+  const [actualArrivalTime, setActualArrivalTime] = useState('')
+  const [actualDepartureTime, setActualDepartureTime] = useState('')
+  const [timeError, setTimeError] = useState<string | null>(null)
+
+  const setScheduled = (next: {
+    arrival: string
+    departure: string
+    quickTurn: boolean
+  }) => {
+    setArrivalTime(next.arrival)
+    setDepartureTime(next.departure)
+    setQuickTurn(next.quickTurn)
+    setTimeError(null)
+  }
+  const scheduled = {
+    arrival: arrivalTime,
+    departure: departureTime,
+    quickTurn
+  }
   const [isEditingAircraftType, setIsEditingAircraftType] = useState(false)
   // ICAO code of the selected aircraft type; undefined until known (falls back to the aircraft record)
   const [aircraftTypeIcao, setAircraftTypeIcao] = useState<string | undefined>()
@@ -112,24 +149,18 @@ export function FlightFormDialog({
       )?.aircraft_type_icao || undefined
     )
 
-    // Extract date and times from timestamps
-    if (flight.arrivalTime) {
-      const arrivalDate = new Date(flight.arrivalTime)
-      setDate(arrivalDate.toISOString().split('T')[0])
-      const hours = arrivalDate.getHours().toString().padStart(2, '0')
-      const minutes = arrivalDate.getMinutes().toString().padStart(2, '0')
-      setArrivalTime(`${hours}:${minutes}`)
+    // Extract date and times from timestamps (date from the arrival, else the departure)
+    const dateSource = flight.arrivalTime ?? flight.departureTime
+    if (dateSource) {
+      setDate(new Date(dateSource).toISOString().split('T')[0])
     }
-    if (flight.departureTime) {
-      const departureDate = new Date(flight.departureTime)
-      // Only set date if we don't have arrival time
-      if (!flight.arrivalTime) {
-        setDate(departureDate.toISOString().split('T')[0])
-      }
-      const hours = departureDate.getHours().toString().padStart(2, '0')
-      const minutes = departureDate.getMinutes().toString().padStart(2, '0')
-      setDepartureTime(`${hours}:${minutes}`)
-    }
+    setScheduled({
+      arrival: toTimeInput(flight.arrivalTime),
+      departure: toTimeInput(flight.departureTime),
+      quickTurn: flight.isQuickTurn ?? false
+    })
+    setActualArrivalTime(toTimeInput(flight.actualArrivalTime))
+    setActualDepartureTime(toTimeInput(flight.actualDepartureTime))
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open is intentionally included so the form resets whenever the Sheet reopens; applyFlightToForm is a stable in-component helper
@@ -138,14 +169,14 @@ export function FlightFormDialog({
       applyFlightToForm(initialData)
     } else {
       setFormData({
-        type: 'arrival',
         status: 'scheduled',
         services: [],
         source: 'line-department'
       })
       setDate(new Date().toISOString().split('T')[0])
-      setArrivalTime('')
-      setDepartureTime('')
+      setScheduled({ arrival: '', departure: '', quickTurn: true })
+      setActualArrivalTime('')
+      setActualDepartureTime('')
     }
   }, [initialData, open])
 
@@ -161,6 +192,9 @@ export function FlightFormDialog({
         call_sign: freshRow.call_sign,
         scheduled_arrival_time: freshRow.scheduled_arrival_time,
         scheduled_departure_time: freshRow.scheduled_departure_time,
+        actual_arrival_time: freshRow.actual_arrival_time,
+        actual_departure_time: freshRow.actual_departure_time,
+        is_quick_turn: freshRow.is_quick_turn,
         flight_status: freshRow.flight_status,
         origin: freshRow.origin,
         destination: freshRow.destination,
@@ -226,19 +260,28 @@ export function FlightFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Construct timestamps from date and time values
-    const arrivalTimestamp = arrivalTime
-      ? `${date}T${arrivalTime}:00`
-      : undefined
-    const departureTimestamp = departureTime
-      ? `${date}T${departureTime}:00`
-      : undefined
-
-    // Validate: must have at least one timestamp, and departure is required
-    if (!departureTimestamp && !arrivalTimestamp) {
-      alert('Please provide at least one time (arrival or departure)')
+    // At least one scheduled time is required (D6): arrival-only = return, departure-only = hangar pull
+    const timeProblem = validateScheduledTimes(arrivalTime, departureTime)
+    if (timeProblem) {
+      setTimeError(timeProblem)
       return
     }
+
+    // Construct timestamps from date and time values. A time earlier than the one before it in the
+    // sequence (arrival -> departure) falls on the next day, e.g. a QT arrival at 23:30 departs at 00:30.
+    const arrivalTimestamp = buildTimestamp(date, arrivalTime)
+    const departureTimestamp = buildTimestamp(
+      date,
+      departureTime,
+      arrivalTime
+    )
+    const actualArrivalTimestamp = buildTimestamp(date, actualArrivalTime)
+    const actualDepartureTimestamp = buildTimestamp(
+      date,
+      actualDepartureTime,
+      actualArrivalTime || arrivalTime
+    )
+    const savedQuickTurn = isQuickTurnSaved(scheduled)
 
     if (!formData.aircraftType) {
       alert('Please select an aircraft type')
@@ -280,22 +323,23 @@ export function FlightFormDialog({
       }
     }
 
-    // For arrivals without departure time, set departure 45 minutes after arrival (required by DB)
-    let finalDepartureTimestamp = departureTimestamp
-    if (!finalDepartureTimestamp && arrivalTimestamp) {
-      const arrivalDate = new Date(arrivalTimestamp)
-      arrivalDate.setMinutes(arrivalDate.getMinutes() + 45)
-      finalDepartureTimestamp = arrivalDate.toISOString().slice(0, 16) // Format: YYYY-MM-DDTHH:mm
-    }
-
     const flight: Flight = {
       id: initialData?.id || `manual-${Date.now()}`,
       tailNumber: formData.tailNumber || '',
       aircraftType: formData.aircraftType || '',
-      type: formData.type as Flight['type'],
+      type: arrivalTimestamp
+        ? departureTimestamp
+          ? savedQuickTurn
+            ? 'quick_turn'
+            : 'overnight'
+          : 'arrival'
+        : 'departure',
       status: formData.status as Flight['status'],
       arrivalTime: arrivalTimestamp,
-      departureTime: finalDepartureTimestamp!, // Required by DB
+      departureTime: departureTimestamp,
+      actualArrivalTime: actualArrivalTimestamp,
+      actualDepartureTime: actualDepartureTimestamp,
+      isQuickTurn: savedQuickTurn,
       origin: formData.origin,
       destination: formData.destination,
       contactName: formData.contactName,
@@ -398,27 +442,6 @@ export function FlightFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="type">Type *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, type: value as any })
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="arrival">Arrival</SelectItem>
-                    <SelectItem value="departure">Departure</SelectItem>
-                    <SelectItem value="quick_turn">Quick Turn</SelectItem>
-                    <SelectItem value="overnight">Overnight</SelectItem>
-                    <SelectItem value="long_term">Long Term</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="status">Status *</Label>
                 <Select
                   value={formData.status}
@@ -453,30 +476,57 @@ export function FlightFormDialog({
             </div>
 
             <div className="space-y-3">
-              <Label>Ground Time (24hr) *</Label>
+              <Label>Scheduled Times (24hr) *</Label>
               <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
                   <div className="space-y-2">
                     <Label
                       htmlFor="arrivalTime"
                       className="text-sm text-muted-foreground flex items-center gap-2"
                     >
                       <span className="inline-block w-2 h-2 rounded-full bg-success"></span>
-                      Arrival Time
+                      Arrival
                     </Label>
                     <Input
                       id="arrivalTime"
                       type="time"
                       value={arrivalTime}
-                      onChange={(e) => setArrivalTime(e.target.value)}
-                      disabled={formData.type === 'departure'}
-                      required={
-                        formData.type === 'arrival' ||
-                        formData.type === 'quick_turn' ||
-                        formData.type === 'overnight' ||
-                        formData.type === 'long_term'
+                      onChange={(e) =>
+                        setScheduled(applyArrivalChange(scheduled, e.target.value))
+                      }
+                      aria-describedby={timeError ? 'timeError' : undefined}
+                    />
+                    <Label
+                      htmlFor="actualArrivalTime"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Actual
+                    </Label>
+                    <Input
+                      id="actualArrivalTime"
+                      type="time"
+                      value={actualArrivalTime}
+                      onChange={(e) => setActualArrivalTime(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col items-center gap-2 pt-7">
+                    <Checkbox
+                      id="quickTurn"
+                      checked={quickTurn}
+                      onCheckedChange={(checked) =>
+                        setScheduled(
+                          applyQuickTurnChange(scheduled, checked === true)
+                        )
                       }
                     />
+                    <label
+                      htmlFor="quickTurn"
+                      className="text-xs font-semibold cursor-pointer"
+                      title="Quick turn: departure is 1 hour after arrival"
+                    >
+                      QT
+                    </label>
                   </div>
 
                   <div className="space-y-2">
@@ -485,23 +535,48 @@ export function FlightFormDialog({
                       className="text-sm text-muted-foreground flex items-center gap-2"
                     >
                       <span className="inline-block w-2 h-2 rounded-full bg-accent"></span>
-                      Departure Time
+                      Departure
                     </Label>
                     <Input
                       id="departureTime"
                       type="time"
                       value={departureTime}
-                      onChange={(e) => setDepartureTime(e.target.value)}
-                      disabled={formData.type === 'arrival'}
-                      required={
-                        formData.type === 'departure' ||
-                        formData.type === 'quick_turn' ||
-                        formData.type === 'overnight' ||
-                        formData.type === 'long_term'
+                      onChange={(e) =>
+                        setScheduled(
+                          applyDepartureChange(scheduled, e.target.value)
+                        )
                       }
+                      aria-describedby={timeError ? 'timeError' : undefined}
+                    />
+                    <Label
+                      htmlFor="actualDepartureTime"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Actual
+                    </Label>
+                    <Input
+                      id="actualDepartureTime"
+                      type="time"
+                      value={actualDepartureTime}
+                      onChange={(e) => setActualDepartureTime(e.target.value)}
                     />
                   </div>
                 </div>
+
+                {timeError && (
+                  <p
+                    id="timeError"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {timeError}
+                  </p>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Leave departure blank for a return, or arrival blank for a
+                  hangar pull.
+                </p>
 
                 {arrivalTime && departureTime && (
                   <div className="text-sm text-muted-foreground text-center pt-2 border-t border-border">

@@ -4,18 +4,29 @@ import { uniqueValue } from './support/unique'
 
 const db = createE2EDbClient()
 
-// Fixed UTC-5 browser zone (no DST) so the F1/F2 pins below are deterministic: the form's
-// fabricated departure goes through toISOString() (UTC) while the typed times stay wall-clock.
+// Fixed UTC-5 browser zone (no DST) so the F2 pins below are deterministic: the form sends naive
+// wall-clock timestamps, which Postgres stores as UTC regardless of the browser zone.
 test.use({ timezoneId: 'Etc/GMT+5' })
 
 const tailNew = uniqueValue('NC2E').toUpperCase() // does not exist yet: form must create the aircraft
 const tailExisting = uniqueValue('NC2E').toUpperCase() // seeded below
-const tails = [tailNew, tailExisting]
+const tailDepOnly = uniqueValue('NC2E').toUpperCase() // hangar pull: departure only
+const tailArrOnly = uniqueValue('NC2E').toUpperCase() // return: arrival only
+const tailActual = uniqueValue('NC2E').toUpperCase() // scheduled + actual times
+const tailNone = uniqueValue('NC2E').toUpperCase() // no times: validation, nothing created
+const seeded = [tailExisting, tailDepOnly, tailArrOnly, tailActual, tailNone]
+const tails = [tailNew, ...seeded]
 
 test.beforeAll(async () => {
   const { error } = await db
     .from('aircraft')
-    .insert({ tail_number: tailExisting, aircraft_type_icao: 'B738', aircraft_type_display: 'Boeing 737-800' })
+    .insert(
+      seeded.map((tail_number) => ({
+        tail_number,
+        aircraft_type_icao: 'B738',
+        aircraft_type_display: 'Boeing 737-800'
+      }))
+    )
   if (error) throw error
 })
 
@@ -79,18 +90,17 @@ test.describe('Add Flight sheet persists real rows', () => {
     expect(flight.flight_status).toBe('scheduled')
     expect([...(flight.services ?? [])].sort()).toEqual(['catering', 'fuel'])
 
-    // KNOWN BUG F2: flips when B09/B10 land — times are sent with no timezone offset, so Postgres
+    // KNOWN BUG F2: flips when B10 lands — times are sent with no timezone offset, so Postgres
     // stores the wall-clock value as UTC regardless of the browser's zone. Once fixed, the stored
     // instant must equal the local 14:30 on the chosen date.
     expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(`${date}T14:30:00.000Z`)
 
-    // KNOWN BUG F1: flips when B09/B10 land — an arrival-only entry gets a fabricated departure
-    // (arrival + 45 min), so the row has both times and the board treats it as a quick turn.
-    // (Also shifted by the browser's UTC-5 offset via toISOString, a facet of F2.)
-    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T20:15:00.000Z`)
+    // QT is preselected: departure = arrival + 1 h (F1: no more fabricated +45 min), saved as a quick turn.
+    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T15:30:00.000Z`)
+    expect(flight.is_quick_turn).toBe(true)
 
     await expect(page.getByText(tailNew).first()).toBeVisible({ timeout: 15_000 })
-    // KNOWN BUG F1: flips when B09/B10 land — shows in both columns (quick turn) instead of Arrivals only.
+    // A quick turn shows in both columns.
     await expect(page.getByText(tailNew)).toHaveCount(2)
   })
 
@@ -100,10 +110,10 @@ test.describe('Add Flight sheet persists real rows', () => {
 
     await page.getByPlaceholder('e.g., N12345').fill(tailExisting)
     await pickAircraftType(page, 'b738', /B738/)
-    await page.getByRole('combobox').filter({ hasText: 'Arrival' }).click() // Type select; departure time is disabled for arrivals
-    await page.getByRole('option', { name: 'Quick Turn' }).click()
     await page.locator('#arrivalTime').fill('09:00')
+    await expect(page.locator('#departureTime')).toHaveValue('10:00') // QT: arrival + 1 h
     await page.locator('#departureTime').fill('11:20')
+    await expect(page.getByRole('checkbox', { name: 'QT' })).not.toBeChecked() // editing departure unchecks QT
     await page.locator('#origin').fill('KBOS')
     await page.locator('#destination').fill('KMIA')
     await page.getByRole('checkbox', { name: 'Hangar' }).click()
@@ -113,13 +123,92 @@ test.describe('Add Flight sheet persists real rows', () => {
     expect(flight.origin).toBe('KBOS')
     expect(flight.destination).toBe('KMIA')
     expect(flight.services).toEqual(['hangar'])
-    // KNOWN BUG F2: flips when B09/B10 land — stored as UTC wall-clock, no offset applied.
+    // KNOWN BUG F2: flips when B10 lands — stored as UTC wall-clock, no offset applied.
     expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(`${date}T09:00:00.000Z`)
     expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T11:20:00.000Z`)
+    expect(flight.is_quick_turn).toBe(false)
 
     const { data: aircraft } = await db.from('aircraft').select('aircraft_type_icao').eq('tail_number', tailExisting).single()
     expect(aircraft?.aircraft_type_icao).toBe('B738')
 
     await expect(page.getByText(tailExisting).first()).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('departure-only entry (hangar pull) stores a NULL arrival and shows only in Departures', async ({ page }) => {
+    await openAddFlightSheet(page)
+    await page.getByPlaceholder('e.g., N12345').fill(tailDepOnly)
+    await pickAircraftType(page, 'b738', /B738/)
+    await page.locator('#departureTime').fill('16:45') // QT is still preselected; typing a departure unchecks it
+    await expect(page.getByRole('checkbox', { name: 'QT' })).not.toBeChecked()
+    await submitAndExpectClosed(page)
+
+    const flight = await readFlight(tailDepOnly)
+    expect(flight.scheduled_arrival_time).toBeNull()
+    expect(flight.scheduled_departure_time).not.toBeNull()
+    expect(flight.is_quick_turn).toBe(false)
+
+    await expect(page.getByText(tailDepOnly).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(tailDepOnly)).toHaveCount(1)
+    await page.getByRole('button', { name: 'Arrivals Only' }).click()
+    await expect(page.getByText(tailDepOnly)).toHaveCount(0)
+  })
+
+  test('arrival-only entry (return) stores a NULL departure and shows only in Arrivals', async ({ page }) => {
+    await openAddFlightSheet(page)
+    await page.getByPlaceholder('e.g., N12345').fill(tailArrOnly)
+    await pickAircraftType(page, 'b738', /B738/)
+    await page.locator('#arrivalTime').fill('13:10')
+    await expect(page.locator('#departureTime')).toHaveValue('14:10')
+    await page.locator('#departureTime').fill('') // blank the computed departure: a return, not a turn
+    await expect(page.getByRole('checkbox', { name: 'QT' })).not.toBeChecked()
+    await submitAndExpectClosed(page)
+
+    const flight = await readFlight(tailArrOnly)
+    expect(flight.scheduled_departure_time).toBeNull()
+    expect(flight.scheduled_arrival_time).not.toBeNull()
+    expect(flight.is_quick_turn).toBe(false)
+
+    await expect(page.getByText(tailArrOnly).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(tailArrOnly)).toHaveCount(1)
+    await page.getByRole('button', { name: 'Departures Only' }).click()
+    await expect(page.getByText(tailArrOnly)).toHaveCount(0)
+  })
+
+  test('actual times are saved and shown on the card', async ({ page }) => {
+    await openAddFlightSheet(page)
+    const date = await page.locator('#date').inputValue()
+    await page.getByPlaceholder('e.g., N12345').fill(tailActual)
+    await pickAircraftType(page, 'b738', /B738/)
+    await page.locator('#arrivalTime').fill('10:00')
+    await page.locator('#actualArrivalTime').fill('10:07')
+    await page.locator('#actualDepartureTime').fill('11:02')
+    await submitAndExpectClosed(page)
+
+    const flight = await readFlight(tailActual)
+    expect(flight.is_quick_turn).toBe(true)
+    expect(new Date(flight.actual_arrival_time as string).toISOString()).toBe(`${date}T10:07:00.000Z`)
+    expect(new Date(flight.actual_departure_time as string).toISOString()).toBe(`${date}T11:02:00.000Z`)
+
+    await expect(page.getByText(tailActual).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('QT', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('Actual arr:').first()).toBeVisible()
+    await expect(page.getByText('Actual dep:').first()).toBeVisible()
+  })
+
+  test('submitting with no scheduled time shows an inline message, no alert, and creates nothing', async ({ page }) => {
+    await openAddFlightSheet(page)
+    let alerted = false
+    page.on('dialog', (d) => {
+      alerted = true
+      void d.dismiss()
+    })
+    await page.getByPlaceholder('e.g., N12345').fill(tailNone)
+    await pickAircraftType(page, 'b738', /B738/)
+    await page.getByRole('button', { name: 'Add Flight', exact: true }).last().click()
+    await expect(page.locator('#timeError')).toContainText(/scheduled arrival/i)
+    await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeVisible()
+    expect(alerted).toBe(false)
+    const { data } = await db.from('flight').select('id').eq('aircraft_id', tailNone)
+    expect(data ?? []).toHaveLength(0)
   })
 })
