@@ -9,8 +9,8 @@ export interface FlightRow {
   aircraft?: string | null
   aircraft_type_display?: string | null
   call_sign?: string | null
-  arrival_time?: string | null
-  departure_time?: string | null
+  scheduled_arrival_time?: string | null
+  scheduled_departure_time?: string | null
   flight_status?: BackendFlightStatus
   origin?: string | null
   destination?: string | null
@@ -59,11 +59,11 @@ export interface Flight {
   callSign?: string // call_sign
 
   // Timing (direct from database - no derived fields)
-  arrivalTime?: string // arrival_time (ISO timestamp)
-  departureTime: string // departure_time (ISO timestamp, NOT NULL)
+  arrivalTime?: string // scheduled_arrival_time (ISO timestamp)
+  departureTime: string // scheduled_departure_time (ISO timestamp; nullable in DB since B09, always set by the form until B09b)
 
   // Flight details
-  type: FlightType // derived from arrival_time and departure_time presence
+  type: FlightType // derived from scheduled_arrival_time and scheduled_departure_time presence
   status: FlightStatus // flight_status
   origin?: string // origin
   destination?: string // destination
@@ -80,7 +80,7 @@ export interface Flight {
 
   // Location and metadata
   locationId?: number // location_id
-  duration: number // calculated from arrival_time and departure_time (min 45 minutes)
+  duration: number // calculated from scheduled_arrival_time and scheduled_departure_time (min 45 minutes)
 
   // Source tracking (always present, defaults to line-department and admin user)
   source: FlightSource // created_by_source (NOT NULL, default: 'line-department')
@@ -158,8 +158,8 @@ function calculateDuration(
 // Convert a Supabase flight row (via rowToFlight()) to the component's Flight shape
 export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
   // Determine flight type based on which times are set
-  const hasArrival = !!apiFlight.arrival_time
-  const hasDeparture = !!apiFlight.departure_time
+  const hasArrival = !!apiFlight.scheduled_arrival_time
+  const hasDeparture = !!apiFlight.scheduled_departure_time
 
   let type: FlightType
   if (hasArrival && hasDeparture) {
@@ -173,8 +173,8 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
 
   // Calculate duration from arrival and departure times
   const duration = calculateDuration(
-    apiFlight.arrival_time ?? undefined,
-    apiFlight.departure_time ?? undefined
+    apiFlight.scheduled_arrival_time ?? undefined,
+    apiFlight.scheduled_departure_time ?? undefined
   )
 
   // Extract creator info (always present, defaults to admin if not provided)
@@ -193,8 +193,8 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     type,
     tailNumber: apiFlight.aircraft || '',
     aircraftType: (apiFlight as any).aircraft_type_display || '',
-    arrivalTime: apiFlight.arrival_time ?? undefined,
-    departureTime: apiFlight.departure_time!,
+    arrivalTime: apiFlight.scheduled_arrival_time ?? undefined,
+    departureTime: apiFlight.scheduled_departure_time!,
     origin:
       apiFlight.origin ||
       (hasArrival ? apiFlight.destination : undefined) ||
@@ -235,13 +235,13 @@ export function componentFlightToApiRequest(
     result.origin = flight.origin
   }
 
-  // Pass through arrival_time and departure_time directly
+  // Pass through scheduled_arrival_time and scheduled_departure_time directly
   if (flight.arrivalTime !== undefined) {
-    result.arrival_time = flight.arrivalTime
+    result.scheduled_arrival_time = flight.arrivalTime
   }
 
   if (flight.departureTime !== undefined) {
-    result.departure_time = flight.departureTime
+    result.scheduled_departure_time = flight.departureTime
   }
 
   if (flight.status !== undefined) {

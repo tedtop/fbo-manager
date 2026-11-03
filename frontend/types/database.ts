@@ -168,8 +168,11 @@ export type Database = {
           id: number
           aircraft_id: string
           call_sign: string | null
-          arrival_time: string | null
-          departure_time: string
+          scheduled_arrival_time: string | null
+          scheduled_departure_time: string | null
+          actual_arrival_time: string | null
+          actual_departure_time: string | null
+          is_quick_turn: boolean
           flight_status:
             | 'scheduled'
             | 'arrived'
@@ -199,8 +202,11 @@ export type Database = {
           id?: number
           aircraft_id: string
           call_sign?: string | null
-          arrival_time?: string | null
-          departure_time: string
+          scheduled_arrival_time?: string | null
+          scheduled_departure_time?: string | null
+          actual_arrival_time?: string | null
+          actual_departure_time?: string | null
+          is_quick_turn?: boolean
           flight_status?:
             | 'scheduled'
             | 'arrived'

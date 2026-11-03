@@ -29,7 +29,7 @@ describe('flights.repo', () => {
 
     const flight = await createFlight(db, {
       aircraft_id: aircraft.tail_number,
-      departure_time: new Date().toISOString(),
+      scheduled_departure_time: new Date().toISOString(),
       location_id: location.id,
       created_by_id: creator.id,
     })
@@ -45,7 +45,7 @@ describe('flights.repo', () => {
     await expect(
       createFlight(db, {
         aircraft_id: 'N-DOES-NOT-EXIST',
-        departure_time: new Date().toISOString(),
+        scheduled_departure_time: new Date().toISOString(),
         created_by_id: creator.id,
       })
     ).rejects.toThrow()
@@ -60,19 +60,19 @@ describe('flights.repo', () => {
   })
 
   it('filters by today, excluding flights outside the current day', async () => {
-    const todayFlight = await makeFlight(db, { departure_time: new Date().toISOString() })
+    const todayFlight = await makeFlight(db, { scheduled_departure_time: new Date().toISOString() })
     const threeDaysAgo = new Date()
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-    await makeFlight(db, { departure_time: threeDaysAgo.toISOString() })
+    await makeFlight(db, { scheduled_departure_time: threeDaysAgo.toISOString() })
 
     const results = await findAllFlights(db, { today: true })
     expect(results.map((f) => f.id)).toEqual([todayFlight.id])
   })
 
   it('filters by startDate/endDate range', async () => {
-    const inRange = await makeFlight(db, { departure_time: '2026-03-15T10:00:00.000Z' })
-    await makeFlight(db, { departure_time: '2026-01-01T10:00:00.000Z' })
-    await makeFlight(db, { departure_time: '2026-06-01T10:00:00.000Z' })
+    const inRange = await makeFlight(db, { scheduled_departure_time: '2026-03-15T10:00:00.000Z' })
+    await makeFlight(db, { scheduled_departure_time: '2026-01-01T10:00:00.000Z' })
+    await makeFlight(db, { scheduled_departure_time: '2026-06-01T10:00:00.000Z' })
 
     const results = await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-31' })
     expect(results.map((f) => f.id)).toEqual([inRange.id])
@@ -98,8 +98,8 @@ describe('flights.repo', () => {
   })
 
   it('includes flights on endDate up to 23:59:59 and excludes the next day', async () => {
-    const lastMoment = await makeFlight(db, { departure_time: '2026-03-31T23:59:00.000Z' })
-    await makeFlight(db, { departure_time: '2026-04-01T00:30:00.000Z' })
+    const lastMoment = await makeFlight(db, { scheduled_departure_time: '2026-03-31T23:59:00.000Z' })
+    await makeFlight(db, { scheduled_departure_time: '2026-04-01T00:30:00.000Z' })
 
     const results = await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-31' })
     expect(results.map((f) => f.id)).toEqual([lastMoment.id])
@@ -107,11 +107,11 @@ describe('flights.repo', () => {
 
   it('combines the date range and status filters', async () => {
     const match = await makeFlight(db, {
-      departure_time: '2026-03-10T10:00:00.000Z',
+      scheduled_departure_time: '2026-03-10T10:00:00.000Z',
       flight_status: 'arrived',
     })
-    await makeFlight(db, { departure_time: '2026-03-11T10:00:00.000Z', flight_status: 'scheduled' })
-    await makeFlight(db, { departure_time: '2026-05-11T10:00:00.000Z', flight_status: 'arrived' })
+    await makeFlight(db, { scheduled_departure_time: '2026-03-11T10:00:00.000Z', flight_status: 'scheduled' })
+    await makeFlight(db, { scheduled_departure_time: '2026-05-11T10:00:00.000Z', flight_status: 'arrived' })
 
     const results = await findAllFlights(db, {
       startDate: '2026-03-01',
@@ -127,7 +127,7 @@ describe('flights.repo', () => {
 
     const flight = await createFlight(db, {
       aircraft_id: aircraft.tail_number,
-      departure_time: new Date().toISOString(),
+      scheduled_departure_time: new Date().toISOString(),
       created_by_id: creator.id,
     })
 
@@ -142,8 +142,8 @@ describe('flights.repo', () => {
   const formPayload = (tail: string) => ({
     aircraft_id: tail,
     call_sign: 'N123AB',
-    arrival_time: '2026-03-10T14:00:00.000Z',
-    departure_time: '2026-03-10T14:45:00.000Z',
+    scheduled_arrival_time: '2026-03-10T14:00:00.000Z',
+    scheduled_departure_time: '2026-03-10T14:45:00.000Z',
     flight_status: 'scheduled' as const,
     origin: 'KSFO',
     destination: 'KLAX',
@@ -220,5 +220,72 @@ describe('flights.repo', () => {
     const found = await findFlightById(db, flight.id)
     expect(found).not.toBeNull()
     expect(found?.deleted_at).not.toBeNull()
+  })
+})
+
+// B09: scheduled/actual time model. Either scheduled time may be NULL (D6), never both.
+describe('flights.repo time model', () => {
+  async function base() {
+    const [aircraft, creator] = await Promise.all([makeAircraft(db), makeUser(db)])
+    return { aircraft_id: aircraft.tail_number, created_by_id: creator.id }
+  }
+
+  it('rejects a flight with neither scheduled time (CHECK flight_has_scheduled_time_check)', async () => {
+    await expect(
+      createFlight(db, {
+        ...(await base()),
+        scheduled_arrival_time: null,
+        scheduled_departure_time: null,
+      })
+    ).rejects.toMatchObject({ code: '23514' })
+  })
+
+  it('accepts an arrival-only flight', async () => {
+    const created = await createFlight(db, {
+      ...(await base()),
+      scheduled_arrival_time: '2026-03-10T14:00:00.000Z',
+    })
+    expect(created.scheduled_departure_time).toBeNull()
+    expect(new Date(created.scheduled_arrival_time as string).toISOString()).toBe(
+      '2026-03-10T14:00:00.000Z'
+    )
+  })
+
+  it('accepts a departure-only flight', async () => {
+    const created = await createFlight(db, {
+      ...(await base()),
+      scheduled_departure_time: '2026-03-10T14:00:00.000Z',
+    })
+    expect(created.scheduled_arrival_time).toBeNull()
+  })
+
+  it('rejects clearing both scheduled times on update', async () => {
+    const flight = await makeFlight(db, { scheduled_arrival_time: null })
+    await expect(
+      updateFlight(db, flight.id, { scheduled_departure_time: null })
+    ).rejects.toMatchObject({ code: '23514' })
+  })
+
+  it('round-trips actual_arrival_time and actual_departure_time', async () => {
+    const flight = await makeFlight(db)
+    expect(flight.actual_arrival_time).toBeNull()
+    expect(flight.actual_departure_time).toBeNull()
+
+    await updateFlight(db, flight.id, {
+      actual_arrival_time: '2026-03-10T14:07:00.000Z',
+      actual_departure_time: '2026-03-10T15:02:00.000Z',
+    })
+
+    const found = await findFlightById(db, flight.id)
+    expect(new Date(found?.actual_arrival_time as string).toISOString()).toBe('2026-03-10T14:07:00.000Z')
+    expect(new Date(found?.actual_departure_time as string).toISOString()).toBe('2026-03-10T15:02:00.000Z')
+  })
+
+  it('is_quick_turn defaults to false and can be set', async () => {
+    const flight = await makeFlight(db)
+    expect(flight.is_quick_turn).toBe(false)
+
+    const updated = await updateFlight(db, flight.id, { is_quick_turn: true })
+    expect(updated.is_quick_turn).toBe(true)
   })
 })

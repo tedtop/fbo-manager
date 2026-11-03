@@ -10,7 +10,7 @@ export const CYPRESS_BASE_URL = process.env.CYPRESS_BASE_URL ?? 'http://localhos
 
 type SeedFlightOptions = {
   tail: string
-  /** Minutes from now; omit for a departure-only flight (flight.arrival_time NULL). */
+  /** Minutes from now; omit for a departure-only flight (flight.scheduled_arrival_time NULL). */
   arrivalInMin?: number
   departureInMin?: number
   status?: 'scheduled' | 'arrived' | 'departed' | 'cancelled' | 'delayed' | 'planned'
@@ -91,8 +91,8 @@ export default defineConfig({
               aircraft_id: tail,
               origin: 'KAAA',
               destination: 'KBBB',
-              arrival_time: arrivalInMin === undefined ? null : iso(arrivalInMin),
-              departure_time: iso(departureInMin),
+              scheduled_arrival_time: arrivalInMin === undefined ? null : iso(arrivalInMin),
+              scheduled_departure_time: iso(departureInMin),
               flight_status: status,
               ...(services ? { services } : {}),
             })

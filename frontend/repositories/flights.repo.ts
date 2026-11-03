@@ -40,7 +40,7 @@ export async function findAllFlights(
     .from('flight')
     .select(FLIGHT_SELECT)
     .is('deleted_at', null)
-    .order('departure_time', { ascending: false })
+    .order('scheduled_departure_time', { ascending: false })
 
   if (filters?.today) {
     const start = new Date()
@@ -48,14 +48,14 @@ export async function findAllFlights(
     const end = new Date()
     end.setHours(23, 59, 59, 999)
     query = query
-      .gte('departure_time', start.toISOString())
-      .lte('departure_time', end.toISOString())
+      .gte('scheduled_departure_time', start.toISOString())
+      .lte('scheduled_departure_time', end.toISOString())
   } else {
     if (filters?.startDate) {
-      query = query.gte('departure_time', filters.startDate)
+      query = query.gte('scheduled_departure_time', filters.startDate)
     }
     if (filters?.endDate) {
-      query = query.lte('departure_time', `${filters.endDate}T23:59:59`)
+      query = query.lte('scheduled_departure_time', `${filters.endDate}T23:59:59`)
     }
   }
 

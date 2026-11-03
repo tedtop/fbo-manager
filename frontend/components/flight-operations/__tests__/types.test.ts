@@ -10,7 +10,7 @@ const baseRow: FlightRow = {
   id: 7,
   aircraft: 'N123AB',
   created_at: '2026-03-01T00:00:00Z',
-  departure_time: '2026-03-10T17:00:00Z',
+  scheduled_departure_time: '2026-03-10T17:00:00Z',
 }
 
 describe('apiFlightToComponentFlight', () => {
@@ -88,22 +88,22 @@ describe('apiFlightToComponentFlight', () => {
     it('KNOWN BUG F1: any flight with both times is quick_turn, even multi-day stays', () => {
       const f = apiFlightToComponentFlight({
         ...baseRow,
-        arrival_time: '2026-03-08T10:00:00Z',
-        departure_time: '2026-03-12T10:00:00Z',
+        scheduled_arrival_time: '2026-03-08T10:00:00Z',
+        scheduled_departure_time: '2026-03-12T10:00:00Z',
       })
       expect(f.type).toBe('quick_turn')
     })
 
-    it('KNOWN BUG F1: departure-only row (departure_time is NOT NULL) is departure', () => {
+    it('KNOWN BUG F1: departure-only row (scheduled_departure_time is NOT NULL) is departure', () => {
       expect(apiFlightToComponentFlight(baseRow).type).toBe('departure')
     })
 
     // KNOWN BUG F1: flips when B09 lands (arrival-only should be reachable)
-    it('KNOWN BUG F1: arrival-only type is only reachable with a missing departure_time (impossible in DB)', () => {
+    it('KNOWN BUG F1: arrival-only type is only reachable with a missing scheduled_departure_time (impossible in DB)', () => {
       const f = apiFlightToComponentFlight({
         id: 1,
         created_at: 'c',
-        arrival_time: '2026-03-10T10:00:00Z',
+        scheduled_arrival_time: '2026-03-10T10:00:00Z',
       })
       expect(f.type).toBe('arrival')
     })
@@ -117,7 +117,7 @@ describe('apiFlightToComponentFlight', () => {
     it('falls back to destination when arrival exists and origin is empty', () => {
       const f = apiFlightToComponentFlight({
         ...baseRow,
-        arrival_time: '2026-03-10T10:00:00Z',
+        scheduled_arrival_time: '2026-03-10T10:00:00Z',
         destination: 'KLAX',
       })
       expect(f.origin).toBe('KLAX')
@@ -131,16 +131,16 @@ describe('apiFlightToComponentFlight', () => {
     it('is the arrival-to-departure gap in minutes', () => {
       const f = apiFlightToComponentFlight({
         ...baseRow,
-        arrival_time: '2026-03-10T15:00:00Z',
-        departure_time: '2026-03-10T17:30:00Z',
+        scheduled_arrival_time: '2026-03-10T15:00:00Z',
+        scheduled_departure_time: '2026-03-10T17:30:00Z',
       })
       expect(f.duration).toBe(150)
     })
     it('has a 45 minute minimum', () => {
       const f = apiFlightToComponentFlight({
         ...baseRow,
-        arrival_time: '2026-03-10T15:00:00Z',
-        departure_time: '2026-03-10T15:10:00Z',
+        scheduled_arrival_time: '2026-03-10T15:00:00Z',
+        scheduled_departure_time: '2026-03-10T15:10:00Z',
       })
       expect(f.duration).toBe(45)
     })
@@ -219,8 +219,8 @@ describe('componentFlightToApiRequest', () => {
       arrivalTime: '2026-03-10T09:00',
       departureTime: '2026-03-10T11:30:00',
     })
-    expect(r.arrival_time).toBe('2026-03-10T09:00')
-    expect(r.departure_time).toBe('2026-03-10T11:30:00')
-    expect(r.arrival_time).not.toMatch(/(Z|[+-]\d{2}:?\d{2})$/)
+    expect(r.scheduled_arrival_time).toBe('2026-03-10T09:00')
+    expect(r.scheduled_departure_time).toBe('2026-03-10T11:30:00')
+    expect(r.scheduled_arrival_time).not.toMatch(/(Z|[+-]\d{2}:?\d{2})$/)
   })
 })

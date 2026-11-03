@@ -27,8 +27,8 @@ function rowToFlight(row: any): Flight {
     aircraft: row.aircraft_id,
     aircraft_type_display: row.aircraft?.aircraft_type_display,
     call_sign: row.call_sign,
-    arrival_time: row.arrival_time,
-    departure_time: row.departure_time,
+    scheduled_arrival_time: row.scheduled_arrival_time,
+    scheduled_departure_time: row.scheduled_departure_time,
     flight_status: row.flight_status as any,
     origin: row.origin,
     destination: row.destination,
@@ -85,8 +85,8 @@ export function useFlights(params?: {
       const row = await createFlightRepo(db, {
         aircraft_id: requestData.aircraft,
         call_sign: requestData.call_sign,
-        arrival_time: requestData.arrival_time,
-        departure_time: requestData.departure_time,
+        scheduled_arrival_time: requestData.scheduled_arrival_time,
+        scheduled_departure_time: requestData.scheduled_departure_time,
         flight_status: requestData.flight_status ?? 'scheduled',
         origin: requestData.origin ?? '',
         destination: requestData.destination ?? '',
@@ -117,8 +117,8 @@ export function useFlights(params?: {
       const dbUpdates: Record<string, any> = {}
       if (requestData.aircraft !== undefined) dbUpdates.aircraft_id = requestData.aircraft
       if (requestData.call_sign !== undefined) dbUpdates.call_sign = requestData.call_sign
-      if (requestData.arrival_time !== undefined) dbUpdates.arrival_time = requestData.arrival_time
-      if (requestData.departure_time !== undefined) dbUpdates.departure_time = requestData.departure_time
+      if (requestData.scheduled_arrival_time !== undefined) dbUpdates.scheduled_arrival_time = requestData.scheduled_arrival_time
+      if (requestData.scheduled_departure_time !== undefined) dbUpdates.scheduled_departure_time = requestData.scheduled_departure_time
       if (requestData.flight_status !== undefined) dbUpdates.flight_status = requestData.flight_status
       if (requestData.origin !== undefined) dbUpdates.origin = requestData.origin
       if (requestData.destination !== undefined) dbUpdates.destination = requestData.destination

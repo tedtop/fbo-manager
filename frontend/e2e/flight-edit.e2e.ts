@@ -8,7 +8,7 @@ const db = createE2EDbClient()
 test.use({ timezoneId: 'Etc/GMT+5' })
 
 // One seeded flight per test so tests never interfere with each other. Departure-only rows
-// (arrival_time NULL) render as a single card, so tail-text locators are unambiguous.
+// (scheduled_arrival_time NULL) render as a single card, so tail-text locators are unambiguous.
 const tailEdit = uniqueValue('NF2E').toUpperCase()
 const tailStatus = uniqueValue('NF2E').toUpperCase()
 const tailDelete = uniqueValue('NF2E').toUpperCase()
@@ -46,7 +46,7 @@ test.beforeAll(async () => {
         created_by_id: userId,
         origin: 'KAAA',
         destination: 'KBBB',
-        departure_time: departure,
+        scheduled_departure_time: departure,
         flight_status: 'scheduled' as const,
       }))
     )

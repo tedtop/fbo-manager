@@ -112,7 +112,7 @@ export async function makeFlight(
   const [aircraft, creator] = await Promise.all([makeAircraft(db), makeUser(db)])
   return createFlight(db, {
     aircraft_id: aircraft.tail_number,
-    departure_time: new Date().toISOString(),
+    scheduled_departure_time: new Date().toISOString(),
     created_by_id: creator.id,
     ...overrides,
   })

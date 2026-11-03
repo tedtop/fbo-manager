@@ -90,11 +90,11 @@ describe('Add Flight sheet persists real rows', () => {
       // (date read from the sheet)
         // KNOWN BUG F2: flips when B09/B10 land - times are sent with no timezone offset, so Postgres
         // stores the wall-clock value as UTC. Once fixed this must equal the local 14:30 instant.
-        expect(new Date(flight.arrival_time).toISOString()).to.eq(`${date}T14:30:00.000Z`)
+        expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(`${date}T14:30:00.000Z`)
         // KNOWN BUG F1: flips when B09/B10 land - an arrival-only entry gets a fabricated departure
         // (arrival + 45 min, converted via toISOString), so the row has both times (quick turn).
         localIso(`${date}T14:30:00`, 45).then((iso) => {
-          expect(new Date(flight.departure_time).toISOString().slice(0, 16)).to.eq(iso.slice(0, 16))
+          expect(new Date(flight.scheduled_departure_time).toISOString().slice(0, 16)).to.eq(iso.slice(0, 16))
         })
     })
 
@@ -129,8 +129,8 @@ describe('Add Flight sheet persists real rows', () => {
       expect(flight.services).to.deep.eq(['hangar'])
       // (date read from the sheet)
         // KNOWN BUG F2: stored as UTC wall-clock, no offset applied.
-        expect(new Date(flight.arrival_time).toISOString()).to.eq(`${date}T09:00:00.000Z`)
-        expect(new Date(flight.departure_time).toISOString()).to.eq(`${date}T11:20:00.000Z`)
+        expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(`${date}T09:00:00.000Z`)
+        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(`${date}T11:20:00.000Z`)
     })
     // NOT YET (B09b): there is no "QT" checkbox; a quick turn is just type + both times today.
     cy.task('getAircraft', tailTurn).should('have.property', 'aircraft_type_icao', 'B738')
@@ -154,11 +154,11 @@ describe('Add Flight sheet persists real rows', () => {
     cy.contains('h2', 'Add New Flight').should('not.exist')
 
     cy.task('getFlightByTail', tailDep).then((flight: FlightRow) => {
-      expect(flight.arrival_time).to.eq(null)
+      expect(flight.scheduled_arrival_time).to.eq(null)
       expect(flight.origin).to.eq('KPBI')
       // (date read from the sheet)
         // KNOWN BUG F2: UTC wall-clock again.
-        expect(new Date(flight.departure_time).toISOString()).to.eq(`${date}T16:45:00.000Z`)
+        expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(`${date}T16:45:00.000Z`)
     })
     cy.contains(tailDep, { timeout: 15_000 }).should('be.visible')
     // NOT YET (B24): no "hangar pull" preset; a departure-only entry is built by hand like this.

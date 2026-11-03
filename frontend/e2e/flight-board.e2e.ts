@@ -5,8 +5,8 @@ import { uniqueValue } from './support/unique'
 const db = createE2EDbClient()
 
 // Three flights seeded straight into the DB (service role), tracked so afterAll only removes our own rows.
-// `flight.departure_time` is NOT NULL, so "arrival only" cannot exist in the DB: a flight with
-// arrival_time NULL is a pure departure, a flight with both times is a quick_turn (see F1 below).
+// The DB now allows arrival-only rows (B09) but the form/board do not produce them yet (B09b/c), so
+// these seeds only use: scheduled_arrival_time NULL = pure departure, both times = quick_turn (see F1 below).
 const tailTurn = uniqueValue('NE2E').toUpperCase() // arrival + departure, scheduled
 const tailDep = uniqueValue('NE2E').toUpperCase() // departure only, scheduled
 const tailDelayed = uniqueValue('NE2E').toUpperCase() // departure only, delayed
@@ -38,9 +38,9 @@ test.beforeAll(async () => {
   const iso = (offsetMin: number) => new Date(now + offsetMin * 60_000).toISOString()
   const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB' }
   const { error: flightError } = await db.from('flight').insert([
-    { ...base, aircraft_id: tailTurn, arrival_time: iso(60), departure_time: iso(180), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailDep, departure_time: iso(240), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailDelayed, departure_time: iso(300), flight_status: 'delayed' },
+    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: iso(60), scheduled_departure_time: iso(180), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailDep, scheduled_departure_time: iso(240), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailDelayed, scheduled_departure_time: iso(300), flight_status: 'delayed' },
   ])
   if (flightError) throw flightError
 })

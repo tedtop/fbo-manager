@@ -61,8 +61,11 @@ export interface Flight {
   aircraft_display?: string
   gate: number | null
   gate_display?: string
-  arrival_time: string | null
-  departure_time: string
+  scheduled_arrival_time: string | null
+  scheduled_departure_time: string | null
+  actual_arrival_time: string | null
+  actual_departure_time: string | null
+  is_quick_turn: boolean
   flight_status: 'scheduled' | 'arrived' | 'departed' | 'cancelled' | 'delayed'
   destination: string
   created_at: string

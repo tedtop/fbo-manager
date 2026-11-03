@@ -82,12 +82,12 @@ test.describe('Add Flight sheet persists real rows', () => {
     // KNOWN BUG F2: flips when B09/B10 land — times are sent with no timezone offset, so Postgres
     // stores the wall-clock value as UTC regardless of the browser's zone. Once fixed, the stored
     // instant must equal the local 14:30 on the chosen date.
-    expect(new Date(flight.arrival_time as string).toISOString()).toBe(`${date}T14:30:00.000Z`)
+    expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(`${date}T14:30:00.000Z`)
 
     // KNOWN BUG F1: flips when B09/B10 land — an arrival-only entry gets a fabricated departure
     // (arrival + 45 min), so the row has both times and the board treats it as a quick turn.
     // (Also shifted by the browser's UTC-5 offset via toISOString, a facet of F2.)
-    expect(new Date(flight.departure_time as string).toISOString()).toBe(`${date}T20:15:00.000Z`)
+    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T20:15:00.000Z`)
 
     await expect(page.getByText(tailNew).first()).toBeVisible({ timeout: 15_000 })
     // KNOWN BUG F1: flips when B09/B10 land — shows in both columns (quick turn) instead of Arrivals only.
@@ -114,8 +114,8 @@ test.describe('Add Flight sheet persists real rows', () => {
     expect(flight.destination).toBe('KMIA')
     expect(flight.services).toEqual(['hangar'])
     // KNOWN BUG F2: flips when B09/B10 land — stored as UTC wall-clock, no offset applied.
-    expect(new Date(flight.arrival_time as string).toISOString()).toBe(`${date}T09:00:00.000Z`)
-    expect(new Date(flight.departure_time as string).toISOString()).toBe(`${date}T11:20:00.000Z`)
+    expect(new Date(flight.scheduled_arrival_time as string).toISOString()).toBe(`${date}T09:00:00.000Z`)
+    expect(new Date(flight.scheduled_departure_time as string).toISOString()).toBe(`${date}T11:20:00.000Z`)
 
     const { data: aircraft } = await db.from('aircraft').select('aircraft_type_icao').eq('tail_number', tailExisting).single()
     expect(aircraft?.aircraft_type_icao).toBe('B738')
