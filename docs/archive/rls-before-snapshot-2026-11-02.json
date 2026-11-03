@@ -1,0 +1,948 @@
+{
+ "taken": "2026-11-02",
+ "project_ref": "qkuhvlrdidhumyyxokil",
+ "note": "metadata only: no row contents, no secrets",
+ "tables": [
+  {
+   "rls_on": false,
+   "row_count": 1,
+   "tbl": "adsb_point_cache"
+  },
+  {
+   "rls_on": false,
+   "row_count": 25,
+   "tbl": "aircraft"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "api_employeeshift"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "app_error_log"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "assigned_training"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "customer"
+  },
+  {
+   "rls_on": false,
+   "row_count": 1,
+   "tbl": "department"
+  },
+  {
+   "rls_on": false,
+   "row_count": 10,
+   "tbl": "department_member"
+  },
+  {
+   "rls_on": true,
+   "row_count": 14,
+   "tbl": "equipment"
+  },
+  {
+   "rls_on": false,
+   "row_count": 146,
+   "tbl": "flight"
+  },
+  {
+   "rls_on": false,
+   "row_count": 6,
+   "tbl": "fuel_density_readings"
+  },
+  {
+   "rls_on": false,
+   "row_count": 2551,
+   "tbl": "fuel_dispatch_history"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "fuel_gravity_readings"
+  },
+  {
+   "rls_on": false,
+   "row_count": 7,
+   "tbl": "fuel_tank"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "fuel_transaction"
+  },
+  {
+   "rls_on": false,
+   "row_count": 2,
+   "tbl": "fueler"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "fueler_assignment"
+  },
+  {
+   "rls_on": false,
+   "row_count": 2,
+   "tbl": "fueler_training"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "fueler_training_history"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "invoice"
+  },
+  {
+   "rls_on": true,
+   "row_count": 0,
+   "tbl": "invoice_fuel_readings"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "invoice_item"
+  },
+  {
+   "rls_on": true,
+   "row_count": 0,
+   "tbl": "invoice_line_items"
+  },
+  {
+   "rls_on": true,
+   "row_count": 0,
+   "tbl": "invoices"
+  },
+  {
+   "rls_on": true,
+   "row_count": 28,
+   "tbl": "module_permissions"
+  },
+  {
+   "rls_on": false,
+   "row_count": 51,
+   "tbl": "parking_location"
+  },
+  {
+   "rls_on": false,
+   "row_count": 10,
+   "tbl": "product"
+  },
+  {
+   "rls_on": true,
+   "row_count": 12,
+   "tbl": "profiles"
+  },
+  {
+   "rls_on": false,
+   "row_count": 1,
+   "tbl": "qt_session"
+  },
+  {
+   "rls_on": true,
+   "row_count": 4,
+   "tbl": "roles"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "scanned_documents"
+  },
+  {
+   "rls_on": false,
+   "row_count": 228,
+   "tbl": "schedule_shift"
+  },
+  {
+   "rls_on": false,
+   "row_count": 8,
+   "tbl": "tank_level_min"
+  },
+  {
+   "rls_on": false,
+   "row_count": 3038,
+   "tbl": "tank_level_readings"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "tank_level_readings_backup"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "tank_level_readings_django"
+  },
+  {
+   "rls_on": false,
+   "row_count": 4,
+   "tbl": "terminal_gate"
+  },
+  {
+   "rls_on": false,
+   "row_count": 3,
+   "tbl": "training"
+  },
+  {
+   "rls_on": true,
+   "row_count": 1,
+   "tbl": "training_completion"
+  },
+  {
+   "rls_on": true,
+   "row_count": 6,
+   "tbl": "training_course"
+  },
+  {
+   "rls_on": true,
+   "row_count": 4,
+   "tbl": "truck_meter_readings"
+  },
+  {
+   "rls_on": true,
+   "row_count": 1,
+   "tbl": "truck_sheets"
+  },
+  {
+   "rls_on": true,
+   "row_count": 0,
+   "tbl": "user_roles"
+  },
+  {
+   "rls_on": false,
+   "row_count": 16,
+   "tbl": "users"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "users_groups"
+  },
+  {
+   "rls_on": false,
+   "row_count": 0,
+   "tbl": "users_user_permissions"
+  }
+ ],
+ "policies": [
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage equipment",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "equipment",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage invoice fuel readings",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "invoice_fuel_readings",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage invoice line items",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "invoice_line_items",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage invoices",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "invoices",
+   "with_check": null
+  },
+  {
+   "cmd": "SELECT",
+   "policyname": "Authenticated users can view module permissions",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "module_permissions",
+   "with_check": null
+  },
+  {
+   "cmd": "DELETE",
+   "policyname": "Users admins can delete module permissions",
+   "qual": "can_manage_users()",
+   "roles": "{public}",
+   "tablename": "module_permissions",
+   "with_check": null
+  },
+  {
+   "cmd": "INSERT",
+   "policyname": "Users admins can manage module permissions",
+   "qual": null,
+   "roles": "{public}",
+   "tablename": "module_permissions",
+   "with_check": "can_manage_users()"
+  },
+  {
+   "cmd": "UPDATE",
+   "policyname": "Users admins can update module permissions",
+   "qual": "can_manage_users()",
+   "roles": "{public}",
+   "tablename": "module_permissions",
+   "with_check": null
+  },
+  {
+   "cmd": "SELECT",
+   "policyname": "Authenticated users can view profiles",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "profiles",
+   "with_check": null
+  },
+  {
+   "cmd": "DELETE",
+   "policyname": "Users admins can delete profiles",
+   "qual": "can_manage_users()",
+   "roles": "{public}",
+   "tablename": "profiles",
+   "with_check": null
+  },
+  {
+   "cmd": "UPDATE",
+   "policyname": "Users can update their own profile",
+   "qual": "((auth.uid() = id) OR can_manage_users())",
+   "roles": "{public}",
+   "tablename": "profiles",
+   "with_check": null
+  },
+  {
+   "cmd": "SELECT",
+   "policyname": "Authenticated users can view roles",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "roles",
+   "with_check": null
+  },
+  {
+   "cmd": "DELETE",
+   "policyname": "Users admins can delete non-system roles",
+   "qual": "(can_manage_users() AND (NOT is_system))",
+   "roles": "{public}",
+   "tablename": "roles",
+   "with_check": null
+  },
+  {
+   "cmd": "INSERT",
+   "policyname": "Users admins can manage roles",
+   "qual": null,
+   "roles": "{public}",
+   "tablename": "roles",
+   "with_check": "can_manage_users()"
+  },
+  {
+   "cmd": "UPDATE",
+   "policyname": "Users admins can update roles",
+   "qual": "can_manage_users()",
+   "roles": "{public}",
+   "tablename": "roles",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage training completions",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "training_completion",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage training courses",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "training_course",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage truck meter readings",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "truck_meter_readings",
+   "with_check": null
+  },
+  {
+   "cmd": "ALL",
+   "policyname": "Authenticated users can manage truck sheets",
+   "qual": "(auth.role() = 'authenticated'::text)",
+   "roles": "{public}",
+   "tablename": "truck_sheets",
+   "with_check": null
+  },
+  {
+   "cmd": "INSERT",
+   "policyname": "Users admins can assign roles",
+   "qual": null,
+   "roles": "{public}",
+   "tablename": "user_roles",
+   "with_check": "can_manage_users()"
+  },
+  {
+   "cmd": "DELETE",
+   "policyname": "Users admins can remove role assignments",
+   "qual": "can_manage_users()",
+   "roles": "{public}",
+   "tablename": "user_roles",
+   "with_check": null
+  },
+  {
+   "cmd": "UPDATE",
+   "policyname": "Users admins can update role assignments",
+   "qual": "can_manage_users()",
+   "roles": "{public}",
+   "tablename": "user_roles",
+   "with_check": null
+  },
+  {
+   "cmd": "SELECT",
+   "policyname": "Users can view their own role assignments",
+   "qual": "((auth.uid() = user_id) OR can_manage_users())",
+   "roles": "{public}",
+   "tablename": "user_roles",
+   "with_check": null
+  }
+ ],
+ "grants": [
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "adsb_point_cache"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "adsb_point_cache"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "aircraft"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "aircraft"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "api_employeeshift"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "api_employeeshift"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "app_error_log"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "app_error_log"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "assigned_training"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "assigned_training"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "customer"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "customer"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "department"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "department"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "department_member"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "department_member"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "equipment"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "equipment"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "flight"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "flight"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_density_readings"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_density_readings"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_dispatch_history"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_dispatch_history"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_gravity_readings"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_gravity_readings"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_tank"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_tank"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_transaction"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fuel_transaction"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler_assignment"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler_assignment"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler_training"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler_training"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler_training_history"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "fueler_training_history"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice_fuel_readings"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice_fuel_readings"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice_item"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice_item"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice_line_items"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoice_line_items"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoices"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "invoices"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "module_permissions"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "module_permissions"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "parking_location"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "parking_location"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "product"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "product"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "profiles"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "profiles"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "qt_session"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "qt_session"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "roles"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "roles"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "scanned_documents"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "scanned_documents"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "schedule_shift"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "schedule_shift"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_min"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_min"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_readings"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_readings"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_readings_backup"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_readings_backup"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_readings_django"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "tank_level_readings_django"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "terminal_gate"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "terminal_gate"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "training"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "training"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "training_completion"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "training_completion"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "training_course"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "training_course"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "truck_meter_readings"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "truck_meter_readings"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "truck_sheet_running_totals"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "truck_sheet_running_totals"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "truck_sheets"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "truck_sheets"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "user_roles"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "user_roles"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "users"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "users"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "users_groups"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "users_groups"
+  },
+  {
+   "grantee": "anon",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "users_user_permissions"
+  },
+  {
+   "grantee": "authenticated",
+   "privs": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE",
+   "table_name": "users_user_permissions"
+  }
+ ],
+ "funcs": [
+  {
+   "anon_exec": true,
+   "proname": "can_manage_users",
+   "security_definer": true
+  },
+  {
+   "anon_exec": true,
+   "proname": "get_latest_tank_readings",
+   "security_definer": false
+  },
+  {
+   "anon_exec": true,
+   "proname": "get_min_tank_readings",
+   "security_definer": false
+  },
+  {
+   "anon_exec": true,
+   "proname": "handle_new_auth_user",
+   "security_definer": true
+  },
+  {
+   "anon_exec": true,
+   "proname": "has_module_access",
+   "security_definer": true
+  },
+  {
+   "anon_exec": true,
+   "proname": "set_modified_at",
+   "security_definer": false
+  },
+  {
+   "anon_exec": true,
+   "proname": "set_updated_at",
+   "security_definer": false
+  },
+  {
+   "anon_exec": true,
+   "proname": "update_modified_at_column",
+   "security_definer": false
+  },
+  {
+   "anon_exec": true,
+   "proname": "update_tank_level_min",
+   "security_definer": false
+  }
+ ],
+ "views": [
+  {
+   "has_def": true,
+   "viewname": "truck_sheet_running_totals"
+  }
+ ]
+}
