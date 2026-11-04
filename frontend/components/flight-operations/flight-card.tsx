@@ -29,6 +29,9 @@ import {
 import { cn } from '@/lib/utils'
 import type { LinkColor } from './board-logic'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
+import { useSyncedDraft } from '@/hooks/use-synced-draft'
+import { useToast } from '@/hooks/use-toast'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -209,11 +212,16 @@ export function FlightCard({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isEditingServices, setIsEditingServices] = useState(false)
-  const [passengerCount, setPassengerCount] = useState(
+  const { toast } = useToast()
+  // Local edits (inline services and passenger count) are optimistic drafts over the props: a draft
+  // is dropped as soon as the flight's own value changes (saved from the edit sheet, another user,
+  // a refetch), so the card never keeps showing stale data.
+  const [passengerCount, setPassengerCount] = useSyncedDraft(
     flight.passengers?.toString() || ''
   )
-  const [localServices, setLocalServices] = useState<string[]>(flight.services)
-  const [localNotes, setLocalNotes] = useState(flight.notes || '')
+  const [localServices, setLocalServices, resetLocalServices] =
+    useSyncedDraft<string[]>(flight.services)
+  const notes = flight.notes || ''
   const [countdown, setCountdown] = useState<{
     text: string
     isUrgent: boolean
@@ -253,11 +261,30 @@ export function FlightCard({
   }, [flight.arrivalTime, flight.departureTime, isArrival])
 
   const toggleService = (service: string) => {
-    setLocalServices((prev) =>
-      prev.includes(service)
-        ? prev.filter((s) => s !== service)
-        : [...prev, service]
+    setLocalServices(
+      localServices.includes(service)
+        ? localServices.filter((s) => s !== service)
+        : [...localServices, service]
     )
+  }
+
+  // Status changes use the same compare-and-swap guard as the edit sheet: a card that is out of
+  // date (someone else saved the flight since it was loaded) is refused instead of overwriting.
+  const changeStatus = (nextStatus: Flight['status']) => {
+    void Promise.resolve(
+      onEdit({ ...flight, status: nextStatus }, flight.updatedAt)
+    ).catch((err) => {
+      // Other failures are toasted by the page handler; it stays silent for conflicts because the
+      // edit sheet has its own conflict dialog, and the card has none.
+      if (err instanceof ConcurrencyConflictError) {
+        toast({
+          title: 'Flight was changed by someone else',
+          description:
+            'The status was not changed. Check the latest details and try again.',
+          variant: 'destructive'
+        })
+      }
+    })
   }
 
   const saveChanges = () => {
@@ -266,7 +293,7 @@ export function FlightCard({
       onEdit({
         ...flight,
         services: localServices,
-        notes: localNotes,
+        notes,
         passengers: passengerCount ? Number.parseInt(passengerCount) : undefined
       })
     ).catch(() => {})
@@ -373,14 +400,7 @@ export function FlightCard({
                   ).map((statusKey) => (
                     <DropdownMenuItem
                       key={statusKey}
-                      onClick={() => {
-                        void Promise.resolve(
-                          onEdit({
-                            ...flight,
-                            status: statusKey
-                          })
-                        ).catch(() => {})
-                      }}
+                      onClick={() => changeStatus(statusKey)}
                       className="text-xs"
                     >
                       <span
@@ -508,7 +528,7 @@ export function FlightCard({
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      setLocalServices(flight.services)
+                      resetLocalServices()
                       setIsEditingServices(false)
                     }}
                     className="h-6 text-xs px-2"
@@ -584,10 +604,10 @@ export function FlightCard({
           )}
 
           {/* Notes */}
-          {localNotes && (
+          {notes && (
             <div className="flex items-start gap-1.5 text-[11px] p-1.5 rounded border bg-yellow-500/10 border-yellow-500/20 mt-1.5">
               <AlertCircle className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="text-foreground">{localNotes}</span>
+              <span className="text-foreground">{notes}</span>
             </div>
           )}
 
