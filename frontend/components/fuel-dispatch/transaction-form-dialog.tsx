@@ -61,6 +61,10 @@ interface TransactionFormDialogProps {
   defaultTailNumber?: string
 }
 
+// One-tap fuel requests for the ramp; the field stays freeform. "/s" is gallons per side, which
+// parseGallonsRequested reads as the number ("50/s" -> 50).
+const QUICK_FUEL_REQUESTS = ['T/O', 'Panel Set', 'Tabs', '50/s', '100/s']
+
 const emptyForm: TransactionFormData = {
   ticket_number: '',
   flight_id: null,
@@ -333,8 +337,25 @@ export function TransactionFormDialog({
                 id="fuel_request"
                 value={form.fuel_request}
                 onChange={(e) => setForm({ ...form, fuel_request: e.target.value })}
-                placeholder='e.g. "T/O", "panel set", "110/s", "1260", "10000 lbs"'
+                placeholder='e.g. "T/O", "panel set", "110/s", "1260 gals", "10000 lbs"'
               />
+              <div className="flex flex-wrap gap-2">
+                {QUICK_FUEL_REQUESTS.map((request) => (
+                  <Button
+                    key={request}
+                    type="button"
+                    variant={
+                      form.fuel_request.trim().toLowerCase() === request.toLowerCase()
+                        ? 'default'
+                        : 'outline'
+                    }
+                    className="h-10 min-w-16 px-4"
+                    onClick={() => setForm({ ...form, fuel_request: request })}
+                  >
+                    {request}
+                  </Button>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Freeform fuel request. Actual gallons can be entered below or added later.
               </p>
