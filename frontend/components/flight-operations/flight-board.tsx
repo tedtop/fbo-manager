@@ -91,7 +91,7 @@ export function FlightBoard({
   return (
     <div className="space-y-6">
       {mode === 'split' ? (
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-border">
               <div className="w-2 h-2 rounded-full bg-success" />

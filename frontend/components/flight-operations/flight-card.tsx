@@ -337,7 +337,7 @@ export function FlightCard({
         >
           {/* Header with tail number, aircraft type, and status */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
               <Plane
                 className={cn(
                   'w-4 h-4',
@@ -380,7 +380,7 @@ export function FlightCard({
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Badge
@@ -450,7 +450,7 @@ export function FlightCard({
           {flight.contactNotes && (
             <div className="flex items-start gap-1.5 text-xs p-1.5 rounded border bg-blue-500/10 border-blue-500/20">
               <User className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
-              <span className="text-foreground">{flight.contactNotes}</span>
+              <span className="min-w-0 break-words text-foreground">{flight.contactNotes}</span>
             </div>
           )}
 
@@ -607,13 +607,13 @@ export function FlightCard({
           {notes && (
             <div className="flex items-start gap-1.5 text-[11px] p-1.5 rounded border bg-yellow-500/10 border-yellow-500/20 mt-1.5">
               <AlertCircle className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="text-foreground">{notes}</span>
+              <span className="min-w-0 break-words text-foreground">{notes}</span>
             </div>
           )}
 
           {/* Time Display with Countdown - Above divider, left of badges */}
           <div className="flex items-center justify-between pt-1.5 border-t border-border">
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">
                 {isArrival ? 'ETA:' : 'ETD:'}
@@ -652,7 +652,7 @@ export function FlightCard({
             </div>
 
             {/* Creator and Source Badges - Right side */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

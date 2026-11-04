@@ -101,7 +101,7 @@ export function CompactToolbar({
   ].reduce((a, b) => a + b, 0)
 
   return (
-    <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-card shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center gap-1">
         <Button
           variant={view === 'split' ? 'default' : 'ghost'}
@@ -109,6 +109,8 @@ export function CompactToolbar({
           onClick={() => onViewChange('split')}
           className="h-9 px-3"
           title="Split View"
+          aria-label="Split View"
+          aria-pressed={view === 'split'}
         >
           <LayoutGrid className="w-4 h-4" />
         </Button>
@@ -118,6 +120,8 @@ export function CompactToolbar({
           onClick={() => onViewChange('calendar')}
           className="h-9 px-3"
           title="Calendar View"
+          aria-label="Calendar View"
+          aria-pressed={view === 'calendar'}
         >
           <Calendar className="w-4 h-4" />
         </Button>
@@ -127,6 +131,8 @@ export function CompactToolbar({
           onClick={() => onViewChange('arrivals')}
           className="h-9 px-3"
           title="Arrivals Only"
+          aria-label="Arrivals Only"
+          aria-pressed={view === 'arrivals'}
         >
           <PlaneLanding className="w-4 h-4" />
         </Button>
@@ -136,12 +142,14 @@ export function CompactToolbar({
           onClick={() => onViewChange('departures')}
           className="h-9 px-3"
           title="Departures Only"
+          aria-label="Departures Only"
+          aria-pressed={view === 'departures'}
         >
           <PlaneTakeoff className="w-4 h-4" />
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 flex-1 max-w-2xl">
+      <div className="order-last flex w-full items-center gap-2 md:order-none md:w-auto md:flex-1 md:max-w-2xl">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -174,7 +182,7 @@ export function CompactToolbar({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-96" align="end">
+          <PopoverContent className="w-96 max-w-[calc(100vw-2rem)]" align="end">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-sm">Filter Options</h4>
