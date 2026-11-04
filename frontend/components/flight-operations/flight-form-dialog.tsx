@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
+import { useAirportSettings } from '@/hooks/use-airports'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { isBlankTail } from '@/lib/app-settings'
 import { formatLocalDate } from '@/lib/local-date'
@@ -34,6 +35,8 @@ import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { FlightRow } from '@/repositories/flights.repo'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AircraftTypeCombobox } from './aircraft-type-combobox'
+import { AirportCombobox } from './airport-combobox'
+import { prefillAirports } from './airport-prefill'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import {
   applyArrivalChange,
@@ -101,6 +104,9 @@ export function FlightFormDialog({
   const { settings } = useAppSettings()
   const tailPrefix = settings.tailNumberPrefix
   const appliedPrefix = useRef(tailPrefix)
+  const { homeAirport, homeCountry, displayPreference } = useAirportSettings()
+  // Origin/Destination the person has picked or typed: the home-airport prefill never overwrites these.
+  const airportTouched = useRef({ origin: false, destination: false })
   const [formData, setFormData] = useState<Partial<Flight>>({
     status: 'scheduled',
     services: [],
@@ -185,6 +191,7 @@ export function FlightFormDialog({
         tailNumber: tailPrefix
       })
       setTailError(null)
+      airportTouched.current = { origin: false, destination: false }
       setDate(formatLocalDate(new Date()))
       setScheduled({ arrival: '', departure: '', quickTurn: true })
       setActualArrivalTime('')
@@ -204,6 +211,33 @@ export function FlightFormDialog({
     )
     appliedPrefix.current = tailPrefix
   }, [tailPrefix])
+
+  // New flights: the home airport goes in whichever end is known from the times (arrival -> Destination,
+  // hangar pull -> Origin), recomputed as the times change but only while that field is still untouched.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open re-runs it after the reset effect above
+  useEffect(() => {
+    if (initialData) return
+    const prefill = prefillAirports({
+      arrival: arrivalTime,
+      departure: departureTime,
+      home: homeAirport
+    })
+    setFormData((current) => {
+      const next = { ...current }
+      for (const field of ['origin', 'destination'] as const) {
+        if (
+          !airportTouched.current[field] &&
+          (current[field] ?? '') !== prefill[field]
+        ) {
+          next[field] = prefill[field] || undefined
+        }
+      }
+      return next.origin === current.origin &&
+        next.destination === current.destination
+        ? current
+        : next
+    })
+  }, [initialData, open, arrivalTime, departureTime, homeAirport])
 
   const editSession = useRecordEditSession<FlightRow>({
     table: 'flight',
@@ -655,25 +689,31 @@ export function FlightFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="origin">Origin</Label>
-                <Input
+                <AirportCombobox
                   id="origin"
                   value={formData.origin || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, origin: e.target.value })
-                  }
-                  placeholder="ICAO code"
+                  onChange={(code) => {
+                    airportTouched.current.origin = true
+                    setFormData({ ...formData, origin: code })
+                  }}
+                  homeCountry={homeCountry}
+                  displayPreference={displayPreference}
+                  placeholder="Select origin"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="destination">Destination</Label>
-                <Input
+                <AirportCombobox
                   id="destination"
                   value={formData.destination || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, destination: e.target.value })
-                  }
-                  placeholder="ICAO code"
+                  onChange={(code) => {
+                    airportTouched.current.destination = true
+                    setFormData({ ...formData, destination: code })
+                  }}
+                  homeCountry={homeCountry}
+                  displayPreference={displayPreference}
+                  placeholder="Select destination"
                 />
               </div>
             </div>

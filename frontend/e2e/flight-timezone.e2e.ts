@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createE2EDbClient, waitForDbRow } from './support/db'
+import { pickAirport } from './support/airport'
 import { uniqueValue } from './support/unique'
 
 // B10 (F2/F5): flight times are real instants. Browser zone is pinned to America/Phoenix (UTC-7, no DST)
@@ -99,7 +100,7 @@ test.describe('Timezone handling (B10)', () => {
     await expect(page.locator('#departureTime')).toHaveValue('00:30')
 
     // ...and saving without touching the times leaves the stored instants unchanged.
-    await page.locator('#origin').fill('KTEB')
+    await pickAirport(page, 'origin', 'KTEB')
     await page.getByRole('button', { name: 'Update Flight' }).click()
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
     const after = await waitForDbRow(async () => {

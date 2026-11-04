@@ -6,8 +6,10 @@ import {
   TEST_SUPABASE_URL
 } from '@/tests/support/client'
 import { storedCode } from '@/lib/airports'
+import { indexAirportsByCode } from '@/lib/airports'
 import {
   findAirportsByCode,
+  findAirportsByCodes,
   getAirportByCode,
   searchAirports
 } from '@/repositories/airports.repo'
@@ -70,5 +72,17 @@ describe('airports.repo', () => {
     const anon = createClient(TEST_SUPABASE_URL, TEST_ANON_KEY)
     const { data, error } = await anon.from('airport').select('id').limit(1)
     expect(error ?? data?.length === 0).toBeTruthy()
+  })
+
+  it('labels a whole list of stored codes from one query', async () => {
+    const rows = await findAirportsByCodes(db, ['KGPI', 'kmso', 'GPI', 'ZZ9X', ''])
+    const index = indexAirportsByCode(rows, ['KGPI', 'kmso', 'GPI', 'ZZ9X'], {
+      homeCountry: 'US'
+    })
+    expect(index.get('KGPI')?.icao).toBe('KGPI')
+    expect(index.get('KMSO')?.icao).toBe('KMSO')
+    expect(index.get('GPI')?.icao).toBe('KGPI') // ambiguous legacy code: home country first
+    expect(index.has('ZZ9X')).toBe(false)
+    expect(await findAirportsByCodes(db, [])).toEqual([])
   })
 })

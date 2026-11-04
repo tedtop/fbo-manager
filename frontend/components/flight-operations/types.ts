@@ -212,10 +212,8 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     actualArrivalTime: apiFlight.actual_arrival_time ?? undefined,
     actualDepartureTime: apiFlight.actual_departure_time ?? undefined,
     isQuickTurn,
-    origin:
-      apiFlight.origin ||
-      (hasArrival ? apiFlight.destination : undefined) ||
-      undefined,
+    // No destination fallback: an arrival's destination is the home airport (B50), not where it came from.
+    origin: apiFlight.origin || undefined,
     destination: apiFlight.destination ?? undefined,
     status: mapFlightStatus(apiFlight.flight_status),
     contactName: (apiFlight as any).contact_name || undefined,

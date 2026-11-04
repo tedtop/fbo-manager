@@ -1,3 +1,4 @@
+import { useAirportLabels, useAirportSettings } from '@/hooks/use-airports'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 import type { LinkColor } from './board-logic'
@@ -60,6 +61,15 @@ export function FlightList({
   onFlightHover
 }: FlightListProps) {
   const label = type === 'arrival' ? 'arrivals' : 'departures'
+
+  // One lookup for every code on this column (arrivals show the origin, departures the destination), shared
+  // by all the cards instead of one query each.
+  const { displayPreference, homeCountry } = useAirportSettings()
+  const airportLabel = useAirportLabels(
+    flights.map((f) => (type === 'arrival' ? f.origin : f.destination)),
+    displayPreference,
+    homeCountry
+  )
 
   if (loading) {
     return (
@@ -128,6 +138,7 @@ export function FlightList({
                   isHovered={isHovered}
                   onHover={onFlightHover}
                   column={type}
+                  airportLabel={airportLabel}
                   deleteState={phase}
                 />
               </div>

@@ -55,11 +55,11 @@ describe('Flight edit, status change, delete', () => {
       openEditSheet(tailEdit)
 
       // The form is pre-populated from the seeded row.
-      cy.get('#origin').should('have.value', 'KAAA')
-      cy.get('#destination').should('have.value', 'KBBB')
+      cy.get('#origin').should('contain.text', 'AAA')
+      cy.get('#destination').should('contain.text', 'BBB')
 
-      cy.get('#origin').clear().type('KTEB')
-      cy.get('#destination').clear().type('KASE')
+      cy.pickAirport('origin', 'KTEB')
+      cy.pickAirport('destination', 'KASE')
       cy.get('#contactName').clear().type('Edited Contact')
       cy.get('#notes').clear().type('edited by cypress')
       cy.get('#hangar').click()
@@ -79,7 +79,7 @@ describe('Flight edit, status change, delete', () => {
       })
     })
 
-    card(tailEdit).contains('KASE').should('be.visible')
+    card(tailEdit).contains('ASE').should('be.visible')
     // B44 fixed: the card shows the saved notes and services straight away, no reload needed.
     card(tailEdit).contains('edited by cypress').should('be.visible')
     card(tailEdit).contains('Hangar').should('be.visible')
@@ -103,7 +103,7 @@ describe('Flight edit, status change, delete', () => {
     cy.contains(tailFuel, { timeout: 15_000 }).should('be.visible')
     openEditSheet(tailFuel)
     cy.get('#fuelOrderNotes').should('have.value', 'Jet A 500 gal, top off')
-    cy.get('#origin').clear().type('KTEB')
+    cy.pickAirport('origin', 'KTEB')
     cy.contains('button', 'Update Flight').click()
     cy.contains('Edit Flight').should('not.exist')
     cy.task('getFlightByTail', tailFuel).should((row: FlightRow) => {
@@ -196,12 +196,12 @@ describe('Flight edit, status change, delete', () => {
       openBoard(tailEditFail)
       openEditSheet(tailEditFail)
       failPatches()
-      cy.get('#origin').clear().type('KFAIL')
+      cy.typeAirport('origin', 'KFAIL')
       cy.contains('button', 'Update Flight').click()
       cy.contains('[role="status"]', "Couldn't update flight", { timeout: 10_000 })
         .should('contain.text', 'forced cypress failure')
       cy.contains('Edit Flight').should('be.visible')
-      cy.get('#origin').should('have.value', 'KFAIL')
+      cy.get('#origin').should('contain.text', 'KFAIL')
       cy.task('getFlightByTail', tailEditFail).should((after: FlightRow) => {
         expect(after.origin).to.eq('KAAA')
         expect(after.modified_at).to.eq(before.modified_at)
@@ -225,14 +225,14 @@ describe('Flight edit, status change, delete', () => {
     cy.task('getFlightByTail', tailConflict).then((before: FlightRow) => {
       openBoard(tailConflict)
       openEditSheet(tailConflict)
-      cy.get('#origin').should('have.value', 'KAAA')
+      cy.get('#origin').should('contain.text', 'AAA')
 
       // Someone else saves the same row while our dialog is open (modified_at trigger bumps it).
       cy.task('touchFlight', { id: ids[tailConflict], notes: 'changed by someone else' })
       cy.task('getFlightByTail', tailConflict).then((bumped: FlightRow) => {
         expect(bumped.modified_at).not.to.eq(before.modified_at)
 
-        cy.get('#origin').clear().type('KJFK')
+        cy.pickAirport('origin', 'KJFK')
         cy.contains('button', 'Update Flight').click()
 
         cy.get('[role="alertdialog"]', { timeout: 10_000 }).should('contain.text', 'Someone else saved changes to this record')
@@ -249,7 +249,7 @@ describe('Flight edit, status change, delete', () => {
         // Reload their changes: form repopulates from the DB, our edit is discarded, nothing is written.
         cy.get('[role="alertdialog"]').contains('button', 'Reload their changes').click()
         cy.get('[role="alertdialog"]').should('not.exist')
-        cy.get('#origin').should('have.value', 'KAAA')
+        cy.get('#origin').should('contain.text', 'AAA')
         cy.get('#notes').should('have.value', 'changed by someone else')
         cy.task('getFlightByTail', tailConflict).its('modified_at').should('eq', bumped.modified_at)
       })
@@ -261,7 +261,7 @@ describe('Flight edit, status change, delete', () => {
     openBoard(tailConflict)
     openEditSheet(tailConflict)
     cy.task('touchFlight', { id: ids[tailConflict], notes: 'second concurrent write' })
-    cy.get('#origin').clear().type('KJFK')
+    cy.pickAirport('origin', 'KJFK')
     cy.contains('button', 'Update Flight').click()
     cy.get('[role="alertdialog"]', { timeout: 10_000 }).contains('button', 'Overwrite anyway').click()
     cy.get('[role="alertdialog"]').should('not.exist')

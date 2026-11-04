@@ -26,6 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip'
+import type { AirportLabel } from '@/hooks/use-airports'
 import { cn } from '@/lib/utils'
 import { flightradarUrl, isFlightHidden, type LinkColor } from './board-logic'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
@@ -106,6 +107,9 @@ interface FlightCardProps {
   onHover?: (id: string | null) => void
   // Board column the card is rendered in; decides whether it shows the arrival or the departure time.
   column?: 'arrival' | 'departure'
+  // Preferred display code (+ ICAO tooltip) for a stored airport code; the list resolves them in one query.
+  // Without it the stored text is shown as is.
+  airportLabel?: (code: string | null | undefined) => AirportLabel | null
   // 'deleting': content has faded into a skeleton while the delete is saved.
   // 'zapping': saved; the card is playing its exit animation.
   deleteState?: 'deleting' | 'zapping'
@@ -214,6 +218,7 @@ export function FlightCard({
   isHovered,
   onHover,
   column,
+  airportLabel,
   deleteState
 }: FlightCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -464,8 +469,12 @@ export function FlightCard({
             <div className="flex items-center gap-2 text-sm">
               <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">From</span>
-              <span className="font-semibold text-foreground">
-                {flight.origin}
+              <span
+                className="font-semibold text-foreground"
+                title={airportLabel?.(flight.origin)?.title}
+                data-testid="flight-origin"
+              >
+                {airportLabel?.(flight.origin)?.text ?? flight.origin}
               </span>
             </div>
           )}
@@ -473,8 +482,12 @@ export function FlightCard({
             <div className="flex items-center gap-2 text-sm">
               <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">To</span>
-              <span className="font-semibold text-foreground">
-                {flight.destination}
+              <span
+                className="font-semibold text-foreground"
+                title={airportLabel?.(flight.destination)?.title}
+                data-testid="flight-destination"
+              >
+                {airportLabel?.(flight.destination)?.text ?? flight.destination}
               </span>
             </div>
           )}

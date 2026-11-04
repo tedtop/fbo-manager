@@ -1,15 +1,26 @@
 'use client'
 
 import { useAppSettings } from '@/hooks/use-app-settings'
+import {
+  type AirportDisplayPreference,
+  displayCode,
+  indexAirportsByCode,
+  storedCode
+} from '@/lib/airports'
 import { createClient } from '@/lib/supabase/client'
-import { getAirportByCode, searchAirports } from '@/repositories/airports.repo'
+import {
+  findAirportsByCodes,
+  getAirportByCode,
+  searchAirports
+} from '@/repositories/airports.repo'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 export const airportKeys = {
   all: ['airports'] as const,
   search: (query: string, homeCountry: string) =>
     [...airportKeys.all, 'search', query, homeCountry] as const,
-  byCode: (code: string) => [...airportKeys.all, 'code', code] as const
+  byCode: (code: string) => [...airportKeys.all, 'code', code] as const,
+  labels: (codes: string[]) => [...airportKeys.all, 'labels', ...codes] as const
 }
 
 /** Picker results for the typed text, best first (exact codes, then prefixes, then name/city). */
@@ -47,5 +58,42 @@ export function useAirportSettings() {
     homeAirport: settings.homeAirport,
     displayPreference: settings.airportDisplay,
     homeCountry: home.data?.country ?? 'US'
+  }
+}
+
+export type AirportLabel = { text: string; title?: string }
+
+/**
+ * Labels for the codes on a list of flights from ONE query (not one per card). `label(code)` is the
+ * preferred display code with the stored ICAO as the tooltip; a code with no airport (free text, an
+ * unknown strip, still loading) is shown as stored.
+ */
+export function useAirportLabels(
+  codes: (string | null | undefined)[],
+  displayPreference: AirportDisplayPreference,
+  homeCountry: string
+) {
+  const db = createClient()
+  const unique = [
+    ...new Set(codes.map((c) => c?.trim().toUpperCase()).filter(Boolean))
+  ].sort() as string[]
+  const { data: rows } = useQuery({
+    queryKey: airportKeys.labels(unique),
+    queryFn: () => findAirportsByCodes(db, unique),
+    enabled: unique.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 60 * 1000
+  })
+  const index = indexAirportsByCode(rows ?? [], unique, { homeCountry })
+
+  return (code: string | null | undefined): AirportLabel | null => {
+    const raw = code?.trim()
+    if (!raw) return null
+    const airport = index.get(raw.toUpperCase())
+    if (!airport) return { text: raw }
+    return {
+      text: displayCode(airport, displayPreference),
+      title: `${storedCode(airport)} · ${airport.name}`
+    }
   }
 }

@@ -92,8 +92,8 @@ describe('Add Flight sheet persists real rows', () => {
     typeTail(tailNew)
     pickAircraftType('glf6', /G650/)
     cy.get('#arrivalTime').type('14:30')
-    cy.get('#origin').type('KTEB')
-    cy.get('#destination').type('KASE')
+    cy.pickAirport('origin', 'KTEB')
+    cy.pickAirport('destination', 'KASE')
     cy.get('#fuel').click()
     cy.get('#catering').click()
     submit()
@@ -133,8 +133,8 @@ describe('Add Flight sheet persists real rows', () => {
     // The departure field is a masked 5-char text input already holding the computed "10:00": clear it first.
     cy.get('#departureTime').clear().type('11:20')
     cy.get('#quickTurn').should('have.attr', 'aria-checked', 'false') // editing departure unchecks QT
-    cy.get('#origin').type('KBOS')
-    cy.get('#destination').type('KMIA')
+    cy.pickAirport('origin', 'KBOS')
+    cy.pickAirport('destination', 'KMIA')
     cy.get('#hangar').click()
     submit()
     cy.contains('h2', 'Add New Flight').should('not.exist')
@@ -163,15 +163,15 @@ describe('Add Flight sheet persists real rows', () => {
     pickAircraftType('b738', /B738/)
     cy.get('#departureTime').type('16:45') // QT is preselected; typing a departure unchecks it
     cy.get('#quickTurn').should('have.attr', 'aria-checked', 'false')
-    cy.get('#origin').type('KPBI')
-    cy.get('#destination').type('KTEB')
+    cy.pickAirport('origin', 'KLAX')
+    cy.pickAirport('destination', 'KTEB')
     submit()
     cy.contains('h2', 'Add New Flight').should('not.exist')
 
     cy.task('getFlightByTail', tailDep).then((flight: FlightRow) => {
       expect(flight.scheduled_arrival_time).to.eq(null)
       expect(flight.is_quick_turn).to.eq(false)
-      expect(flight.origin).to.eq('KPBI')
+      expect(flight.origin).to.eq('KLAX')
       // (date read from the sheet)
         expect(new Date(flight.scheduled_departure_time).toISOString()).to.eq(localInstant(date, '16:45'))
     })
@@ -264,7 +264,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('#date').should('have.value', date)
     cy.get('#arrivalTime').should('have.value', '23:30')
     cy.get('#departureTime').should('have.value', '00:30')
-    cy.get('#origin').clear().type('KTEB')
+    cy.pickAirport('origin', 'KTEB')
     cy.contains('button', 'Update Flight').click()
     cy.contains('Edit Flight').should('not.exist')
     cy.task('getFlightByTail', tailLate).should((flight: FlightRow) => {
@@ -314,7 +314,7 @@ describe('Add Flight sheet persists real rows', () => {
     openAddFlightSheet()
     typeTail(tailFail)
     pickAircraftType('b738', /B738/)
-    cy.get('#origin').type('KFAIL')
+    cy.typeAirport('origin', 'KFAIL')
     cy.get('#arrivalTime').type('09:15')
     submit()
 
@@ -322,7 +322,7 @@ describe('Add Flight sheet persists real rows', () => {
       .should('contain.text', 'forced cypress failure')
     cy.contains('h2', 'Add New Flight').should('be.visible')
     cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).should('have.value', tailFail)
-    cy.get('#origin').should('have.value', 'KFAIL')
+    cy.get('#origin').should('contain.text', 'KFAIL')
     cy.task('getFlightByTail', tailFail).should('eq', null)
 
     // Recovers: same sheet, same input, now saves and says so.

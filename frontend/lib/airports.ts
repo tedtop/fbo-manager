@@ -130,6 +130,29 @@ export function rankAirports<T extends AirportLike>(
   return scored.map((s) => s.airport as T)
 }
 
+/**
+ * Stored code -> airport, for labelling a list of flights from one query. A code that matches several
+ * airports (a legacy IATA/FAA value such as GPI) resolves to the best ranked one; a code with no airport
+ * (free text, unknown strip) is left out so the caller shows it as stored.
+ */
+export function indexAirportsByCode<T extends AirportLike>(
+  airports: T[],
+  codes: string[],
+  options: { homeCountry?: string } = {}
+): Map<string, T> {
+  const index = new Map<string, T>()
+  for (const code of new Set(codes.map(normalizeAirportQuery))) {
+    if (!code) continue
+    const match = rankAirports(
+      airports.filter((a) => isExactCodeMatch(a, code)),
+      code,
+      options
+    )[0]
+    if (match) index.set(code, match)
+  }
+  return index
+}
+
 /** True when the query is a code that exactly matches more than one airport. */
 export function isAmbiguous(airports: AirportCodes[], query: string): boolean {
   return airports.filter((a) => isExactCodeMatch(a, query)).length > 1

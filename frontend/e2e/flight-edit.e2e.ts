@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createE2EDbClient, waitForDbRow } from './support/db'
 import { uniqueValue } from './support/unique'
+import { pickAirport, typeAirport } from './support/airport'
 
 const db = createE2EDbClient()
 
@@ -110,11 +111,11 @@ test.describe('Flight edit, status change, delete', () => {
     await openEditSheet(page, tailEdit)
 
     // The form is pre-populated from the seeded row.
-    await expect(page.locator('#origin')).toHaveValue('KAAA')
-    await expect(page.locator('#destination')).toHaveValue('KBBB')
+    await expect(page.locator('#origin')).toContainText('AAA')
+    await expect(page.locator('#destination')).toContainText('BBB')
 
-    await page.locator('#origin').fill('KTEB')
-    await page.locator('#destination').fill('KASE')
+    await pickAirport(page, 'origin', 'KTEB')
+    await pickAirport(page, 'destination', 'KASE')
     await page.locator('#contactName').fill('Edited Contact')
     await page.locator('#notes').fill('edited by e2e')
     await page.getByRole('checkbox', { name: 'Hangar' }).click()
@@ -138,7 +139,7 @@ test.describe('Flight edit, status change, delete', () => {
     expect(after.deleted_at).toBeNull()
     expect(after.modified_at).not.toBe(before.modified_at)
 
-    await expect(card(page, tailEdit).getByText('KASE')).toBeVisible({ timeout: 15_000 })
+    await expect(card(page, tailEdit).getByText('ASE', { exact: true })).toBeVisible({ timeout: 15_000 })
 
     // B44 fixed: the card shows the saved notes and services straight away, no reload needed.
     await expect(card(page, tailEdit).getByText('edited by e2e')).toBeVisible({ timeout: 15_000 })
@@ -164,7 +165,7 @@ test.describe('Flight edit, status change, delete', () => {
     await expect(page.getByText(tailFuel).first()).toBeVisible({ timeout: 15_000 })
     await openEditSheet(page, tailFuel)
     await expect(page.getByLabel('Fuel order notes')).toHaveValue('Jet A 500 gal, top off')
-    await page.locator('#origin').fill('KTEB')
+    await pickAirport(page, 'origin', 'KTEB')
     await page.getByRole('button', { name: 'Update Flight' }).click()
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
     const after = await waitForDbRow(async () => {
@@ -261,7 +262,7 @@ test.describe('Flight edit, status change, delete', () => {
     const before = await readFlight(tailConflict)
     await openBoard(page, tailConflict)
     await openEditSheet(page, tailConflict)
-    await expect(page.locator('#origin')).toHaveValue('KAAA')
+    await expect(page.locator('#origin')).toContainText('AAA')
 
     // Someone else saves the same row while our dialog is open (modified_at trigger bumps it).
     const { error } = await db.from('flight').update({ notes: 'changed by someone else' }).eq('id', ids[tailConflict])
@@ -269,7 +270,7 @@ test.describe('Flight edit, status change, delete', () => {
     const bumped = await readFlight(tailConflict)
     expect(bumped.modified_at).not.toBe(before.modified_at)
 
-    await page.locator('#origin').fill('KJFK')
+    await pickAirport(page, 'origin', 'KJFK')
     await page.getByRole('button', { name: 'Update Flight' }).click()
 
     const conflictDialog = page.getByRole('alertdialog')
@@ -286,7 +287,7 @@ test.describe('Flight edit, status change, delete', () => {
     // Reload their changes: form repopulates from the DB, our edit is discarded, nothing is written.
     await conflictDialog.getByRole('button', { name: 'Reload their changes' }).click()
     await expect(conflictDialog).toBeHidden()
-    await expect(page.locator('#origin')).toHaveValue('KAAA')
+    await expect(page.locator('#origin')).toContainText('AAA')
     await expect(page.locator('#notes')).toHaveValue('changed by someone else')
     expect((await readFlight(tailConflict)).modified_at).toBe(bumped.modified_at)
   })
@@ -300,14 +301,14 @@ test.describe('Flight edit, status change, delete', () => {
       throw new Error(`Unexpected alert: ${d.message()}`)
     })
 
-    await page.locator('#origin').fill('KFAIL')
+    await typeAirport(page, 'origin', 'KFAIL')
     await page.getByRole('button', { name: 'Update Flight' }).click()
 
     const toast = toastLocator(page, "Couldn't update flight")
     await expect(toast).toBeVisible({ timeout: 10_000 })
     await expect(toast).toContainText('forced e2e failure')
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeVisible()
-    await expect(page.locator('#origin')).toHaveValue('KFAIL')
+    await expect(page.locator('#origin')).toContainText('KFAIL')
     const after = await readFlight(tailEditFail)
     expect(after.origin).toBe('KAAA')
     expect(after.modified_at).toBe(before.modified_at)

@@ -3,6 +3,7 @@ import {
   type AirportLike,
   displayCode,
   formatAirportOption,
+  indexAirportsByCode,
   isAmbiguous,
   normalizeAirportQuery,
   rankAirports,
@@ -206,5 +207,29 @@ describe('formatAirportOption', () => {
       'KMSO · MSO  Missoula Montana, Missoula MT'
     )
     expect(formatAirportOption(SKGP)).toBe('SKGP · GPI  Guapi, Guapi CO')
+  })
+})
+
+describe('indexAirportsByCode', () => {
+  const rows = [KMSO, KGPI, SKGP]
+
+  it('maps each stored code to its airport', () => {
+    const index = indexAirportsByCode(rows, ['KGPI', 'kmso'])
+    expect(index.get('KGPI')).toBe(KGPI)
+    expect(index.get('KMSO')).toBe(KMSO)
+  })
+
+  it('resolves an ambiguous legacy code to the home-country airport', () => {
+    expect(indexAirportsByCode(rows, ['GPI'], { homeCountry: 'US' }).get('GPI')).toBe(
+      KGPI
+    )
+    expect(indexAirportsByCode(rows, ['GPI'], { homeCountry: 'CO' }).get('GPI')).toBe(
+      SKGP
+    )
+  })
+
+  it('leaves out free text and blanks so the caller shows them as stored', () => {
+    const index = indexAirportsByCode(rows, ['ZZ9X', '', '  '])
+    expect(index.size).toBe(0)
   })
 })

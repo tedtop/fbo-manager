@@ -141,20 +141,21 @@ describe('apiFlightToComponentFlight', () => {
     })
   })
 
-  describe('origin fallback', () => {
+  describe('origin and destination', () => {
     it('uses origin when set', () => {
       const f = apiFlightToComponentFlight({ ...baseRow, origin: 'KSFO', destination: 'KLAX' })
       expect(f.origin).toBe('KSFO')
     })
-    it('falls back to destination when arrival exists and origin is empty', () => {
+    it('does not borrow the destination as the origin of an arrival (its destination is the home airport)', () => {
       const f = apiFlightToComponentFlight({
         ...baseRow,
         scheduled_arrival_time: '2026-03-10T10:00:00Z',
-        destination: 'KLAX',
+        destination: 'KMSO',
       })
-      expect(f.origin).toBe('KLAX')
+      expect(f.origin).toBeUndefined()
+      expect(f.destination).toBe('KMSO')
     })
-    it('does not fall back without an arrival time', () => {
+    it('leaves origin undefined when it is empty', () => {
       expect(apiFlightToComponentFlight({ ...baseRow, destination: 'KLAX' }).origin).toBeUndefined()
     })
   })

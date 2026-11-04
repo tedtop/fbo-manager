@@ -30,6 +30,34 @@ export async function findAirportsByCode(
 }
 
 /**
+ * Every airport matching any of `codes` (ICAO, IATA, FAA identifier or ident) in one query, for labelling
+ * a whole list of flights. Callers pick per code with lib/airports indexAirportsByCode.
+ */
+export async function findAirportsByCodes(
+  db: SupabaseClient<Database>,
+  codes: string[]
+): Promise<AirportRow[]> {
+  const list = [
+    ...new Set(
+      codes
+        .map((c) => normalizeAirportQuery(c).replace(unsafe, ''))
+        .filter(Boolean)
+    )
+  ]
+  if (list.length === 0) return []
+  const inList = `(${list.join(',')})`
+  const { data, error } = await db
+    .from('airport')
+    .select('*')
+    .or(
+      `icao.in.${inList},iata.in.${inList},faa.in.${inList},ident.in.${inList}`
+    )
+    .limit(list.length * 20)
+  if (error) throw error
+  return (data ?? []) as AirportRow[]
+}
+
+/**
  * The best exact code match, or null. Stored values are ICAO codes, which are unambiguous; for a typed
  * IATA/FAA code that matches several airports use findAirportsByCode and let the person choose.
  */

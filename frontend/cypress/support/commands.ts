@@ -7,6 +7,10 @@ declare global {
     interface Chainable {
       /** Logs in through the real login form (real Supabase Auth cookies), cached per role via cy.session. */
       login(role?: keyof typeof LOGIN_BUTTON): Chainable<void>
+      /** Origin / Destination are airport comboboxes: pick a real airport by its code (KTEB · TEB ...). */
+      pickAirport(field: 'origin' | 'destination', code: string): Chainable<void>
+      /** Use text that is not an airport (a strip, a typo) as typed. */
+      typeAirport(field: 'origin' | 'destination', text: string): Chainable<void>
     }
   }
 }
@@ -26,6 +30,20 @@ Cypress.Commands.add('login', (role: keyof typeof LOGIN_BUTTON = 'admin') => {
       },
     }
   )
+})
+
+Cypress.Commands.add('pickAirport', (field, code) => {
+  cy.get(`#${field}`).click()
+  cy.get('input[placeholder^="Code or name"]').type(code)
+  cy.contains('[cmdk-item]', new RegExp(`^${code}\\b`)).click()
+  cy.get('input[placeholder^="Code or name"]').should('not.exist') // closed: the next pick finds one input
+})
+
+Cypress.Commands.add('typeAirport', (field, text) => {
+  cy.get(`#${field}`).click()
+  cy.get('input[placeholder^="Code or name"]').type(text)
+  cy.contains('[cmdk-item]', `Use "${text}" as typed`).click()
+  cy.get('input[placeholder^="Code or name"]').should('not.exist')
 })
 
 export {}

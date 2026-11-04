@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createE2EDbClient, waitForDbRow } from './support/db'
 import { uniqueValue } from './support/unique'
+import { pickAirport, typeAirport } from './support/airport'
 
 const db = createE2EDbClient()
 
@@ -77,8 +78,8 @@ test.describe('Add Flight sheet persists real rows', () => {
     await page.getByPlaceholder('e.g., N12345').fill(tailNew)
     await pickAircraftType(page, 'glf6', /G650/)
     await page.locator('#arrivalTime').fill('14:30')
-    await page.locator('#origin').fill('KTEB')
-    await page.locator('#destination').fill('KASE')
+    await pickAirport(page, 'origin', 'KTEB')
+    await pickAirport(page, 'destination', 'KASE')
     await page.getByRole('checkbox', { name: 'Fuel' }).click()
     await page.getByRole('checkbox', { name: 'Catering' }).click()
     await submitAndExpectClosed(page)
@@ -117,8 +118,8 @@ test.describe('Add Flight sheet persists real rows', () => {
     await expect(page.locator('#departureTime')).toHaveValue('10:00') // QT: arrival + 1 h
     await page.locator('#departureTime').fill('11:20')
     await expect(page.getByRole('checkbox', { name: 'QT' })).not.toBeChecked() // editing departure unchecks QT
-    await page.locator('#origin').fill('KBOS')
-    await page.locator('#destination').fill('KMIA')
+    await pickAirport(page, 'origin', 'KBOS')
+    await pickAirport(page, 'destination', 'KMIA')
     await page.getByRole('checkbox', { name: 'Hangar' }).click()
     await submitAndExpectClosed(page)
 
@@ -234,7 +235,7 @@ test.describe('Add Flight sheet persists real rows', () => {
 
     await page.getByPlaceholder('e.g., N12345').fill(tailFail)
     await pickAircraftType(page, 'b738', /B738/)
-    await page.locator('#origin').fill('KFAIL')
+    await typeAirport(page, 'origin', 'KFAIL')
     await page.locator('#arrivalTime').fill('09:15')
     await page.getByRole('button', { name: 'Add Flight', exact: true }).last().click()
 
@@ -243,7 +244,7 @@ test.describe('Add Flight sheet persists real rows', () => {
     await expect(toast).toContainText('forced e2e failure')
     await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeVisible()
     await expect(page.getByPlaceholder('e.g., N12345')).toHaveValue(tailFail)
-    await expect(page.locator('#origin')).toHaveValue('KFAIL')
+    await expect(page.locator('#origin')).toContainText('KFAIL')
     const { data } = await db.from('flight').select('id').eq('tail_number', tailFail)
     expect(data ?? []).toHaveLength(0)
 
