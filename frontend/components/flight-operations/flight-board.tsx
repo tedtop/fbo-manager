@@ -2,12 +2,16 @@
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
 import {
   assignLinkColors,
+  clearActiveFilters,
+  emptyStateMessage,
   filterFlights,
   linkedFlightIds,
   partitionFlights
 } from './board-logic'
+import { FlightEmptyState } from './flight-empty-state'
 import { FlightList, type FlightDeletePhase, ZAP_MS } from './flight-list'
 import type { FlightFilters as FilterType, Flight } from './types'
 
@@ -26,7 +30,11 @@ interface FlightBoardProps {
   onDeleteExited?: (id: string) => void
   onOrderFuel?: (flight: Flight) => void
   filters: FilterType
+  // Lets the empty state offer "Clear filters".
+  onFiltersChange?: (filters: FilterType) => void
   loading?: boolean
+  // The flights shown are from the previous window/filter while the new one loads (dimmed slightly).
+  stale?: boolean
 }
 
 // Minimum time a card spends fading into its skeleton, so the fade reads even when the save is instant.
@@ -44,7 +52,9 @@ export function FlightBoard({
   onDeleteExited,
   onOrderFuel,
   filters,
-  loading
+  onFiltersChange,
+  loading,
+  stale
 }: FlightBoardProps) {
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null)
   const [deletePhases, setDeletePhases] = useState<
@@ -81,6 +91,47 @@ export function FlightBoard({
 
   const { arrivals, departures } = partitionFlights(filteredFlights)
 
+  // Empty states: with only the date range applied, would the list hold flights? If so the filters
+  // emptied it and the message names them; if not, the day/week itself is empty.
+  const base = useMemo(
+    () => partitionFlights(filterFlights(flights, clearActiveFilters(filters))),
+    [filters, flights]
+  )
+  const clearFilters = onFiltersChange
+    ? () => onFiltersChange(clearActiveFilters(filters))
+    : undefined
+  const columnEmpty = (noun: 'arrivals' | 'departures', baseCount: number) => {
+    const { title, filtered } = emptyStateMessage(noun, filters, baseCount)
+    return (
+      <FlightEmptyState
+        title={title}
+        onClearFilters={filtered ? clearFilters : undefined}
+      />
+    )
+  }
+  // Split view with nothing in either column: one overall message (and one Clear filters action) above
+  // two short column notes.
+  const boardEmpty =
+    mode === 'split' &&
+    !loading &&
+    arrivals.length === 0 &&
+    departures.length === 0
+  const arrivalsEmpty = boardEmpty ? (
+    <FlightEmptyState title="No arrivals" className="py-6" />
+  ) : (
+    columnEmpty('arrivals', base.arrivals.length)
+  )
+  const departuresEmpty = boardEmpty ? (
+    <FlightEmptyState title="No departures" className="py-6" />
+  ) : (
+    columnEmpty('departures', base.departures.length)
+  )
+  const overall = emptyStateMessage(
+    'flights',
+    filters,
+    new Set([...base.arrivals, ...base.departures].map((f) => f.id)).size
+  )
+
   // Flights listed in both columns are one record: link their cards (shared color, hover together).
   const linkedIds = useMemo(
     () => linkedFlightIds(arrivals, departures),
@@ -89,7 +140,17 @@ export function FlightBoard({
   const flightLinkColors = useMemo(() => assignLinkColors(linkedIds), [linkedIds])
 
   return (
-    <div className="space-y-6">
+    <div
+      className={cn('space-y-6 transition-opacity', stale && 'opacity-60')}
+      aria-busy={stale || loading || undefined}
+    >
+      {boardEmpty && (
+        <FlightEmptyState
+          title={overall.title}
+          onClearFilters={overall.filtered ? clearFilters : undefined}
+          className="rounded-lg border border-dashed border-border py-8"
+        />
+      )}
       {mode === 'split' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -112,6 +173,7 @@ export function FlightBoard({
               onDeleteFlight={handleDelete}
               deletePhases={deletePhases}
               loading={loading}
+              empty={arrivalsEmpty}
               onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedIds}
               flightLinkColors={flightLinkColors}
@@ -140,6 +202,7 @@ export function FlightBoard({
               onDeleteFlight={handleDelete}
               deletePhases={deletePhases}
               loading={loading}
+              empty={departuresEmpty}
               onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedIds}
               flightLinkColors={flightLinkColors}
@@ -169,6 +232,7 @@ export function FlightBoard({
             onDeleteFlight={handleDelete}
             deletePhases={deletePhases}
             loading={loading}
+            empty={arrivalsEmpty}
             onOrderFuel={onOrderFuel}
             linkedFlightIds={linkedIds}
             flightLinkColors={flightLinkColors}
@@ -197,6 +261,7 @@ export function FlightBoard({
             onDeleteFlight={handleDelete}
             deletePhases={deletePhases}
             loading={loading}
+            empty={departuresEmpty}
             onOrderFuel={onOrderFuel}
             linkedFlightIds={linkedIds}
             flightLinkColors={flightLinkColors}

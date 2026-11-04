@@ -105,9 +105,24 @@ export function partitionFlights(flights: Flight[]): {
   arrivals: Flight[]
   departures: Flight[]
 } {
-  const arrivals = flights.filter((f) => !!f.arrivalTime)
-  const departures = flights.filter((f) => !!f.departureTime)
+  const arrivals = flights
+    .filter((f) => !!f.arrivalTime)
+    .sort((a, b) => compareScheduled(a.arrivalTime, b.arrivalTime))
+  const departures = flights
+    .filter((f) => !!f.departureTime)
+    .sort((a, b) => compareScheduled(a.departureTime, b.departureTime))
   return { arrivals, departures }
+}
+
+// Each column runs soonest first by its own scheduled time (a TBM leaving at 07:30 sits above a Citation
+// leaving at 12:00). Array.sort is stable, so equal times keep the order the flights came in.
+function compareScheduled(a?: string, b?: string): number {
+  return new Date(a ?? 0).getTime() - new Date(b ?? 0).getTime()
+}
+
+// Flightradar24 aircraft page for a registration ("N868CB" -> .../data/aircraft/n868cb).
+export function flightradarUrl(tailNumber: string): string {
+  return `https://www.flightradar24.com/data/aircraft/${encodeURIComponent(tailNumber.trim().toLowerCase())}`
 }
 
 // A flight listed in both columns is ONE record (same id), so its two cards are "linked": they share a
@@ -162,4 +177,56 @@ export function weekDateParams(
 ): { startDate: string; endDate: string } {
   const startDate = formatLocalDate(weekRange(date, weekOffset).start)
   return { startDate, endDate: addLocalDays(startDate, 6) }
+}
+
+// B18: empty-state copy. "Active filters" are the toolbar's search, status and services; the date range is
+// not one (it always has a value), so it only shapes the wording of a truly empty day/week.
+const titleCase = (value: string) =>
+  value
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+
+// Human-readable parts for each active filter, e.g. ["status = Arrived", "search 'N12'"].
+export function activeFilterParts(filters: FlightFilters): string[] {
+  const parts: string[] = []
+  if (filters.status !== 'all') parts.push(`status = ${titleCase(filters.status)}`)
+  if (filters.search) parts.push(`search '${filters.search}'`)
+  if (filters.services.length > 0) {
+    parts.push(`services = ${filters.services.map(titleCase).join(', ')}`)
+  }
+  return parts
+}
+
+export function hasActiveFilters(filters: FlightFilters): boolean {
+  return activeFilterParts(filters).length > 0
+}
+
+// Resets search, status and services but keeps the chosen date range.
+export function clearActiveFilters(filters: FlightFilters): FlightFilters {
+  return { ...filters, search: '', status: 'all', services: [] }
+}
+
+const RANGE_PHRASE: Record<FlightFilters['dateRange'], string> = {
+  today: 'today',
+  tomorrow: 'tomorrow',
+  week: 'this week',
+  all: 'found'
+}
+
+// Copy for an empty list. `baseCount` is how many flights the list would hold with only the date range
+// applied: when that is above zero the filters are what emptied it ("No arrivals match: ..." plus a Clear
+// filters action); otherwise the day/week is genuinely empty ("No arrivals today").
+export function emptyStateMessage(
+  noun: 'arrivals' | 'departures' | 'flights',
+  filters: FlightFilters,
+  baseCount: number
+): { title: string; filtered: boolean } {
+  if (baseCount > 0 && hasActiveFilters(filters)) {
+    return {
+      title: `No ${noun} match: ${activeFilterParts(filters).join(', ')}`,
+      filtered: true
+    }
+  }
+  return { title: `No ${noun} ${RANGE_PHRASE[filters.dateRange]}`, filtered: false }
 }

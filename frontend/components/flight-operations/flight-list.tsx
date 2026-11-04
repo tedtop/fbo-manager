@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
 import type { LinkColor } from './board-logic'
 import { FlightCard } from './flight-card'
 import { FlightCardSkeleton } from './flight-card-skeleton'
@@ -18,6 +19,8 @@ interface FlightListProps {
   type: 'arrival' | 'departure'
   theme: 'dark' | 'light'
   loading?: boolean
+  // Shown instead of the cards when the list is empty (the board explains active filters here).
+  empty?: ReactNode
   onEditFlight: (
     flight: Flight,
     expectedModifiedAt?: string
@@ -36,6 +39,7 @@ export function FlightList({
   type,
   theme,
   loading,
+  empty,
   onEditFlight,
   onDeleteFlight,
   deletePhases,
@@ -63,9 +67,11 @@ export function FlightList({
 
   if (flights.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        No {label} found
-      </div>
+      empty ?? (
+        <div className="text-center py-12 text-muted-foreground">
+          No {label} found
+        </div>
+      )
     )
   }
 

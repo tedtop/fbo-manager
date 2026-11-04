@@ -1,13 +1,18 @@
 import { withTz } from '@/tests/support/with-tz'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
+  activeFilterParts,
   assignLinkColors,
+  clearActiveFilters,
   dateRangeBounds,
+  emptyStateMessage,
   filterFlights,
+  hasActiveFilters,
   LINK_COLORS,
   linkedFlightIds,
   listFetchWindow,
   partitionFlights,
+  flightradarUrl,
   weekDateParams,
   weekRange,
 } from '../board-logic'
@@ -86,6 +91,22 @@ describe('partitionFlights', () => {
     expect(departures.map((f) => f.id)).toEqual(['stay'])
   })
 
+  it('orders each column soonest first by its own scheduled time', () => {
+    const early = makeFlight({
+      id: 'early',
+      arrivalTime: '2026-03-12T08:00:00Z',
+      departureTime: '2026-03-12T09:00:00Z',
+    })
+    const late = makeFlight({
+      id: 'late',
+      arrivalTime: '2026-03-12T07:00:00Z',
+      departureTime: '2026-03-12T15:00:00Z',
+    })
+    const { arrivals, departures } = partitionFlights([late, early])
+    expect(arrivals.map((f) => f.id)).toEqual(['late', 'early'])
+    expect(departures.map((f) => f.id)).toEqual(['early', 'late'])
+  })
+
   it('classifies by the scheduled times, not the derived type label', () => {
     const { arrivals, departures } = partitionFlights([
       makeFlight({ id: 'x', type: 'quick_turn', departureTime: undefined }),
@@ -98,10 +119,12 @@ describe('partitionFlights', () => {
     expect(partitionFlights([])).toEqual({ arrivals: [], departures: [] })
   })
 
-  it('preserves input order', () => {
-    const { arrivals, departures } = partitionFlights(flights)
-    expect(arrivals.map((f) => f.id)).toEqual(['qt', 'stay', 'arr'])
-    expect(departures.map((f) => f.id)).toEqual(['qt', 'stay', 'dep'])
+  it('keeps input order for equal times', () => {
+    const a = makeFlight({ id: 'a' })
+    const b = makeFlight({ id: 'b' })
+    const { arrivals, departures } = partitionFlights([b, a])
+    expect(arrivals.map((f) => f.id)).toEqual(['b', 'a'])
+    expect(departures.map((f) => f.id)).toEqual(['b', 'a'])
   })
 })
 
@@ -645,5 +668,69 @@ describe('assignLinkColors', () => {
       expect(c.tint).toMatch(/^bg-\w+-500\/20$/)
       expect(c.text).toMatch(/^text-\w+-500$/)
     }
+  })
+})
+
+describe('empty state (B18)', () => {
+  const today: FlightFilters = { search: '', status: 'all', dateRange: 'today', services: [] }
+
+  it('lists each active filter, status first, then search, then services', () => {
+    expect(activeFilterParts(today)).toEqual([])
+    expect(
+      activeFilterParts({ ...today, status: 'arrived', search: 'N12' })
+    ).toEqual(['status = Arrived', "search 'N12'"])
+    expect(
+      activeFilterParts({ ...today, services: ['fuel', 'ground_transport'] })
+    ).toEqual(['services = Fuel, Ground Transport'])
+  })
+
+  it('does not count the date range as a filter', () => {
+    expect(hasActiveFilters({ ...today, dateRange: 'week' })).toBe(false)
+    expect(hasActiveFilters({ ...today, search: 'x' })).toBe(true)
+  })
+
+  it('clearActiveFilters resets search/status/services but keeps the date range', () => {
+    expect(
+      clearActiveFilters({
+        search: 'N12',
+        status: 'arrived',
+        dateRange: 'tomorrow',
+        services: ['fuel'],
+      })
+    ).toEqual({ search: '', status: 'all', dateRange: 'tomorrow', services: [] })
+  })
+
+  it('explains the filters when they emptied a list that has flights for the day', () => {
+    expect(
+      emptyStateMessage('arrivals', { ...today, status: 'arrived', search: 'N12' }, 3)
+    ).toEqual({
+      title: "No arrivals match: status = Arrived, search 'N12'",
+      filtered: true,
+    })
+  })
+
+  it('reports a truly empty day or week when the date range alone leaves nothing', () => {
+    expect(emptyStateMessage('departures', today, 0)).toEqual({
+      title: 'No departures today',
+      filtered: false,
+    })
+    // Filters are active but the day is empty anyway: say so rather than blaming the filters.
+    expect(
+      emptyStateMessage('arrivals', { ...today, search: 'N12', dateRange: 'week' }, 0)
+    ).toEqual({ title: 'No arrivals this week', filtered: false })
+    expect(emptyStateMessage('flights', { ...today, dateRange: 'tomorrow' }, 0).title).toBe(
+      'No flights tomorrow'
+    )
+    expect(emptyStateMessage('flights', { ...today, dateRange: 'all' }, 0).title).toBe(
+      'No flights found'
+    )
+  })
+})
+
+describe('flightradarUrl', () => {
+  it('links the lower-cased registration to its Flightradar24 aircraft page', () => {
+    expect(flightradarUrl(' N868CB ')).toBe(
+      'https://www.flightradar24.com/data/aircraft/n868cb'
+    )
   })
 })
