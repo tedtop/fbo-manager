@@ -59,7 +59,7 @@ and read through `hooks/use-permissions.ts`.
   change that touches a column, or the local test DB (which mirrors it via
   `frontend/supabase/migrations/`) silently drifts from reality.
 - Row-level edit concurrency (presence banner + optimistic compare-and-swap on
-  `modified_at`) is documented in `docs/edit-concurrency.md`. As of this writing it's
+  `updated_at`) is documented in `docs/edit-concurrency.md`. As of this writing it's
   only wired up on a couple of modules — check that doc before assuming it's universal.
 - Overlay/edit UI conventions (Sheet vs Dialog vs AlertDialog) are documented in
   `docs/ui-conventions.md`.

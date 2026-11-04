@@ -41,12 +41,12 @@ export function useEquipment() {
     mutationFn: ({
       id,
       updates,
-      expectedModifiedAt
+      expectedUpdatedAt
     }: {
       id: number
       updates: EquipmentUpdate
-      expectedModifiedAt?: string
-    }) => updateEquipment(db, id, updates, expectedModifiedAt),
+      expectedUpdatedAt?: string
+    }) => updateEquipment(db, id, updates, expectedUpdatedAt),
     onMutate: async ({ id, updates }) => {
       await qc.cancelQueries({ queryKey: equipmentKeys.lists() })
       const prev = qc.getQueryData<EquipmentDomain[]>(equipmentKeys.lists())
@@ -76,8 +76,8 @@ export function useEquipment() {
     updateEquipment: (
       id: number,
       updates: EquipmentUpdate,
-      expectedModifiedAt?: string
-    ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
+      expectedUpdatedAt?: string
+    ) => updateMutation.mutateAsync({ id, updates, expectedUpdatedAt }),
     deleteEquipment: (id: number) => deleteMutation.mutateAsync(id),
     refetch: query.refetch
   }

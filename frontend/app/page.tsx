@@ -121,10 +121,10 @@ export default function FlightOperationsPage() {
 
   const handleEditFlight = async (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => {
     try {
-      await updateFlight(flight.id, flight, expectedModifiedAt)
+      await updateFlight(flight.id, flight, expectedUpdatedAt)
       toast({ title: 'Flight updated' })
     } catch (err) {
       // Let the edit-concurrency conflict dialog in FlightFormDialog handle this (its own UI, no toast).
@@ -143,10 +143,10 @@ export default function FlightOperationsPage() {
   const handleSetHidden = async (
     flight: Flight,
     hidden: boolean,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => {
     try {
-      await setFlightHidden(flight.id, hidden, expectedModifiedAt)
+      await setFlightHidden(flight.id, hidden, expectedUpdatedAt)
       toast({ title: hidden ? 'Flight hidden' : 'Flight unhidden' })
     } catch (err) {
       if (err instanceof ConcurrencyConflictError) throw err
@@ -246,11 +246,11 @@ export default function FlightOperationsPage() {
           flights={flights}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
-          onHideFlight={(flight, expectedModifiedAt) =>
-            handleSetHidden(flight, true, expectedModifiedAt)
+          onHideFlight={(flight, expectedUpdatedAt) =>
+            handleSetHidden(flight, true, expectedUpdatedAt)
           }
-          onUnhideFlight={(flight, expectedModifiedAt) =>
-            handleSetHidden(flight, false, expectedModifiedAt)
+          onUnhideFlight={(flight, expectedUpdatedAt) =>
+            handleSetHidden(flight, false, expectedUpdatedAt)
           }
           onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}

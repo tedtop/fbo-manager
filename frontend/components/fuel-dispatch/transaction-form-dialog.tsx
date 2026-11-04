@@ -55,7 +55,7 @@ interface TransactionFormDialogProps {
   transaction?: TransactionWithRelations | null
   onSubmit: (
     data: TransactionInsert,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => Promise<void>
   defaultFlightId?: number | null
   defaultTailNumber?: string
@@ -143,7 +143,7 @@ export function TransactionFormDialog({
   const editSession = useRecordEditSession<TransactionRow>({
     table: 'fuel_transaction',
     recordId: transaction?.id ?? null,
-    modifiedAt: transaction?.modified_at ?? null,
+    updatedAt: transaction?.updated_at ?? null,
     enabled: open && !!transaction,
     onReload: (freshRow) => {
       setForm({
@@ -190,8 +190,8 @@ export function TransactionFormDialog({
         charge_flags: undefined
       }
       if (transaction) {
-        const outcome = await editSession.save((expectedModifiedAt) =>
-          onSubmit(payload, expectedModifiedAt)
+        const outcome = await editSession.save((expectedUpdatedAt) =>
+          onSubmit(payload, expectedUpdatedAt)
         )
         if (outcome.status === 'conflict') return
       } else {

@@ -62,10 +62,10 @@ export default function EquipmentPage() {
 
   async function handleSubmit(
     data: EquipmentInsert,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) {
     if (editingEquipment) {
-      await updateEquipment(editingEquipment.id, data, expectedModifiedAt)
+      await updateEquipment(editingEquipment.id, data, expectedUpdatedAt)
     } else {
       await createEquipment(data)
     }

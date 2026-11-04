@@ -166,7 +166,7 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
     cy.contains('Edit Flight').should('not.exist')
     cy.task('getFlightServiceKeys', tailNoConflict).should('deep.eq', ['gpu', 'hangar'])
 
-    // No reload: the card must carry the fresh modified_at from the post-RPC re-read.
+    // No reload: the card must carry the fresh updated_at from the post-RPC re-read.
     openEditSheet(tailNoConflict)
     cy.get('#notes').clear().type('second edit after services')
     update()

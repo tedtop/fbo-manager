@@ -82,7 +82,7 @@ interface FlightFormDialogProps {
   onOpenChange: (open: boolean) => void
   onSubmit: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   initialData?: Flight
   theme: 'dark' | 'light'
@@ -243,7 +243,7 @@ export function FlightFormDialog({
   const editSession = useRecordEditSession<FlightRow>({
     table: 'flight',
     recordId: initialData?.id ?? null,
-    modifiedAt: initialData?.updatedAt ?? null,
+    updatedAt: initialData?.updatedAt ?? null,
     enabled: open && !!initialData,
     onReload: (freshRow) => {
       const reloaded = apiFlightToComponentFlight({
@@ -267,7 +267,7 @@ export function FlightFormDialog({
         notes: freshRow.notes,
         created_by_source: freshRow.created_by_source,
         created_at: freshRow.created_at,
-        modified_at: freshRow.modified_at
+        updated_at: freshRow.updated_at
       })
       // The raw row has no joined aircraft type (only the dedicated FLIGHT_SELECT query
       // does); keep whatever was already shown rather than blanking it out.
@@ -438,8 +438,8 @@ export function FlightFormDialog({
     setSaving(true)
     try {
       if (initialData) {
-        const outcome = await editSession.save(async (expectedModifiedAt) => {
-          await onSubmit(flight, expectedModifiedAt)
+        const outcome = await editSession.save(async (expectedUpdatedAt) => {
+          await onSubmit(flight, expectedUpdatedAt)
         })
         if (outcome.status === 'conflict') return
       } else {

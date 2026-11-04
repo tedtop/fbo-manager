@@ -1,3 +1,5 @@
+-- OBSOLETE (2026-11-04): modified_at was renamed to updated_at by migration 20261104001200 and set_modified_at()
+-- no longer exists; equipment now has trg_equipment_set_updated_at. Kept only as a record of the original fix.
 -- Edit-Concurrency: modified_at trigger for equipment
 -- Run this in the Supabase SQL Editor (supabase.com/dashboard -> SQL Editor).
 --

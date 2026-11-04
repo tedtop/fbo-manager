@@ -14,7 +14,7 @@ create table if not exists department (
   settings jsonb not null default '{"allow_self_edit": true, "edit_roles": ["lead", "supervisor"]}'::jsonb,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  modified_at timestamptz not null default now()
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists department_member (
@@ -27,7 +27,7 @@ create table if not exists department_member (
   display_order integer not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  modified_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique (department_id, user_id)
 );
 
@@ -45,7 +45,7 @@ create table if not exists schedule_shift (
   created_by integer references users(id) on delete set null,
   updated_by integer references users(id) on delete set null,
   created_at timestamptz not null default now(),
-  modified_at timestamptz not null default now()
+  updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_schedule_shift_dept_date on schedule_shift (department_id, shift_date);

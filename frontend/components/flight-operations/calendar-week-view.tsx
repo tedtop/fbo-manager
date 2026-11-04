@@ -33,7 +33,7 @@ interface CalendarBlock {
 interface CalendarWeekViewProps {
   theme: 'dark' | 'light'
   flights: Flight[]
-  onEditFlight: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
+  onEditFlight: (flight: Flight, expectedUpdatedAt?: string) => void | Promise<void>
   onDeleteFlight: (id: string) => void
   filters: FilterType
   weekOffset: number

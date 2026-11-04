@@ -47,7 +47,7 @@ export async function updateShift(
 ): Promise<ScheduleShiftRow> {
   const { data, error } = await db
     .from('schedule_shift')
-    .update({ ...updates, modified_at: new Date().toISOString() })
+    .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()

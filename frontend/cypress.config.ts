@@ -46,7 +46,7 @@ export default defineConfig({
           return data
         },
 
-        /** Simulates "someone else saved this flight" (bumps modified_at via the DB trigger). */
+        /** Simulates "someone else saved this flight" (bumps updated_at via the DB trigger). */
         async touchFlight({ id, notes }: { id: number; notes: string }) {
           const db = createE2EDbClient()
           const { error } = await db.from('flight').update({ notes }).eq('id', id)

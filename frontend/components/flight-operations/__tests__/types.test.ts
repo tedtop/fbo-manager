@@ -44,14 +44,14 @@ describe('apiFlightToComponentFlight', () => {
     expect(f.services).toEqual([])
   })
 
-  it('prefers creator info and modified_at when present', () => {
+  it('prefers creator info and updated_at when present', () => {
     const f = apiFlightToComponentFlight({
       ...baseRow,
       created_by_initials: 'TT',
       created_by_name: 'Ted',
       created_by_department: 'Line',
       created_by_source: 'front-desk',
-      modified_at: '2026-03-02T00:00:00Z',
+      updated_at: '2026-03-02T00:00:00Z',
     })
     expect(f.createdBy).toEqual({ initials: 'TT', name: 'Ted', department: 'Line' })
     expect(f.source).toBe('front-desk')

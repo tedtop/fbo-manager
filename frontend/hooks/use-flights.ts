@@ -70,7 +70,7 @@ function rowToFlight(row: any): Flight {
         ? 'Front Desk'
         : 'Administration',
     created_at: row.created_at,
-    modified_at: row.modified_at,
+    updated_at: row.updated_at,
     hidden_at: row.hidden_at
   } as any)
 }
@@ -115,7 +115,7 @@ export function useFlights(params?: {
   if (query.error) lastError.current = query.error
   else if (query.isSuccess) lastError.current = null
 
-  // Writes the services through the RPC, then re-reads the flight (fresh modified_at + embedded services).
+  // Writes the services through the RPC, then re-reads the flight (fresh updated_at + embedded services).
   const saveServices = async (flightId: number, keys: string[], failureTitle: string) => {
     try {
       await setFlightServices(db, flightId, keys)
@@ -167,11 +167,11 @@ export function useFlights(params?: {
     mutationFn: async ({
       id,
       updates,
-      expectedModifiedAt
+      expectedUpdatedAt
     }: {
       id: string
       updates: Partial<Flight>
-      expectedModifiedAt?: string
+      expectedUpdatedAt?: string
     }) => {
       const requestData = componentFlightToApiRequest(updates)
       const dbUpdates: Record<string, any> = {}
@@ -195,7 +195,7 @@ export function useFlights(params?: {
 
       // D13: a status change to/from Departed also moves hidden_at (hides from the next day / un-hides). The
       // flight's current values come from the cached board, so the save needs no extra read; a stale cache is
-      // caught by expectedModifiedAt like any other edit.
+      // caught by expectedUpdatedAt like any other edit.
       const previous = qc
         .getQueriesData<Flight[]>({ queryKey: flightKeys.lists() })
         .flatMap(([, list]) => list ?? [])
@@ -213,14 +213,14 @@ export function useFlights(params?: {
         if (hiddenAt !== undefined) dbUpdates.hidden_at = hiddenAt
       }
 
-      // A services-only edit still goes through the compare-and-swap: touching modified_at is a no-op write
+      // A services-only edit still goes through the compare-and-swap: touching updated_at is a no-op write
       // (the trigger sets the real value) that gives the guarded update something to write.
       const keys: string[] | undefined = requestData.services
-      if (keys !== undefined && Object.keys(dbUpdates).length === 0) dbUpdates.modified_at = new Date().toISOString()
-      const row = await updateFlightRepo(db, Number(id), dbUpdates, expectedModifiedAt)
+      if (keys !== undefined && Object.keys(dbUpdates).length === 0) dbUpdates.updated_at = new Date().toISOString()
+      const row = await updateFlightRepo(db, Number(id), dbUpdates, expectedUpdatedAt)
       if (keys === undefined) return rowToFlight(row)
-      // The RPC bumps modified_at again, so the flight is re-read afterwards: the caller (and the board)
-      // must see the post-RPC modified_at or the next edit's compare-and-swap would report a false conflict.
+      // The RPC bumps updated_at again, so the flight is re-read afterwards: the caller (and the board)
+      // must see the post-RPC updated_at or the next edit's compare-and-swap would report a false conflict.
       return rowToFlight(await saveServices(Number(id), keys, 'Flight updated, but its services were not saved'))
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
@@ -231,12 +231,12 @@ export function useFlights(params?: {
     mutationFn: async ({
       id,
       hidden,
-      expectedModifiedAt
+      expectedUpdatedAt
     }: {
       id: string
       hidden: boolean
-      expectedModifiedAt?: string
-    }) => rowToFlight(await setFlightHidden(db, Number(id), hidden, expectedModifiedAt)),
+      expectedUpdatedAt?: string
+    }) => rowToFlight(await setFlightHidden(db, Number(id), hidden, expectedUpdatedAt)),
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })
 
@@ -269,10 +269,10 @@ export function useFlights(params?: {
     updateFlight: (
       id: string,
       updates: Partial<Flight>,
-      expectedModifiedAt?: string
-    ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
-    setFlightHidden: (id: string, hidden: boolean, expectedModifiedAt?: string) =>
-      hiddenMutation.mutateAsync({ id, hidden, expectedModifiedAt }),
+      expectedUpdatedAt?: string
+    ) => updateMutation.mutateAsync({ id, updates, expectedUpdatedAt }),
+    setFlightHidden: (id: string, hidden: boolean, expectedUpdatedAt?: string) =>
+      hiddenMutation.mutateAsync({ id, hidden, expectedUpdatedAt }),
     deleteFlight: (id: string, options?: { keepRow?: boolean }) =>
       deleteMutation.mutateAsync({ id, keepRow: options?.keepRow }),
     forgetFlight,

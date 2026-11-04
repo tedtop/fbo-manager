@@ -1,6 +1,6 @@
 /**
  * Thrown by repository update functions when an optimistic-concurrency
- * compare-and-swap write matches zero rows — i.e. the record's `modified_at`
+ * compare-and-swap write matches zero rows — i.e. the record's `updated_at`
  * no longer matches what was loaded into the edit form, because someone else
  * saved a change in between.
  *

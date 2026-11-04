@@ -53,15 +53,15 @@ export async function updateEquipment(
   db: SupabaseClient<Database>,
   id: number,
   updates: EquipmentUpdate,
-  expectedModifiedAt?: string
+  expectedUpdatedAt?: string
 ): Promise<EquipmentRow> {
   let query = db.from('equipment').update(updates).eq('id', id)
-  if (expectedModifiedAt) {
-    query = query.eq('modified_at', expectedModifiedAt)
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt)
   }
   const { data, error } = await query.select().single()
   if (error) {
-    if (expectedModifiedAt && error.code === 'PGRST116') {
+    if (expectedUpdatedAt && error.code === 'PGRST116') {
       throw new ConcurrencyConflictError('equipment', id)
     }
     throw error

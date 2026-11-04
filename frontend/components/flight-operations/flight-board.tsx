@@ -21,18 +21,18 @@ interface FlightBoardProps {
   flights: Flight[]
   onEditFlight: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   // Should reject if the delete fails; the card then comes back and an error toast shows.
   onDeleteFlight: (id: string) => void | Promise<void>
-  // Hide / Unhide button on a card; same concurrency guard as edits (expectedModifiedAt).
+  // Hide / Unhide button on a card; same concurrency guard as edits (expectedUpdatedAt).
   onHideFlight?: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   onUnhideFlight?: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   // Called once a deleted card has finished its exit animation and can leave the list.
   onDeleteExited?: (id: string) => void

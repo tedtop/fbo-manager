@@ -66,6 +66,15 @@ function psql(args: string[], input?: string): { ok: boolean; out: string } {
 
 const psqlAvailable = psql(['-c', 'select 1']).ok
 
+// 20261104001200 renames modified_at to updated_at and drops set_modified_at(); the older migration file is
+// history that fresh databases replay in order, so re-running it on top of the rename is not supported.
+const modifiedAtRenamed =
+  psqlAvailable &&
+  psql([
+    '-Atc',
+    "select not exists (select 1 from pg_proc where proname = 'set_modified_at' and pronamespace = 'public'::regnamespace)",
+  ]).out.trim() === 't'
+
 async function serviceId(key: string): Promise<number> {
   const { data, error } = await db.from('service').select('id').eq('key', key).single()
   if (error) throw error
@@ -117,7 +126,7 @@ describe('service catalog seed', () => {
     expect(bad.error?.code).toBe('23514')
   })
 
-  it('sets explicit timestamp defaults and bumps modified_at on update', async () => {
+  it('sets explicit timestamp defaults and bumps updated_at on update', async () => {
     const { data: created } = await db
       .from('service')
       .insert({ key: 'zz_test_a', label: 'A', icon: 'x', color: 'x' })
@@ -131,7 +140,7 @@ describe('service catalog seed', () => {
       .eq('id', created?.id ?? -1)
       .select()
       .single()
-    expect(ts(updated?.modified_at)).toBeGreaterThan(ts(created?.modified_at))
+    expect(ts(updated?.updated_at)).toBeGreaterThan(ts(created?.updated_at))
   })
 })
 
@@ -266,13 +275,13 @@ describe('set_flight_services', () => {
     expect(bad.error?.message).toContain('string "key"')
   })
 
-  it('bumps flight.modified_at and keeps flight.services in sync as an array of keys', async () => {
+  it('bumps flight.updated_at and keeps flight.services in sync as an array of keys', async () => {
     const flight = await makeFlight(db)
-    const { data: before } = await db.from('flight').select('modified_at').eq('id', flight.id).single()
+    const { data: before } = await db.from('flight').select('updated_at').eq('id', flight.id).single()
     await new Promise((r) => setTimeout(r, 20))
     await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['lav', 'fuel'] })
-    const { data: after } = await db.from('flight').select('modified_at').eq('id', flight.id).single()
-    expect(ts(after?.modified_at)).toBeGreaterThan(ts(before?.modified_at))
+    const { data: after } = await db.from('flight').select('updated_at').eq('id', flight.id).single()
+    expect(ts(after?.updated_at)).toBeGreaterThan(ts(before?.updated_at))
     expect(await legacyServices(flight.id)).toEqual(['fuel', 'lav'])
 
     await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['gpu'] })
@@ -335,7 +344,7 @@ describe('access control', () => {
 })
 
 describe.skipIf(!psqlAvailable)('migration file (direct SQL against the local database)', () => {
-  it('is idempotent: running the whole file again succeeds and changes nothing', async () => {
+  it.skipIf(modifiedAtRenamed)('is idempotent: running the whole file again succeeds and changes nothing', async () => {
     const before = await db.from('service').select('*').order('id')
     const run = psql(['-f', MIGRATION])
     expect(run.ok, run.out).toBe(true)

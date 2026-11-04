@@ -326,9 +326,9 @@ describe('flights.repo', () => {
     expect(again.location_id).toBe(location.id)
   })
 
-  it('update with a stale expectedModifiedAt throws ConcurrencyConflictError and leaves the row unchanged', async () => {
+  it('update with a stale expectedUpdatedAt throws ConcurrencyConflictError and leaves the row unchanged', async () => {
     const flight = await makeFlight(db, { flight_status: 'scheduled' })
-    const stale = flight.modified_at
+    const stale = flight.updated_at
     await updateFlight(db, flight.id, { notes: 'someone else edited' })
 
     await expect(
@@ -340,18 +340,18 @@ describe('flights.repo', () => {
     expect(found?.notes).toBe('someone else edited')
   })
 
-  it('update with the current expectedModifiedAt succeeds and bumps modified_at', async () => {
+  it('update with the current expectedUpdatedAt succeeds and bumps updated_at', async () => {
     const flight = await makeFlight(db, { flight_status: 'scheduled' })
 
     const updated = await updateFlight(
       db,
       flight.id,
       { flight_status: 'departed' },
-      flight.modified_at
+      flight.updated_at
     )
 
     expect(updated.flight_status).toBe('departed')
-    expect(updated.modified_at).not.toBe(flight.modified_at)
+    expect(updated.updated_at).not.toBe(flight.updated_at)
   })
 
   it('delete is a soft delete: the row remains with deleted_at set', async () => {
@@ -634,9 +634,9 @@ describe('flights.repo Today + Future and hidden', () => {
       expect(ids(await findAllFlights(db))).toContain(flight.id)
     })
 
-    it('respects expectedModifiedAt: a stale card gets ConcurrencyConflictError and the flight stays visible', async () => {
+    it('respects expectedUpdatedAt: a stale card gets ConcurrencyConflictError and the flight stays visible', async () => {
       const flight = await makeFlight(db)
-      const stale = flight.modified_at
+      const stale = flight.updated_at
       await updateFlight(db, flight.id, { notes: 'someone else edited' })
 
       await expect(setFlightHidden(db, flight.id, true, stale)).rejects.toBeInstanceOf(ConcurrencyConflictError)

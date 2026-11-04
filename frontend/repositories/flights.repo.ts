@@ -159,15 +159,15 @@ export async function updateFlight(
   db: SupabaseClient<Database>,
   id: number,
   updates: FlightUpdate,
-  expectedModifiedAt?: string
+  expectedUpdatedAt?: string
 ): Promise<FlightWithRelations> {
   let query = db.from('flight').update(updates).eq('id', id)
-  if (expectedModifiedAt) {
-    query = query.eq('modified_at', expectedModifiedAt)
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt)
   }
   const { data, error } = await query.select(FLIGHT_SELECT).single()
   if (error) {
-    if (expectedModifiedAt && error.code === 'PGRST116') {
+    if (expectedUpdatedAt && error.code === 'PGRST116') {
       throw new ConcurrencyConflictError('flight', id)
     }
     throw error
@@ -180,9 +180,9 @@ export function setFlightHidden(
   db: SupabaseClient<Database>,
   id: number,
   hidden: boolean,
-  expectedModifiedAt?: string
+  expectedUpdatedAt?: string
 ): Promise<FlightWithRelations> {
-  return updateFlight(db, id, { hidden_at: hidden ? new Date().toISOString() : null }, expectedModifiedAt)
+  return updateFlight(db, id, { hidden_at: hidden ? new Date().toISOString() : null }, expectedUpdatedAt)
 }
 
 // Soft delete: the row stays in the table with `deleted_at` set so it can be looked up later.

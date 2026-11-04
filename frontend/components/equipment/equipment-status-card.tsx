@@ -33,7 +33,7 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
   const icon = equipmentTypeIcon(settings.equipmentTypes, eq.equipment_type)
   const borderColor = STATUS_BORDER[eq.status] ?? 'border-l-border'
   const maintenanceDate = formatDate(eq.next_maintenance_date)
-  const lastSeen = daysSince(eq.modified_at)
+  const lastSeen = daysSince(eq.updated_at)
 
   const isMaintenanceWarning =
     eq.maintenanceStatus === 'due_soon' || eq.maintenanceStatus === 'overdue'

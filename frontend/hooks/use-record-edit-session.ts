@@ -25,12 +25,12 @@ export interface UseRecordEditSessionOptions<
   table: string
   /** Primary key column name. Defaults to 'id'. */
   idColumn?: string
-  /** Column that changes on every write. Defaults to 'modified_at' (this codebase's convention). */
-  modifiedAtColumn?: string
+  /** Column that changes on every write. Defaults to 'updated_at' (this codebase's convention). */
+  updatedAtColumn?: string
   /** The record's id. Pass null/undefined while creating a new record (no session is started). */
   recordId: string | number | null | undefined
-  /** The value of `modifiedAtColumn` as loaded into the form. Pass null/undefined for new records. */
-  modifiedAt: string | null | undefined
+  /** The value of `updatedAtColumn` as loaded into the form. Pass null/undefined for new records. */
+  updatedAt: string | null | undefined
   /** Only track presence / subscribe while the Sheet/dialog is actually open for this record. */
   enabled: boolean
   /**
@@ -52,13 +52,13 @@ export interface UseRecordEditSessionResult<
   /** A save-time compare-and-swap came back with zero rows — someone saved in between. */
   conflict: boolean
   /**
-   * Wrap a save call. `saveFn` receives the expected `modifiedAt` to use as the
+   * Wrap a save call. `saveFn` receives the expected `updatedAt` to use as the
    * compare-and-swap guard (undefined means "write unconditionally"). If the
    * underlying write throws ConcurrencyConflictError, this resolves to
    * `{ status: 'conflict' }` and flips `conflict` to true instead of rethrowing.
    */
   save: <T>(
-    saveFn: (expectedModifiedAt?: string) => Promise<T>
+    saveFn: (expectedUpdatedAt?: string) => Promise<T>
   ) => Promise<SaveOutcome<T>>
   /** Resolve an active conflict (from either the banner or the dialog). */
   resolveConflict: (choice: ConflictChoice) => Promise<void>
@@ -89,9 +89,9 @@ function getDisplayName(
 export function useRecordEditSession<TRow extends Record<string, unknown>>(
   options: UseRecordEditSessionOptions<TRow>
 ): UseRecordEditSessionResult<TRow> {
-  const { table, recordId, modifiedAt, enabled, onReload } = options
+  const { table, recordId, updatedAt, enabled, onReload } = options
   const idColumn = options.idColumn ?? 'id'
-  const modifiedAtColumn = options.modifiedAtColumn ?? 'modified_at'
+  const updatedAtColumn = options.updatedAtColumn ?? 'updated_at'
 
   const db = useMemo(() => createClient(), [])
   const { data: session } = useSession()
@@ -107,22 +107,22 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
   const [conflict, setConflict] = useState(false)
   const [reloading, setReloading] = useState(false)
 
-  const baselineRef = useRef<string | null>(modifiedAt ?? null)
+  const baselineRef = useRef<string | null>(updatedAt ?? null)
   const pendingSaveRef = useRef<
-    ((expectedModifiedAt?: string) => Promise<unknown>) | null
+    ((expectedUpdatedAt?: string) => Promise<unknown>) | null
   >(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
 
-  // Reset baseline whenever the record we're pointed at (or its loaded modifiedAt) changes.
+  // Reset baseline whenever the record we're pointed at (or its loaded updatedAt) changes.
   // recordId is intentionally included even though unread: switching to a different
-  // record must reset state even in the (astronomically unlikely) case its modifiedAt
+  // record must reset state even in the (astronomically unlikely) case its updatedAt
   // string happens to match the previous one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: recordId included intentionally, see above
   useEffect(() => {
-    baselineRef.current = modifiedAt ?? null
+    baselineRef.current = updatedAt ?? null
     setConflict(false)
     setRemoteChangeDetected(false)
-  }, [recordId, modifiedAt])
+  }, [recordId, updatedAt])
 
   useEffect(() => {
     if (!enabled || recordId === null || recordId === undefined) {
@@ -175,10 +175,10 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
           filter: `${idColumn}=eq.${recordId}`
         },
         (payload: { new?: Record<string, unknown> }) => {
-          const newModifiedAt = payload.new?.[modifiedAtColumn]
+          const newUpdatedAt = payload.new?.[updatedAtColumn]
           if (
-            typeof newModifiedAt === 'string' &&
-            newModifiedAt !== baselineRef.current &&
+            typeof newUpdatedAt === 'string' &&
+            newUpdatedAt !== baselineRef.current &&
             !cancelled
           ) {
             setRemoteChangeDetected(true)
@@ -215,7 +215,7 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
       setPeers([])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, recordId, table, idColumn, modifiedAtColumn, db, displayName])
+  }, [enabled, recordId, table, idColumn, updatedAtColumn, db, displayName])
 
   const dismissRemoteChange = useCallback(
     () => setRemoteChangeDetected(false),
@@ -224,10 +224,10 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
 
   const save = useCallback(
     async <T>(
-      saveFn: (expectedModifiedAt?: string) => Promise<T>
+      saveFn: (expectedUpdatedAt?: string) => Promise<T>
     ): Promise<SaveOutcome<T>> => {
       pendingSaveRef.current = saveFn as (
-        expectedModifiedAt?: string
+        expectedUpdatedAt?: string
       ) => Promise<unknown>
       try {
         const data = await saveFn(baselineRef.current ?? undefined)
@@ -235,9 +235,9 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
           | Record<string, unknown>
           | null
           | undefined
-        const nextModifiedAt = row?.[modifiedAtColumn]
-        if (typeof nextModifiedAt === 'string')
-          baselineRef.current = nextModifiedAt
+        const nextUpdatedAt = row?.[updatedAtColumn]
+        if (typeof nextUpdatedAt === 'string')
+          baselineRef.current = nextUpdatedAt
         setConflict(false)
         return { status: 'saved', data }
       } catch (err) {
@@ -248,7 +248,7 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
         throw err
       }
     },
-    [modifiedAtColumn]
+    [updatedAtColumn]
   )
 
   const resolveConflict = useCallback(
@@ -269,9 +269,9 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
             .single()
           if (!error && data) {
             const freshRow = data as TRow
-            const freshModifiedAt = freshRow[modifiedAtColumn]
-            if (typeof freshModifiedAt === 'string')
-              baselineRef.current = freshModifiedAt
+            const freshUpdatedAt = freshRow[updatedAtColumn]
+            if (typeof freshUpdatedAt === 'string')
+              baselineRef.current = freshUpdatedAt
             onReload?.(freshRow)
           } else if (error) {
             console.warn('[use-record-edit-session] reload fetch failed', error)
@@ -292,12 +292,12 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
       if (!fn) return
       const data = await fn(undefined)
       const row = data as unknown as Record<string, unknown> | null | undefined
-      const nextModifiedAt = row?.[modifiedAtColumn]
-      if (typeof nextModifiedAt === 'string')
-        baselineRef.current = nextModifiedAt
+      const nextUpdatedAt = row?.[updatedAtColumn]
+      if (typeof nextUpdatedAt === 'string')
+        baselineRef.current = nextUpdatedAt
       pendingSaveRef.current = null
     },
-    [db, table, idColumn, modifiedAtColumn, recordId, onReload]
+    [db, table, idColumn, updatedAtColumn, recordId, onReload]
   )
 
   return {

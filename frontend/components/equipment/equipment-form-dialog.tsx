@@ -36,7 +36,7 @@ interface EquipmentFormDialogProps {
   equipment?: EquipmentDomain | null
   onSubmit: (
     data: EquipmentInsert,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => Promise<void>
 }
 
@@ -110,7 +110,7 @@ export function EquipmentFormDialog({
   const editSession = useRecordEditSession<EquipmentRow>({
     table: 'equipment',
     recordId: equipment?.id ?? null,
-    modifiedAt: equipment?.modified_at ?? null,
+    updatedAt: equipment?.updated_at ?? null,
     enabled: open && !!equipment,
     onReload: (freshRow) => {
       setForm({
@@ -134,8 +134,8 @@ export function EquipmentFormDialog({
     setLoading(true)
     try {
       if (equipment) {
-        const outcome = await editSession.save((expectedModifiedAt) =>
-          onSubmit(form, expectedModifiedAt)
+        const outcome = await editSession.save((expectedUpdatedAt) =>
+          onSubmit(form, expectedUpdatedAt)
         )
         if (outcome.status === 'conflict') return
       } else {

@@ -88,11 +88,11 @@ function getTimeRemaining(timestamp: string): {
 interface FlightCardProps {
   flight: Flight
   theme: 'dark' | 'light'
-  onEdit: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
+  onEdit: (flight: Flight, expectedUpdatedAt?: string) => void | Promise<void>
   onDelete: (id: string) => void
   // Hide / Unhide button (B43b); same compare-and-swap guard as a status change. Omit to hide the button.
-  onHide?: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
-  onUnhide?: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
+  onHide?: (flight: Flight, expectedUpdatedAt?: string) => void | Promise<void>
+  onUnhide?: (flight: Flight, expectedUpdatedAt?: string) => void | Promise<void>
   onOrderFuel?: (flight: Flight) => void
   isLinked?: boolean
   linkColor?: LinkColor

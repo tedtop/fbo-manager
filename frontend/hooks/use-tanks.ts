@@ -35,12 +35,12 @@ export function useTanks() {
     mutationFn: ({
       tankId,
       updates,
-      expectedModifiedAt
+      expectedUpdatedAt
     }: {
       tankId: string
       updates: TankUpdate
-      expectedModifiedAt?: string
-    }) => updateTank(db, tankId, updates, expectedModifiedAt),
+      expectedUpdatedAt?: string
+    }) => updateTank(db, tankId, updates, expectedUpdatedAt),
     onSuccess: () => qc.invalidateQueries({ queryKey: tankKeys.all })
   })
 
@@ -57,8 +57,8 @@ export function useTanks() {
     updateTank: (
       tankId: string,
       updates: TankUpdate,
-      expectedModifiedAt?: string
-    ) => updateMutation.mutateAsync({ tankId, updates, expectedModifiedAt }),
+      expectedUpdatedAt?: string
+    ) => updateMutation.mutateAsync({ tankId, updates, expectedUpdatedAt }),
     deleteTank: (tankId: string) => deleteMutation.mutateAsync(tankId),
     refetch: query.refetch
   }

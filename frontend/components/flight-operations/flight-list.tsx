@@ -24,16 +24,16 @@ interface FlightListProps {
   empty?: ReactNode
   onEditFlight: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   onDeleteFlight: (id: string) => void
   onHideFlight?: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   onUnhideFlight?: (
     flight: Flight,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => void | Promise<void>
   deletePhases?: Record<string, FlightDeletePhase>
   onOrderFuel?: (flight: Flight) => void

@@ -137,7 +137,7 @@ test.describe('Flight edit, status change, delete', () => {
     expect(after.services).toContain('hangar')
     expect(after.flight_status).toBe('scheduled')
     expect(after.deleted_at).toBeNull()
-    expect(after.modified_at).not.toBe(before.modified_at)
+    expect(after.updated_at).not.toBe(before.updated_at)
 
     await expect(card(page, tailEdit).getByText('ASE', { exact: true })).toBeVisible({ timeout: 15_000 })
 
@@ -264,11 +264,11 @@ test.describe('Flight edit, status change, delete', () => {
     await openEditSheet(page, tailConflict)
     await expect(page.locator('#origin')).toContainText('AAA')
 
-    // Someone else saves the same row while our dialog is open (modified_at trigger bumps it).
+    // Someone else saves the same row while our dialog is open (updated_at trigger bumps it).
     const { error } = await db.from('flight').update({ notes: 'changed by someone else' }).eq('id', ids[tailConflict])
     if (error) throw error
     const bumped = await readFlight(tailConflict)
-    expect(bumped.modified_at).not.toBe(before.modified_at)
+    expect(bumped.updated_at).not.toBe(before.updated_at)
 
     await pickAirport(page, 'origin', 'KJFK')
     await page.getByRole('button', { name: 'Update Flight' }).click()
@@ -282,14 +282,14 @@ test.describe('Flight edit, status change, delete', () => {
     const after = await readFlight(tailConflict)
     expect(after.origin).toBe('KAAA')
     expect(after.notes).toBe('changed by someone else')
-    expect(after.modified_at).toBe(bumped.modified_at)
+    expect(after.updated_at).toBe(bumped.updated_at)
 
     // Reload their changes: form repopulates from the DB, our edit is discarded, nothing is written.
     await conflictDialog.getByRole('button', { name: 'Reload their changes' }).click()
     await expect(conflictDialog).toBeHidden()
     await expect(page.locator('#origin')).toContainText('AAA')
     await expect(page.locator('#notes')).toHaveValue('changed by someone else')
-    expect((await readFlight(tailConflict)).modified_at).toBe(bumped.modified_at)
+    expect((await readFlight(tailConflict)).updated_at).toBe(bumped.updated_at)
   })
 
   test('failed edit shows an error toast, keeps the sheet open with the typed input, writes nothing', async ({ page }) => {
@@ -311,7 +311,7 @@ test.describe('Flight edit, status change, delete', () => {
     await expect(page.locator('#origin')).toContainText('KFAIL')
     const after = await readFlight(tailEditFail)
     expect(after.origin).toBe('KAAA')
-    expect(after.modified_at).toBe(before.modified_at)
+    expect(after.updated_at).toBe(before.updated_at)
   })
 
   test('failed status change shows an error toast and the status is unchanged', async ({ page }) => {
@@ -326,7 +326,7 @@ test.describe('Flight edit, status change, delete', () => {
     expect((await readFlight(tailStatusFail)).flight_status).toBe('scheduled')
   })
 
-  // B44: the card's status dropdown passes the flight's modified_at, so a card that is out of date
+  // B44: the card's status dropdown passes the flight's updated_at, so a card that is out of date
   // is refused by the compare-and-swap instead of overwriting the other write.
   test('stale status change: row changed behind the card is refused with a toast and the other write is kept', async ({ page }) => {
     await openBoard(page, tailStale)
@@ -348,6 +348,6 @@ test.describe('Flight edit, status change, delete', () => {
     const after = await readFlight(tailStale)
     expect(after.flight_status).toBe('scheduled')
     expect(after.notes).toBe('changed behind the card')
-    expect(after.modified_at).toBe(bumped.modified_at)
+    expect(after.updated_at).toBe(bumped.updated_at)
   })
 })

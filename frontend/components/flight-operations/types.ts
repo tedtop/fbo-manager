@@ -30,7 +30,7 @@ export interface FlightRow {
   created_by_name?: string | null
   created_by_department?: string | null
   created_at: string
-  modified_at?: string | null
+  updated_at?: string | null
   hidden_at?: string | null
 }
 
@@ -104,7 +104,7 @@ export interface Flight {
 
   // Timestamps
   createdAt: string // created_at
-  updatedAt: string // modified_at
+  updatedAt: string // updated_at
 }
 
 export interface FlightFilters {
@@ -228,7 +228,7 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     source: ((apiFlight as any).created_by_source as FlightSource) || 'qt',
     createdBy,
     createdAt: apiFlight.created_at,
-    updatedAt: (apiFlight as any).modified_at || apiFlight.created_at
+    updatedAt: (apiFlight as any).updated_at || apiFlight.created_at
   }
 }
 

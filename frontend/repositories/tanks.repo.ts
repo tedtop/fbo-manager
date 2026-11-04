@@ -68,26 +68,26 @@ export async function createTank(
 }
 
 /**
- * Update a tank. When `expectedModifiedAt` is provided, the write is an
- * atomic compare-and-swap: it only applies if the row's `modified_at` still
+ * Update a tank. When `expectedUpdatedAt` is provided, the write is an
+ * atomic compare-and-swap: it only applies if the row's `updated_at` still
  * matches what the caller loaded. If someone else saved a change in between,
  * zero rows match and this throws ConcurrencyConflictError instead of
- * silently overwriting their edit. Omit `expectedModifiedAt` to write
+ * silently overwriting their edit. Omit `expectedUpdatedAt` to write
  * unconditionally (e.g. the "overwrite anyway" path).
  */
 export async function updateTank(
   db: SupabaseClient<Database>,
   tankId: string,
   updates: TankUpdate,
-  expectedModifiedAt?: string
+  expectedUpdatedAt?: string
 ): Promise<TankRow> {
   let query = db.from('fuel_tank').update(updates).eq('tank_id', tankId)
-  if (expectedModifiedAt) {
-    query = query.eq('modified_at', expectedModifiedAt)
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt)
   }
   const { data, error } = await query.select().single()
   if (error) {
-    if (expectedModifiedAt && error.code === 'PGRST116') {
+    if (expectedUpdatedAt && error.code === 'PGRST116') {
       throw new ConcurrencyConflictError('fuel_tank', tankId)
     }
     throw error

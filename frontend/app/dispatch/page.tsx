@@ -61,11 +61,11 @@ export default function FuelDispatchPage() {
 
   const handleUpdateTransaction = async (
     data: TransactionInsert,
-    expectedModifiedAt?: string
+    expectedUpdatedAt?: string
   ) => {
     if (!editingTransaction) return
     try {
-      await updateTransaction(editingTransaction.id, data, expectedModifiedAt)
+      await updateTransaction(editingTransaction.id, data, expectedUpdatedAt)
       setSuccessMessage('Transaction updated successfully')
       setTimeout(() => setSuccessMessage(''), 3000)
       setEditingTransaction(null)

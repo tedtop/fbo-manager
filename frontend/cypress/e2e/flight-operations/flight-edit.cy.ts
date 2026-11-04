@@ -75,7 +75,7 @@ describe('Flight edit, status change, delete', () => {
         expect(after.services).to.include('hangar')
         expect(after.flight_status).to.eq('scheduled')
         expect(after.deleted_at).to.eq(null)
-        expect(after.modified_at).not.to.eq(before.modified_at)
+        expect(after.updated_at).not.to.eq(before.updated_at)
       })
     })
 
@@ -204,7 +204,7 @@ describe('Flight edit, status change, delete', () => {
       cy.get('#origin').should('contain.text', 'KFAIL')
       cy.task('getFlightByTail', tailEditFail).should((after: FlightRow) => {
         expect(after.origin).to.eq('KAAA')
-        expect(after.modified_at).to.eq(before.modified_at)
+        expect(after.updated_at).to.eq(before.updated_at)
       })
     })
   })
@@ -227,10 +227,10 @@ describe('Flight edit, status change, delete', () => {
       openEditSheet(tailConflict)
       cy.get('#origin').should('contain.text', 'AAA')
 
-      // Someone else saves the same row while our dialog is open (modified_at trigger bumps it).
+      // Someone else saves the same row while our dialog is open (updated_at trigger bumps it).
       cy.task('touchFlight', { id: ids[tailConflict], notes: 'changed by someone else' })
       cy.task('getFlightByTail', tailConflict).then((bumped: FlightRow) => {
-        expect(bumped.modified_at).not.to.eq(before.modified_at)
+        expect(bumped.updated_at).not.to.eq(before.updated_at)
 
         cy.pickAirport('origin', 'KJFK')
         cy.contains('button', 'Update Flight').click()
@@ -243,7 +243,7 @@ describe('Flight edit, status change, delete', () => {
         cy.task('getFlightByTail', tailConflict).then((after: FlightRow) => {
           expect(after.origin).to.eq('KAAA')
           expect(after.notes).to.eq('changed by someone else')
-          expect(after.modified_at).to.eq(bumped.modified_at)
+          expect(after.updated_at).to.eq(bumped.updated_at)
         })
 
         // Reload their changes: form repopulates from the DB, our edit is discarded, nothing is written.
@@ -251,7 +251,7 @@ describe('Flight edit, status change, delete', () => {
         cy.get('[role="alertdialog"]').should('not.exist')
         cy.get('#origin').should('contain.text', 'AAA')
         cy.get('#notes').should('have.value', 'changed by someone else')
-        cy.task('getFlightByTail', tailConflict).its('modified_at').should('eq', bumped.modified_at)
+        cy.task('getFlightByTail', tailConflict).its('updated_at').should('eq', bumped.updated_at)
       })
     })
   })

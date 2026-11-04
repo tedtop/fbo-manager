@@ -31,7 +31,7 @@ interface TankFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   tank?: TankWithLatestReading | null
-  onSubmit: (data: TankInsert, expectedModifiedAt?: string) => Promise<void>
+  onSubmit: (data: TankInsert, expectedUpdatedAt?: string) => Promise<void>
 }
 
 export function TankFormDialog({
@@ -82,7 +82,7 @@ export function TankFormDialog({
     table: 'fuel_tank',
     idColumn: 'tank_id',
     recordId: tank?.tank_id ?? null,
-    modifiedAt: tank?.modified_at ?? null,
+    updatedAt: tank?.updated_at ?? null,
     enabled: open && !!tank,
     onReload: (freshRow) => {
       setFormData({
@@ -103,8 +103,8 @@ export function TankFormDialog({
     setLoading(true)
     try {
       if (tank) {
-        const outcome = await editSession.save((expectedModifiedAt) =>
-          onSubmit(formData, expectedModifiedAt)
+        const outcome = await editSession.save((expectedUpdatedAt) =>
+          onSubmit(formData, expectedUpdatedAt)
         )
         if (outcome.status === 'conflict') return
       } else {

@@ -36,7 +36,7 @@ export type Database = {
           date_joined: string
           last_login: string | null
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -68,7 +68,7 @@ export type Database = {
           airline_icao: string
           fleet_id: string
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -93,7 +93,7 @@ export type Database = {
           usable_min_inches: string
           usable_max_inches: string
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -150,7 +150,7 @@ export type Database = {
           gate: string | null
           display_order: number
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -201,7 +201,7 @@ export type Database = {
           created_by_source: 'qt' | 'front-desk' | 'line-department' | 'google-calendar'
           fueled_at: string | null
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
           deleted_at: string | null
@@ -268,7 +268,7 @@ export type Database = {
           handheld_name: string
           status: 'active' | 'inactive'
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -297,7 +297,7 @@ export type Database = {
           validity_period_days: number
           aircraft_type: string | null
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -320,7 +320,7 @@ export type Database = {
           expiry_date: string
           certified_by_id: number | null
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -443,6 +443,7 @@ export type Database = {
           notes: string
           recorded_by_id: number | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -512,7 +513,7 @@ export type Database = {
           tank_reading_after_total: string | null
           tank_reading_unit: 'lbs' | 'gal' | 'kg'
           created_at: string
-          modified_at: string
+          updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
         }
@@ -593,7 +594,7 @@ export type Database = {
           next_maintenance_date: string | null
           sort_order: number | null
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -624,7 +625,7 @@ export type Database = {
           active: boolean
           product_id: number | null
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -648,7 +649,7 @@ export type Database = {
           notes: string
           price_override: number | null
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -670,7 +671,7 @@ export type Database = {
           settings: DepartmentSettings
           is_active: boolean
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -694,7 +695,7 @@ export type Database = {
           display_order: number
           is_active: boolean
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -734,7 +735,7 @@ export type Database = {
           created_by: number | null
           updated_by: number | null
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -746,7 +747,7 @@ export type Database = {
           notes?: string
           created_by?: number | null
           updated_by?: number | null
-          modified_at?: string
+          updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['schedule_shift']['Insert']>
         Relationships: [
@@ -813,7 +814,7 @@ export type Database = {
           customer_type: 'private' | 'military' | 'usfs' | 'ga'
           address: string
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -836,7 +837,7 @@ export type Database = {
           product_type: 'fuel' | 'service' | 'fee' | 'product'
           is_active: boolean
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -860,7 +861,7 @@ export type Database = {
           due_date: string | null
           notes: string
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -884,6 +885,7 @@ export type Database = {
           unit_price: string
           total_price: string
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -966,6 +968,7 @@ export type Database = {
           fuel_transaction_id: number | null
           notes: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -1070,7 +1073,7 @@ export type Database = {
           longitude: number | null
           scheduled_service: boolean | null
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         // Read-only reference data: the API grants select only (rows come from the seed migration).
         Insert: {
@@ -1088,7 +1091,7 @@ export type Database = {
           longitude?: number | null
           scheduled_service?: boolean | null
           created_at?: string
-          modified_at?: string
+          updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['airport']['Insert']>
         Relationships: []
@@ -1125,6 +1128,7 @@ export type Database = {
             | 'users'
           access_level: 'view' | 'manage'
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -1265,6 +1269,7 @@ export type Database = {
           requested_amount: string | null
           service_time: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
@@ -1357,6 +1362,7 @@ export type Database = {
           uploaded_by: string | null
           notes: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number

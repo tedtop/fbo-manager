@@ -79,7 +79,7 @@ export default function FuelFarmPage() {
     setDialogOpen(true)
   }
 
-  const handleUpdateTank = async (data: TankInsert, expectedModifiedAt?: string) => {
+  const handleUpdateTank = async (data: TankInsert, expectedUpdatedAt?: string) => {
     if (!editingTank) return
     try {
       await updateTank(
@@ -93,7 +93,7 @@ export default function FuelFarmPage() {
           usable_min_inches: data.usable_min_inches,
           usable_max_inches: data.usable_max_inches
         },
-        expectedModifiedAt
+        expectedUpdatedAt
       )
       showSuccess('Tank updated successfully')
       setEditingTank(null)

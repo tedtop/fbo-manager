@@ -108,18 +108,18 @@ describe('setFlightServices + embedded read', () => {
     expect(serviceKeysFromRow((await readFlight(flight.id)))).toEqual(['fuel'])
   })
 
-  it('bumps modified_at, and the edit-concurrency check works against the post-RPC value', async () => {
+  it('bumps updated_at, and the edit-concurrency check works against the post-RPC value', async () => {
     const flight = await makeFlight(db)
-    const loaded = flight.modified_at
+    const loaded = flight.updated_at
 
     // What the hook does on a normal edit: guarded update, then the RPC, then a re-read.
     await updateFlight(db, flight.id, { notes: 'first edit' }, loaded)
     await setFlightServices(db, flight.id, ['fuel'])
     const after = (await readFlight(flight.id))
-    expect(new Date(after.modified_at).getTime()).toBeGreaterThan(new Date(loaded).getTime())
+    expect(new Date(after.updated_at).getTime()).toBeGreaterThan(new Date(loaded).getTime())
 
-    // The next edit uses the post-RPC modified_at: no false conflict.
-    await expect(updateFlight(db, flight.id, { notes: 'second edit' }, after.modified_at)).resolves.toMatchObject({
+    // The next edit uses the post-RPC updated_at: no false conflict.
+    await expect(updateFlight(db, flight.id, { notes: 'second edit' }, after.updated_at)).resolves.toMatchObject({
       notes: 'second edit',
     })
     // The pre-RPC value is stale, exactly like another user's save.

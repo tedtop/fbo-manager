@@ -19,7 +19,7 @@ export async function findActiveServices(
 }
 
 // Replaces the flight's services with `keys` in one transaction (RPC set_flight_services). Unknown or
-// inactive keys raise. Idempotent, so a failed save can be retried. Bumps flight.modified_at (and
+// inactive keys raise. Idempotent, so a failed save can be retried. Bumps flight.updated_at (and
 // keeps the legacy flight.services column in sync until B26e), so callers re-read the flight after it.
 // Returns the stored keys in catalog order.
 export async function setFlightServices(

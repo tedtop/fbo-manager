@@ -264,7 +264,7 @@ test.describe('Service catalog on the board, form and toolbar (B26)', () => {
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
     await expect.poll(() => junctionKeys(tailNoConflict), { timeout: 10_000 }).toEqual(['gpu', 'hangar'])
 
-    // No reload: the card must carry the fresh modified_at from the post-RPC re-read.
+    // No reload: the card must carry the fresh updated_at from the post-RPC re-read.
     await openEditSheet(page, tailNoConflict)
     await page.locator('#notes').fill('second edit after services')
     await page.getByRole('button', { name: 'Update Flight' }).click()

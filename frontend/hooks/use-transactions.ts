@@ -38,12 +38,12 @@ export function useTransactions(filters?: TransactionFilters) {
     mutationFn: ({
       id,
       updates,
-      expectedModifiedAt
+      expectedUpdatedAt
     }: {
       id: number
       updates: TransactionUpdate
-      expectedModifiedAt?: string
-    }) => updateTransaction(db, id, updates, expectedModifiedAt),
+      expectedUpdatedAt?: string
+    }) => updateTransaction(db, id, updates, expectedUpdatedAt),
     onSuccess: () => qc.invalidateQueries({ queryKey: transactionKeys.all })
   })
 
@@ -61,8 +61,8 @@ export function useTransactions(filters?: TransactionFilters) {
     updateTransaction: (
       id: number,
       updates: TransactionUpdate,
-      expectedModifiedAt?: string
-    ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
+      expectedUpdatedAt?: string
+    ) => updateMutation.mutateAsync({ id, updates, expectedUpdatedAt }),
     deleteTransaction: (id: number) => deleteMutation.mutateAsync(id),
     refetch: query.refetch
   }
