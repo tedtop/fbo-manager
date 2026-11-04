@@ -128,6 +128,42 @@ export default defineConfig({
           return null
         },
 
+        /** Sorted service keys in the flight_service junction for the latest flight of a tail (the source of truth). */
+        async getFlightServiceKeys(tail: string) {
+          const db = createE2EDbClient()
+          const { data: flights, error: flightError } = await db.from('flight').select('id').eq('tail_number', tail).order('id', { ascending: false }).limit(1)
+          if (flightError) throw new Error(`getFlightServiceKeys: flight: ${flightError.message}`)
+          if (!flights?.length) return null
+          const { data, error } = await db.from('flight_service').select('service_id').eq('flight_id', flights[0].id)
+          if (error) throw new Error(`getFlightServiceKeys: ${error.message}`)
+          const { data: services, error: serviceError } = await db.from('service').select('key').in('id', (data ?? []).map((r) => r.service_id))
+          if (serviceError) throw new Error(`getFlightServiceKeys: service: ${serviceError.message}`)
+          return (services ?? []).map((r) => r.key).sort()
+        },
+
+        /** Number of active rows in the service catalog. */
+        async countActiveServices() {
+          const db = createE2EDbClient()
+          const { data, error } = await db.from('service').select('key').eq('active', true)
+          if (error) throw new Error(`countActiveServices: ${error.message}`)
+          return data?.length ?? 0
+        },
+
+        /** Inserts a billable-only fee product (never a board service). Returns its id. */
+        async seedFeeProduct({ name, sku }: { name: string; sku: string }) {
+          const db = createE2EDbClient()
+          const { data, error } = await db.from('product').insert({ name, sku, price: 25, product_type: 'fee' }).select('id').single()
+          if (error) throw new Error(`seedFeeProduct: ${error.message}`)
+          return data.id
+        },
+
+        async deleteProduct(id: number) {
+          const db = createE2EDbClient()
+          const { error } = await db.from('product').delete().eq('id', id)
+          if (error) throw new Error(`deleteProduct: ${error.message}`)
+          return null
+        },
+
         /** Removes the flights and aircraft seeded for the given tails. */
         async cleanFlights(tails: string[]) {
           const db = createE2EDbClient()
