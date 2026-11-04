@@ -56,3 +56,108 @@ Tooling:
 - R2: F1/D2 may need a migration (live data, shared Supabase instance). Never touch `fuel_tank_readings`.
 - R3: PR #43 not merged; this work builds on its branch.
 - R4: Local test schema may differ from live (F8).
+
+## B27 Documentation module design
+Status: design for review (2026-11-04). No code written. Implements D11. Sub-items B27a-B27d in `BACKLOG.md`; first content outline for B28 at the end.
+
+### 1. Content storage and loading
+- **Location**: `frontend/content/docs/<module-id>/<slug>.md`, not `docs/user/`. Reason: `frontend/railway.json` shows the Railway service builds from `frontend/`, so files outside it (like top-level `docs/`) may be missing at build time. Developer docs stay in `docs/`; end-user docs live beside the code that renders them and change in the same PR. One folder per module id; first is `flight-operations/` with `usage-guide.md` (B28).
+- **Front matter** (hand-parsed, 15 lines, no `gray-matter`; keys are fixed and validated by the unit test in section 4):
+  ```
+  ---
+  title: Arrivals and Departures usage guide
+  module: flight-operations
+  order: 1
+  anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, conflicts]
+  ---
+  ```
+  `anchors` lists the heading ids other code may link to (`?docs=flight-operations#quick-turn`). Heading ids come from `rehype-slug`; a trailing `{#custom-id}` on a heading (as used in the B28 outline) is honored by a ~10-line rehype plugin that runs before `rehype-slug` and strips the suffix, so prose can be reworded without breaking links. The test asserts every declared anchor exists as a heading and every anchor referenced from code (registry `helpAnchors`) is declared.
+- **Loading (Next 16 app router)**: `lib/docs/load.ts` (`import 'server-only'`) reads the folder with `node:fs` at build time. Two consumers, both statically generated, no runtime fs:
+  1. `app/docs/[module]/page.tsx` (server component, `generateStaticParams` from the registry): the full-page version, linkable and printable, also the no-JS fallback.
+  2. `app/api/docs/[module]/route.ts` (`export const dynamic = 'force-static'`, same `generateStaticParams`): returns `{title, anchors, markdown}` JSON, which the panel fetches once per module via the existing react-query client and caches forever (`staleTime: Infinity`). This avoids shipping all Markdown in the layout bundle and avoids routing the panel through a parallel route.
+- **Rendering library**: `package.json` has no Markdown renderer (no react-markdown, marked, remark or MDX). Decision: add **`react-markdown` + `remark-gfm` + `rehype-slug`** (3 small ESM deps, no `dangerouslySetInnerHTML`, safe by default, works in client and server components). Rejected: MDX (needs next.config plugin and lets docs run JS, overkill for prose), hand-rolled renderer (tables and lists are the usual docs needs; a bug-prone reimplementation). `@tailwindcss/typography` is not present; style the output with a small `docs-prose` class in `styles/globals.css` using existing tokens instead of adding it. Ted approves new deps (open question 1).
+- Images: `public/docs/<module>/*.png`, referenced as `/docs/<module>/x.png`. Optional, not required for B28.
+
+### 2. UI: left slide-in panel beside the right-side form
+**Why not just `<Sheet side="left">`.** `components/ui/sheet.tsx` wraps Radix Dialog, which is modal by default and `SheetContent` always renders `SheetOverlay`. When the flight Sheet is open, Radix (a) sets `pointer-events: none` on `body`, (b) traps focus inside the form (`FocusScope`), (c) `aria-hidden`s everything else, and (d) dismisses the form on any outside pointer/focus event. A second modal Sheet therefore either cannot be clicked (if opened before the form) or closes the form (if clicked while the form is open). `modal={false}` on the docs Sheet alone does not fix this, because the form's modal layer still disables outside pointer events for any lower layer and closes on outside click.
+
+**Design.**
+- The docs panel is **not a Radix Dialog**. It is a `DocsPanel` client component rendered once in `NavigationWrapper` (inside `<main>`, so it inherits the theme class): `<aside role="complementary" aria-label="Documentation" data-docs-panel>`, `position: fixed`, `inset-y-0 left-0`, `border-r`, slide transition via CSS `translate-x` (`-translate-x-full` to `translate-x-0`, 300 ms; `prefers-reduced-motion` disables). No overlay, no focus trap, no scroll lock, page and form stay interactive. Closed state is `inert` + `aria-hidden` so it is unfocusable offscreen.
+- The flight form `Sheet` cooperates through one hook, `useDocs()`: while docs are open, `FlightFormDialog` passes `modal={false}` to `<Sheet>` and a new optional `SheetContent` prop `overlay={false}` (default `true`, so no other sheet changes), plus `onInteractOutside={(e) => { if ((e.target as HTMLElement).closest('[data-docs-panel]')) e.preventDefault() }}` so clicking inside the docs does not close the form. Net effect: with docs open, both are side-by-side non-modal panels; with docs closed the form is modal exactly as today. Flipping `modal` on an open Radix Dialog is supported but must be proven in the B27a spike (risk R5): if it misbehaves, fall back to rendering the form's content in a non-modal custom panel only while docs are open.
+- **Keyboard**: Esc inside the docs panel closes only the docs (`onKeyDown` stops propagation); Esc in the form closes only the form. Tab order: form, then docs is reachable because focus is no longer trapped. Docs panel header has a close button (focus returns to the element that opened it, usually the "?" button).
+- **Widths / breakpoints**: desktop (`lg` ≥ 1024px): docs `w-[420px]`, form `sm:max-w-md` (448px), the board keeps the remaining space and is not covered when only docs are open (page content gets `lg:pl-[420px]` while docs are open, so the board shifts instead of being hidden). Below `lg` (tablet/mobile 390px): docs `w-full`, `z-[60]` above the form (z-50), with a prominent "Back to form" close button; the form stays mounted underneath, so its input state survives. Between 1024 and ~1100px the board is narrow; acceptable because the form covers the right side anyway.
+- **State**: `DocsProvider` (in `providers/docs-provider.tsx`, mounted in `app/layout.tsx` inside `AuthProvider`) holds `{ open, moduleId, anchor }` and exposes `openDocs(moduleId, anchor?)` and `closeDocs()`. **URL is the source of truth**: `?docs=<module>` plus hash `#<anchor>`. Provider reads `useSearchParams()`, and `openDocs` does `router.replace` with `scroll: false`, so:
+  - the state is linkable (`/?docs=flight-operations#quick-turn`) and survives reload;
+  - it survives client navigation, because the layout (and panel) is not remounted and the param is carried by the provider's `router.replace` when pathname changes only if the user has not closed docs (provider re-appends `?docs=` on `pathname` change). Browser back closes docs naturally. Search params on `/` in use today (filters) must be preserved: `openDocs` merges, never replaces, the existing query.
+  - `useSearchParams` requires a `Suspense` boundary in the layout; wrap `DocsProvider`'s reader accordingly.
+- **Scroll to anchor**: after the markdown for the module renders (and when the anchor changes), the panel does `container.querySelector('#'+CSS.escape(anchor))?.scrollIntoView({block:'start'})` inside its own scroll container (not the window; the hash is read from the provider, not left to the browser, because the hash would otherwise scroll the board page). The target heading gets a 2 s highlight (`data-highlight` class).
+- Nav: add a "Docs" item to `navigation.tsx` that opens the panel at the module index (the module list from the registry) and a `/docs` full-page index route.
+
+### 3. Cross-linking
+- **Registry** `lib/docs/registry.ts` (plain data, no `server-only`, importable by client, server and tests):
+  ```ts
+  export const DOC_MODULES = [
+    { id: 'flight-operations', title: 'Arrivals / Departures', route: '/',
+      docs: ['usage-guide'], helpAnchors: ['add-flight','quick-turn','times','hangar-pull','services','status','delete','filters','conflicts'] },
+    // later: parking, fuel-dispatch, ...
+  ] as const
+  ```
+  `docs` are slugs under `content/docs/<id>/`. Unit test fails when a registered doc file is missing, an anchor is undeclared, or a doc folder exists that is not registered.
+- **Module to docs**: a `<HelpButton module="flight-operations" anchor="quick-turn" />` (small ghost "?" icon button, `aria-label="Help: Quick turn"`, calls `openDocs`) used (a) in the board toolbar (opens the guide top), (b) in the flight form header, (c) next to the QT checkbox (anchor `quick-turn`), the scheduled/actual time fields (`times`), and the services pills (`services`). Add `data-testid="help-<anchor>"`.
+- **Docs to module**: every doc starts with a line rendered from the registry (not typed in Markdown): an "Open module" link (`Link` to `route`) in the panel header. In Markdown, in-text module links use a custom scheme `module:flight-operations` (mapped by a `components.a` override to the registry route and `closeDocs()` behavior on mobile), and doc-to-doc links use `doc:<module>/<slug>#<anchor>` (resolved to `openDocs`). Plain `http(s)` links open in a new tab with `rel="noopener noreferrer"`. The test validates all `module:` and `doc:` links resolve.
+
+### 4. Keeping docs current (the CLAUDE.md rule)
+- Rule (add to `.claude/CLAUDE.md` "Loop settings" bullet already says it; add to `docs/ui-conventions.md` and a PR checklist line): **any PR that changes a module's user-visible behavior updates `frontend/content/docs/<module>/` in the same PR**. The reviewer pass checks the diff for it.
+- Lightweight check, vitest only (D1: no jsdom), `lib/docs/docs.test.ts`:
+  1. every registry module has a folder, and every listed doc file exists and parses front matter (`title`, `module` equal to folder, `order`, `anchors`);
+  2. required headings present: `## Overview`, `## Common tasks`, `## Troubleshooting` (flight-operations additionally `## Fields and rules`); each declared anchor resolves to a heading slug;
+  3. every `helpAnchors` entry in the registry is declared in some doc of that module;
+  4. all `module:` / `doc:` links resolve; no orphan doc folders;
+  5. no doc shorter than a minimum (e.g. 400 chars), which blocks empty stubs.
+  Heading slugs use the same `github-slugger` that `rehype-slug` depends on, so test and renderer agree.
+- A grep guard (optional, B27d): the test also fails if a `HelpButton` in `components/` uses a module/anchor pair not in the registry (regex scan of source files).
+
+### 5. Test plan
+Playwright (`e2e/docs.e2e.ts`, repo default) and a mirrored Cypress spec under `cypress/e2e/flight-operations/` (D9). Flight-form specs need the local stack (B01); the rest do not.
+1. Open the board, click toolbar Help: docs panel visible (`getByRole('complementary', {name: 'Documentation'})`), URL contains `?docs=flight-operations`.
+2. Open Add Flight, type tail `N123AB` in the form, click the "?" next to QT: both the form dialog and the docs panel are visible at 1280x800; docs scrolled so the `#quick-turn` heading is in the viewport (`toBeInViewport`) and highlighted; the form is still open.
+3. With docs open, type in a form field and click a docs link: the form stays open (no outside-dismiss) and typing still works (focus not trapped).
+4. Close docs (button and Esc-in-docs): the form is still open and `N123AB` is still in the tail input; the URL param is gone; the board filters param is preserved.
+5. Deep link: load `/?docs=flight-operations#times` directly: panel opens and scrolls to `times`.
+6. Reload and client navigation (to `/parking` and back): docs state follows the URL as designed; browser back closes docs.
+7. "Open module" link from docs navigates to the registry route and keeps or closes docs per viewport.
+8. Mobile viewport 390x844: docs open full width above the form, "Back to form" returns, form input intact.
+9. Dark/light theme: panel uses theme tokens (screenshot check by Ted, not asserted).
+10. Unit (vitest, no DB, runs today): the docs test in section 4, plus `openDocs` URL merge logic extracted to a pure function `buildDocsUrl(searchParams, moduleId, anchor)` and tested (preserves existing params, replaces an existing `docs`).
+
+### 6. Implementation breakdown
+- **B27a (S)**: registry, front-matter parser, `load.ts`, `docs.test.ts`, `content/docs/flight-operations/usage-guide.md` stub with required headings and anchors; add the three dependencies; `app/docs/[module]/page.tsx` + `/docs` index (full-page rendering proves the pipeline). No panel yet.
+- **B27b (M)**: `DocsProvider` + `buildDocsUrl`, static JSON route, `DocsPanel` (non-Radix aside, widths, mobile, scroll-to-anchor, highlight, link scheme overrides), nav "Docs" item, `docs-prose` styles. Includes the spike for risk R5.
+- **B27c (S)**: `SheetContent` `overlay` prop, `FlightFormDialog` cooperation (modal flip, outside-interact guard), `HelpButton` placed in toolbar, form header, QT, times and services; `ui-conventions.md` section "Docs panel" and the same-PR rule.
+- **B27d (S)**: Playwright + Cypress specs from section 5, README test notes; verify on the local stack once B01 is up.
+B27 itself is "design done" (review). B28 (content) can start after B27a lands, and finishes after B09-B09c.
+
+### 7. B28 outline: Arrivals/Departures usage guide (headings only; reflects current behavior)
+`flight-operations/usage-guide.md`
+- `## Overview` (what the board shows: arrivals, departures, Today default, views)
+- `## Common tasks`
+  - `### Add a flight` {#add-flight} (tail, type, FBO, required fields; transient vs hangared)
+  - `### Quick turn (QT) and the +1 hour rule` {#quick-turn} (QT preselected on new flights; departure = arrival + 1 h; editing departure by hand unchecks QT)
+  - `### Scheduled vs actual times` {#times} (scheduled arrival/departure vs actual; when to fill actuals; local time)
+  - `### Arrival-only and departure-only entries (hangar pull)` {#hangar-pull} (hangared aircraft may have only a departure (pull) or only an arrival (return); at least one scheduled time is required; notes such as T/O fuel)
+  - `### Services` {#services} (pills, what the form offers; note B26 may change the catalog)
+  - `### Change a flight's status` {#status} (statuses available today; en route does not exist)
+  - `### Delete a flight` {#delete} (single Delete action, confirmation names the tail)
+  - `### Filters, search, views and the date filter` {#filters} (search, status, services; split / arrivals / departures / calendar; date filter default Today, local days; "All Dates" opt-in)
+  - `### Editing conflicts` {#conflicts} (what the conflict dialog means when another user saved first; reload vs overwrite)
+- `## Fields and rules` (field table: tail, schedule fields, QT, fuel order notes, location)
+- `## Troubleshooting` (flight not visible: date filter; save failed toast; conflict dialog; QT unchecked unexpectedly)
+Wording is verified against the running board before B28 is closed.
+
+### 8. Open questions for Ted
+1. OK to add `react-markdown`, `remark-gfm`, `rehype-slug` (no MDX, no typography plugin)?
+2. Docs stored in `frontend/content/docs/` (build-safe for Railway) rather than `docs/user/`: OK?
+3. Docs panel not built on Radix (custom aside) so it can sit beside the modal-by-default form: OK, or do you prefer making every Sheet non-modal?
+4. Should the docs be visible to every logged-in role, or hidden for some (users, training)? Default: all roles, and no auth needed for `/docs`.
+5. Mobile: full-width docs on top of the form (proposed), or hide the Help buttons on mobile?
+6. Should a visible "Docs" nav entry exist, or only per-module Help buttons?
