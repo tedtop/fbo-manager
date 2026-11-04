@@ -87,12 +87,9 @@ export async function createTransaction(
   db: SupabaseClient<Database>,
   tx: TransactionInsert
 ): Promise<TransactionRow> {
-  // Live fuel_transaction.created_at / modified_at are NOT NULL with no default (Django-era table; the
-  // local schema has defaults, which is why tests never saw it), so the app supplies them.
-  const now = new Date().toISOString()
   const { data, error } = await db
     .from('fuel_transaction')
-    .insert({ created_at: now, modified_at: now, ...tx })
+    .insert(tx)
     .select()
     .single()
   if (error) throw error

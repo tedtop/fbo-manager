@@ -545,9 +545,6 @@ export type Database = {
           tank_reading_after_center?: number | string | null
           tank_reading_after_total?: number | string | null
           tank_reading_unit?: 'lbs' | 'gal' | 'kg'
-          // NOT NULL with no default on live; createTransaction supplies them.
-          created_at?: string
-          modified_at?: string
         }
         Update: Partial<
           Database['public']['Tables']['fuel_transaction']['Insert']
