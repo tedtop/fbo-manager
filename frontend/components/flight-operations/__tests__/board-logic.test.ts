@@ -1,6 +1,16 @@
 import { withTz } from '@/tests/support/with-tz'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { dateRangeBounds, filterFlights, listFetchWindow, partitionFlights, weekDateParams, weekRange } from '../board-logic'
+import {
+  assignLinkColors,
+  dateRangeBounds,
+  filterFlights,
+  LINK_COLORS,
+  linkedFlightIds,
+  listFetchWindow,
+  partitionFlights,
+  weekDateParams,
+  weekRange,
+} from '../board-logic'
 import type { Flight, FlightFilters } from '../types'
 
 function makeFlight(overrides: Partial<Flight> = {}): Flight {
@@ -589,5 +599,51 @@ describe('weekDateParams (F5: calendar window follows weekOffset in local dates)
         )
       }
     })
+  })
+})
+
+describe('linkedFlightIds', () => {
+  const quickTurn = makeFlight({ id: 'qt' })
+  const stay = makeFlight({ id: 'stay', isQuickTurn: false, departureTime: '2026-03-12T15:00:00Z' })
+  const arrivalOnly = makeFlight({ id: 'arr', departureTime: undefined })
+  const departureOnly = makeFlight({ id: 'dep', arrivalTime: undefined })
+
+  it('links a flight that is in both columns (quick turn or stay), by id', () => {
+    const { arrivals, departures } = partitionFlights([quickTurn, stay, arrivalOnly, departureOnly])
+    expect([...linkedFlightIds(arrivals, departures)].sort()).toEqual(['qt', 'stay'])
+  })
+
+  it('does not link flights shown in one column only', () => {
+    const { arrivals, departures } = partitionFlights([arrivalOnly, departureOnly])
+    expect(linkedFlightIds(arrivals, departures).size).toBe(0)
+  })
+
+  it('links nothing when a column is empty (e.g. arrivals-only view of departure-only data)', () => {
+    expect(linkedFlightIds([quickTurn], []).size).toBe(0)
+  })
+})
+
+describe('assignLinkColors', () => {
+  it('gives each linked flight one color, looked up by id so both cards match', () => {
+    const colors = assignLinkColors(new Set(['a', 'b']))
+    expect(colors.get('a')).toBe(LINK_COLORS[0])
+    expect(colors.get('b')).toBe(LINK_COLORS[1])
+    expect(colors.get('other')).toBeUndefined()
+  })
+
+  it('rotates through the palette when there are more flights than colors', () => {
+    const ids = Array.from({ length: LINK_COLORS.length + 1 }, (_, i) => `f${i}`)
+    const colors = assignLinkColors(new Set(ids))
+    expect(colors.get(`f${LINK_COLORS.length}`)).toBe(LINK_COLORS[0])
+  })
+
+  it('palette entries are distinct and use full literal classes for each part', () => {
+    expect(new Set(LINK_COLORS.map((c) => c.border)).size).toBe(LINK_COLORS.length)
+    for (const c of LINK_COLORS) {
+      expect(c.border).toMatch(/^border-l-\w+-500\/60$/)
+      expect(c.ring).toMatch(/^ring-\w+-500$/)
+      expect(c.tint).toMatch(/^bg-\w+-500\/20$/)
+      expect(c.text).toMatch(/^text-\w+-500$/)
+    }
   })
 })

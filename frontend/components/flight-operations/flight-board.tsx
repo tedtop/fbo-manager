@@ -2,7 +2,12 @@
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMemo, useState } from 'react'
-import { filterFlights, partitionFlights } from './board-logic'
+import {
+  assignLinkColors,
+  filterFlights,
+  linkedFlightIds,
+  partitionFlights
+} from './board-logic'
 import { FlightList, type FlightDeletePhase, ZAP_MS } from './flight-list'
 import type { FlightFilters as FilterType, Flight } from './types'
 
@@ -76,40 +81,12 @@ export function FlightBoard({
 
   const { arrivals, departures } = partitionFlights(filteredFlights)
 
-  // Identify linked flights (appear in both arrivals and departures)
-  const linkedFlightIds = useMemo(() => {
-    const arrivalIds = new Set(arrivals.map((f) => f.id))
-    const departureIds = new Set(departures.map((f) => f.id))
-    const linked = new Set<string>()
-
-    arrivalIds.forEach((id) => {
-      if (departureIds.has(id)) {
-        linked.add(id)
-      }
-    })
-
-    return linked
-  }, [arrivals, departures])
-
-  // Assign colors to linked flights (rotating through a palette)
-  const linkColors = [
-    'border-l-emerald-500/60', // emerald
-    'border-l-sky-500/60', // sky blue
-    'border-l-violet-500/60', // violet
-    'border-l-rose-500/60', // rose
-    'border-l-amber-500/60', // amber
-    'border-l-cyan-500/60', // cyan
-    'border-l-pink-500/60', // pink
-    'border-l-lime-500/60' // lime
-  ]
-
-  const flightLinkColors = useMemo(() => {
-    const colorMap = new Map<string, string>()
-    Array.from(linkedFlightIds).forEach((id, index) => {
-      colorMap.set(id, linkColors[index % linkColors.length])
-    })
-    return colorMap
-  }, [linkedFlightIds])
+  // Flights listed in both columns are one record: link their cards (shared color, hover together).
+  const linkedIds = useMemo(
+    () => linkedFlightIds(arrivals, departures),
+    [arrivals, departures]
+  )
+  const flightLinkColors = useMemo(() => assignLinkColors(linkedIds), [linkedIds])
 
   return (
     <div className="space-y-6">
@@ -136,7 +113,7 @@ export function FlightBoard({
               deletePhases={deletePhases}
               loading={loading}
               onOrderFuel={onOrderFuel}
-              linkedFlightIds={linkedFlightIds}
+              linkedFlightIds={linkedIds}
               flightLinkColors={flightLinkColors}
               hoveredFlightId={hoveredFlightId}
               onFlightHover={setHoveredFlightId}
@@ -164,7 +141,7 @@ export function FlightBoard({
               deletePhases={deletePhases}
               loading={loading}
               onOrderFuel={onOrderFuel}
-              linkedFlightIds={linkedFlightIds}
+              linkedFlightIds={linkedIds}
               flightLinkColors={flightLinkColors}
               hoveredFlightId={hoveredFlightId}
               onFlightHover={setHoveredFlightId}
@@ -193,7 +170,7 @@ export function FlightBoard({
             deletePhases={deletePhases}
             loading={loading}
             onOrderFuel={onOrderFuel}
-            linkedFlightIds={linkedFlightIds}
+            linkedFlightIds={linkedIds}
             flightLinkColors={flightLinkColors}
             hoveredFlightId={hoveredFlightId}
             onFlightHover={setHoveredFlightId}
@@ -221,7 +198,7 @@ export function FlightBoard({
             deletePhases={deletePhases}
             loading={loading}
             onOrderFuel={onOrderFuel}
-            linkedFlightIds={linkedFlightIds}
+            linkedFlightIds={linkedIds}
             flightLinkColors={flightLinkColors}
             hoveredFlightId={hoveredFlightId}
             onFlightHover={setHoveredFlightId}

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import type { LinkColor } from './board-logic'
 import { FlightCard } from './flight-card'
 import { FlightCardSkeleton } from './flight-card-skeleton'
 import type { Flight } from './types'
@@ -25,7 +26,7 @@ interface FlightListProps {
   deletePhases?: Record<string, FlightDeletePhase>
   onOrderFuel?: (flight: Flight) => void
   linkedFlightIds?: Set<string>
-  flightLinkColors?: Map<string, string>
+  flightLinkColors?: Map<string, LinkColor>
   hoveredFlightId?: string | null
   onFlightHover?: (id: string | null) => void
 }

@@ -27,6 +27,7 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import type { LinkColor } from './board-logic'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
 import {
   AlertCircle,
@@ -92,7 +93,7 @@ interface FlightCardProps {
   onDelete: (id: string) => void
   onOrderFuel?: (flight: Flight) => void
   isLinked?: boolean
-  linkColor?: string
+  linkColor?: LinkColor
   isHovered?: boolean
   onHover?: (id: string | null) => void
   // Board column the card is rendered in; decides whether it shows the arrival or the departure time.
@@ -288,8 +289,12 @@ export function FlightCard({
       <Card
         className={cn(
           'bg-card border-border hover:border-primary/20 transition-all relative',
-          isLinked && linkColor && `border-l-4 ${linkColor}`,
-          isHovered && 'ring-2 ring-offset-2 ring-primary/50',
+          isLinked && linkColor && `border-l-4 ${linkColor.border}`,
+          // Hover ring: a linked flight uses its link color on both cards so the pair reads as one.
+          isHovered &&
+            `ring-2 ring-offset-2 ring-offset-background ${
+              isLinked && linkColor ? linkColor.ring : 'ring-primary/50'
+            }`,
           deleteState && 'pointer-events-none',
           deleteState === 'zapping' && 'animate-flight-zap'
         )}
@@ -320,20 +325,10 @@ export function FlightCard({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
-                        className={cn(
-                          'p-0.5 rounded',
-                          linkColor
-                            ?.replace('border-l-', 'bg-')
-                            .replace('/60', '/20')
-                        )}
+                        className={cn('p-0.5 rounded', linkColor?.tint)}
                       >
                         <ArrowLeftRight
-                          className={cn(
-                            'w-3 h-3',
-                            linkColor
-                              ?.replace('border-l-', 'text-')
-                              .replace('/60', '')
-                          )}
+                          className={cn('w-3 h-3', linkColor?.text)}
                         />
                       </div>
                     </TooltipTrigger>

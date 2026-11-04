@@ -110,6 +110,33 @@ export function partitionFlights(flights: Flight[]): {
   return { arrivals, departures }
 }
 
+// A flight listed in both columns is ONE record (same id), so its two cards are "linked": they share a
+// colour and highlight together on hover (B42).
+export function linkedFlightIds(arrivals: Flight[], departures: Flight[]): Set<string> {
+  const departureIds = new Set(departures.map((f) => f.id))
+  return new Set(arrivals.filter((f) => departureIds.has(f.id)).map((f) => f.id))
+}
+
+// Full literal class names (Tailwind only emits classes it can read in the source).
+export type LinkColor = { border: string; ring: string; tint: string; text: string }
+export const LINK_COLORS: LinkColor[] = [
+  { border: 'border-l-emerald-500/60', ring: 'ring-emerald-500', tint: 'bg-emerald-500/20', text: 'text-emerald-500' },
+  { border: 'border-l-sky-500/60', ring: 'ring-sky-500', tint: 'bg-sky-500/20', text: 'text-sky-500' },
+  { border: 'border-l-violet-500/60', ring: 'ring-violet-500', tint: 'bg-violet-500/20', text: 'text-violet-500' },
+  { border: 'border-l-rose-500/60', ring: 'ring-rose-500', tint: 'bg-rose-500/20', text: 'text-rose-500' },
+  { border: 'border-l-amber-500/60', ring: 'ring-amber-500', tint: 'bg-amber-500/20', text: 'text-amber-500' },
+  { border: 'border-l-cyan-500/60', ring: 'ring-cyan-500', tint: 'bg-cyan-500/20', text: 'text-cyan-500' },
+  { border: 'border-l-pink-500/60', ring: 'ring-pink-500', tint: 'bg-pink-500/20', text: 'text-pink-500' },
+  { border: 'border-l-lime-500/60', ring: 'ring-lime-500', tint: 'bg-lime-500/20', text: 'text-lime-500' }
+]
+
+// Rotates through the palette in set order; both cards of a flight look the color up by the same id.
+export function assignLinkColors(ids: Set<string>): Map<string, LinkColor> {
+  const colors = new Map<string, LinkColor>()
+  Array.from(ids).forEach((id, index) => colors.set(id, LINK_COLORS[index % LINK_COLORS.length]))
+  return colors
+}
+
 // Sunday-start local-time week containing `date`, shifted by weekOffset weeks. end is exclusive.
 export function weekRange(
   date: Date,
