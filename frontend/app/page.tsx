@@ -212,44 +212,11 @@ export default function FlightOperationsPage() {
         />
       )}
 
-      {showBoard && view === 'split' && (
+      {showBoard && view !== 'calendar' && (
         <FlightBoard
-          mode="split"
+          mode={view}
           theme={theme}
           flights={flights}
-          onAddFlight={handleAddFlight}
-          onEditFlight={handleEditFlight}
-          onDeleteFlight={handleDeleteFlight}
-          onDeleteExited={forgetFlight}
-          onOrderFuel={handleOrderFuel}
-          loading={boardLoading}
-          stale={isPlaceholder}
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
-      )}
-      {showBoard && view === 'arrivals' && (
-        <FlightBoard
-          mode="arrivals"
-          theme={theme}
-          flights={flights}
-          onAddFlight={handleAddFlight}
-          onEditFlight={handleEditFlight}
-          onDeleteFlight={handleDeleteFlight}
-          onDeleteExited={forgetFlight}
-          onOrderFuel={handleOrderFuel}
-          loading={boardLoading}
-          stale={isPlaceholder}
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
-      )}
-      {showBoard && view === 'departures' && (
-        <FlightBoard
-          mode="departures"
-          theme={theme}
-          flights={flights}
-          onAddFlight={handleAddFlight}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
           onDeleteExited={forgetFlight}

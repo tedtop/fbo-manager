@@ -19,7 +19,6 @@ interface FlightBoardProps {
   mode: 'split' | 'arrivals' | 'departures'
   theme: 'dark' | 'light'
   flights: Flight[]
-  onAddFlight: (flight: Flight) => void
   onEditFlight: (
     flight: Flight,
     expectedModifiedAt?: string
@@ -139,6 +138,29 @@ export function FlightBoard({
   )
   const flightLinkColors = useMemo(() => assignLinkColors(linkedIds), [linkedIds])
 
+  const allColumns = [
+    {
+      type: 'arrival' as const,
+      title: 'Arrivals',
+      dot: 'bg-success',
+      flights: arrivals,
+      empty: arrivalsEmpty
+    },
+    {
+      type: 'departure' as const,
+      title: 'Departures',
+      dot: 'bg-accent',
+      flights: departures,
+      empty: departuresEmpty
+    }
+  ]
+  const columns =
+    mode === 'split'
+      ? allColumns
+      : allColumns.filter(
+          (c) => c.type === (mode === 'arrivals' ? 'arrival' : 'departure')
+        )
+
   return (
     <div
       className={cn('space-y-6 transition-opacity', stale && 'opacity-60')}
@@ -151,29 +173,34 @@ export function FlightBoard({
           className="rounded-lg border border-dashed border-border py-8"
         />
       )}
-      {mode === 'split' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
+      <div
+        className={cn(
+          mode === 'split' && 'grid grid-cols-1 lg:grid-cols-2 gap-6',
+          mode !== 'split' && 'space-y-4'
+        )}
+      >
+        {columns.map((col) => (
+          <div key={col.type} className="space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-border">
-              <div className="w-2 h-2 rounded-full bg-success" />
-              <h2 className="text-2xl font-bold text-foreground">Arrivals</h2>
+              <div className={cn('w-2 h-2 rounded-full', col.dot)} />
+              <h2 className="text-2xl font-bold text-foreground">{col.title}</h2>
               {loading ? (
                 <Skeleton className="h-4 w-6" />
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  ({arrivals.length})
+                  ({col.flights.length})
                 </span>
               )}
             </div>
             <FlightList
-              flights={arrivals}
-              type="arrival"
+              flights={col.flights}
+              type={col.type}
               theme={theme}
               onEditFlight={onEditFlight}
               onDeleteFlight={handleDelete}
               deletePhases={deletePhases}
               loading={loading}
-              empty={arrivalsEmpty}
+              empty={col.empty}
               onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedIds}
               flightLinkColors={flightLinkColors}
@@ -181,95 +208,8 @@ export function FlightBoard({
               onFlightHover={setHoveredFlightId}
             />
           </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-3 border-b border-border">
-              <div className="w-2 h-2 rounded-full bg-accent" />
-              <h2 className="text-2xl font-bold text-foreground">Departures</h2>
-              {loading ? (
-                <Skeleton className="h-4 w-6" />
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  ({departures.length})
-                </span>
-              )}
-            </div>
-            <FlightList
-              flights={departures}
-              type="departure"
-              theme={theme}
-              onEditFlight={onEditFlight}
-              onDeleteFlight={handleDelete}
-              deletePhases={deletePhases}
-              loading={loading}
-              empty={departuresEmpty}
-              onOrderFuel={onOrderFuel}
-              linkedFlightIds={linkedIds}
-              flightLinkColors={flightLinkColors}
-              hoveredFlightId={hoveredFlightId}
-              onFlightHover={setHoveredFlightId}
-            />
-          </div>
-        </div>
-      ) : mode === 'arrivals' ? (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-border">
-            <div className="w-2 h-2 rounded-full bg-success" />
-            <h2 className="text-2xl font-bold text-foreground">Arrivals</h2>
-            {loading ? (
-              <Skeleton className="h-4 w-6" />
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                ({arrivals.length})
-              </span>
-            )}
-          </div>
-          <FlightList
-            flights={arrivals}
-            type="arrival"
-            theme={theme}
-            onEditFlight={onEditFlight}
-            onDeleteFlight={handleDelete}
-            deletePhases={deletePhases}
-            loading={loading}
-            empty={arrivalsEmpty}
-            onOrderFuel={onOrderFuel}
-            linkedFlightIds={linkedIds}
-            flightLinkColors={flightLinkColors}
-            hoveredFlightId={hoveredFlightId}
-            onFlightHover={setHoveredFlightId}
-          />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 pb-3 border-b border-border">
-            <div className="w-2 h-2 rounded-full bg-accent" />
-            <h2 className="text-2xl font-bold text-foreground">Departures</h2>
-            {loading ? (
-              <Skeleton className="h-4 w-6" />
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                ({departures.length})
-              </span>
-            )}
-          </div>
-          <FlightList
-            flights={departures}
-            type="departure"
-            theme={theme}
-            onEditFlight={onEditFlight}
-            onDeleteFlight={handleDelete}
-            deletePhases={deletePhases}
-            loading={loading}
-            empty={departuresEmpty}
-            onOrderFuel={onOrderFuel}
-            linkedFlightIds={linkedIds}
-            flightLinkColors={flightLinkColors}
-            hoveredFlightId={hoveredFlightId}
-            onFlightHover={setHoveredFlightId}
-          />
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   )
 }

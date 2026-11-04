@@ -3,7 +3,7 @@
 Goal: Ted can use the board daily, ASAP. Working style: screen-by-screen; finish this screen before the next. Origin: 2026-11-02 (branch `feature/flight-edit-concurrency`, PR #43). Backlog: `BACKLOG.md`.
 
 ## Scope (module files)
-`frontend/app/page.tsx` (the real board, route `/`), `components/flight-operations/*`, `app/flight-operations/{split-view,day-view,week-view}`, `app/flight-ops`, `hooks/use-flights.ts`, `repositories/flights.repo.ts`, tests in `repositories/__tests__/flights.repo.test.ts` and `e2e/`.
+`frontend/app/page.tsx` (the real board, route `/`), `components/flight-operations/*`, `hooks/use-flights.ts`, `repositories/flights.repo.ts`, tests in `repositories/__tests__/flights.repo.test.ts` and `e2e/`.
 
 ## Test tooling (verified)
 - vitest 3 (`vitest.config.ts`): `environment: node`, includes only `**/__tests__/**/*.test.ts`, sequential, real local Supabase (no mocks). No jsdom, no @testing-library installed. So "component tests" would need new devDependencies; avoid.
@@ -39,11 +39,11 @@ Real bugs:
   Status: still open (B19; the 390px overflow is tracked as B39 and pinned by `KNOWN BUG M1` in the Cypress mobile spec).
 Dead/duplicate code:
 - F13 `app/flight-ops/page.tsx` and `app/flight-operations/day-view/page.tsx` just re-export `app/page.tsx`; `split-view/` and `week-view/` are separate near-copies with their own handlers, no toolbar, no fuel order, no concurrency handling (split-view/page.tsx, week-view/page.tsx). No nav links to any of them (grep found none outside the module).
-  Status: partly fixed. The duplicate `/flight-ops` route was removed (commit 0909ced); `app/flight-operations/{day-view,split-view,week-view}` still exist, remaining work is B20.
+  Status: fixed. `/flight-ops` was removed (commit 0909ced); B20 removed `app/flight-operations/{day-view,split-view,week-view}` (nothing linked to or tested them).
 - F14 `flight-board-ui/` (v0 prototype, own package.json) is unreferenced by the app; only mentioned in `.omc/project-memory.json`.
   Status: fixed by B21 (review). Code references removed; the git-ignored `flight-board-ui/` folder is left for Ted to delete.
 - F15 Three near-identical `FlightBoard` branches (flight-board.tsx:118-208); `onAddFlight` prop unused there; `any` casts throughout the adapter (types.ts:181-213, use-flights.ts:285-316).
-  Status: still open (B20).
+  Status: FlightBoard branches collapsed into one column-driven render path and the unused `onAddFlight` prop removed by B20; the adapter `any` casts remain.
 Tooling:
 - F16 `pnpm tsc --noEmit` fails with 1 error: `next.config.ts(7,3) 'eslint' does not exist in type 'NextConfig'` (lint/type gates were disabled in commit 56f0525 for Railway). `pnpm lint` is broken (`next lint` removed in Next 16; it treats "lint" as a directory). Biome 1.9.4 is available (`biome.json`).
   Status: fixed by B02 (review). `pnpm tsc --noEmit` is clean and `pnpm lint` runs Biome on the flight-operations files.
