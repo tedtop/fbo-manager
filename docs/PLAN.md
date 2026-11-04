@@ -161,3 +161,166 @@ Wording is verified against the running board before B28 is closed.
 4. Should the docs be visible to every logged-in role, or hidden for some (users, training)? Default: all roles, and no auth needed for `/docs`.
 5. Mobile: full-width docs on top of the form (proposed), or hide the Help buttons on mobile?
 6. Should a visible "Docs" nav entry exist, or only per-module Help buttons?
+
+## B26 Service catalog design
+
+Status: design only (2026-11-04). No migration or app code written. Implements D10. Live facts below came from read-only `select` queries against project `qkuhvlrdidhumyyxokil`.
+
+### 1. Live data audit (read-only, 2026-11-04)
+
+- `flight.services` is a **jsonb array of plain strings** on all 146 rows (every row is a jsonb array; no objects, no nulls). No duplicate key inside any one flight.
+- **146 flights**, of which **6 are soft-deleted** (`deleted_at` set). **101 flights have at least one service.** Total **service rows = 255** (242 on non-deleted flights). **This differs from the 308 in the backlog/plan**: sample data was purged or edited since that count. The B26 gate must therefore be "junction count equals the jsonb element count measured in the migration itself", never a hard-coded number.
+- Distinct keys and counts (count equals flights, since no dupes): catering 50, fuel 49, cleaning 39, lavatory 34, transport 31, hangar 8, gpu 6, dishes 6, courtesy_car 5, oxygen 5, passengers 5, coffee 5, ice 5, lav 5, rental_car 2. 15 distinct keys, summing to 255.
+- Not one of the 12 card pill keys (fuel, hangar, catering, gpu, lav, oxygen, courtesy_car, rental_car, passengers, coffee, ice, dishes): **cleaning (39), lavatory (34), transport (31)**. The form's 5-item list also offers `maintenance` and `ground_transport`: **neither occurs live (0 rows)**, but the form can write them, so the catalog must include them or the form regresses.
+- `lav` (5) and `lavatory` (34) coexist: the Lav pill only shows for the 5; the `lavatory` rows are invisible on cards (the card does `if (!service) return null`). Same for cleaning and transport: 104 of 255 rows (41%) render nowhere today.
+
+Proposed mapping (legacy key -> catalog key):
+
+| Legacy key | Catalog key | Note |
+|---|---|---|
+| lavatory | lav | merge; 39 total after backfill |
+| transport | ground_transport | merge; label "Ground Transport" |
+| cleaning | cleaning | NEW catalog row (no pill today); needs icon/color |
+| maintenance | maintenance | NEW catalog row (0 live rows, form offers it) |
+| ground_transport | ground_transport | identity (0 live rows) |
+| the 12 pill keys | same | identity |
+
+Catalog = 12 pill keys + cleaning + maintenance + ground_transport = **15 rows**. Open question 1 asks Ted to confirm the merges.
+
+### 2. Schema
+
+`flight.id` and `product.id` are **bigint** live (older migration files say integer; live is truth, re-check `information_schema` before writing the file).
+
+```sql
+-- Touches: service (new), flight_service (new). Reads flight, product. Never touches fuel_tank_readings.
+create table service (
+  id            bigint generated always as identity primary key,
+  key           text not null unique check (key ~ '^[a-z][a-z0-9_]*$'),
+  label         text not null,
+  icon          text not null,                 -- lucide icon name, resolved client-side via a static map
+  color         text not null,                 -- semantic token (e.g. 'blue'), NOT a tailwind class string
+  default_price numeric(10,2) check (default_price is null or default_price >= 0),
+  product_id    bigint references product(id) on delete set null,
+  sort_order    integer not null default 0,
+  active        boolean not null default true,
+  created_at    timestamptz not null default now(),
+  modified_at   timestamptz not null default now()
+);
+create index service_active_sort_idx on service (active, sort_order);
+create index service_product_id_idx on service (product_id) where product_id is not null;
+
+create table flight_service (
+  id             bigint generated always as identity primary key,
+  flight_id      bigint not null references flight(id) on delete cascade,
+  service_id     bigint not null references service(id) on delete restrict,
+  quantity       integer not null default 1 check (quantity > 0),
+  notes          text not null default '',
+  price_override numeric(10,2) check (price_override is null or price_override >= 0),
+  created_at     timestamptz not null default now(),
+  modified_at    timestamptz not null default now(),
+  unique (flight_id, service_id)
+);
+create index flight_service_service_id_idx on flight_service (service_id);  -- flight_id covered by the unique index
+```
+
+Decisions:
+- **flight_id ON DELETE CASCADE**: flights are soft-deleted (`deleted_at`, migration 20261102000000), so a hard delete is rare admin cleanup and orphan junction rows would be meaningless. The soft-delete path never fires the cascade.
+- **service_id ON DELETE RESTRICT**: a catalog row in use cannot be dropped; retire it with `active = false` (old flights keep showing it, the picker hides it).
+- `color` is a semantic token mapped to the existing tailwind classes in one client map (tailwind's scanner cannot see runtime class strings). `icon` likewise maps a name to a lucide component. Both maps live in `components/flight-operations/service-visuals.ts`.
+- Every NOT NULL timestamp has an explicit `default now()` (B01c lesson: live Django-era columns lacked defaults and inserts broke). Wire the generic `set_modified_at()` trigger (20260703000300) on both tables.
+- Add both tables to `types/database.ts` (hand-edit like the existing entries, or regenerate).
+- **RLS** (consistent with docs/rls-rollout-plan.md: anon denied, authenticated allowed): `enable row level security` on both; policies `to authenticated` allowing select/insert/update/delete on `flight_service`; select for authenticated on `service`, with writes to `service` also authenticated for now and tightened to the Phase 2 module-access helper in B30. Explicit `revoke all ... from anon`, grants to authenticated (select/insert/update/delete) and service_role.
+- Seed `service` in the same migration (15 rows, `sort_order` following the current pill order). `default_price` and `product_id` stay NULL in the seed (section 5).
+
+### 3. Migration plan (B01c procedure)
+
+Two files, applied one at a time, never `db push`:
+
+1. `<ts>_service_catalog.sql`: tables, seed, RLS, triggers, RPC, backfill, all in one transaction.
+2. (B26e, later) `<ts>_drop_flight_services.sql`: drop `flight.services`.
+
+Steps:
+1. Verify locally first (`supabase db reset`, then repo tests). This design was written without a local DB.
+2. Backup: `select id, services from flight` into `docs/archive/flight-services-backup-<date>.json` before apply.
+3. Capture pre-counts in the script: `sum(jsonb_array_length(services))` (255 on 2026-11-04) and flights with services (101).
+4. Apply: `cd frontend && supabase db query --linked -f supabase/migrations/<file>.sql`, then `supabase migration repair --status applied <version>`.
+5. Backfill (inside the transaction), failing on unknown keys:
+
+```sql
+create temporary table _svc_map (legacy text primary key, key text not null) on commit drop;
+insert into _svc_map values ('lavatory','lav'),('transport','ground_transport');
+-- every other key maps to itself via service.key
+
+do $$
+declare unknown text;
+begin
+  select string_agg(distinct e.k, ', ') into unknown
+  from (select jsonb_array_elements_text(services) k from flight) e
+  left join _svc_map m on m.legacy = e.k
+  left join service s on s.key = coalesce(m.key, e.k)
+  where s.id is null;
+  if unknown is not null then
+    raise exception 'flight.services has keys with no catalog row: %', unknown;  -- aborts and rolls back
+  end if;
+end $$;
+
+insert into flight_service (flight_id, service_id)
+select distinct f.id, s.id          -- distinct: lav + lavatory on one flight collapse to one row
+from flight f
+cross join lateral jsonb_array_elements_text(f.services) e(k)
+left join _svc_map m on m.legacy = e.k
+join service s on s.key = coalesce(m.key, e.k);
+```
+
+6. Checks (also in the transaction, raising on mismatch): `count(*)` of `flight_service` equals the count of distinct (flight, mapped key) pairs derived from the jsonb. Report any collapse (a flight holding both `lav` and `lavatory`, or `transport` and `ground_transport`); live has 0 raw duplicates, so run a co-occurrence query in B26a first (expected delta 0 to a few). Flights stay 146, flights with services stay 101. Record the numbers in the commit box.
+7. `flight.services` stays in place and is **read-only by convention**: after B26b the app stops writing it. B26d compares mapped `flight.services` against the junction before the drop migration.
+8. Rollback before B26e: `drop table flight_service; drop table service;` plus drop the RPC (`flight.services` was never modified). After B26e: restore the column (`jsonb not null default '[]'`) and repopulate from the backup JSON; hence B26e runs only after Ted signs off.
+
+### 4. App changes
+
+- **Shared picker**: `components/flight-operations/service-pill-picker.tsx` (`{ value: string[] keys, onChange, services, variant }`) plus `ServicePill` for display. Used by `flight-card.tsx` (replaces `serviceConfig`, `availableServices` and the toggle UI) and `flight-form-dialog.tsx` (replaces the 5-item checkbox list and `service.replace('_',' ')`). The form fly-out then shows exactly the card's pills, and the 41% of rows invisible today become visible.
+- **Catalog hook**: `hooks/use-services.ts`, react-query key `['services']`, `staleTime` 5 min, backed by `repositories/services.repo.ts` (`findActiveServices`, `findAllServices`). Sorted by `sort_order`. The card needs inactive rows too (a retired service on an old flight still renders), so the hook fetches all rows and the picker filters on `active`. Loading state: skeleton pills.
+- **Reads (board query shape)**: extend `FLIGHT_SELECT` with `flight_services:flight_service ( service_id, quantity, notes, price_override, service:service_id ( key ) )` and map to `flight.services: string[]` of **keys** in `rowToFlight`, so `types.ts`, `board-logic.ts` (`flight.services.includes`) and all components keep their current `string[]` contract. Perf: one extra PostgREST embed, served by the unique index on `(flight_id, service_id)`; ~255 rows total, negligible, still one round trip, list window stays bounded as today. Labels and icons come from the cached catalog, not per-row joins.
+- **Writes: Postgres RPC** `set_flight_services(p_flight_id bigint, p_keys text[], p_expected_modified_at timestamptz)`, `security invoker` (RLS applies). In one transaction it locks the flight row, raises a conflict when `p_expected_modified_at` is given and differs from `flight.modified_at`, raises on unknown keys, deletes junction rows no longer selected, inserts new ones (retained rows keep quantity/notes/price_override), then bumps `flight.modified_at` (via `update flight set id = id where id = p_flight_id` so the existing trigger fires). Why an RPC rather than a client-side repository function: PostgREST has no multi-statement transaction, so client delete-then-insert can leave partial services after a dropped connection, and two clients can interleave; and a bare junction write would bypass the form's `modified_at` edit-concurrency check because it never touches `flight`. Create is two steps (insert flight, then the RPC); the RPC is idempotent so Save can retry (open question 4 offers a single `create_flight_with_services` RPC instead). Execute granted to authenticated only.
+- **Toolbar filter**: `compact-toolbar.tsx` `serviceOptions` (5 hard-coded) comes from `useServices()` (active rows). `board-logic.ts` is unchanged because `flight.services` stays a key array. This also fixes the filter today being unable to select lav, gpu, oxygen, etc.
+- **Realtime/polling (B16)**: B16 subscribes to `postgres_changes` on `flight`. Edits through the RPC bump `flight.modified_at`, so that one subscription already fires and invalidates `flightKeys.all`; no second channel is required. Direct junction writes (admin SQL) would only show on the next refetch; optionally also subscribe to `flight_service` in B26c (cheap).
+- **Plumbing**: `types.ts` keeps `services: string[]`. `componentFlightToApiRequest` stops feeding `services` into `flight` updates; `use-flights.ts` drops `dbUpdates.services` / the create `services` field and calls the RPC with the picked keys (resolved to ids inside the RPC, so the client never handles ids).
+- **Card inline editing** (`localServices`, `isEditingServices`): behavior unchanged, choices from the shared picker, saved through the same mutation path.
+
+### 5. Pricing
+
+- D10 says services carry prices. Stance: the **catalog stores a suggested price, the junction stores an override, invoicing stays the source of money truth.**
+- Effective suggested price: `coalesce(price_override, service.default_price, product.price)` (resolved in a view or client function; never copied into invoice rows at flight time).
+- `service.product_id` links to `product` (10 live rows: PARK-JET 150, PARK-SGL 25, SVC-GPU 75, SVC-LAV 125, SVC-H2O 45, SVC-DEICE 250, FEE-CATER 50, FEE-RAMP 75, PROD-PRIST 15, PROD-OIL 12.50). Natural pairs: gpu to SVC-GPU, lav to SVC-LAV, catering to FEE-CATER. The migration does **not** populate links or prices (Ted's call, open question 2).
+- Invoicing: `invoice_line_items.product_id` and `invoices.flight_id` already exist, so a later item can offer "add this flight's services as invoice lines" at the effective price.
+- **Out of scope for B26**: invoice generation from services, any price-editing UI, tax, per-customer pricing, changes to `product` or invoice tables, admin CRUD UI for the catalog (SQL until a later item), per-service permissions, fuel orders (stay on `flight.fuel_order_notes`; `fuel` is just a pill), `quantity`/`notes` inputs in the UI (columns exist, UI writes the defaults 1 and ''), and anything touching `fuel_tank_readings`.
+
+### 6. Test plan
+
+- **Repository/RPC tests** (vitest, local DB): `services.repo` (active sorted; inactive hidden from the picker query); flights repo embed returns `flight_services` and maps to keys; RPC: add/remove, idempotent re-set, unknown key raises, stale `p_expected_modified_at` raises conflict, junction change bumps `flight.modified_at`, cascade on hard flight delete, restrict on catalog delete, UNIQUE(flight_id, service_id).
+- **Migration test**: seed a legacy-shaped `flight.services` (with `lavatory`, `transport`, `cleaning`, plus an unknown key) and assert correct mapping, duplicate collapse, and that the unknown key **raises** with the transaction rolled back.
+- **Adapter/unit tests**: `rowToFlight` embed to `string[]`; `componentFlightToApiRequest` no longer emits `services`; `board-logic` services filter on keys; picker component (renders catalog pills, toggles, a retired service on a flight still renders).
+- **Playwright** (`e2e/`): in the form pick Fuel, Lav and Cleaning, save, assert the same three pills on the card; reopen the form and see them preselected; remove one and verify on the card; toolbar service filter lists catalog items and filters.
+- **Cypress**: same flow, plus a backfilled legacy flight (`lavatory`) showing the Lav pill.
+- **Live check** (read-only) after apply: counts per section 3 step 6.
+
+### 7. Breakdown
+
+| Item | Scope | Size |
+|---|---|---|
+| B26a | Migration: tables, seed, RLS, triggers, backfill (fails on unknown), `set_flight_services` RPC; local verify, backup, live apply via B01c, `types/database.ts`, migration test | M |
+| B26b | `services.repo`, `use-services`, flight select embed, `rowToFlight`, create/update write via RPC, repo and RPC tests | M |
+| B26c | Shared `ServicePillPicker`/`ServicePill` + `service-visuals`; wire card and form fly-out; toolbar filter from catalog; component tests | M |
+| B26d | Playwright + Cypress specs, live parity check | S |
+| B26e | After Ted's sign-off: drop `flight.services` (backup, B01c apply, rollback documented), remove jsonb plumbing | S |
+
+Order a, b, c, d, e. B26a needs Docker back for local verification.
+
+### 8. Open questions for Ted
+
+1. Legacy mapping: OK to merge `lavatory` into `lav` and `transport` into `ground_transport` (or is `transport` really Courtesy Car)? Add `cleaning`, `maintenance`, `ground_transport` as new pills?
+2. Do services carry prices now (D10)? If yes, give prices or confirm linking gpu/lav/catering to existing `product` rows; otherwise `default_price` stays NULL.
+3. Does `quantity` matter (2 GPU starts, bags of ice) and should the form expose quantity and per-service notes, or stay simple toggles?
+4. Is "create flight, then set services" (two calls) acceptable, or a single atomic `create_flight_with_services` RPC?
+5. Should retired services keep showing on old flights (proposed) or vanish everywhere?
+6. Is catalog editing in the UI wanted soon, or is SQL-only fine for now?
