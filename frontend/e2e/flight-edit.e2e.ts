@@ -19,7 +19,8 @@ const tailCancel = uniqueValue('NF2E').toUpperCase()
 const tailDeparted = uniqueValue('NF2E').toUpperCase()
 const tailFuel = uniqueValue('NF2E').toUpperCase()
 const tailMenu = uniqueValue('NF2E').toUpperCase()
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted, tailFuel, tailMenu]
+const tailStale = uniqueValue('NF2E').toUpperCase()
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted, tailFuel, tailMenu, tailStale]
 const ids: Record<string, number> = {}
 let userId: number
 
@@ -67,7 +68,9 @@ test.afterAll(async () => {
   await db.from('users').delete().eq('id', userId)
 })
 
-const card = (page: Page, tail: string): Locator => page.locator('[data-slot="card"]').filter({ hasText: tail })
+// Tails differ only by a trailing counter (...K1, ...K10), so match the whole tail, not a prefix.
+const card = (page: Page, tail: string): Locator =>
+  page.locator('[data-slot="card"]').filter({ hasText: new RegExp(`${tail}(?![0-9])`) })
 
 async function openBoard(page: Page, tail: string) {
   await page.goto('/')
@@ -137,10 +140,9 @@ test.describe('Flight edit, status change, delete', () => {
 
     await expect(card(page, tailEdit).getByText('KASE')).toBeVisible({ timeout: 15_000 })
 
-    // NEW BUG (untagged in F1-F9, reported with B08): FlightCard seeds localNotes/localServices from props
-    // with useState once, so after an edit the card keeps showing the old notes/services until reload.
-    // Flips to visible-without-reload once the card derives them from props.
-    await expect(card(page, tailEdit).getByText('edited by e2e')).toHaveCount(0)
+    // B44 fixed: the card shows the saved notes and services straight away, no reload needed.
+    await expect(card(page, tailEdit).getByText('edited by e2e')).toBeVisible({ timeout: 15_000 })
+    await expect(card(page, tailEdit).getByText('Hangar', { exact: true })).toBeVisible()
     await page.reload()
     await expect(card(page, tailEdit).getByText('edited by e2e')).toBeVisible({ timeout: 15_000 })
   })
@@ -321,5 +323,30 @@ test.describe('Flight edit, status change, delete', () => {
     await expect(toast).toBeVisible({ timeout: 10_000 })
     await expect(toast).toContainText('forced e2e failure')
     expect((await readFlight(tailStatusFail)).flight_status).toBe('scheduled')
+  })
+
+  // B44: the card's status dropdown passes the flight's modified_at, so a card that is out of date
+  // is refused by the compare-and-swap instead of overwriting the other write.
+  test('stale status change: row changed behind the card is refused with a toast and the other write is kept', async ({ page }) => {
+    await openBoard(page, tailStale)
+    // Keep the card stale: refetches (realtime, polling) must not refresh it before the click.
+    await page.route(/\/rest\/v1\/flight(\?|$)/, (route) =>
+      route.request().method() === 'GET' ? route.abort() : route.continue()
+    )
+
+    const { error } = await db.from('flight').update({ notes: 'changed behind the card' }).eq('id', ids[tailStale])
+    if (error) throw error
+    const bumped = await readFlight(tailStale)
+
+    await card(page, tailStale).getByText('Scheduled', { exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Delayed' }).click()
+
+    const toast = toastLocator(page, 'Flight was changed by someone else')
+    await expect(toast).toBeVisible({ timeout: 10_000 })
+    await expect(toastLocator(page, 'Flight updated')).toHaveCount(0)
+    const after = await readFlight(tailStale)
+    expect(after.flight_status).toBe('scheduled')
+    expect(after.notes).toBe('changed behind the card')
+    expect(after.modified_at).toBe(bumped.modified_at)
   })
 })

@@ -80,10 +80,9 @@ describe('Flight edit, status change, delete', () => {
     })
 
     card(tailEdit).contains('KASE').should('be.visible')
-    // KNOWN BUG (new, reported with B08): FlightCard seeds localNotes/localServices from props with
-    // useState once, so after an edit the card keeps the old notes/services until reload.
-    // Flips to visible-without-reload once the card derives them from props.
-    card(tailEdit).contains('edited by cypress').should('not.exist')
+    // B44 fixed: the card shows the saved notes and services straight away, no reload needed.
+    card(tailEdit).contains('edited by cypress').should('be.visible')
+    card(tailEdit).contains('Hangar').should('be.visible')
     cy.reload()
     card(tailEdit).contains('edited by cypress').should('be.visible')
   })
