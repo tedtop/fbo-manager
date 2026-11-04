@@ -63,6 +63,7 @@ Tooling:
 - D9 (2026-11-02, Ted): Add a full Cypress suite for the arrivals/departures module only (B08b-B08e), alongside the existing Playwright pattern; no migration of the other modules. Duplicate coverage with Playwright is accepted; Playwright stays the repo default for other modules.
 - D10 (2026-11-02, Ted): Services carry prices, so store them relationally rather than as free-text keys. Today `flight.services` is a jsonb array of strings (no cross-reference table); live data uses keys that match neither the form nor the pills (cleaning 39, lavatory 34, transport 31). Proposed: `service` catalog + `flight_service` junction, optionally linked to `product` (10 rows, SKU + price) for invoicing. See B26.
 - D11 (2026-11-02, Ted): Documentation is a first-class module, built and updated simultaneously with each module it documents, cross-linked both ways, shown in a left slide-in panel beside the right-side form sheet (B27, B28). Also 2026-11-02: legacy `django_*` and `auth_*` tables dropped from live (migration 20261102000100, backup kept locally outside the repo).
+- D12 (2026-11-04, Ted asked, rules proposed): Flights can be bulk-added by scanning the front desk's printed schedule (B45). Scan -> Claude vision extraction -> per-row review -> import through `flights.repo`; nothing is written without the review step. Import never overwrites values already on the board (fill-only updates), so re-scanning the same sheet cannot create duplicates or undo staff edits. Details: "B45 Schedule sheet import design".
 - D7 (2026-11-02, Ted): Direction of travel: customers (e.g. Greg, N446FM, pulled most mornings 6:00-6:30 with a T/O top-off note) should post pull times and service notes (T/O fuel, TKS fluid) from home. Needs customer accounts and auth: design only, waits for Ted (B24, B25).
 - D5 (2026-11-02, Ted): stop ski-jobs Supabase containers for the local test stack (B01); delete flight-board-ui/ and /flight-ops (B21).
 - D3 (proposed): canonical route `/`; others redirect.
@@ -379,3 +380,70 @@ Decisions (Ted, 2026-11-04): build the service catalog now; billable-but-not-on-
 - Backfill runs between `-- BACKFILL:BEGIN/END` markers (the repo test executes that block against scratch rows in a rolled-back transaction). Re-run safe: on an empty junction it requires count == distinct (flight, mapped key) pairs; on a populated one it requires no missing pair.
 - `tests/support/reset.ts` wipes `flight_service` but deliberately keeps the seeded `service` catalog; tests that change the catalog restore it.
 - Local apply note: `supabase migration up` against the local DB needs `--yes` here (agent mode) and would also apply the other session's pending `20261104000000_equipment_sort_order.sql`; B26a was applied with `psql -f` and recorded in the local `supabase_migrations.schema_migrations`.
+
+## B45 Schedule sheet import design
+
+Status: B45a built (2026-11-04): extraction route, types, mapping and duplicate rules, all pure and unit-tested. Review screen (B45b) and the real-sample prompt tuning (B45c) are not started. No sample printout exists yet, so the extraction schema is deliberately generic. Implements D12.
+
+### 1. Data flow
+
+```
+printout (photo / scan / PDF, one or more files)
+  -> POST /api/ocr/schedule-sheet            (FormData, repeated `file`; Claude vision; ANTHROPIC_API_KEY; model SCHEDULE_OCR_MODEL, default = truck-sheet model)
+  -> ExtractedScheduleSheet                  (lib/schedule-import/normalize.ts cleans the model JSON; multi-file merged, row.page = file number)
+  -> mapExtractedRowToFlightDraft(row, { sheetDate, timeZone })      per row, pure
+  -> ScheduleFlightDraft[]                   (ISO with offset, QT, direction, services keys, needsReview + reasons)
+  -> findDuplicateFlight(draft, existing, { windowMinutes })         per row, pure; existing = flights.repo findAllFlights over the sheet's date span
+  -> review screen (B45b)                    user edits, picks add / update / skip per row
+  -> flights.repo createFlight / updateFlight (aircraft find-or-create first); original scan stored with scanned-documents.repo
+```
+
+Files: `app/api/ocr/schedule-sheet/route.ts` (prompt + HTTP only), `lib/schedule-import/{types,normalize,map-row,duplicates,zoned-time}.ts`, tests in `lib/schedule-import/__tests__/` (inline fixtures, no network, no API key). The route mirrors truck-sheet: 400 no file or non-image/PDF, 500 no `ANTHROPIC_API_KEY`, 502 model failure or unparseable JSON (with `raw_text`). It always returns one `ExtractedScheduleSheet`; several files are merged in upload order.
+
+### 2. Extraction schema
+
+Sheet: `sheet_date` (one printed date) or `date_range_start`/`date_range_end`, each `YYYY-MM-DD | null`; `source_software_hint` (software name from the header or footer); `rows`; `raw_text` (debug).
+Row (all strings unless noted; `''` = not printed): `tail_number`, `aircraft_type`, `customer`, `group_date` (the day heading the row sits under), `arrival_date`, `arrival_time`, `departure_date`, `departure_time` (24 h `HH:mm`; unparseable text is passed through verbatim), `services` (text), `notes`, `raw_row_text` (whole row on one line, for the review screen), `needs_review` (boolean, the model's own doubt), `confidence` (`high|medium|low`), `page` (number).
+The prompt targets printed (not handwritten) tabular schedules in any orientation and over several pages, and tells the model to leave `arrival_date`/`departure_date` empty unless a date is printed in the row itself (the day heading goes in `group_date`, carried across page breaks). The Z/UTC and AM/PM-less cases are copied verbatim and flagged, not converted. If the same aircraft appears in separate Arrivals and Departures sections the model must emit two rows; they are not merged.
+
+### 3. Mapping rules (ExtractedScheduleRow -> ScheduleFlightDraft)
+
+- **Tail:** uppercase, strip spaces, dashes and dots (`N 116 FE` -> `N116FE`). N-numbers must match the FAA shape (first digit 1-9, up to 5 digits, or up to 4 digits + 1 letter, or up to 3 digits + 2 letters, no I or O) else `suspicious_tail`; other registrations need 3-7 alphanumerics with a letter. Empty -> `missing_tail` (not importable).
+- **Aircraft type:** exact ICAO designator hit via `findIcaoType` -> `aircraftTypeIcao`; otherwise null and the printed text stays in `aircraftTypeRaw` with `unknown_aircraft_type`. No fuzzy matching, so a wrong type is never guessed. A blank type is not flagged (the aircraft may already exist by tail).
+- **Date for a time:** the row's own date, else its `group_date`, else the sheet date, else `missing_date`. A departure with no date of its own takes the arrival's date. Month/day-only dates take the year from the heading or sheet; dates are US month-first.
+- **Time zone and offset (B10):** wall times are interpreted in the caller-supplied IANA `timeZone` (B45b passes the app's local zone) using `Intl`, independent of the process TZ, and emitted as ISO with offset (`2026-03-08T09:00:00-07:00`). A time inside a spring-forward gap moves an hour later (`nonexistent_local_time`); a time that occurs twice at fall-back uses the first (`ambiguous_local_time`). Both are flagged.
+- **Direction (D6):** arrival time only -> `arrival_only`; departure time only -> `departure_only`; both -> `both`; neither -> `none` (`no_times`, not importable, since the flight table needs at least one scheduled time). A blank, `TBD`, `-` or `?` time is "unknown", not an error.
+- **Midnight rollover:** both times present, departure date not printed, departure wall time earlier than arrival -> departure goes to the next day. A rollover that makes the stay over 12 h is flagged (`rolled_over_long_gap`, probably a misread). A printed departure date earlier than the arrival is never auto-fixed: the departure is dropped and `departure_before_arrival` set.
+- **QT:** `isQuickTurn` when both times exist and 0 < elapsed minutes <= 60. Elapsed is real time between the two instants, so DST nights count correctly (01:30 EST -> 03:15 EDT is 45 min). Equal times -> `zero_gap`, not QT.
+- **Services:** the services text is split on `, ; |` and matched by synonym to the 15 seed catalog keys of B26 (fuel incl. Jet A, top off and `T/O`; gpu; lav; catering; oxygen; hangar; courtesy_car; rental_car; coffee; ice; dishes; cleaning; maintenance; ground_transport). Unmatched tokens are appended to `notes` as `Services: ...` so nothing printed is lost. B45b must still validate keys against the live catalog once B26 lands.
+- **Customer** -> `contact_name`; remarks -> `notes`; `created_by_source` should be set to `front-desk` by the importer.
+- **needs_review reasons:** `model_flagged`, `low_confidence`, `missing_tail`, `suspicious_tail`, `unknown_aircraft_type`, `missing_date`, `unparseable_date`, `unparseable_time`, `date_without_time`, `no_times`, `departure_before_arrival`, `rolled_over_long_gap`, `zero_gap`, `ambiguous_local_time`, `nonexistent_local_time`. Labels in `REVIEW_REASON_LABELS`. `needsReview` is `reasons.length > 0`; `importable` is false only for no tail or no usable time.
+
+### 4. Duplicate rule
+
+`findDuplicateFlight(draft, existingFlights, { windowMinutes = 120 })` returns `{ match, suggestion, fills, conflicts, candidateCount }`.
+- A candidate is a non-deleted existing flight with the same tail (case, space and dash insensitive) whose scheduled arrival is within the window of the draft's arrival, or whose scheduled departure is within the window of the draft's departure. The closest candidate (smallest summed time distance) is the match. Cancelled flights still match, so a re-import does not resurrect them.
+- No match -> `add`. Match -> compare field by field: a value the sheet has and the board lacks (departure time, arrival time, customer, missing service keys) is a **fill** -> `update`; a value set on both sides but different is a **conflict** and is reported but never overwritten -> `skip`. Nothing to fill -> `skip`.
+- Consequences: re-importing the same sheet yields zero `add`s (tested, also after staff shifted times on the board). Staff edits are never reverted by an import. If the user really wants the sheet's time, B45b offers it per conflict as an explicit choice.
+- The caller should also feed already-accepted drafts of the same import into `existingFlights` so a tail listed twice on one sheet is added once.
+
+### 5. Review-screen contract for B45b
+
+- Input: the `ExtractedScheduleSheet`, the app time zone, and `existingFlights` loaded with `findAllFlights({ startDate, endDate })` over the drafts' span padded by one day. Per row compute `draft = mapExtractedRowToFlightDraft(row, { sheetDate: sheet.sheet_date, timeZone })` then `dup = findDuplicateFlight(draft, pool)`. A sheet with only a date range and rows without headings produces `missing_date` rows; the screen must let the user pick a date for them.
+- Row state: `include` (default true for `add`/`update` rows without blocking problems; false for `skip`), editable tail, type (ICAO picker, shows `aircraftTypeRaw` when unmatched), customer, arrival and departure date+time, services (catalog picker), notes; the user's choice `add | update | skip` seeded from `dup.suggestion`. After any edit the screen re-runs the duplicate check and re-validates; edits to times recompute `isQuickTurn` with the same 60 minute rule and the departure rollover.
+- Badges: review reasons from `REVIEW_REASON_LABELS` (highlight the offending cell), duplicate badge naming the matched flight, with `fills` and `conflicts` listed ("board 14:00, sheet 14:30").
+- Blocking: `importable === false` rows cannot be included until fixed. Rows with `needsReview` can be imported but show an unacknowledged state the user must clear (one click) so nothing flagged is imported by accident.
+- Import: aircraft find-or-create by tail (type from `aircraftTypeIcao`, else the user must choose one), then `createFlight` for `add`, `updateFlight` with only the `fills` (and any conflicts the user explicitly accepted) for `update`, with `expectedModifiedAt` for the concurrency check; the original files stored through `scanned-documents.repo`; success toast with counts (added, updated, skipped, errors). Writes go through `flights.repo` only; `flight-form-dialog.tsx` is not touched.
+- Tests: component/pure tests plus one Playwright spec that stubs `/api/ocr/schedule-sheet` (no live API call in CI).
+
+### 6. Open questions that need Ted's sample printout
+
+1. What does the sheet look like: columns present, one table or Arrivals/Departures sections, day headings or a single date, orientation, pages? Section layouts may need a post-step that merges an aircraft's arrival row and departure row into one flight (not built).
+2. Are printed times local 24 h, 12 h with AM/PM, or Zulu? Zulu is currently flagged `unparseable_time`, not converted.
+3. Does it print a tail for every row (hangar pulls, charters with TBD tails)? Rows without a tail are not importable.
+4. Is the aircraft type an ICAO code (maps exactly) or free text like "Citation CJ3" (would need a fuzzy/alias step)?
+5. Which services/remarks vocabulary does the desk use (T/O, GPU, lav, car)? The synonym table in `map-row.ts` is a guess from the board and truck sheets.
+6. What is the right duplicate window? 120 minutes is a default; confirm real ETA drift. Should a sheet entry with the same tail be treated as the departure of a flight already on the board that has only an arrival (complementary match across days)? Not built.
+7. Is there anything on the sheet that should NOT create a flight (maintenance, tows, crew only)?
+8. Which IANA zone is the FBO in? The importer takes it as a parameter; the repo currently uses the browser/server local zone (B10).
+9. Does the sheet carry customer contact, passenger count, origin or destination that should map to flight fields?
