@@ -39,11 +39,18 @@ describe('Flight board on a phone (390x844)', () => {
   it('loads the board with a seeded flight and no horizontal page scroll', () => {
     openBoard(tailBoard)
     cy.window().its('innerWidth').should('eq', 390)
-    // KNOWN BUG M1 (mobile UX): the board is not responsive - the page is ~930px wide at 390px, so it
-    // scrolls sideways. Flips when the layout is fixed: change to at.most(390).
+    // B39 (was KNOWN BUG M1): the top nav links and the board toolbar collapse/wrap on a phone, so the page must not scroll sideways.
     cy.document().then((doc) => {
-      expect(doc.documentElement.scrollWidth, 'page scrollWidth').to.be.greaterThan(390)
+      expect(doc.documentElement.scrollWidth, 'page scrollWidth').to.be.at.most(390)
     })
+  })
+
+  it('navigation links collapse into a menu button on a phone', () => {
+    openBoard(tailBoard)
+    cy.contains('nav a', 'Parking').should('not.be.visible')
+    cy.get('button[aria-label="Open navigation menu"]').click()
+    cy.contains('[role="menuitem"]', 'Parking').should('be.visible')
+    cy.contains('[role="menuitem"]', 'Fuel Farm').should('be.visible')
   })
 
   it('view toggle switches between departures only and split', () => {
