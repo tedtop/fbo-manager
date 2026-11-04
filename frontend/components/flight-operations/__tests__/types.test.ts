@@ -379,3 +379,26 @@ describe('F3 field round-trip (B14)', () => {
     expect(componentFlightToApiRequest({ fuelOrderNotes: '' }).fuel_order_notes).toBe('')
   })
 })
+
+describe('parkingArea (aircraft.parked_area_id, read-only)', () => {
+  const area = { id: 7, code: 'GH', name: 'Gold Hangars', kind: 'hangar' }
+
+  it('maps the aircraft parking area when present', () => {
+    expect(apiFlightToComponentFlight({ ...baseRow, parking_area: area }).parkingArea).toEqual(area)
+  })
+
+  it('is null when the aircraft has no parked area or the row omits it', () => {
+    expect(apiFlightToComponentFlight({ ...baseRow, parking_area: null }).parkingArea).toBeNull()
+    expect(apiFlightToComponentFlight(baseRow).parkingArea).toBeNull()
+  })
+
+  it('is not sent back to the API', () => {
+    const request = componentFlightToApiRequest(
+      apiFlightToComponentFlight({ ...baseRow, parking_area: area })
+    )
+    expect(request).not.toHaveProperty('parkingArea')
+    expect(request).not.toHaveProperty('parking_area')
+    expect(request).not.toHaveProperty('parked_area_id')
+    expect(JSON.stringify(request)).not.toContain('Gold Hangars')
+  })
+})

@@ -384,6 +384,28 @@ export function FlightCard({
               <span className="text-sm text-muted-foreground">
                 {flight.aircraftType}
               </span>
+              {flight.parkingArea && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        data-testid="flight-parking-area"
+                        className="min-w-0 max-w-32 gap-1 px-1.5 py-0 text-xs font-normal"
+                      >
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{flight.parkingArea.name}</span>
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">
+                        {flight.parkingArea.kind.replace('_', ' ')} ·{' '}
+                        {flight.parkingArea.code}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               {flight.isQuickTurn && (
                 <Badge
                   variant="outline"

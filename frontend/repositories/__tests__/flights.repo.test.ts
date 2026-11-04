@@ -49,6 +49,29 @@ describe('flights.repo', () => {
     expect(found?.created_by?.username).toBe('frontdesk-1')
   })
 
+  it('embeds the aircraft parked area, or null when the aircraft has none', async () => {
+    const { data: area, error } = await db
+      .from('parking_area')
+      .insert({ code: 'GH', name: 'Gold Hangars', kind: 'hangar' })
+      .select()
+      .single()
+    if (error) throw error
+    const parked = await makeAircraft(db, { parked_area_id: area.id })
+    const loose = await makeAircraft(db)
+    const parkedFlight = await makeFlight(db, { tail_number: parked.tail_number })
+    const looseFlight = await makeFlight(db, { tail_number: loose.tail_number })
+
+    const foundParked = await findFlightById(db, parkedFlight.id)
+    expect(foundParked?.aircraft?.parked_area).toEqual({
+      id: area.id,
+      code: 'GH',
+      name: 'Gold Hangars',
+      kind: 'hangar',
+    })
+    const foundLoose = await findFlightById(db, looseFlight.id)
+    expect(foundLoose?.aircraft?.parked_area).toBeNull()
+  })
+
   it('fails to create a flight for a nonexistent aircraft (FK guard)', async () => {
     const creator = await makeUser(db)
     await expect(
