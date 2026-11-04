@@ -74,7 +74,8 @@ describe('Flight board on a phone (390x844)', () => {
       expect(r.right, 'sheet right').to.be.at.most(390)
     })
 
-    cy.get('input[placeholder="e.g., N12345"]').type(tailNew)
+    // B47: the tail field starts with the default Settings prefix ("N"); clear it before typing the full tail.
+    cy.get('input[placeholder="e.g., N12345"]').should('have.value', 'N').clear().type(tailNew)
     cy.get('#aircraftType').click()
     cy.get('input[placeholder="Search code or model (e.g. G650, GLF6)"]').type('b738')
     cy.contains('[role="option"]', /B738/).click()

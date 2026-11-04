@@ -36,6 +36,12 @@ const openAddFlightSheet = () => {
   cy.contains('h2', 'Add New Flight').should('be.visible')
 }
 
+// B47: a new flight's tail field starts pre-filled with the Settings tail number prefix (default "N"), so the
+// field is cleared before the full tail is typed (typing alone would append to the prefix).
+const typeTail = (tail: string) => {
+  cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).clear().type(tail)
+}
+
 const pickAircraftType = (search: string, optionName: RegExp) => {
   cy.get('#aircraftType').click()
   cy.get('input[placeholder="Search code or model (e.g. G650, GLF6)"]').type(search)
@@ -81,7 +87,9 @@ describe('Add Flight sheet persists real rows', () => {
       date = v as string
     })
 
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailNew)
+    // B47: the tail field starts with the default Settings prefix.
+    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).should('have.value', 'N')
+    typeTail(tailNew)
     pickAircraftType('glf6', /G650/)
     cy.get('#arrivalTime').type('14:30')
     cy.get('#origin').type('KTEB')
@@ -118,11 +126,12 @@ describe('Add Flight sheet persists real rows', () => {
       date = v as string
     })
 
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailTurn)
+    typeTail(tailTurn)
     pickAircraftType('b738', /B738/)
     cy.get('#arrivalTime').type('09:00')
     cy.get('#departureTime').should('have.value', '10:00') // QT: arrival + 1 h
-    cy.get('#departureTime').type('11:20')
+    // The departure field is a masked 5-char text input already holding the computed "10:00": clear it first.
+    cy.get('#departureTime').clear().type('11:20')
     cy.get('#quickTurn').should('have.attr', 'aria-checked', 'false') // editing departure unchecks QT
     cy.get('#origin').type('KBOS')
     cy.get('#destination').type('KMIA')
@@ -150,7 +159,7 @@ describe('Add Flight sheet persists real rows', () => {
       date = v as string
     })
 
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailDep)
+    typeTail(tailDep)
     pickAircraftType('b738', /B738/)
     cy.get('#departureTime').type('16:45') // QT is preselected; typing a departure unchecks it
     cy.get('#quickTurn').should('have.attr', 'aria-checked', 'false')
@@ -176,7 +185,7 @@ describe('Add Flight sheet persists real rows', () => {
   it('arrival-only entry (return) stores a NULL departure and shows only in Arrivals', () => {
     failOnAlert()
     openAddFlightSheet()
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailArr)
+    typeTail(tailArr)
     pickAircraftType('b738', /B738/)
     cy.get('#arrivalTime').type('13:10')
     cy.get('#departureTime').should('have.value', '14:10')
@@ -204,7 +213,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('#date').invoke('val').then((v) => {
       date = v as string
     })
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailActual)
+    typeTail(tailActual)
     pickAircraftType('b738', /B738/)
     cy.get('#arrivalTime').type('10:00')
     cy.get('#actualArrivalTime').type('10:07')
@@ -229,7 +238,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('#date').invoke('val').then((v) => {
       date = v as string
     })
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailLate)
+    typeTail(tailLate)
     pickAircraftType('b738', /B738/)
     cy.get('#arrivalTime').type('23:30')
     cy.get('#departureTime').should('have.value', '00:30') // QT rolls past midnight
@@ -269,7 +278,7 @@ describe('Add Flight sheet persists real rows', () => {
     const alertStub = cy.stub().as('alert')
     cy.on('window:alert', alertStub)
     openAddFlightSheet()
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailCancel)
+    typeTail(tailCancel)
     pickAircraftType('b738', /B738/)
     submit()
     cy.get('#timeError').should('contain.text', 'scheduled arrival')
@@ -282,7 +291,7 @@ describe('Add Flight sheet persists real rows', () => {
     const alertStub = cy.stub().as('alert')
     cy.on('window:alert', alertStub)
     openAddFlightSheet()
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailCancel)
+    typeTail(tailCancel)
     cy.get('#arrivalTime').type('10:00')
     submit()
     cy.get('#typeError').should('contain.text', 'aircraft type')
@@ -303,7 +312,7 @@ describe('Add Flight sheet persists real rows', () => {
       }
     })
     openAddFlightSheet()
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailFail)
+    typeTail(tailFail)
     pickAircraftType('b738', /B738/)
     cy.get('#origin').type('KFAIL')
     cy.get('#arrivalTime').type('09:15')
@@ -330,7 +339,7 @@ describe('Add Flight sheet persists real rows', () => {
 
   it('cancelling the sheet creates no flight or aircraft', () => {
     openAddFlightSheet()
-    cy.get(`input[placeholder="${TAIL_PLACEHOLDER}"]`).type(tailCancel)
+    typeTail(tailCancel)
     cy.get('[role="dialog"]').contains('button', 'Cancel').click()
     cy.contains('h2', 'Add New Flight').should('not.exist')
     cy.task('getFlightByTail', tailCancel).should('eq', null)
