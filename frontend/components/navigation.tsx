@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Moon, Sun, User } from 'lucide-react'
+import { Menu, Moon, Sun, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -56,13 +56,14 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
               />
               FBO Manager
             </Link>
+            {/* Inline links need ~830px: below lg they are hidden and the menu button on the right lists them. */}
             {navigation.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`text-sm font-medium ${isActive
+                  className={`text-sm font-medium max-lg:hidden ${isActive
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground'
                     }`}
@@ -73,12 +74,38 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
             })}
           </div>
           <div className="flex items-center space-x-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="text-foreground lg:hidden"
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="lg:hidden">
+                {navigation.map((item) => (
+                  <DropdownMenuItem
+                    key={item.name}
+                    asChild
+                    className={pathname === item.href ? 'text-primary' : ''}
+                  >
+                    <Link href={item.href}>{item.name}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             {onThemeChange && (
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() =>
                   onThemeChange(theme === 'dark' ? 'light' : 'dark')
+                }
+                aria-label={
+                  theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
                 }
               >
                 {theme === 'dark' ? (
@@ -94,6 +121,7 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                   variant="outline"
                   size="icon"
                   className="text-foreground"
+                  aria-label="Account menu"
                 >
                   <User className="h-5 w-5" />
                 </Button>
