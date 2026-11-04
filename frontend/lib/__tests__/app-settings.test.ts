@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_APP_SETTINGS,
+  DEFAULT_EQUIPMENT_TYPES,
+  equipmentTypeIcon,
+  equipmentTypeLabel,
+  slugifyEquipmentType,
+  validateEquipmentTypes,
   isBlankTail,
   normalizeTailPrefix,
   settingsFromRows,
@@ -86,5 +91,47 @@ describe('isBlankTail', () => {
   it('with no prefix, only an empty field is blank', () => {
     expect(isBlankTail('', '')).toBe(true)
     expect(isBlankTail('N', '')).toBe(false)
+  })
+})
+
+describe('equipment types', () => {
+  it('default list has the renamed labels and Courtesy Vehicle', () => {
+    const labels = DEFAULT_EQUIPMENT_TYPES.map((t) => t.label)
+    expect(labels).toEqual(
+      expect.arrayContaining(['GPU', 'Lavatory Cart', 'Water Cart', 'Air Stairs', 'Courtesy Vehicle'])
+    )
+    expect(validateEquipmentTypes(DEFAULT_EQUIPMENT_TYPES)).toBeNull()
+  })
+
+  it('requires Fuel Truck, a name on every type and unique names', () => {
+    expect(validateEquipmentTypes(DEFAULT_EQUIPMENT_TYPES.slice(1))).toMatch(/Fuel Truck/)
+    expect(
+      validateEquipmentTypes([...DEFAULT_EQUIPMENT_TYPES, { value: 'x', label: ' ', icon: '' }])
+    ).toMatch(/needs a name/)
+    expect(
+      validateEquipmentTypes([...DEFAULT_EQUIPMENT_TYPES, { value: 'x', label: 'tug', icon: '' }])
+    ).toMatch(/twice/)
+  })
+
+  it('slugifies a label into a unique stored value', () => {
+    expect(slugifyEquipmentType('De-icer Truck!', [])).toBe('de_icer_truck')
+    expect(slugifyEquipmentType('Tug', ['tug'])).toBe('tug_2')
+  })
+
+  it('falls back for a type missing from the list', () => {
+    expect(equipmentTypeLabel(DEFAULT_EQUIPMENT_TYPES, 'gpu')).toBe('GPU')
+    expect(equipmentTypeLabel([], 'old_type')).toBe('Old Type')
+    expect(equipmentTypeIcon([], 'old_type')).toBe('🔧')
+  })
+
+  it('reads a stored list, ignoring invalid ones', () => {
+    const good = [{ value: 'fuel_truck', label: 'Fuel Truck', icon: '⛽' }, { value: 'deicer', label: 'Deicer', icon: '❄️' }]
+    expect(settingsFromRows([{ key: 'equipment_types', value: good }]).equipmentTypes).toEqual(good)
+    expect(settingsFromRows([{ key: 'equipment_types', value: 'nope' }]).equipmentTypes).toEqual(
+      DEFAULT_EQUIPMENT_TYPES
+    )
+    expect(
+      settingsFromRows([{ key: 'equipment_types', value: [{ value: 'tug', label: 'Tug', icon: '' }] }]).equipmentTypes
+    ).toEqual(DEFAULT_EQUIPMENT_TYPES)
   })
 })

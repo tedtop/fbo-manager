@@ -159,11 +159,11 @@ export default function FuelFarmPage() {
           <div className="flex items-center gap-4">
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Jet A (T2–T7)</div>
-              <div className="text-2xl font-bold text-cyan-400">
+              <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-400">
                 {totalJetAGallons.toLocaleString()} gal
               </div>
             </div>
-            <Badge className="bg-cyan-100 text-cyan-800 border-cyan-300">Jet A</Badge>
+            <Badge className="bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-700">Jet A</Badge>
           </div>
         </Card>
       )}

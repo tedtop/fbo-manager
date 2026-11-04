@@ -477,16 +477,16 @@ export function CalendarWeekView({
 
   const getStatusColor = (status: Flight['status']) => {
     switch (status) {
-      case 'arrived': return theme === 'dark' ? 'bg-green-900/40 border-green-700 text-green-100' : 'bg-green-100 border-green-300 text-green-900'
-      case 'departed': return theme === 'dark' ? 'bg-blue-900/40 border-blue-700 text-blue-100' : 'bg-blue-100 border-blue-300 text-blue-900'
-      default: return theme === 'dark' ? 'bg-slate-800 border-slate-600 text-slate-200' : 'bg-white border-slate-300 text-slate-900'
+      case 'arrived': return 'bg-green-100 border-green-300 text-green-900 dark:bg-green-900/40 dark:border-green-700 dark:text-green-100'
+      case 'departed': return 'bg-blue-100 border-blue-300 text-blue-900 dark:bg-blue-900/40 dark:border-blue-700 dark:text-blue-100'
+      default: return 'bg-white border-slate-300 text-slate-900 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200'
     }
   }
 
   return (
     <div className="space-y-6 select-none">
       {/* Height constraint/overflow handled by parent properly? check. */}
-      <div className={`rounded-lg border overflow-hidden flex flex-col h-[800px] ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}>
+      <div className="rounded-lg border overflow-hidden flex flex-col h-[800px] bg-white border-slate-200 dark:bg-slate-950 dark:border-slate-800">
 
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
@@ -551,15 +551,15 @@ export function CalendarWeekView({
                     {timeSlots.map(t => (
                       <div
                         key={t}
-                        className="h-20 border-b border-slate-200/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors"
+                        className="h-20 border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors"
                         onMouseEnter={() => handleSlotHover(dStr, t)}
                         onMouseLeave={handleSlotLeave}
                       >
                         {/* Add Buttons */}
                         {hoveredSlot?.day === dStr && hoveredSlot?.time === t && showAddButton && (
                           <div className="absolute ml-2 mt-2 flex gap-1 z-30">
-                            <button onClick={() => handleCreate(dStr, t, 'arrival')} className="p-1 bg-green-500 rounded text-white shadow hover:scale-110 transition"><PlaneLanding size={14} /></button>
-                            <button onClick={() => handleCreate(dStr, t, 'departure')} className="p-1 bg-blue-500 rounded text-white shadow hover:scale-110 transition"><PlaneTakeoff size={14} /></button>
+                            <button onClick={() => handleCreate(dStr, t, 'arrival')} className="p-1 bg-green-600 rounded text-white shadow hover:scale-110 transition"><PlaneLanding size={14} /></button>
+                            <button onClick={() => handleCreate(dStr, t, 'departure')} className="p-1 bg-blue-600 rounded text-white shadow hover:scale-110 transition"><PlaneTakeoff size={14} /></button>
                           </div>
                         )}
                       </div>

@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
-import {
-  EQUIPMENT_TYPES,
-  EquipmentStatusCard,
-  formatTypeLabel
-} from '@/components/equipment/equipment-status-card'
+import { EquipmentStatusCard } from '@/components/equipment/equipment-status-card'
 import type { EquipmentStatus } from '@/components/equipment/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,10 +15,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import type { EquipmentInsert } from '@/repositories/equipment.repo'
 import type { EquipmentDomain } from '@/types/domain/equipment'
+
+const SHOW_STATUS_COUNTS = false
 
 export default function EquipmentPage() {
   const { data: session, status } = useSession()
@@ -37,6 +36,7 @@ export default function EquipmentPage() {
     refetch
   } = useEquipment()
   useEquipmentRealtime()
+  const { settings } = useAppSettings()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] =
@@ -87,6 +87,9 @@ export default function EquipmentPage() {
 
   const available = equipment.filter((e) => e.status === 'available').length
   const inUse = equipment.filter((e) => e.status === 'in_use').length
+  const inMaintenance = equipment.filter(
+    (e) => e.status === 'maintenance'
+  ).length
   const outOfService = equipment.filter(
     (e) => e.status === 'out_of_service'
   ).length
@@ -117,9 +120,9 @@ export default function EquipmentPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              {EQUIPMENT_TYPES.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {formatTypeLabel(type)}
+              {settings.equipmentTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -135,8 +138,9 @@ export default function EquipmentPage() {
         </div>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Summary stats: hidden for now; flip SHOW_STATUS_COUNTS (later: a setting) to bring them back */}
+      {SHOW_STATUS_COUNTS && (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
           <p className="text-xs text-muted-foreground">Total</p>
           <p className="mt-1 text-2xl font-bold text-foreground">
@@ -156,12 +160,19 @@ export default function EquipmentPage() {
           </p>
         </div>
         <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
+          <p className="text-xs text-muted-foreground">Maintenance</p>
+          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+            {inMaintenance}
+          </p>
+        </div>
+        <div className="rounded-lg bg-card border border-border px-4 py-3 shadow-sm">
           <p className="text-xs text-muted-foreground">Out of Service</p>
           <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
             {outOfService}
           </p>
         </div>
       </div>
+      )}
 
       {/* Maintenance warning banner */}
       {maintenanceWarnings > 0 && (
@@ -189,7 +200,7 @@ export default function EquipmentPage() {
           No equipment matches this type.
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4">
           {filteredEquipment.map((item) => (
             <EquipmentStatusCard
               key={item.id}

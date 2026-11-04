@@ -61,8 +61,8 @@ export const STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 export const STATUS_BADGE_CLASSES: Record<InvoiceStatus, string> = {
   draft: 'bg-muted text-muted-foreground border-transparent',
-  open: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-  paid: 'bg-green-500/15 text-green-500 border-green-500/30',
+  open: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+  paid: 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30',
   void: 'bg-destructive/10 text-destructive border-destructive/30'
 }
 

@@ -17,6 +17,7 @@ export async function findAllEquipment(
   const { data, error } = await db
     .from('equipment')
     .select('*')
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('equipment_name')
   if (error) throw error
   return data

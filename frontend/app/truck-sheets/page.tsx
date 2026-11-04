@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ArrowUpDown, Droplets, FileText, Fuel, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowUpDown, FileText, Fuel, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -77,21 +77,35 @@ export default function TruckSheetsPage() {
 
       {/* Fleet overview */}
       {trucks.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {trucks.map((truck) => {
             const isJetA = /jet/i.test(truck.equipment_name) || /jet/i.test(truck.notes)
+            const isAvgas = /avgas/i.test(truck.equipment_name)
+            const fuelLabel = isJetA ? 'Jet A' : isAvgas ? 'Avgas' : null
             return (
               <Card key={truck.id} className="p-3">
-                <div className="flex items-center gap-2">
-                  <Droplets
-                    className={cn('w-4 h-4', isJetA ? 'text-sky-400' : 'text-emerald-400')}
-                  />
-                  <span className="font-mono font-semibold">{truck.equipment_id}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg" aria-hidden="true">⛽</span>
+                    <span className="font-mono font-semibold">{truck.equipment_id}</span>
+                  </div>
+                  {fuelLabel && (
+                    <Badge variant={isJetA ? 'default' : 'secondary'}>{fuelLabel}</Badge>
+                  )}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1 truncate" title={truck.equipment_name}>
+                <div className="text-sm text-muted-foreground mt-1 truncate" title={truck.equipment_name}>
                   {truck.equipment_name.replace(/^Fuel Truck \S+\s*/, '') || truck.equipment_name}
                 </div>
-                <Badge variant="outline" className="mt-2 text-[10px] capitalize">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'mt-2 text-[10px] capitalize',
+                    truck.status === 'maintenance' &&
+                      'border-amber-500/60 text-amber-700 dark:text-amber-400',
+                    truck.status === 'out_of_service' &&
+                      'border-red-500/60 text-red-700 dark:text-red-400'
+                  )}
+                >
                   {truck.status.replace('_', ' ')}
                 </Badge>
               </Card>
@@ -128,7 +142,7 @@ export default function TruckSheetsPage() {
                   {dayTotal.toFixed(0)} gal dispensed
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {dateSheets.map((sheet) => {
                   const stats = sheetStats(sheet)
                   const isJetA = sheet.fuel_type === 'jet_a'
@@ -140,9 +154,7 @@ export default function TruckSheetsPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Droplets
-                            className={cn('w-4 h-4', isJetA ? 'text-sky-400' : 'text-emerald-400')}
-                          />
+                          <span className="text-lg" aria-hidden="true">⛽</span>
                           <span className="font-mono font-semibold text-lg">
                             {sheet.truck_number}
                           </span>
@@ -189,7 +201,7 @@ export default function TruckSheetsPage() {
                           </span>
                         )}
                         {stats.warnings > 0 && (
-                          <span className="flex items-center gap-1 text-amber-400">
+                          <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                             <AlertTriangle className="w-3 h-3" /> {stats.warnings} check
                             {stats.warnings === 1 ? '' : 's'}
                           </span>

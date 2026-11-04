@@ -30,6 +30,15 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
+  // The dark class must live on <html>: body text and every portaled
+  // surface (sheets, selects, popovers, toasts) render outside <main> and
+  // would otherwise resolve the light-theme variables.
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('dark', theme === 'dark')
+    root.style.colorScheme = theme
+  }, [theme])
+
   // Save theme to localStorage when it changes
   const handleThemeChange = (newTheme: 'dark' | 'light') => {
     // Use View Transitions API for smooth theme change if available
@@ -52,10 +61,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme: handleThemeChange }}>
-      <main
-        className={theme === 'dark' ? 'dark' : ''}
-        style={{ visibility: mounted ? 'visible' : 'hidden' }}
-      >
+      <main style={{ visibility: mounted ? 'visible' : 'hidden' }}>
         <div className="min-h-screen bg-background">
           {!isAuthPage && (
             <Navigation theme={theme} onThemeChange={handleThemeChange} />

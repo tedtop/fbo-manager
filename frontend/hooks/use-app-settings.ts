@@ -2,6 +2,8 @@
 
 import {
   DEFAULT_APP_SETTINGS,
+  EQUIPMENT_TYPES_KEY,
+  type EquipmentTypeDef,
   TAIL_NUMBER_PREFIX_KEY,
   normalizeTailPrefix,
   settingsFromRows
@@ -41,10 +43,17 @@ export function useAppSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
   })
 
+  const saveEquipmentTypes = useMutation({
+    mutationFn: (types: EquipmentTypeDef[]) =>
+      upsertAppSetting(db, EQUIPMENT_TYPES_KEY, types),
+    onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
+  })
+
   return {
     settings,
     loading: query.isLoading,
     error: query.error,
-    saveTailPrefix
+    saveTailPrefix,
+    saveEquipmentTypes
   }
 }

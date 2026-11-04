@@ -110,8 +110,8 @@ export function TankVisualCard({ tank, onUpdateLevel, onFocusInput, onBlurInput 
             className={cn(
               'mt-1 text-xs',
               s.isAvgas
-                ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                : 'bg-cyan-100 text-cyan-800 border-cyan-300'
+                ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700'
+                : 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-700'
             )}
           >
             {s.isAvgas ? 'Avgas' : 'Jet A'}
@@ -200,8 +200,8 @@ export function HorizontalTankCard({ tank, onUpdateLevel, onFocusInput, onBlurIn
               className={cn(
                 'text-xs',
                 s.isAvgas
-                  ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                  : 'bg-cyan-100 text-cyan-800 border-cyan-300'
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700'
+                  : 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-700'
               )}
             >
               {s.isAvgas ? 'Avgas' : s.isLF ? 'Jet A (Life Flight)' : 'Jet A'}

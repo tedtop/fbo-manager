@@ -1,46 +1,16 @@
 'use client'
 
+import { useAppSettings } from '@/hooks/use-app-settings'
+import { equipmentTypeIcon, equipmentTypeLabel } from '@/lib/app-settings'
 import { cn } from '@/lib/utils'
 import { StatusBadge, type EquipmentStatus } from './status-badge'
 import type { EquipmentDomain } from '@/types/domain/equipment'
-
-export const EQUIPMENT_TYPES = [
-  'fuel_truck',
-  'tug',
-  'gpu',
-  'air_start',
-  'belt_loader',
-  'stairs',
-  'lavatory_service',
-  'water_service',
-  'golf_cart',
-  'staff_vehicle',
-  'other',
-] as const
-
-export const TYPE_ICONS: Record<string, string> = {
-  fuel_truck:       '🚛',
-  tug:              '🚜',
-  gpu:              '⚡',
-  air_start:        '💨',
-  belt_loader:      '🧰',
-  stairs:           '🪜',
-  lavatory_service: '🚿',
-  water_service:    '💧',
-  golf_cart:        '⛳',
-  staff_vehicle:    '🚗',
-  other:            '🔧',
-}
 
 const STATUS_BORDER: Record<string, string> = {
   available:      'border-l-green-500',
   in_use:         'border-l-yellow-500',
   maintenance:    'border-l-yellow-500',
   out_of_service: 'border-l-red-500',
-}
-
-export function formatTypeLabel(type: string): string {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 function formatDate(dateStr: string | null): string | null {
@@ -59,7 +29,8 @@ interface EquipmentStatusCardProps {
 }
 
 export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: EquipmentStatusCardProps) {
-  const icon = TYPE_ICONS[eq.equipment_type] ?? '🔧'
+  const { settings } = useAppSettings()
+  const icon = equipmentTypeIcon(settings.equipmentTypes, eq.equipment_type)
   const borderColor = STATUS_BORDER[eq.status] ?? 'border-l-border'
   const maintenanceDate = formatDate(eq.next_maintenance_date)
   const lastSeen = daysSince(eq.modified_at)
@@ -81,7 +52,7 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
           <span className="text-xl flex-shrink-0" aria-hidden="true">{icon}</span>
           <div className="min-w-0">
             <p className="font-semibold text-foreground truncate">{eq.equipment_name}</p>
-            <p className="text-xs text-muted-foreground">{formatTypeLabel(eq.equipment_type)}</p>
+            <p className="text-xs text-muted-foreground">{equipmentTypeLabel(settings.equipmentTypes, eq.equipment_type)}</p>
           </div>
         </div>
         <button

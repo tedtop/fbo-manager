@@ -49,7 +49,7 @@ export function JetATrend() {
         <div>
           <h2 className="text-base font-semibold text-foreground">Jet A Trend (T2–T7)</h2>
           {current !== null && (
-            <div className="text-2xl font-bold text-cyan-400 mt-0.5">
+            <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-400 mt-0.5">
               {current.toLocaleString()} gal
             </div>
           )}

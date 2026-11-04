@@ -255,7 +255,7 @@ export function AircraftSheet({ isOpen, onClose, aircraft, onUpdate, onPreview, 
                                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-1/2 bg-blue-500/30 origin-bottom pointer-events-none" />
 
                                     {/* Map Up Label */}
-                                    <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-blue-500 z-10 bg-background/80 px-1 rounded">Map Up</span>
+                                    <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-blue-600 dark:text-blue-400 z-10 bg-background/80 px-1 rounded">Map Up</span>
 
                                     {/* Rotated Cardinal Directions Container */}
                                     {/* North Visual: We want +40 deg relative to Map Up (320). 

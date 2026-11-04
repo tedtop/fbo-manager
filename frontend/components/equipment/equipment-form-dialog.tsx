@@ -1,9 +1,5 @@
 'use client'
 
-import {
-  EQUIPMENT_TYPES,
-  formatTypeLabel
-} from '@/components/equipment/equipment-status-card'
 import { EditSessionStatus } from '@/components/shared/edit-session-status'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +20,9 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import { equipmentTypeLabel } from '@/lib/app-settings'
 import type {
   EquipmentInsert,
   EquipmentRow
@@ -67,6 +65,20 @@ export function EquipmentFormDialog({
 }: EquipmentFormDialogProps) {
   const [form, setForm] = useState<EquipmentInsert>(emptyForm)
   const [loading, setLoading] = useState(false)
+  const { settings } = useAppSettings()
+  // A stored type that was later removed from the list still shows (and keeps) its value.
+  const typeOptions = settings.equipmentTypes.some(
+    (t) => t.value === form.equipment_type
+  )
+    ? settings.equipmentTypes
+    : [
+        ...settings.equipmentTypes,
+        {
+          value: form.equipment_type,
+          label: equipmentTypeLabel([], form.equipment_type),
+          icon: ''
+        }
+      ]
 
   useEffect(() => {
     if (equipment) {
@@ -166,7 +178,7 @@ export function EquipmentFormDialog({
           className="flex flex-1 flex-col overflow-hidden"
         >
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="equipment_id">Equipment ID</Label>
               <Input
                 id="equipment_id"
@@ -176,7 +188,7 @@ export function EquipmentFormDialog({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="equipment_name">Name</Label>
               <Input
                 id="equipment_name"
@@ -185,7 +197,7 @@ export function EquipmentFormDialog({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label>Equipment Type</Label>
               <Select
                 value={form.equipment_type as string}
@@ -197,9 +209,9 @@ export function EquipmentFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EQUIPMENT_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {formatTypeLabel(type)}
+                  {typeOptions.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -207,7 +219,7 @@ export function EquipmentFormDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="manufacturer">Manufacturer</Label>
                 <Input
                   id="manufacturer"
@@ -215,7 +227,7 @@ export function EquipmentFormDialog({
                   onChange={(e) => updateField('manufacturer', e.target.value)}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="model">Model</Label>
                 <Input
                   id="model"
@@ -225,7 +237,7 @@ export function EquipmentFormDialog({
               </div>
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="serial_number">Serial Number</Label>
               <Input
                 id="serial_number"
@@ -234,7 +246,7 @@ export function EquipmentFormDialog({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label>Status</Label>
               <Select
                 value={form.status as string}
@@ -254,7 +266,7 @@ export function EquipmentFormDialog({
               </Select>
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
@@ -263,7 +275,7 @@ export function EquipmentFormDialog({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
@@ -273,7 +285,7 @@ export function EquipmentFormDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="last_maintenance_date">Last Maintenance</Label>
                 <Input
                   id="last_maintenance_date"
@@ -284,7 +296,7 @@ export function EquipmentFormDialog({
                   }
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="next_maintenance_date">Next Maintenance</Label>
                 <Input
                   id="next_maintenance_date"

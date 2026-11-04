@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, AlertTriangle, CheckCircle2, Droplets, Info, Trash2, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, Trash2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -86,9 +86,9 @@ function IssueIcon({ issues }: { issues: ReadingIssue[] | undefined }) {
   return (
     <span title={title}>
       {hasWarn ? (
-        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
       ) : (
-        <Info className="w-3.5 h-3.5 text-sky-400" />
+        <Info className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
       )}
     </span>
   )
@@ -133,7 +133,7 @@ export function TruckSheetReview({
       {/* Sheet header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <Droplets className={cn('w-5 h-5', isJetA ? 'text-sky-400' : 'text-emerald-400')} />
+          <span className="text-xl" aria-hidden="true">⛽</span>
           <span className="font-semibold text-lg">Truck {sheet.truck_number || '?'}</span>
           <Badge variant={isJetA ? 'default' : 'secondary'}>
             {sheet.fuel_type === 'jet_a' ? 'Jet A' : sheet.fuel_type === 'avgas' ? 'Avgas' : 'Fuel type?'}
@@ -143,7 +143,7 @@ export function TruckSheetReview({
               <CheckCircle2 className="w-3 h-3" /> Known truck
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-xs text-amber-400">
+            <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
               <AlertCircle className="w-3 h-3" /> New truck — will be added to equipment
             </span>
           )}
@@ -407,10 +407,10 @@ export function TruckSheetReview({
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
           <span className="flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3 text-amber-400" /> Meter math doesn&apos;t add up — check the digits
+            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" /> Meter math doesn&apos;t add up — check the digits
           </span>
           <span className="flex items-center gap-1">
-            <Info className="w-3 h-3 text-sky-400" /> Register gap between rows
+            <Info className="w-3 h-3 text-sky-600 dark:text-sky-400" /> Register gap between rows
           </span>
         </div>
       </div>

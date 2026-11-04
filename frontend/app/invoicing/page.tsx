@@ -150,7 +150,7 @@ export default function InvoicingPage() {
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             On account ({summary.onAccountCount})
           </div>
-          <div className="text-2xl font-bold text-amber-500">
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {formatCurrency(summary.onAccountTotal)}
           </div>
         </Card>
@@ -158,7 +158,7 @@ export default function InvoicingPage() {
           <div className="text-xs uppercase tracking-wide text-muted-foreground">
             Paid today ({summary.paidTodayCount})
           </div>
-          <div className="text-2xl font-bold text-green-500">
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {formatCurrency(summary.paidTodayTotal)}
           </div>
         </Card>

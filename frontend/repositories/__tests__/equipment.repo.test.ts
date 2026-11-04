@@ -79,14 +79,12 @@ describe('equipment.repo', () => {
     expect(found).toBeNull()
   })
 
-  it('rejects an unknown equipment_type (schema/type drift guard)', async () => {
-    await expect(
-      createEquipment(db, {
-        equipment_id: 'EQ-6',
-        equipment_name: 'Mystery',
-        // @ts-expect-error intentionally invalid to prove the DB constraint is live
-        equipment_type: 'not_a_real_type',
-      })
-    ).rejects.toThrow()
+  it('stores a custom equipment_type (the list is editable in Settings, no DB CHECK)', async () => {
+    const created = await createEquipment(db, {
+      equipment_id: 'EQ-6',
+      equipment_name: 'Deicer',
+      equipment_type: 'deicer',
+    })
+    expect(created.equipment_type).toBe('deicer')
   })
 })

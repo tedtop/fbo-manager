@@ -735,7 +735,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
                   `<div class="p-2">
                     <h3 class="font-bold">${flight.aircraft?.tail_number}</h3>
                     <p class="text-sm">${flight.aircraft?.aircraft_type_display || 'Unknown Type'}</p>
-                    <p class="text-xs text-green-600">Moved to: ${newLocation.location_code}</p>
+                    <p class="text-xs text-green-700">Moved to: ${newLocation.location_code}</p>
                   </div>`
                 )
               } catch (error) {
@@ -1491,7 +1491,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
       <div className="relative w-full h-full flex flex-col">
         {/* Saving Indicator */}
         {(isMutating > 0 || hasPendingSave) && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-yellow-500/90 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm animate-pulse flex items-center gap-2 pointer-events-none">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-yellow-600/90 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm animate-pulse flex items-center gap-2 pointer-events-none">
             <div className="w-2 h-2 bg-white rounded-full animate-bounce" />
             Saving...
           </div>
@@ -1499,7 +1499,7 @@ export function ParkingMapEnhanced({ configMode, isAdmin }: ParkingMapProps) {
 
         {/* Loading Indicator */}
         {isParkingLoading && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-blue-500/90 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm animate-pulse flex items-center gap-2 pointer-events-none">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-blue-600/90 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm animate-pulse flex items-center gap-2 pointer-events-none">
             <div className="w-2 h-2 bg-white rounded-full animate-bounce" />
             Loading...
           </div>

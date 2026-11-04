@@ -17,9 +17,9 @@ interface FuelOrderCardProps {
 }
 
 const progressConfig = {
-  started: { label: 'Started', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-  in_progress: { label: 'In Progress', color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' },
-  completed: { label: 'Completed', color: 'bg-green-500/10 text-green-500 border-green-500/20' }
+  started: { label: 'Started', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20' },
+  in_progress: { label: 'In Progress', color: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20' },
+  completed: { label: 'Completed', color: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' }
 }
 
 export function FuelOrderCard({
@@ -45,7 +45,7 @@ export function FuelOrderCard({
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Fuel className="w-4 h-4 text-blue-500" />
+            <Fuel className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span className="text-sm font-bold text-foreground">
               {transaction.tail_number ?? `Ticket #${transaction.ticket_number}`}
             </span>
@@ -128,7 +128,7 @@ export function FuelOrderCard({
               variant="ghost"
               size="sm"
               onClick={() => onUpdateProgress(transaction.id, 'completed')}
-              className="h-6 text-xs flex-1 text-green-500"
+              className="h-6 text-xs flex-1 text-green-700 dark:text-green-400"
             >
               Complete
             </Button>

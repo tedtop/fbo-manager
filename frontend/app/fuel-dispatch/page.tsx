@@ -194,14 +194,14 @@ export default function FuelDispatchMonitorPage() {
                 )}
                 <span className={cn(
                   'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                  refreshCountdown <= 5 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-muted text-muted-foreground'
+                  refreshCountdown <= 5 ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' : 'bg-muted text-muted-foreground'
                 )}>
                   {refreshCountdown}s
                 </span>
               </>
             )}
             {hasNew && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-500 animate-pulse">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-700 dark:text-green-400 animate-pulse">
                 New
               </span>
             )}

@@ -3,7 +3,7 @@
 import { use, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ArrowLeft, Droplets, Info } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Info } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -84,11 +84,11 @@ export default function TruckSheetDetailPage({
           <ArrowLeft className="w-4 h-4" /> Fuel Truck Logs
         </Link>
         <div className="flex items-center gap-3 mt-2 flex-wrap">
-          <Droplets className={cn('w-6 h-6', isJetA ? 'text-sky-400' : 'text-emerald-400')} />
+          <span className="text-2xl" aria-hidden="true">⛽</span>
           <h1 className="text-2xl font-bold">Truck {sheet.truck_number}</h1>
           <Badge variant={isJetA ? 'default' : 'secondary'}>{isJetA ? 'Jet A' : 'Avgas'}</Badge>
           {warnings > 0 && (
-            <span className="flex items-center gap-1 text-sm text-amber-400">
+            <span className="flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400">
               <AlertTriangle className="w-4 h-4" /> {warnings} reading{warnings === 1 ? '' : 's'} to
               double-check
             </span>
@@ -166,9 +166,9 @@ export default function TruckSheetDetailPage({
                     return (
                       <span title={rowIssues.map((i) => i.message).join('\n')}>
                         {hasWarn ? (
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         ) : (
-                          <Info className="w-3.5 h-3.5 text-sky-400" />
+                          <Info className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                         )}
                       </span>
                     )

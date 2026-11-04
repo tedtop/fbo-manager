@@ -12,9 +12,9 @@ export function UserSession() {
         <span className="w-40 font-medium">Session</span>
         <span
           className={twMerge(
-            'rounded bg-white px-2 py-1.5 leading-none shadow-sm outline outline-1 outline-gray-900/10',
+            'rounded bg-card px-2 py-1.5 leading-none shadow-sm outline outline-1 outline-border',
             status === 'authenticated' &&
-              'bg-green-100 text-green-800 outline-green-700/30'
+              'bg-green-100 text-green-800 outline-green-700/30 dark:bg-green-900/40 dark:text-green-300 dark:outline-green-400/30'
           )}
         >
           {status}
@@ -23,7 +23,7 @@ export function UserSession() {
 
       <li className="flex items-center gap-4">
         <span className="w-40 font-medium">Email</span>
-        <span className="rounded bg-white px-2 py-1.5 leading-none shadow-sm outline outline-1 outline-gray-900/10">
+        <span className="rounded bg-card px-2 py-1.5 leading-none shadow-sm outline outline-1 outline-border">
           {session?.user?.email || 'undefined'}
         </span>
       </li>
