@@ -1,0 +1,38 @@
+[
+  {
+    "key": "time_card_scan:missing_live",
+    "reason": "Local-only table for the time-card OCR feature; live apply is a separate, deliberate step (scripts/time-card-schema.sql), not yet done."
+  },
+  {
+    "key": "*:data_type:character varying/text",
+    "reason": "Django-era live columns are varchar(n); the test schema uses text. Same values accepted for this app's data (length limits are not hit in practice)."
+  },
+  {
+    "key": "*:data_type:bigint/integer",
+    "reason": "Django-era live ids/FKs are bigint; the test schema uses integer. Range difference is irrelevant at this data volume."
+  },
+  {
+    "key": "*:column_default:none=>*",
+    "reason": "Django-era live columns are NOT NULL without a DB default (Django supplies values in the ORM); the test schema adds defaults. Local is more lenient here, so tests must still send explicit values for fields the real app sends. Includes serial/identity ids (normalised) and timestamps."
+  },
+  {
+    "key": "*:is_nullable:null=>notnull",
+    "reason": "Test schema is stricter (NOT NULL) than live for these columns; a local pass implies the live DB also accepts the value."
+  },
+  {
+    "key": "flight.services:*",
+    "reason": "Known: live flight.services is jsonb ('[]'), local test schema uses text[] ('{}'); the app layer converts. Tracked under the services work, not a bug in the check."
+  },
+  {
+    "key": "*:check:*:missing_live",
+    "reason": "Test schema adds CHECK constraints on enum-like text columns that the Django-era live DB never had; local is stricter, so a local pass implies live accepts the value."
+  },
+  {
+    "key": "fuel_transaction:check:*:missing_local",
+    "reason": "Same CHECK on fuel_type exists on both sides; live wraps it in 'fuel_type IS NULL OR ...' because the column is nullable live, local has it NOT NULL."
+  },
+  {
+    "key": "*:foreign_key:*:actions:DEFERRABLE INITIALLY DEFERRED=>*",
+    "reason": "Django-era live FKs are DEFERRABLE INITIALLY DEFERRED with NO ACTION; the test schema uses explicit ON DELETE CASCADE/SET NULL. Delete behaviour differs by design in the test schema."
+  }
+]

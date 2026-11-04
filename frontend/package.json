@@ -19,6 +19,7 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "supabase:push": "supabase db push",
+    "schema:parity": "tsx scripts/schema-parity.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:seed": "tsx e2e/support/run-seed.ts",

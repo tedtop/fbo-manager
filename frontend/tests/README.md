@@ -107,3 +107,21 @@ flagged as previously silently failing to persist a POS ticket; `createInvoice`'
 write (fueling event → invoice → line items → gauge readings, with best-effort rollback since
 supabase-js has no client transactions) now has passing tests exercising the draft/finalize,
 on-account, join, settle, void, and delete-draft paths end to end against a real DB.
+
+## Schema parity check (live vs local)
+
+`pnpm schema:parity` compares this app's tables (columns with type / nullability / default, CHECK
+and foreign-key constraints, table presence) between the **linked live project** and the **local
+stack**, prints a diff and exits non-zero on drift. It exists because the local test schema can
+silently diverge from live (the root cause of B29: a default that only one side had). Live access
+is read-only (`supabase db query --remote --read-only`; needs the global Supabase CLI 3.x, the
+script bypasses the older `node_modules/.bin/supabase`). Minuteman-owned tables and
+`fuel_tank_readings` are excluded and never queried.
+
+Run it after adding or changing a migration, before applying anything to live, and whenever a
+local test passes but the same flow fails on live. Known, justified differences live in
+`scripts/schema-parity.allow.json` (`key` supports `*` globs, `reason` is mandatory); an
+allow-list entry that no longer matches anything is reported as stale and also fails the run.
+If the local DB is not on `127.0.0.1:54322`, set `SCHEMA_PARITY_LOCAL_DB_URL` to a
+`postgresql://...?sslmode=disable` URL. Pure compare logic is unit-tested in
+`scripts/__tests__/schema-parity.test.ts` (no DB).
