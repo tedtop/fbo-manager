@@ -3,6 +3,8 @@ import type { Database } from '@/types/database'
 import { TEST_SUPABASE_URL, assertSafeTestTarget } from './client'
 
 // Deletion order: children before parents, so FK constraints never block a wipe.
+// `service` (the seeded board catalog) is deliberately NOT wiped: tests rely on the 15 seeded rows
+// (migration 20261104000200). flight_service is wiped (it cascades from flight anyway).
 // Keep this in sync with frontend/supabase/migrations/*.sql.
 const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string }> = [
   { table: 'app_error_log', pk: 'id' },
@@ -25,6 +27,7 @@ const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string
   { table: 'fueler_training_history', pk: 'id' },
   { table: 'fueler_training', pk: 'id' },
   { table: 'fuel_transaction', pk: 'id' },
+  { table: 'flight_service', pk: 'id' },
   { table: 'flight', pk: 'id' },
   { table: 'training', pk: 'id' },
   { table: 'fueler', pk: 'id' },

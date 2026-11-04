@@ -581,6 +581,7 @@ export type Database = {
           notes: string
           last_maintenance_date: string | null
           next_maintenance_date: string | null
+          sort_order: number | null
           created_at: string
           modified_at: string
         }
@@ -597,8 +598,57 @@ export type Database = {
           notes?: string
           last_maintenance_date?: string | null
           next_maintenance_date?: string | null
+          sort_order?: number | null
         }
         Update: Partial<Database['public']['Tables']['equipment']['Insert']>
+        Relationships: []
+      }
+      service: {
+        Row: {
+          id: number
+          key: string
+          label: string
+          icon: string
+          color: string
+          sort_order: number
+          active: boolean
+          product_id: number | null
+          created_at: string
+          modified_at: string
+        }
+        Insert: {
+          id?: number
+          key: string
+          label: string
+          icon: string
+          color: string
+          sort_order?: number
+          active?: boolean
+          product_id?: number | null
+        }
+        Update: Partial<Database['public']['Tables']['service']['Insert']>
+        Relationships: []
+      }
+      flight_service: {
+        Row: {
+          id: number
+          flight_id: number
+          service_id: number
+          quantity: number
+          notes: string
+          price_override: number | null
+          created_at: string
+          modified_at: string
+        }
+        Insert: {
+          id?: number
+          flight_id: number
+          service_id: number
+          quantity?: number
+          notes?: string
+          price_override?: number | null
+        }
+        Update: Partial<Database['public']['Tables']['flight_service']['Insert']>
         Relationships: []
       }
       department: {
@@ -1311,6 +1361,15 @@ export type Database = {
     // below) when a repo actually queries it.
     Views: Record<string, never>
     Functions: {
+      set_flight_services: {
+        Args: {
+          p_flight_id: number
+          p_services: Array<
+            string | { key: string; quantity?: number; notes?: string | null; price_override?: number | null }
+          >
+        }
+        Returns: string[]
+      }
       complete_certification: {
         Args: {
           p_fueler_id: number
