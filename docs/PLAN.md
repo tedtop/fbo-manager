@@ -14,24 +14,41 @@ Goal: Ted can use the board daily, ASAP. Working style: screen-by-screen; finish
 ## Audit findings (file:line, verified by reading)
 Real bugs:
 - F1 Every flight lands in BOTH columns. `flight.departure_time` is NOT NULL (test_schema.sql:162) and the form fabricates departure = arrival+45min for arrival-only flights (flight-form-dialog.tsx:242-247), so the adapter always sees both times and sets `type='quick_turn'` (types.ts:164-168), and the board puts quick_turn in both lists (flight-board.tsx:65-79). Arrivals vs departures filtering is effectively broken. Needs a real model decision (D2).
+  Status: fixed by B09, B09b, B09c (review). Scheduled/actual times and `is_quick_turn`; QT shows in both columns, others in one.
 - F2 Naive timestamps: form builds `${date}T${time}:00` with no timezone (flight-form-dialog.tsx:203-208); fallback departure is computed local then `.toISOString().slice(0,16)` (UTC, no zone) (:246). DB interprets as UTC, UI renders local. Times shift by the UTC offset after reload.
+  Status: fixed by B10 (review). Form sends offset ISO instants; bounds are local days converted to UTC.
 - F3 `fuel_order_notes` and `location_id` are read by the adapter's input but never mapped to `Flight` (types.ts:191-214) and `fuelOrderNotes` is never sent on update (types.ts:218-290); `en-route` status silently becomes `scheduled` (types.ts:130-131) while the card still offers it (flight-card.tsx:339-359).
+  Status: fixed by B14 (review). `fuel_order_notes`/`location_id` round-trip; the en-route status was removed from the card.
 - F4 `dateRange` filter (today/tomorrow/week/all) is shown in the toolbar (compact-toolbar.tsx:225) but never applied (flight-board.tsx:32-62; page.tsx:54). `weekInternalFlights` computed and unused (page.tsx:167-180). Split view loads ALL flights unfiltered (page.tsx:44), so the board grows forever.
+  Status: fixed by B13 (review). Date range filters by local day; default fetch is bounded; "All Dates" opts in to the unbounded fetch.
 - F5 Calendar window fixed at today +-28 days (page.tsx:31-44) regardless of `weekOffset`; navigating past 4 weeks shows an empty calendar. Date strings built via `toISOString().split('T')` (UTC date; wrong near midnight local). `findAllFlights` end bound `${endDate}T23:59:59` has no zone (flights.repo.ts:475). Week-view route computes a different week start (today+offset*7) than the calendar (Sunday start) (week-view/page.tsx:628-640 vs calendar-week-view.tsx:111-113).
-- F6 Errors are swallowed: create/update/delete failures only `console.error` (page.tsx:92-123); fuel-order failure same (:136-139). Form closes as if saved. Alert() for validation (flight-form-dialog.tsx:213). Delete has no confirmation and the label "Clear" for departed/cancelled still hard-deletes (flight-card.tsx:638-646).
+  Status: fixed by B10 and B15 (review). The calendar loads the visible week; local-date week bounds are shared in `board-logic.ts`.
+- F6 (Original finding) Errors were swallowed: create/update/delete failures only `console.error` (page.tsx:92-123); fuel-order failure same (:136-139). Form closed as if saved. Alert() for validation (flight-form-dialog.tsx:213). (Original text: delete had no confirmation and "Clear" for departed/cancelled hard-deleted; both are now false, see Status.)
+  Status: fixed by B11 and B12 (review). Failures show a destructive toast and keep the sheet open; validation is inline. Delete is confirmed in an AlertDialog and is a soft delete (`deleted_at`), not a hard delete.
 - F7 Debug `console.log` left in `handleEditFlight` (page.tsx:104-108) and week-view (:657-661).
+  Status: fixed by B11 (review). Debug `console.log` removed.
 - F8 `created_by_id` is NOT NULL with no default in the local test schema (test_schema.sql:175) but `createFlight` never sets it (use-flights.ts:346-361); the generated types mark it optional, implying the live DB has a default. Create may fail on the local stack; the repo test factory must set it. Must verify.
+  Status: worked around locally by migration `20261102000500` (default 1 for `created_by_id`, live parity); the schema parity check is still open under B36.
 - F9 Creator info is hard-coded: new flights show "USR/User" and `rowToFlight` falls back to "ADM/Admin" (flight-form-dialog.tsx:268-272, use-flights.ts:303-313).
+  Status: still open (B17). Pinned by `KNOWN BUG F9` in `repositories/__tests__/flights.repo.test.ts`.
 - F10 No realtime/refresh on the board list: only `flight-fuel-status` and the edit-session hook subscribe (grep postgres_changes); `flight` is in the realtime publication (20260704000300:35-45) but `useFlights` has no subscription or refetch interval, so two screens drift.
+  Status: still open (B16).
 - F11 Loading/empty/error states are coarse: whole page replaced by "Loading flights..." on every refetch key change (page.tsx:155-161), error via `ErrorMessage` with no retry, empty list text only per column (flight-list.tsx:739).
+  Status: still open (B18).
 - F12 Mobile: split grid is `lg:grid-cols-2` (OK); calendar view is mouse-drag only (calendar-week-view.tsx:78-90, 249-273), unusable on touch. Needs a decision (D4).
+  Status: still open (B19; the 390px overflow is tracked as B39 and pinned by `KNOWN BUG M1` in the Cypress mobile spec).
 Dead/duplicate code:
 - F13 `app/flight-ops/page.tsx` and `app/flight-operations/day-view/page.tsx` just re-export `app/page.tsx`; `split-view/` and `week-view/` are separate near-copies with their own handlers, no toolbar, no fuel order, no concurrency handling (split-view/page.tsx, week-view/page.tsx). No nav links to any of them (grep found none outside the module).
+  Status: partly fixed. The duplicate `/flight-ops` route was removed (commit 0909ced); `app/flight-operations/{day-view,split-view,week-view}` still exist, remaining work is B20.
 - F14 `flight-board-ui/` (v0 prototype, own package.json) is unreferenced by the app; only mentioned in `.omc/project-memory.json`.
+  Status: fixed by B21 (review). Code references removed; the git-ignored `flight-board-ui/` folder is left for Ted to delete.
 - F15 Three near-identical `FlightBoard` branches (flight-board.tsx:118-208); `onAddFlight` prop unused there; `any` casts throughout the adapter (types.ts:181-213, use-flights.ts:285-316).
+  Status: still open (B20).
 Tooling:
 - F16 `pnpm tsc --noEmit` fails with 1 error: `next.config.ts(7,3) 'eslint' does not exist in type 'NextConfig'` (lint/type gates were disabled in commit 56f0525 for Railway). `pnpm lint` is broken (`next lint` removed in Next 16; it treats "lint" as a directory). Biome 1.9.4 is available (`biome.json`).
+  Status: fixed by B02 (review). `pnpm tsc --noEmit` is clean and `pnpm lint` runs Biome on the flight-operations files.
 - F17 Tests not run: vitest/e2e need the local Supabase stack, which is not up (port conflict, see above). Baseline unknown until R1 is resolved.
+  Status: B01 (review) set up the local stack and records the baseline; see STATE.md. Not re-verified here (Docker is down).
 
 ## Target design
 - One board route `/` (D3: keep `/` as canonical; delete `/flight-ops`, `/flight-operations/*` duplicates, or redirect them).

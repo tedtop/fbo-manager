@@ -63,7 +63,7 @@ Also never create, alter, or drop a table named `fuel_tank_readings`; it belongs
 
 ## Testing
 
-Two non-overlapping layers, both against a real local Supabase stack — never mocks, never
+Three layers (vitest repository tests, Playwright e2e, Cypress for the arrivals/departures module), all against a real local Supabase stack — never mocks, never
 the shared/live project.
 
 **One-time setup** (needs Docker Desktop running):
@@ -100,6 +100,10 @@ pnpm e2e              # headless, all specs
 pnpm e2e:ui           # Playwright's interactive UI — best while writing/debugging a spec
 ```
 
+Playwright starts its own `next dev` on port 4100 (`E2E_BASE_URL` overrides) with the local
+Supabase URL and the well-known local demo anon key injected from `e2e/support/env.ts`; no `.env`
+file is needed. The local anon key is the public Supabase CLI demo key, not a secret.
+
 **Cypress** (arrivals/departures module only, per `docs/PLAN.md` D9 — Playwright stays the
 default for every other module). Specs live in `frontend/cypress/e2e/flight-operations/*.cy.ts`;
 `cypress.config.ts` has tasks `seedDevUsers`, `seedFlight` and `cleanFlights` (service role,
@@ -135,7 +139,7 @@ pnpm supabase:stop
 ```
 
 (Fine to leave the stack running between sessions too — `supabase start` is idempotent.)
-These same two suites run in CI on every push/PR (`.github/workflows/test.yml`), so this is
+These same suites (vitest repos, Playwright, Cypress) run in CI on every push/PR (`.github/workflows/test.yml`), so this is
 exactly what a green check on GitHub means. See `frontend/tests/README.md` and
 `frontend/e2e/README.md` for how the isolation/safety guards work and current coverage.
 

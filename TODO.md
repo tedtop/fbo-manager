@@ -8,14 +8,15 @@ Keep it scannable: update entries as they're resolved rather than letting it gro
 
 ### Edit-concurrency: full rollout to remaining forms
 
-Only 3 of 16 edit forms currently have the optimistic-concurrency guard
+Only 4 of 16 edit forms currently have the optimistic-concurrency guard
 (`useRecordEditSession` hook, documented in `docs/edit-concurrency.md`):
 `frontend/components/fuel-farm/tank-form-dialog.tsx`,
 `frontend/components/fuel-dispatch/transaction-form-dialog.tsx`,
-`frontend/components/equipment/equipment-form-dialog.tsx`.
+`frontend/components/equipment/equipment-form-dialog.tsx`,
+`frontend/components/flight-operations/flight-form-dialog.tsx` (done: PR #43, conflict UI covered by
+`e2e/flight-edit.e2e.ts` and the Cypress flight-edit spec).
 
-The remaining 13 forms without it:
-- `frontend/components/flight-operations/flight-form-dialog.tsx`
+The remaining 12 forms without it:
 - `frontend/components/fuel-dispatch/fueler-assign-dialog.tsx`
 - `frontend/components/invoicing/fuel-ticket-sheet.tsx`
 - `frontend/components/invoicing/invoice-detail-dialog.tsx`
@@ -56,9 +57,9 @@ tool-call can hook into it without a rewrite.
   still only exists as `frontend/scripts/equipment-modified-at-trigger.sql` — a leftover from
   before schema management moved to migrations. Should get folded into a proper migration as a
   follow-up (see `docs/edit-concurrency.md`).
-- **Three forms still use `Dialog` instead of the house `Sheet` standard** for data entry:
-  `flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/fueler-assign-dialog.tsx`,
-  `invoicing/settle-invoice-dialog.tsx`. Tracked in `docs/ui-conventions.md`'s status section.
+- **Two forms still use `Dialog` instead of the house `Sheet` standard** for data entry:
+  `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx`
+  (`flight-operations/flight-form-dialog.tsx` is already a `Sheet`). Tracked in `docs/ui-conventions.md`'s status section.
 - **Some domains have a tested repository layer but no dedicated CRUD form**: aircraft,
   customers, products, fuelers, certifications. Open question (intentional vs. gap) tracked in
   `docs/form-ux-questions.md`.

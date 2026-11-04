@@ -71,15 +71,42 @@ equipment, training/certifications, truck sheets, parking, department scheduling
 (line schedule), and user management. Each has its own directory under
 `frontend/components/` and `frontend/repositories/`.
 
+## Flight operations (arrivals/departures board)
+
+- **Time model.** `flight` has `scheduled_arrival_time` / `scheduled_departure_time` (both nullable;
+  a CHECK requires at least one), optional `actual_arrival_time` / `actual_departure_time`, and
+  `is_quick_turn boolean` (migration `20261103000100_flight_time_model.sql`). A quick turn appears in
+  both columns; otherwise a flight with a scheduled arrival shows under Arrivals and one with a
+  scheduled departure under Departures, so arrival-only and departure-only (hangar pull) flights show
+  in one column. With QT on, the form sets departure = arrival + 1 h.
+- **Instants, not naive strings.** All four times are `timestamptz`. The form sends ISO strings with
+  the local offset; the UI renders in the browser's zone. Day filters and fetch bounds use the local
+  calendar day converted to UTC (`[local 00:00 of start, local 00:00 of the day after end)`), and a
+  flight matches a date range when its scheduled arrival OR departure falls inside
+  (`board-logic.ts`, `repositories/flights.repo.ts`).
+- **Bounded fetch.** The list views load a window of local yesterday to today + 14 days
+  (`listFetchWindow`, widened to cover the current week); choosing "All Dates" in the toolbar opts in
+  to the unbounded fetch. The calendar view loads exactly the visible Sunday-start week
+  (`weekDateParams`), so any week is reachable.
+- **Errors.** Create, update, delete and fuel-order handlers in `app/page.tsx` show a destructive toast
+  ("Couldn't ...") and rethrow so the form sheet stays open with the user's input; success shows a
+  short toast. Edit-concurrency conflicts use the conflict UI in the form, not a toast. Validation is
+  inline text, not `alert()`.
+- **Soft delete.** Deleting a flight sets `flight.deleted_at` (migration `20261102000000`); queries
+  filter `deleted_at IS NULL`. The row stays in the table so an admin can restore it. Delete is
+  confirmed through an `AlertDialog` on the card.
+
 ## Testing
 
-Two non-overlapping layers, both documented in their own READMEs:
+Three layers, documented in their own READMEs:
 
 - `frontend/tests/` (vitest) — repository-layer integration tests against a real,
   disposable local Supabase/Postgres stack. Proves a query is correct.
 - `frontend/e2e/` (Playwright) — drives the real app in a real browser through real
   Supabase Auth login, ending every spec with a direct DB read. Proves a form's save
   button actually persists data, not just that it renders without error.
+- `frontend/cypress/` (Cypress) — same idea for the arrivals/departures module only; started with
+  `pnpm test:cypress` (own dev server on port 4210; Playwright uses 4100).
 
 ## Deployment
 

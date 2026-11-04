@@ -80,11 +80,27 @@ re-seeds the dev accounts automatically on the next run).
 | Equipment: create | `equipment.e2e.ts` | Simple CRUD form — the baseline smoke test proving the whole pipeline (login → form → DB) works |
 | Equipment: edit | `equipment.e2e.ts` | |
 | Invoicing: digital fuel ticket, "Complete ticket" | `invoicing.e2e.ts` | Highest priority — the exact form/bug class named in the 2026-07-03 handoff. Verifies the invoice, its line item, *and* the fueling event (`truck_meter_readings`) it creates as a side effect, plus the `invoice_number` stamped back onto that reading |
-| Flight board: seeded flights display, split/arrivals/departures toggle, tail-number search, status filter | `flight-board.e2e.ts` | Seeds via service role, cleans up its own rows. Pins known bug F1 (both-times flights show in both columns) with a `KNOWN BUG` assertion that flips when B09 lands; also covers the date range filter (today/tomorrow/all, bounded default fetch, B13) |
-| Flight timezone: 23:30 local entry, edit round-trip, calendar >4 weeks ahead | `flight-timezone.e2e.ts` | Browser zone pinned to America/Phoenix; asserts DB instants, board card labels and form fields (B10) |
-| Flight board: Add Flight sheet creates flights | `flight-create.e2e.ts` | Drives the real sheet: arrival with a NEW tail (creates the aircraft with ICAO GLF6 via the type combobox) and a quick turn for an existing aircraft; asserts flight and aircraft rows by service-role DB read. Pins F1 (fabricated arrival+45min departure) Times are asserted as real instants (B10/F2 fixed; browser zone pinned to America/Phoenix, UTC-7). Relies on local migration `20261102000500` (flight.created_by_id default 1, live parity) |
+| Flight board: seeded flights display, split/arrivals/departures toggle, tail-number search, status filter, date range (Today/Tomorrow/All Dates) | `flight-board.e2e.ts` | Seeds via service role, cleans up its own rows. Default fetch is bounded (local yesterday to +14 days); "All Dates" opts in to the unbounded fetch and shows a flight 30 days out |
+| Flight create: Add Flight sheet persists real rows | `flight-create.e2e.ts` | New tail creates the aircraft (ICAO GLF6 via the type combobox); QT departure = arrival + 1 h saved as a quick turn; arrival-only and departure-only (hangar pull) store a NULL other time and show in one column; actual times saved and shown; inline validation (no scheduled time, no aircraft type) with no `alert()`; failed insert shows an error toast, keeps the sheet open, retry succeeds. Times asserted as real instants (browser zone pinned to America/Phoenix, UTC-7). Relies on local migration `20261102000500` (flight.created_by_id default 1, live parity) |
+| Flight edit: edit, status, delete, conflict | `flight-edit.e2e.ts` | Edit sheet persists changed fields; fuel order notes persist and survive an unrelated edit; status dropdown offers only real DB statuses and persists; Delete asks an AlertDialog confirmation, cancel leaves card and row untouched, confirm soft-deletes (`deleted_at` set, row kept); edit-concurrency conflict UI keeps the other write; failed edit and failed status change show an error toast and write nothing |
+| Flight timezone (B10) | `flight-timezone.e2e.ts` | Browser zone pinned to America/Phoenix; a 23:30 local entry keeps its date and time after reload and an edit does not shift it; editing a 23:30 to 00:30 flight round-trips; calendar navigation loads the visible week more than 4 weeks ahead. Asserts DB instants, board card labels and form fields |
 
-**Not yet covered** — every other create/edit form in the app (aircraft, flights, parking
+Arrivals/departures is also covered by Cypress (`cypress/e2e/flight-operations/*.cy.ts`, port 4210, see the root README):
+board, create, edit and a 390px mobile pass. The Cypress specs mirror these Playwright specs.
+
+**Still pinned as `KNOWN BUG`** (assertions that flip when the fix lands; grep `KNOWN BUG` in
+`e2e/`, `cypress/`, `components/**/__tests__`, `repositories/__tests__`):
+
+- M1 mobile layout (B39): `cypress/e2e/flight-operations/mobile.cy.ts` asserts the page is wider than 390px.
+- F9 creator attribution (B17): `repositories/__tests__/flights.repo.test.ts`; the form never sends `created_by_id`, so the DB default (user 1) is used.
+- Card staleness (found with B08, no finding id): `flight-edit.e2e.ts` and `flight-edit.cy.ts`. The card seeds notes/services from props once, so after an edit it shows the old values until reload.
+
+Fixed and now asserted as correct behavior: F1 (QT / classification), F2 and F5 (timezone, calendar
+window), F3 (fuel order notes, no en-route status), F4 (date range filter, bounded fetch), F6 and F7
+(error toasts, delete confirmation, no console noise), and soft-delete semantics. F10 (realtime, B16),
+F11, F12, F13 and F15 remain open.
+
+**Not yet covered** — every other create/edit form in the app (aircraft, parking
 locations, tanks/tank readings, trainings/certifications, fuelers, truck sheets manual entry,
 transactions/fuel-dispatch, user management, training-compliance module, invoicing draft-save
 and settle/void flows). The infrastructure this PR adds (seeded auth, storage-state reuse, DB

@@ -60,8 +60,14 @@ Import from `@/components/ui/sheet` and follow this skeleton:
 
 Keep destructive confirmations as `AlertDialog` (or `Dialog` where already in place) — do not migrate them to `Sheet`. A slideout implies a workspace; a confirmation is a blocking question.
 
-## Status (as of 2026-07-03)
+## Delete confirmations and toasts (as implemented in flight operations)
 
-Already `Sheet`: `equipment/equipment-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`, `invoicing/fuel-ticket-sheet.tsx`, `parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`, `training/course-form-sheet.tsx`, `users/user-sheet.tsx`.
+- Delete is a button on the card that opens an `AlertDialog`: title "Delete <tail>?", a description of what happens (here: removed from the board, record kept in the database, an admin can restore it), `Cancel`, and a destructive `Delete` action. Button and action wording match what actually happens; do not label a hard delete "Clear" or a soft delete "Remove permanently".
+- Save results use toasts (`useToast`): a short title on success ("Flight created", "Flight updated", "Flight deleted"); on failure a `destructive` toast titled "Couldn't <verb> <thing>" with the error message as description. Handlers rethrow after toasting so the Sheet stays open with the user's input. Edit-concurrency conflicts are the exception: they use the conflict UI in the form, not a toast.
+- Validation problems are inline text in the form, never `alert()`.
 
-Still `Dialog` and pending migration to `Sheet` (data-entry forms, not read-only/confirmation): `flight-operations/flight-form-dialog.tsx`, `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx`. Left as `Dialog` intentionally: `invoicing/invoice-detail-dialog.tsx` (read-only), `components/ui/command.tsx` (command palette), and the parking module generally (frozen — audit-only, do not change UX per `.omc/specs/deep-interview-fbo-manager-modules.md`).
+## Status (as of 2026-11-04)
+
+Already `Sheet`: `equipment/equipment-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`, `invoicing/fuel-ticket-sheet.tsx`, `parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`, `training/course-form-sheet.tsx`, `users/user-sheet.tsx`, `flight-operations/flight-form-dialog.tsx` (the file keeps its old name but renders a `Sheet`).
+
+Still `Dialog` and pending migration to `Sheet` (data-entry forms, not read-only/confirmation): `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx`. Left as `Dialog` intentionally: `invoicing/invoice-detail-dialog.tsx` (read-only), `components/ui/command.tsx` (command palette), and the parking module generally (frozen — audit-only, do not change UX per `.omc/specs/deep-interview-fbo-manager-modules.md`).
