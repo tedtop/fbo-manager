@@ -277,24 +277,16 @@ describe('filterFlights dateRange', () => {
     const onToday = '2026-06-10T20:00:00Z'
     const onTomorrow = '2026-06-11T20:00:00Z'
 
-    it('arrival-only flight matches on its arrival day', () => {
+    it('arrival-only flight (no departure) shows from its arrival day onward, never before', () => {
       expect(run(tz, now, [arr('a', onToday)], 'today')).toEqual(['a'])
-      expect(run(tz, now, [arr('a', onToday)], 'tomorrow')).toEqual([])
+      expect(run(tz, now, [arr('a', onToday)], 'tomorrow')).toEqual(['a'])
+      expect(run(tz, now, [arr('a', onTomorrow)], 'today')).toEqual([])
     })
-    it('departure-only flight matches on its departure day', () => {
+    it('departure-only flight matches on its departure day only', () => {
       expect(run(tz, now, [dep('d', onTomorrow)], 'tomorrow')).toEqual(['d'])
       expect(run(tz, now, [dep('d', onTomorrow)], 'today')).toEqual([])
-    })
-    it('multi-day stay matches on its arrival day and its departure day, not the days between', () => {
-      const stay = makeFlight({
-        id: 'stay',
-        arrivalTime: onToday,
-        departureTime: '2026-06-12T20:00:00Z'
-      })
-      expect(run(tz, now, [stay], 'today')).toEqual(['stay']) // arrival day
-      expect(run(tz, now, [stay], 'tomorrow')).toEqual([]) // in between
       const later = () => new Date(2026, 5, 12, 12)
-      expect(run(tz, later, [stay], 'today')).toEqual(['stay']) // departure day
+      expect(run(tz, later, [dep('d', onTomorrow)], 'today')).toEqual([])
     })
     it('quick turn is listed once even when both times are in range', () => {
       const qt = makeFlight({ id: 'qt', arrivalTime: onToday, departureTime: '2026-06-10T22:00:00Z' })
@@ -308,7 +300,7 @@ describe('filterFlights dateRange', () => {
         actualArrivalTime: onToday
       })
       expect(run(tz, now, [actualOnly], 'today')).toEqual(['act'])
-      expect(run(tz, now, [actualOnly], 'tomorrow')).toEqual([])
+      expect(run(tz, now, [actualOnly], 'tomorrow')).toEqual([]) // actuals still match their own day only
       const scheduledWins = makeFlight({
         id: 'sched',
         arrivalTime: onTomorrow,
@@ -321,6 +313,108 @@ describe('filterFlights dateRange', () => {
       const none = makeFlight({ id: 'none', arrivalTime: undefined, departureTime: undefined })
       expect(run(tz, now, [none], 'today')).toEqual([])
       expect(run(tz, now, [none], 'all')).toEqual(['none'])
+    })
+  })
+})
+
+// B43: aircraft on the ramp show on every day of their stay (scheduled overlap rule).
+describe('filterFlights stay overlap (B43)', () => {
+  const ids = (list: Flight[]) => list.map((f) => f.id)
+  const run = (
+    tz: string,
+    now: () => Date,
+    flights: Flight[],
+    dateRange: FlightFilters['dateRange']
+  ) => withTz(tz, () => ids(filterFlights(flights, { ...noFilters, dateRange }, now())))
+  const stay = (id: string, arrivalTime?: string, departureTime?: string) =>
+    makeFlight({ id, arrivalTime, departureTime })
+
+  describe('Phoenix (UTC-7, no DST)', () => {
+    const tz = 'America/Phoenix'
+    // Mon Jun 8 .. Wed Jun 10 local
+    const mon = new Date(2026, 5, 8, 12)
+    const tue = () => new Date(2026, 5, 9, 12)
+    const wed = () => new Date(2026, 5, 10, 12)
+    const thu = () => new Date(2026, 5, 11, 12)
+    const sun = () => new Date(2026, 5, 7, 12)
+    const monToWed = stay('stay', '2026-06-08T17:00:00Z', '2026-06-10T19:00:00Z')
+
+    it('arrives Mon, leaves Wed: shows Mon, Tue and Wed, not Sun or Thu', () => {
+      expect(run(tz, () => mon, [monToWed], 'today')).toEqual(['stay'])
+      expect(run(tz, tue, [monToWed], 'today')).toEqual(['stay'])
+      expect(run(tz, wed, [monToWed], 'today')).toEqual(['stay'])
+      expect(run(tz, sun, [monToWed], 'today')).toEqual([])
+      expect(run(tz, thu, [monToWed], 'today')).toEqual([])
+    })
+    it('shows tomorrow when "today" is the day before the departure', () => {
+      expect(run(tz, tue, [monToWed], 'tomorrow')).toEqual(['stay'])
+      expect(run(tz, wed, [monToWed], 'tomorrow')).toEqual([])
+    })
+    it('a stay that spans the whole week (arrived last week, leaves next week) shows in week', () => {
+      const long = stay('long', '2026-06-02T17:00:00Z', '2026-06-18T17:00:00Z')
+      expect(run(tz, tue, [long], 'week')).toEqual(['long'])
+      expect(run(tz, tue, [long], 'today')).toEqual(['long'])
+    })
+    it('arrival-only (null departure) shows on and after arrival day, not before', () => {
+      const a = stay('a', '2026-06-08T17:00:00Z')
+      expect(run(tz, tue, [a], 'today')).toEqual(['a'])
+      expect(run(tz, sun, [a], 'today')).toEqual([])
+    })
+    it('departure-only matches only its departure day', () => {
+      const d = stay('d', undefined, '2026-06-10T19:00:00Z')
+      expect(run(tz, tue, [d], 'today')).toEqual([])
+      expect(run(tz, wed, [d], 'today')).toEqual(['d'])
+      expect(run(tz, thu, [d], 'today')).toEqual([])
+    })
+    it('midnight edges: arrival at the next day 00:00 local is not today; departure at 00:00 local is today', () => {
+      // Jun 9 local = [2026-06-09T07:00Z, 2026-06-10T07:00Z)
+      const arrivesAtEnd = stay('arrEnd', '2026-06-10T07:00:00Z', '2026-06-12T07:00:00Z')
+      const arrivesLastMinute = stay('arrLast', '2026-06-10T06:59:00Z', '2026-06-12T07:00:00Z')
+      const departsAtStart = stay('depStart', '2026-06-07T07:00:00Z', '2026-06-09T07:00:00Z')
+      const departsJustBefore = stay('depBefore', '2026-06-07T07:00:00Z', '2026-06-09T06:59:00Z')
+      expect(
+        run(tz, tue, [arrivesAtEnd, arrivesLastMinute, departsAtStart, departsJustBefore], 'today')
+      ).toEqual(['arrLast', 'depStart'])
+    })
+    it('quick turn within one day still shows once and only on that day', () => {
+      const qt = stay('qt', '2026-06-09T17:00:00Z', '2026-06-09T19:00:00Z')
+      expect(run(tz, tue, [qt], 'today')).toEqual(['qt'])
+      expect(run(tz, wed, [qt], 'today')).toEqual([])
+    })
+    it('all still applies no date filter', () => {
+      expect(run(tz, tue, [monToWed], 'all')).toEqual(['stay'])
+    })
+  })
+
+  describe('New York (DST)', () => {
+    const tz = 'America/New_York'
+    it('spring-forward (Mar 8 2026, 23 h): stay Mar 7 -> Mar 9 shows on Mar 8 and its edges follow local midnight', () => {
+      const now = () => new Date(2026, 2, 8, 12)
+      // Mar 8 local = [05:00Z, Mar 9 04:00Z)
+      const across = stay('across', '2026-03-07T15:00:00Z', '2026-03-09T15:00:00Z')
+      const leavesAtStart = stay('leavesAtStart', '2026-03-07T15:00:00Z', '2026-03-08T05:00:00Z')
+      const leavesBefore = stay('leavesBefore', '2026-03-07T15:00:00Z', '2026-03-08T04:59:00Z')
+      const arrivesAtEnd = stay('arrivesAtEnd', '2026-03-09T04:00:00Z', '2026-03-10T15:00:00Z')
+      const arrivesLast = stay('arrivesLast', '2026-03-09T03:59:00Z', '2026-03-10T15:00:00Z')
+      expect(
+        run(tz, now, [across, leavesAtStart, leavesBefore, arrivesAtEnd, arrivesLast], 'today')
+      ).toEqual(['across', 'leavesAtStart', 'arrivesLast'])
+    })
+    it('fall-back (Nov 1 2026, 25 h): a stay arriving in the repeated hour and leaving Nov 3 shows Nov 1 and Nov 2', () => {
+      const nov1 = () => new Date(2026, 10, 1, 12)
+      const nov2 = () => new Date(2026, 10, 2, 12)
+      const nov3 = () => new Date(2026, 10, 3, 12)
+      const nov4 = () => new Date(2026, 10, 4, 12)
+      // Nov 1 local = [04:00Z, Nov 2 05:00Z); Nov 3 local = [Nov 3 05:00Z, Nov 4 05:00Z)
+      const s = stay('s', '2026-11-01T06:30:00Z', '2026-11-03T15:00:00Z')
+      expect(run(tz, nov1, [s], 'today')).toEqual(['s'])
+      expect(run(tz, nov2, [s], 'today')).toEqual(['s'])
+      expect(run(tz, nov3, [s], 'today')).toEqual(['s'])
+      expect(run(tz, nov4, [s], 'today')).toEqual([])
+      // arrival exactly at the start of Nov 2 local (05:00Z) is not Nov 1
+      const lateArrival = stay('late', '2026-11-02T05:00:00Z', '2026-11-03T15:00:00Z')
+      expect(run(tz, nov1, [lateArrival], 'today')).toEqual([])
+      expect(run(tz, nov2, [lateArrival], 'today')).toEqual(['late'])
     })
   })
 })

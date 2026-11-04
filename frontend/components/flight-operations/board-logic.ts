@@ -25,16 +25,24 @@ export function dateRangeBounds(
   }
 }
 
-// A flight is on a day when its scheduled arrival OR departure falls in it (same rule as the repo's date
-// bounds). Actual times are used only when neither scheduled time is set.
+// B43: a flight is on the board for every day of its stay. Scheduled overlap rule on [start, end):
+// arrival < end AND (no departure OR departure >= start). A departure-only flight (no arrival) matches on
+// its departure day only. The repo's findAll applies the same rule server-side, so the row is fetched even
+// when the plane arrived before the fetch window. Actual times are used only when neither scheduled time
+// is set (then either one inside the range matches).
 function flightInRange(flight: Flight, start: Date, end: Date): boolean {
-  const scheduled = [flight.arrivalTime, flight.departureTime].filter(Boolean) as string[]
-  const times = scheduled.length
-    ? scheduled
-    : ([flight.actualArrivalTime, flight.actualDepartureTime].filter(Boolean) as string[])
-  return times.some((t) => {
-    const ms = new Date(toInstantIso(t)).getTime()
-    return ms >= start.getTime() && ms < end.getTime()
+  const ms = (t?: string) => (t ? new Date(toInstantIso(t)).getTime() : null)
+  const arrival = ms(flight.arrivalTime)
+  const departure = ms(flight.departureTime)
+  const lo = start.getTime()
+  const hi = end.getTime()
+
+  if (arrival !== null) return arrival < hi && (departure === null || departure >= lo)
+  if (departure !== null) return departure >= lo && departure < hi
+
+  return [flight.actualArrivalTime, flight.actualDepartureTime].some((t) => {
+    const v = ms(t)
+    return v !== null && v >= lo && v < hi
   })
 }
 
