@@ -341,3 +341,18 @@ Order a, b, c, d, e. B26a needs Docker back for local verification.
 4. Is "create flight, then set services" (two calls) acceptable, or a single atomic `create_flight_with_services` RPC?
 5. Should retired services keep showing on old flights (proposed) or vanish everywhere?
 6. Is catalog editing in the UI wanted soon, or is SQL-only fine for now?
+
+### B26 addendum: billable items vs board services (Ted, 2026-11-04)
+
+Requirement: there must be billable items that never appear on the arrivals/departures board (example: the ramp fee, billed by the front desk). The board only shows operational services (fuel, catering, GPU, ...). So "can be billed" and "shown on the board" are two independent properties.
+
+Finding: `product` already exists and has `product_type` ('fuel' | 'service' | 'fee' | 'product') plus SKU and price (10 rows live). It is the natural billing catalog; a ramp fee is a `product` of type `fee`.
+
+Proposed shape (supersedes sections 2 and 5 where they conflict):
+- `product` stays the single source of truth for anything billable and for prices.
+- `service` is the board vocabulary only (key, label, icon, color, sort_order, active, plus nullable `product_id`). A service may point at a product when it is billable (fuel, GPU, lav, catering); a service with no product is board-only (e.g. a courtesy note). `service.default_price` is dropped: price comes from the linked product.
+- Billable items with no board presence (ramp fee, parking, handling fees) are simply `product` rows with no `service` row. They never reach the board and the flight form never lists them.
+- `flight_service` stays as designed (which board services a flight has, quantity, notes) and may carry a `price_override`; invoicing resolves price as `coalesce(price_override, product.price)`.
+- How front-desk charges attach to an aircraft visit (invoice line items referencing the flight, or standalone) is an invoicing question and is out of scope for B26; the schema above leaves it open because invoice lines already reference `flight_id` (invoices.flight_id) and `product`.
+
+Open questions added: (a) Which items does the front desk bill that are not board services (ramp fee, parking, hangar, handling, ...)? (b) Should some board services never be billed (courtesy note, passenger count), or does every pill map to a product? (c) Is the ramp fee per visit, per night or by aircraft weight (affects whether it is a flat `product` price or a rule)?
