@@ -122,7 +122,8 @@ test.describe('Flight board', () => {
   test('search by tail number filters the board', async ({ page }) => {
     await openBoard(page)
     await page.getByPlaceholder('Search flights...').fill(tailDep)
-    await expect(page.getByText(tailDep)).toHaveCount(1)
+    // Count cards, not text: the emptied Arrivals column names the search term too (B18).
+    await expect(page.locator('[data-slot="card"]').filter({ hasText: tailDep })).toHaveCount(1)
     await expect(page.getByText(tailTurn)).toHaveCount(0)
     await expect(page.getByText(tailDelayed)).toHaveCount(0)
 

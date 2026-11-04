@@ -34,7 +34,7 @@ Real bugs:
 - F10 No realtime/refresh on the board list: only `flight-fuel-status` and the edit-session hook subscribe (grep postgres_changes); `flight` is in the realtime publication (20260704000300:35-45) but `useFlights` has no subscription or refetch interval, so two screens drift.
   Status: still open (B16).
 - F11 Loading/empty/error states are coarse: whole page replaced by "Loading flights..." on every refetch key change (page.tsx:155-161), error via `ErrorMessage` with no retry, empty list text only per column (flight-list.tsx:739).
-  Status: still open (B18).
+  Status: fixed by B18 (review). The list keeps previous data while refetching (`keepPreviousData`, inline spinner), the error state has Retry, and empty states name the active filters with a Clear filters action.
 - F12 Mobile: split grid is `lg:grid-cols-2` (OK); calendar view is mouse-drag only (calendar-week-view.tsx:78-90, 249-273), unusable on touch. Needs a decision (D4).
   Status: still open (B19; the 390px overflow is tracked as B39 and pinned by `KNOWN BUG M1` in the Cypress mobile spec).
 Dead/duplicate code:

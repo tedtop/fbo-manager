@@ -173,8 +173,8 @@ describe('Flight board', () => {
 
     it('shows the empty state when nothing matches', () => {
       cy.get('input[placeholder="Search flights..."]').type(`ZZNOMATCH${stamp}`)
-      cy.contains('No arrivals found').should('be.visible')
-      cy.contains('No departures found').should('be.visible')
+      // B18: the empty state names the filter (details in empty-states.cy.ts).
+      cy.contains(`No flights match: search 'ZZNOMATCH${stamp}'`).should('be.visible')
       cy.contains(tailTurn).should('not.exist')
     })
   })
