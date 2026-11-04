@@ -25,12 +25,14 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
+import { useAppSettings } from '@/hooks/use-app-settings'
+import { isBlankTail } from '@/lib/app-settings'
 import { formatLocalDate } from '@/lib/local-date'
 import { useToast } from '@/hooks/use-toast'
 import { describeError } from '@/lib/error-message'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { FlightRow } from '@/repositories/flights.repo'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AircraftTypeCombobox } from './aircraft-type-combobox'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import {
@@ -95,10 +97,15 @@ export function FlightFormDialog({
     updateAircraft,
     loading: aircraftLoading
   } = useAircraft()
+  // The tail field of a new flight starts with the registration prefix from Settings ("N" in the US).
+  const { settings } = useAppSettings()
+  const tailPrefix = settings.tailNumberPrefix
+  const appliedPrefix = useRef(tailPrefix)
   const [formData, setFormData] = useState<Partial<Flight>>({
     status: 'scheduled',
     services: [],
-    source: 'line-department'
+    source: 'line-department',
+    tailNumber: tailPrefix
   })
   const [date, setDate] = useState(formatLocalDate(new Date())) // Separate date state (local calendar date)
   const [arrivalTime, setArrivalTime] = useState('')
@@ -110,6 +117,7 @@ export function FlightFormDialog({
   const { toast } = useToast()
   const [timeError, setTimeError] = useState<string | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
+  const [tailError, setTailError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const setScheduled = (next: {
@@ -169,17 +177,33 @@ export function FlightFormDialog({
     if (initialData) {
       applyFlightToForm(initialData)
     } else {
+      appliedPrefix.current = tailPrefix
       setFormData({
         status: 'scheduled',
         services: [],
-        source: 'line-department'
+        source: 'line-department',
+        tailNumber: tailPrefix
       })
+      setTailError(null)
       setDate(formatLocalDate(new Date()))
       setScheduled({ arrival: '', departure: '', quickTurn: true })
       setActualArrivalTime('')
       setActualDepartureTime('')
     }
   }, [initialData, open])
+
+  // The prefix setting can arrive after the sheet opened (first load) or change in another tab: swap it in,
+  // but only while the user has not typed anything beyond the prefix.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the prefix itself changes
+  useEffect(() => {
+    if (initialData) return
+    setFormData((current) =>
+      isBlankTail(current.tailNumber, appliedPrefix.current)
+        ? { ...current, tailNumber: tailPrefix }
+        : current
+    )
+    appliedPrefix.current = tailPrefix
+  }, [tailPrefix])
 
   const editSession = useRecordEditSession<FlightRow>({
     table: 'flight',
@@ -230,6 +254,7 @@ export function FlightFormDialog({
         )?.aircraft_type_icao || undefined
       )
     }
+    setTailError(null)
     setFormData({
       ...formData,
       tailNumber,
@@ -289,6 +314,13 @@ export function FlightFormDialog({
       actualArrivalTime || arrivalTime
     )
     const savedQuickTurn = isQuickTurnSaved(scheduled)
+
+    // A field holding only the pre-filled prefix has no tail number in it yet.
+    if (isBlankTail(formData.tailNumber, tailPrefix)) {
+      setTailError('Enter the tail number')
+      return
+    }
+    setTailError(null)
 
     if (!formData.aircraftType) {
       setTypeError('Please select an aircraft type')
@@ -433,11 +465,22 @@ export function FlightFormDialog({
                   onChange={handleTailNumberChange}
                   aircraft={aircraft}
                   onCreateNew={handleCreateNewAircraft}
+                  prefix={initialData ? undefined : tailPrefix}
                   disabled={aircraftLoading}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Start typing to search existing aircraft or create new
-                </p>
+                {tailError ? (
+                  <p
+                    id="tailError"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {tailError}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Start typing to search existing aircraft or create new
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

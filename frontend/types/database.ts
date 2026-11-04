@@ -7,6 +7,14 @@ export type DepartmentSettings = {
   edit_roles?: Array<'lead' | 'supervisor' | 'member'>
 }
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+
 export type Database = {
   public: {
     Tables: {
@@ -1045,6 +1053,22 @@ export type Database = {
           is_system?: boolean
         }
         Update: Partial<Database['public']['Tables']['roles']['Insert']>
+        Relationships: []
+      }
+      app_setting: {
+        Row: {
+          key: string
+          value: JsonValue
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          key: string
+          value: JsonValue
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['app_setting']['Insert']>
         Relationships: []
       }
       module_permissions: {

@@ -13,6 +13,8 @@ interface TailNumberAutocompleteProps {
   onChange: (tailNumber: string, aircraftType?: string) => void
   aircraft: Aircraft[]
   onCreateNew: (tailNumber: string) => void
+  /** Pre-filled registration prefix (e.g. "N"). While the field holds only this, the dropdown stays closed. */
+  prefix?: string
   className?: string
   disabled?: boolean
 }
@@ -22,6 +24,7 @@ export function TailNumberAutocomplete({
   onChange,
   aircraft,
   onCreateNew,
+  prefix,
   className,
   disabled
 }: TailNumberAutocompleteProps) {
@@ -87,11 +90,13 @@ export function TailNumberAutocomplete({
     }
   }
 
+  // Only the pre-filled prefix so far: nothing has been typed, so there is nothing to suggest or create.
+  const atPrefix = !!prefix && inputValue === prefix
   const exactMatch = aircraft.find(
     (a) => a.tail_number.toLowerCase() === inputValue.toLowerCase()
   )
   const showCreateButton =
-    inputValue && !exactMatch && filteredAircraft.length === 0
+    inputValue && !atPrefix && !exactMatch && filteredAircraft.length === 0
 
   return (
     <div className={cn('relative', className)}>
@@ -99,12 +104,22 @@ export function TailNumberAutocomplete({
         ref={inputRef}
         value={inputValue}
         onChange={handleInputChange}
-        onFocus={() => setIsOpen(true)}
+        onFocus={(e) => {
+          setIsOpen(true)
+          // The field can be focused automatically with the prefix already in it: put the caret after it
+          // so typing continues the tail number instead of replacing the prefix.
+          if (atPrefix) {
+            const input = e.currentTarget
+            requestAnimationFrame(() =>
+              input.setSelectionRange(input.value.length, input.value.length)
+            )
+          }
+        }}
         placeholder="e.g., N12345"
         disabled={disabled}
       />
 
-      {isOpen && (filteredAircraft.length > 0 || showCreateButton) && (
+      {isOpen && !atPrefix && (filteredAircraft.length > 0 || showCreateButton) && (
         <div
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto"
