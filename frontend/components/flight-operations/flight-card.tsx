@@ -27,7 +27,7 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import type { LinkColor } from './board-logic'
+import { flightradarUrl, type LinkColor } from './board-logic'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
 import { useSyncedDraft } from '@/hooks/use-synced-draft'
 import { useToast } from '@/hooks/use-toast'
@@ -344,9 +344,18 @@ export function FlightCard({
                   isArrival ? 'text-green-500' : 'text-blue-500'
                 )}
               />
-              <span className="text-lg font-bold font-mono text-foreground">
-                {flight.tailNumber}
-              </span>
+              {flight.tailNumber && (
+                <a
+                  href={flightradarUrl(flight.tailNumber)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Track ${flight.tailNumber} on Flightradar24`}
+                  className="text-lg font-bold font-mono text-foreground hover:text-primary hover:underline underline-offset-2"
+                >
+                  {flight.tailNumber}
+                </a>
+              )}
               {isLinked && (
                 <TooltipProvider>
                   <Tooltip>

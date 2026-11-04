@@ -6,6 +6,7 @@ import { EditSessionStatus } from '@/components/shared/edit-session-status'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { TimeInput } from '@/components/ui/time-input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -512,12 +513,11 @@ export function FlightFormDialog({
                       <span className="inline-block w-2 h-2 rounded-full bg-success"></span>
                       Arrival
                     </Label>
-                    <Input
+                    <TimeInput
                       id="arrivalTime"
-                      type="time"
                       value={arrivalTime}
-                      onChange={(e) =>
-                        setScheduled(applyArrivalChange(scheduled, e.target.value))
+                      onChange={(v) =>
+                        setScheduled(applyArrivalChange(scheduled, v))
                       }
                       aria-describedby={timeError ? 'timeError' : undefined}
                     />
@@ -527,11 +527,10 @@ export function FlightFormDialog({
                     >
                       Actual
                     </Label>
-                    <Input
+                    <TimeInput
                       id="actualArrivalTime"
-                      type="time"
                       value={actualArrivalTime}
-                      onChange={(e) => setActualArrivalTime(e.target.value)}
+                      onChange={(v) => setActualArrivalTime(v)}
                     />
                   </div>
 
@@ -562,13 +561,12 @@ export function FlightFormDialog({
                       <span className="inline-block w-2 h-2 rounded-full bg-accent"></span>
                       Departure
                     </Label>
-                    <Input
+                    <TimeInput
                       id="departureTime"
-                      type="time"
                       value={departureTime}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setScheduled(
-                          applyDepartureChange(scheduled, e.target.value)
+                          applyDepartureChange(scheduled, v)
                         )
                       }
                       aria-describedby={timeError ? 'timeError' : undefined}
@@ -579,11 +577,10 @@ export function FlightFormDialog({
                     >
                       Actual
                     </Label>
-                    <Input
+                    <TimeInput
                       id="actualDepartureTime"
-                      type="time"
                       value={actualDepartureTime}
-                      onChange={(e) => setActualDepartureTime(e.target.value)}
+                      onChange={(v) => setActualDepartureTime(v)}
                     />
                   </div>
                 </div>
