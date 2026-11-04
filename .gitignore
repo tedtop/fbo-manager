@@ -54,6 +54,7 @@ yarn-error.log*
 
 # Next.js / frontend build outputs
 .next/
+.next-e2e/
 out/
 build/
 next-env.d.ts

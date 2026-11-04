@@ -14,6 +14,7 @@ import {
   componentFlightToApiRequest
 } from '@/components/flight-operations/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { FLIGHTS_POLL_MS, useFlightsRealtime } from '@/hooks/use-flights-realtime'
 
 export const flightKeys = {
   all: ['flights'] as const,
@@ -75,8 +76,12 @@ export function useFlights(params?: {
       }
     : undefined
 
+  const realtimeLive = useFlightsRealtime(qc)
+
   const query = useQuery({
     queryKey: flightKeys.list(filters),
+    // Polling fallback: only while the realtime channel is not SUBSCRIBED.
+    refetchInterval: realtimeLive ? false : FLIGHTS_POLL_MS,
     queryFn: async () => {
       const rows = await findAllFlights(db, filters)
       return rows.map(rowToFlight)

@@ -105,6 +105,22 @@ export default defineConfig({
           return data.id
         },
 
+        /** Sets a flight's destination (an UPDATE a second screen would make). */
+        async setFlightDestination({ id, destination }: { id: number; destination: string }) {
+          const db = createE2EDbClient()
+          const { error } = await db.from('flight').update({ destination }).eq('id', id)
+          if (error) throw new Error(`setFlightDestination: ${error.message}`)
+          return null
+        },
+
+        /** Soft-deletes a flight (sets deleted_at), as the app's delete does. */
+        async softDeleteFlight({ id }: { id: number }) {
+          const db = createE2EDbClient()
+          const { error } = await db.from('flight').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+          if (error) throw new Error(`softDeleteFlight: ${error.message}`)
+          return null
+        },
+
         /** Removes the flights and aircraft seeded for the given tails. */
         async cleanFlights(tails: string[]) {
           const db = createE2EDbClient()
