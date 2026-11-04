@@ -44,8 +44,9 @@ export async function findAllFlights(
     .order('scheduled_departure_time', { ascending: false })
 
   // Range bounds are local calendar days converted to UTC instants: [local 00:00 of start, local 00:00 of
-  // the day after end). A flight matches when its scheduled arrival OR departure falls inside, so
-  // arrival-only and departure-only flights are both found.
+  // the day after end). B43 overlap rule: a flight matches when its stay overlaps the range, i.e. scheduled
+  // arrival < rangeEnd AND (no departure OR departure >= rangeStart). A departure-only flight matches on its
+  // departure day only. A plane that arrived before the range is therefore still returned.
   let rangeStart: string | undefined
   let rangeEnd: string | undefined
   if (filters?.today) {
@@ -57,15 +58,18 @@ export async function findAllFlights(
     if (filters?.endDate) rangeEnd = localNextDayStartIso(filters.endDate)
   }
   if (rangeStart || rangeEnd) {
-    const inRange = (column: string) => {
-      const parts = []
-      if (rangeStart) parts.push(`${column}.gte.${rangeStart}`)
-      if (rangeEnd) parts.push(`${column}.lt.${rangeEnd}`)
-      return parts.length > 1 ? `and(${parts.join(',')})` : parts[0]
-    }
-    query = query.or(
-      `${inRange('scheduled_arrival_time')},${inRange('scheduled_departure_time')}`
-    )
+    const ARR = 'scheduled_arrival_time'
+    const DEP = 'scheduled_departure_time'
+    const stay = [
+      rangeEnd ? `${ARR}.lt.${rangeEnd}` : `${ARR}.not.is.null`,
+      rangeStart ? `or(${DEP}.is.null,${DEP}.gte.${rangeStart})` : undefined
+    ].filter(Boolean)
+    const departureOnly = [
+      `${ARR}.is.null`,
+      rangeStart ? `${DEP}.gte.${rangeStart}` : undefined,
+      rangeEnd ? `${DEP}.lt.${rangeEnd}` : undefined
+    ].filter(Boolean)
+    query = query.or(`and(${stay.join(',')}),and(${departureOnly.join(',')})`)
   }
 
   if (filters?.status) {

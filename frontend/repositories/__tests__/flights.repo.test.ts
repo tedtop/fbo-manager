@@ -153,6 +153,50 @@ describe('flights.repo', () => {
     })
   })
 
+  // B43: a flight is returned for any range its stay overlaps, including one that arrived before the range.
+  it('returns a plane that arrived before the range and departs inside or after it', () => {
+    return withTz('America/Phoenix', async () => {
+      const departsInside = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-02T18:00:00.000Z',
+        scheduled_departure_time: '2026-03-10T18:00:00.000Z',
+      })
+      const departsAfter = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-02T18:00:00.000Z',
+        scheduled_departure_time: '2026-03-25T18:00:00.000Z',
+      })
+      const noDeparture = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-02T18:00:00.000Z',
+        scheduled_departure_time: null,
+      })
+      await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-02T18:00:00.000Z',
+        scheduled_departure_time: '2026-03-07T18:00:00.000Z', // left before the range
+      })
+      await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-20T18:00:00.000Z', // arrives after the range
+        scheduled_departure_time: '2026-03-22T18:00:00.000Z',
+      })
+
+      const results = await findAllFlights(db, { startDate: '2026-03-08', endDate: '2026-03-14' })
+      expect(results.map((f) => f.id).sort()).toEqual(
+        [departsInside.id, departsAfter.id, noDeparture.id].sort()
+      )
+    })
+  })
+
+  it('a departure-only flight matches on its departure day only', () => {
+    return withTz('America/Phoenix', async () => {
+      const depOnly = await makeFlight(db, {
+        scheduled_arrival_time: null,
+        scheduled_departure_time: '2026-03-10T18:00:00.000Z',
+      })
+      const inRange = await findAllFlights(db, { startDate: '2026-03-10', endDate: '2026-03-10' })
+      expect(inRange.map((f) => f.id)).toEqual([depOnly.id])
+      expect(await findAllFlights(db, { startDate: '2026-03-11', endDate: '2026-03-11' })).toEqual([])
+      expect(await findAllFlights(db, { startDate: '2026-03-01', endDate: '2026-03-09' })).toEqual([])
+    })
+  })
+
   it('a far-future week (> 4 weeks out) is returned when that week is requested', () => {
     return withTz('America/Phoenix', async () => {
       const future = await makeFlight(db, { scheduled_departure_time: '2026-12-16T18:00:00.000Z' })
