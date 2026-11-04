@@ -13,7 +13,8 @@ const tailDelayed = uniqueValue('NE2E').toUpperCase() // departure only, delayed
 const tailArr = uniqueValue('NE2E').toUpperCase() // arrival only (return), scheduled
 const tailTomorrow = uniqueValue('NE2E').toUpperCase() // departure tomorrow (local day)
 const tailMonth = uniqueValue('NE2E').toUpperCase() // departure 30 days out (outside the default fetch window)
-const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailTomorrow, tailMonth]
+const tailStay = uniqueValue('NE2E').toUpperCase() // B43: arrived 10 days ago, leaves in 2 days (on the ramp today and tomorrow)
+const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailTomorrow, tailMonth, tailStay]
 let userId: number
 
 test.beforeAll(async () => {
@@ -58,6 +59,7 @@ test.beforeAll(async () => {
     { ...base, aircraft_id: tailDelayed, scheduled_departure_time: today(300), flight_status: 'delayed' },
     { ...base, aircraft_id: tailTomorrow, scheduled_departure_time: noonInDays(1), flight_status: 'scheduled' },
     { ...base, aircraft_id: tailMonth, scheduled_departure_time: noonInDays(30), flight_status: 'scheduled' },
+    { ...base, aircraft_id: tailStay, scheduled_arrival_time: noonInDays(-10), scheduled_departure_time: noonInDays(2), flight_status: 'scheduled' },
   ])
   if (flightError) throw flightError
 })
@@ -151,23 +153,27 @@ test.describe('Flight board', () => {
 
   test('default view is today only: tomorrow and 30-days-out flights are not shown', async ({ page }) => {
     await openBoard(page)
-    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr]) await expect(page.getByText(tail).first()).toBeVisible()
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr, tailStay]) await expect(page.getByText(tail).first()).toBeVisible()
     await expect(page.getByText(tailTomorrow)).toHaveCount(0)
     await expect(page.getByText(tailMonth)).toHaveCount(0)
   })
 
-  test('Tomorrow shows only tomorrow\'s flights', async ({ page }) => {
+  // B43: aircraft on the ramp show on every day of their stay. The arrival-only (return) flight has no
+  // departure, so it stays listed from its arrival day onward; the stay arrived before the fetch window.
+  test('Tomorrow shows tomorrow\'s flights and the aircraft still on the ramp', async ({ page }) => {
     await openBoard(page)
     await pickDateRange(page, 'Tomorrow')
     await expect(page.getByText(tailTomorrow).first()).toBeVisible()
-    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr, tailMonth]) await expect(page.getByText(tail)).toHaveCount(0)
+    await expect(page.getByText(tailStay).first()).toBeVisible()
+    await expect(page.getByText(tailArr).first()).toBeVisible()
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailMonth]) await expect(page.getByText(tail)).toHaveCount(0)
   })
 
   test('Today shows only today\'s flights', async ({ page }) => {
     await openBoard(page)
     await pickDateRange(page, 'Tomorrow')
     await pickDateRange(page, 'Today')
-    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr]) await expect(page.getByText(tail).first()).toBeVisible()
+    for (const tail of [tailTurn, tailDep, tailDelayed, tailArr, tailStay]) await expect(page.getByText(tail).first()).toBeVisible()
     await expect(page.getByText(tailTomorrow)).toHaveCount(0)
     await expect(page.getByText(tailMonth)).toHaveCount(0)
   })
