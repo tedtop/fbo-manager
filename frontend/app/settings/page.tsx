@@ -1,5 +1,6 @@
 'use client'
 
+import { AirportSettings } from '@/components/settings/airport-settings'
 import { EquipmentTypesEditor } from '@/components/settings/equipment-types-editor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -160,6 +161,8 @@ export default function SettingsPage() {
           )}
         </div>
       </form>
+
+      <AirportSettings />
 
       <EquipmentTypesEditor />
     </div>

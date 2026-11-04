@@ -1054,6 +1054,45 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['roles']['Insert']>
         Relationships: []
       }
+      airport: {
+        Row: {
+          id: number
+          ident: string
+          icao: string | null
+          iata: string | null
+          faa: string | null
+          name: string
+          city: string | null
+          region: string | null
+          country: string
+          type: string | null
+          latitude: number | null
+          longitude: number | null
+          scheduled_service: boolean | null
+          created_at: string
+          modified_at: string
+        }
+        // Read-only reference data: the API grants select only (rows come from the seed migration).
+        Insert: {
+          id?: number
+          ident: string
+          icao?: string | null
+          iata?: string | null
+          faa?: string | null
+          name: string
+          city?: string | null
+          region?: string | null
+          country: string
+          type?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          scheduled_service?: boolean | null
+          created_at?: string
+          modified_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['airport']['Insert']>
+        Relationships: []
+      }
       app_setting: {
         Row: {
           key: string

@@ -4,6 +4,8 @@
 
 export const TAIL_NUMBER_PREFIX_KEY = 'tail_number_prefix'
 export const EQUIPMENT_TYPES_KEY = 'equipment_types'
+export const HOME_AIRPORT_KEY = 'home_airport'
+export const AIRPORT_DISPLAY_KEY = 'airport_display'
 
 /** One kind of equipment. `value` is what equipment.equipment_type stores and never changes; label and icon are display. */
 export type EquipmentTypeDef = { value: string; label: string; icon: string }
@@ -30,7 +32,22 @@ export const MAX_EQUIPMENT_TYPES = 40
 export const MAX_EQUIPMENT_TYPE_LABEL_LENGTH = 40
 export const FALLBACK_EQUIPMENT_ICON = '🔧'
 
+export type AirportDisplay = 'faa' | 'iata' | 'icao'
+
+export const AIRPORT_DISPLAY_OPTIONS: {
+  value: AirportDisplay
+  label: string
+}[] = [
+  { value: 'faa', label: 'FAA identifier (MSO), then IATA, then ICAO' },
+  { value: 'iata', label: 'IATA code (MSO)' },
+  { value: 'icao', label: 'ICAO code (KMSO)' }
+]
+
 export type AppSettings = {
+  /** Stored code (ICAO) of the home airport: pre-fills Origin on new flights and ranks its country first. */
+  homeAirport: string
+  /** Which airport code the app shows on screen; the ICAO is always what is stored. */
+  airportDisplay: AirportDisplay
   /** Text pre-filled into the tail number field of the Add Flight form, e.g. "N" or "C-". "" = no prefill. */
   tailNumberPrefix: string
   /** The equipment types offered on the Equipment page and form, in display order. */
@@ -38,6 +55,8 @@ export type AppSettings = {
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
+  homeAirport: 'KMSO',
+  airportDisplay: 'faa',
   tailNumberPrefix: 'N',
   equipmentTypes: DEFAULT_EQUIPMENT_TYPES
 }
@@ -62,7 +81,10 @@ export function equipmentTypeIcon(
 }
 
 /** A new type's stored value, derived from its label and made unique among `existing`. */
-export function slugifyEquipmentType(label: string, existing: string[]): string {
+export function slugifyEquipmentType(
+  label: string,
+  existing: string[]
+): string {
   const base =
     label
       .trim()
@@ -75,7 +97,9 @@ export function slugifyEquipmentType(label: string, existing: string[]): string 
 }
 
 /** null when the list is acceptable, else a message for the Settings page. */
-export function validateEquipmentTypes(types: EquipmentTypeDef[]): string | null {
+export function validateEquipmentTypes(
+  types: EquipmentTypeDef[]
+): string | null {
   if (types.length > MAX_EQUIPMENT_TYPES) {
     return `Use at most ${MAX_EQUIPMENT_TYPES} types.`
   }
@@ -160,6 +184,19 @@ export function settingsFromRows(
       validateTailPrefix(row.value) === null
     ) {
       settings.tailNumberPrefix = normalizeTailPrefix(row.value)
+    }
+    if (
+      row.key === HOME_AIRPORT_KEY &&
+      typeof row.value === 'string' &&
+      /^[A-Za-z0-9]{2,6}$/.test(row.value.trim())
+    ) {
+      settings.homeAirport = row.value.trim().toUpperCase()
+    }
+    if (
+      row.key === AIRPORT_DISPLAY_KEY &&
+      AIRPORT_DISPLAY_OPTIONS.some((o) => o.value === row.value)
+    ) {
+      settings.airportDisplay = row.value as AirportDisplay
     }
     if (row.key === EQUIPMENT_TYPES_KEY) {
       settings.equipmentTypes =
