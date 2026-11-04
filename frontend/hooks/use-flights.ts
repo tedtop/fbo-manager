@@ -13,7 +13,13 @@ import {
   apiFlightToComponentFlight,
   componentFlightToApiRequest
 } from '@/components/flight-operations/types'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient
+} from '@tanstack/react-query'
+import { useRef } from 'react'
 import { FLIGHTS_POLL_MS, useFlightsRealtime } from '@/hooks/use-flights-realtime'
 
 export const flightKeys = {
@@ -80,6 +86,9 @@ export function useFlights(params?: {
 
   const query = useQuery({
     queryKey: flightKeys.list(filters),
+    // Keep showing the previous window's flights while a new window/filter key loads, so changing the
+    // week or date range does not blank the board (B18). `loading` stays true only for a first load.
+    placeholderData: keepPreviousData,
     // Polling fallback: only while the realtime channel is not SUBSCRIBED.
     refetchInterval: realtimeLive ? false : FLIGHTS_POLL_MS,
     queryFn: async () => {
@@ -87,6 +96,13 @@ export function useFlights(params?: {
       return rows.map(rowToFlight)
     }
   })
+
+  // A refetch after a failure with nothing cached resets the query to pending and clears its error, which
+  // would flip the board from the error state to skeletons and back. Keep reporting the last failure until
+  // a fetch succeeds so the error state (with Retry) stays put while it retries.
+  const lastError = useRef<Error | null>(null)
+  if (query.error) lastError.current = query.error
+  else if (query.isSuccess) lastError.current = null
 
   const createMutation = useMutation({
     mutationFn: async (flight: Partial<Flight>) => {
@@ -173,7 +189,11 @@ export function useFlights(params?: {
   return {
     flights: query.data ?? [],
     loading: query.isLoading,
-    error: query.error,
+    // Any fetch in flight, including background refetches (drives the subtle inline indicator).
+    fetching: query.isFetching,
+    // The flights shown belong to the previous query key while the new one loads.
+    isPlaceholder: query.isPlaceholderData,
+    error: query.error ?? lastError.current,
     createFlight: (flight: Partial<Flight>) => createMutation.mutateAsync(flight),
     updateFlight: (
       id: string,

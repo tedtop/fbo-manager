@@ -4,6 +4,7 @@ import { CalendarWeekView } from '@/components/flight-operations/calendar-week-v
 import { CompactToolbar } from '@/components/flight-operations/compact-toolbar'
 import { listFetchWindow, weekDateParams } from '@/components/flight-operations/board-logic'
 import { FlightBoard } from '@/components/flight-operations/flight-board'
+import { FlightLoadError } from '@/components/flight-operations/flight-load-error'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import type {
@@ -17,7 +18,6 @@ import { useTransactions } from '@/hooks/use-transactions'
 import { useToast } from '@/hooks/use-toast'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { describeError } from '@/lib/error-message'
-import { ErrorMessage } from '@/messages/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -50,7 +50,10 @@ export default function FlightOperationsPage() {
   const {
     flights,
     loading,
+    fetching,
+    isPlaceholder,
     error,
+    refetch,
     createFlight,
     updateFlight,
     deleteFlight,
@@ -180,9 +183,12 @@ export default function FlightOperationsPage() {
     return null
   }
 
-  if (error) {
-    return <ErrorMessage>{error.message}</ErrorMessage>
-  }
+  // Failed fetch: with no flights to show, the error replaces the board (toolbar stays, so the view and
+  // filters remain usable); with earlier flights on screen it is a banner above them. Both offer Retry.
+  const loadFailed = !!error
+  const showBoard = !(loadFailed && flights.length === 0)
+  // Placeholder data from the previous window must not read as an empty day while the new one loads.
+  const boardLoading = loading || (isPlaceholder && flights.length === 0)
 
   return (
     <div className="space-y-4">
@@ -194,9 +200,19 @@ export default function FlightOperationsPage() {
         filters={filters}
         onFiltersChange={setFilters}
         onAddFlight={() => setIsAddDialogOpen(true)}
+        fetching={fetching}
       />
 
-      {view === 'split' && (
+      {loadFailed && (
+        <FlightLoadError
+          message={describeError(error)}
+          hasData={flights.length > 0}
+          retrying={fetching}
+          onRetry={() => void refetch()}
+        />
+      )}
+
+      {showBoard && view === 'split' && (
         <FlightBoard
           mode="split"
           theme={theme}
@@ -206,11 +222,13 @@ export default function FlightOperationsPage() {
           onDeleteFlight={handleDeleteFlight}
           onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
-          loading={loading}
+          loading={boardLoading}
+          stale={isPlaceholder}
           filters={filters}
+          onFiltersChange={setFilters}
         />
       )}
-      {view === 'arrivals' && (
+      {showBoard && view === 'arrivals' && (
         <FlightBoard
           mode="arrivals"
           theme={theme}
@@ -220,11 +238,13 @@ export default function FlightOperationsPage() {
           onDeleteFlight={handleDeleteFlight}
           onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
-          loading={loading}
+          loading={boardLoading}
+          stale={isPlaceholder}
           filters={filters}
+          onFiltersChange={setFilters}
         />
       )}
-      {view === 'departures' && (
+      {showBoard && view === 'departures' && (
         <FlightBoard
           mode="departures"
           theme={theme}
@@ -234,14 +254,16 @@ export default function FlightOperationsPage() {
           onDeleteFlight={handleDeleteFlight}
           onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
-          loading={loading}
+          loading={boardLoading}
+          stale={isPlaceholder}
           filters={filters}
+          onFiltersChange={setFilters}
         />
       )}
-      {view === 'calendar' && loading && (
+      {showBoard && view === 'calendar' && boardLoading && (
         <Skeleton className="h-[32rem] w-full" role="status" aria-label="Loading calendar" />
       )}
-      {view === 'calendar' && !loading && (
+      {showBoard && view === 'calendar' && !boardLoading && (
         <CalendarWeekView
           theme={theme}
           flights={flights}

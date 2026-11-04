@@ -19,6 +19,7 @@ import {
   Calendar,
   Filter,
   LayoutGrid,
+  Loader2,
   PlaneLanding,
   PlaneTakeoff,
   Plus,
@@ -38,6 +39,8 @@ interface CompactToolbarProps {
   filters: FlightFilters
   onFiltersChange: (filters: FlightFilters) => void
   onAddFlight?: () => void
+  // A flights fetch is in flight (window change or background refresh): shows a small spinner.
+  fetching?: boolean
 }
 
 const serviceOptions = [
@@ -54,6 +57,7 @@ export function CompactToolbar({
   filters,
   onFiltersChange,
   onAddFlight,
+  fetching,
   theme
 }: CompactToolbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -273,10 +277,23 @@ export function CompactToolbar({
         </Popover>
       </div>
 
-      <Button onClick={onAddFlight} size="sm" className="h-9">
-        <Plus className="w-4 h-4 mr-2" />
-        Add Flight
-      </Button>
+      <div className="relative">
+        {/* Absolutely placed so it never shifts the toolbar. It fades in after 300ms, so quick refetches
+            (realtime, polling) do not flicker it. */}
+        {fetching && (
+          <output
+            aria-label="Refreshing flights"
+            className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 animate-in fade-in duration-200 fill-mode-backwards"
+            style={{ animationDelay: '300ms' }}
+          >
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </output>
+        )}
+        <Button onClick={onAddFlight} size="sm" className="h-9">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Flight
+        </Button>
+      </div>
     </div>
   )
 }
