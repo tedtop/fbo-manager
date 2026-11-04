@@ -55,3 +55,47 @@ export async function deleteAircraft(
   const { error } = await db.from('aircraft').delete().eq('tail_number', tailNumber)
   if (error) throw error
 }
+
+export type AircraftPosition = {
+  lat: number
+  lng: number
+  heading: number
+  areaId: number | null
+}
+
+export async function setAircraftPosition(
+  db: SupabaseClient<Database>,
+  tailNumber: string,
+  { lat, lng, heading, areaId }: AircraftPosition
+): Promise<AircraftRow> {
+  return updateAircraft(db, tailNumber, {
+    parked_lat: lat,
+    parked_lng: lng,
+    parked_heading: heading,
+    parked_area_id: areaId,
+    parked_at: new Date().toISOString(),
+  })
+}
+
+export async function clearAircraftPosition(
+  db: SupabaseClient<Database>,
+  tailNumber: string
+): Promise<AircraftRow> {
+  return updateAircraft(db, tailNumber, {
+    parked_lat: null,
+    parked_lng: null,
+    parked_heading: null,
+    parked_area_id: null,
+    parked_at: null,
+  })
+}
+
+export async function findParkedAircraft(db: SupabaseClient<Database>): Promise<AircraftRow[]> {
+  const { data, error } = await db
+    .from('aircraft')
+    .select('*')
+    .not('parked_lat', 'is', null)
+    .order('tail_number')
+  if (error) throw error
+  return data
+}

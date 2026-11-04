@@ -1,19 +1,21 @@
 'use client'
 
-import { ParkingMapEnhanced } from '@/components/parking/parking-map-enhanced'
+import { ParkingMap } from '@/components/parking/parking-map'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useSession } from '@/hooks/use-session'
+import { Plane, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Settings, Plane } from 'lucide-react'
 
 export default function ParkingManagementPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [configMode, setConfigMode] = useState(false)
-  const [isAdmin] = useState(true) // FORCED TRUE FOR NOW
+  // Forced on until the admin role exists (backlog item B38 'give the admin a role');
+  // then derive it from the user's role.
+  const [isAdmin] = useState(true)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -21,18 +23,6 @@ export default function ParkingManagementPage() {
       router.push('/login')
     }
   }, [status, router])
-
-  // Check if user is admin - DISABLED FOR NOW, forced to true above
-  // useEffect(() => {
-  //   if (session?.user) {
-  //     console.log('Session user data:', session.user)
-  //     const userRole = (session.user as any)?.role
-  //     const isStaff = (session.user as any)?.is_staff
-  //     const isSuperuser = (session.user as any)?.is_superuser
-  //     const adminStatus = userRole === 'admin' || isStaff === true || isSuperuser === true
-  //     console.log('Admin status:', { userRole, isStaff, isSuperuser, adminStatus })
-  //   }
-  // }, [session])
 
   // Show loading while checking auth
   if (status === 'loading') {
@@ -52,11 +42,13 @@ export default function ParkingManagementPage() {
     <div className="space-y-6 h-screen flex flex-col">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Ramp Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Ramp Management
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {configMode
-              ? 'Configure parking location boundaries'
-              : 'Drag aircraft between parking locations'}
+              ? 'Draw and manage the ramp, hangar and tie-down areas'
+              : 'Place aircraft on the ramp and drag them into position'}
           </p>
         </div>
 
@@ -86,7 +78,7 @@ export default function ParkingManagementPage() {
 
       {/* Map Container */}
       <div className="flex-1 relative">
-        <ParkingMapEnhanced configMode={configMode} isAdmin={isAdmin} />
+        <ParkingMap configMode={configMode} isAdmin={isAdmin} />
       </div>
 
       {/* Help Text */}
@@ -94,14 +86,19 @@ export default function ParkingManagementPage() {
         <p className="text-xs text-muted-foreground">
           {configMode ? (
             <>
-              <strong className="text-foreground">Config Mode:</strong> 1) Click "New" in sidebar to create a location. 2) Select it. 3) Click the square polygon tool in top-left. 4) Click on map to draw corners. 5) Double-click to finish. It auto-saves!
+              <strong className="text-foreground">Config Mode:</strong> 1) Click
+              "New area" and name it. 2) Select it in the list (or click it on
+              the map). 3) Press "Draw boundary", click each corner on the map
+              and double-click the last one. The boundary saves as soon as it is
+              finished; use "Edit shape" to adjust it later.
             </>
           ) : (
             <>
-              {/* TODO: Put back in later
-              <strong className="text-foreground">Operations Mode:</strong> Drag aircraft icons to move them
-              between parking locations. Toggle Config Mode ON to draw/edit parking spots.
-              */}
+              <strong className="text-foreground">Operations Mode:</strong> Use
+              "Add airplane" to put an aircraft on the ramp, then drag it into
+              place. Click an aircraft for details; with it selected, the arrow
+              keys turn and move it and Cmd/Ctrl+Z undoes the last move.
+              Right-click the map to set the default view.
             </>
           )}
         </p>

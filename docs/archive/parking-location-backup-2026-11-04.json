@@ -1,0 +1,846 @@
+[
+ {
+  "airport": "KMSO",
+  "created_at": "2025-11-09T09:17:49.721043+00:00",
+  "description": "North Ramp 1",
+  "display_order": 1,
+  "gate": null,
+  "id": 60,
+  "latitude": 46.921875,
+  "location_code": "NORTH-1",
+  "longitude": -114.08755,
+  "modified_at": "2025-11-09T09:17:49.721043+00:00",
+  "polygon": {
+   "coordinates": [
+    [
+     [
+      -114.0878,
+      46.92195
+     ],
+     [
+      -114.0873,
+      46.92195
+     ],
+     [
+      -114.0873,
+      46.9218
+     ],
+     [
+      -114.0878,
+      46.9218
+     ],
+     [
+      -114.0878,
+      46.92195
+     ]
+    ]
+   ],
+   "type": "Polygon"
+  },
+  "terminal": null
+ },
+ {
+  "airport": "KMSO",
+  "created_at": "2025-11-09T09:17:49.721043+00:00",
+  "description": "North Ramp 2",
+  "display_order": 2,
+  "gate": null,
+  "id": 61,
+  "latitude": 46.921875,
+  "location_code": "NORTH-2",
+  "longitude": -114.08695,
+  "modified_at": "2025-11-09T09:17:49.721043+00:00",
+  "polygon": {
+   "coordinates": [
+    [
+     [
+      -114.0872,
+      46.92195
+     ],
+     [
+      -114.0867,
+      46.92195
+     ],
+     [
+      -114.0867,
+      46.9218
+     ],
+     [
+      -114.0872,
+      46.9218
+     ],
+     [
+      -114.0872,
+      46.92195
+     ]
+    ]
+   ],
+   "type": "Polygon"
+  },
+  "terminal": null
+ },
+ {
+  "airport": "KMSO",
+  "created_at": "2025-11-09T09:17:49.721043+00:00",
+  "description": "North Ramp 3",
+  "display_order": 3,
+  "gate": null,
+  "id": 62,
+  "latitude": 46.921875,
+  "location_code": "NORTH-3",
+  "longitude": -114.08635,
+  "modified_at": "2025-11-09T09:17:49.721043+00:00",
+  "polygon": {
+   "coordinates": [
+    [
+     [
+      -114.0866,
+      46.92195
+     ],
+     [
+      -114.0861,
+      46.92195
+     ],
+     [
+      -114.0861,
+      46.9218
+     ],
+     [
+      -114.0866,
+      46.9218
+     ],
+     [
+      -114.0866,
+      46.92195
+     ]
+    ]
+   ],
+   "type": "Polygon"
+  },
+  "terminal": null
+ },
+ {
+  "airport": "KMSO",
+  "created_at": "2025-11-09T09:17:49.721043+00:00",
+  "description": "South Hangar 1",
+  "display_order": 4,
+  "gate": null,
+  "id": 63,
+  "latitude": 46.920975,
+  "location_code": "SOUTH-1",
+  "longitude": -114.08655,
+  "modified_at": "2025-11-09T09:17:49.721043+00:00",
+  "polygon": {
+   "coordinates": [
+    [
+     [
+      -114.0868,
+      46.92105
+     ],
+     [
+      -114.0863,
+      46.92105
+     ],
+     [
+      -114.0863,
+      46.9209
+     ],
+     [
+      -114.0868,
+      46.9209
+     ],
+     [
+      -114.0868,
+      46.92105
+     ]
+    ]
+   ],
+   "type": "Polygon"
+  },
+  "terminal": null
+ },
+ {
+  "airport": "KMSO",
+  "created_at": "2025-11-09T09:17:49.721043+00:00",
+  "description": "South Hangar 2",
+  "display_order": 5,
+  "gate": null,
+  "id": 64,
+  "latitude": 46.920725,
+  "location_code": "SOUTH-2",
+  "longitude": -114.08655,
+  "modified_at": "2025-11-09T09:17:49.721043+00:00",
+  "polygon": {
+   "coordinates": [
+    [
+     [
+      -114.0868,
+      46.9208
+     ],
+     [
+      -114.0863,
+      46.9208
+     ],
+     [
+      -114.0863,
+      46.92065
+     ],
+     [
+      -114.0868,
+      46.92065
+     ],
+     [
+      -114.0868,
+      46.9208
+     ]
+    ]
+   ],
+   "type": "Polygon"
+  },
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T16:42:42.647648+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":342,\"size\":25,\"tailNumber\":\"N4076M\",\"color\":\"#ffffff\",\"aircraftType\":\"light_single\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 65,
+  "latitude": 46.92179,
+  "location_code": "AC-2987",
+  "longitude": -114.085632,
+  "modified_at": "2026-05-14T20:20:02.876899+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:24:40.448457+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":3,\"aircraftType\":\"mid_size_jet\",\"tailNumber\":\"N2PG\",\"color\":\"#f43f5e\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 66,
+  "latitude": 46.921967,
+  "location_code": "AC-2271",
+  "longitude": -114.086044,
+  "modified_at": "2025-11-25T19:53:15.3222+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:33:28.918476+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"N2177Y\",\"color\":\"#f97316\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 67,
+  "latitude": 46.921993,
+  "location_code": "AC-6495",
+  "longitude": -114.085296,
+  "modified_at": "2025-11-25T19:46:37.066335+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:41:23.354323+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"N539CP\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 68,
+  "latitude": 46.92143,
+  "location_code": "AC-1271",
+  "longitude": -114.085458,
+  "modified_at": "2026-02-05T18:52:43.895145+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:41:42.874003+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"N5623D\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 69,
+  "latitude": 46.922021,
+  "location_code": "AC-6052",
+  "longitude": -114.085454,
+  "modified_at": "2025-11-25T20:14:32.414856+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:42:48.369559+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"N2856Q\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 70,
+  "latitude": 46.921766,
+  "location_code": "AC-4827",
+  "longitude": -114.085415,
+  "modified_at": "2025-11-25T21:32:34.112093+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:44:16.177515+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"mid_size_jet\",\"tailNumber\":\"N5PG\",\"color\":\"#ef4444\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 71,
+  "latitude": 46.92164,
+  "location_code": "AC-525",
+  "longitude": -114.086464,
+  "modified_at": "2025-11-25T19:52:42.085967+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:45:01.286736+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"turboprop\",\"tailNumber\":\"N667LF\",\"color\":\"#3b82f6\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 72,
+  "latitude": 46.922139,
+  "location_code": "AC-4260",
+  "longitude": -114.086523,
+  "modified_at": "2025-11-25T19:54:00.788023+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:45:02.405208+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-9798\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 73,
+  "latitude": 46.921725,
+  "location_code": "AC-9798",
+  "longitude": -114.085807,
+  "modified_at": "2025-11-27T21:12:04.274464+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:45:34.31838+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-7492\",\"color\":\"#ffffff\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 74,
+  "latitude": 46.921486,
+  "location_code": "AC-7492",
+  "longitude": -114.086337,
+  "modified_at": "2025-11-25T22:57:56.037395+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:45:40.927734+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-8404\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 75,
+  "latitude": 46.92138,
+  "location_code": "AC-8404",
+  "longitude": -114.088996,
+  "modified_at": "2025-11-27T05:00:15.682849+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:45:43.442433+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"turboprop\",\"tailNumber\":\"N667LF\",\"color\":\"#3b82f6\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 76,
+  "latitude": 46.922113,
+  "location_code": "AC-3677",
+  "longitude": -114.086958,
+  "modified_at": "2025-11-25T19:53:55.509387+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:46:03.615276+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-5734\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 77,
+  "latitude": 46.921499,
+  "location_code": "AC-5734",
+  "longitude": -114.085597,
+  "modified_at": "2025-11-25T21:52:13.930519+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:46:06.174918+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-8244\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 78,
+  "latitude": 46.921315,
+  "location_code": "AC-8244",
+  "longitude": -114.085794,
+  "modified_at": "2025-11-25T21:52:26.027011+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:46:18.300545+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"N2177Y\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 79,
+  "latitude": 46.921948,
+  "location_code": "AC-1401",
+  "longitude": -114.085182,
+  "modified_at": "2025-11-25T20:14:29.734784+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:47:00.403651+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":298,\"aircraftType\":\"mid_size_jet\",\"tailNumber\":\"N5PG\",\"color\":\"#ef4444\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 80,
+  "latitude": 46.922006,
+  "location_code": "AC-3083",
+  "longitude": -114.087348,
+  "modified_at": "2026-05-28T20:59:35.289348+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:47:45.22285+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":129,\"aircraftType\":\"turboprop\",\"tailNumber\":\"N667LF\",\"color\":\"#3b82f6\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 81,
+  "latitude": 46.922555,
+  "location_code": "AC-2025",
+  "longitude": -114.086598,
+  "modified_at": "2026-05-28T20:55:51.843757+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:48:49.584545+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"turboprop\",\"tailNumber\":\"N668LF\",\"color\":\"#3b82f6\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 82,
+  "latitude": 46.922714,
+  "location_code": "AC-1657",
+  "longitude": -114.086457,
+  "modified_at": "2025-12-12T16:38:19.797074+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:54:07.529534+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-9826\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 83,
+  "latitude": 46.921414,
+  "location_code": "AC-9826",
+  "longitude": -114.085831,
+  "modified_at": "2025-11-25T20:03:53.463067+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:58:20.400779+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-9320\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 84,
+  "latitude": 46.921331,
+  "location_code": "AC-9320",
+  "longitude": -114.085937,
+  "modified_at": "2025-11-25T20:03:58.123067+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:59:08.498143+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-7033\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 85,
+  "latitude": 46.922104,
+  "location_code": "AC-7033",
+  "longitude": -114.085504,
+  "modified_at": "2025-11-25T20:11:37.704682+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T17:59:09.977998+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-9989\",\"color\":\"#ffffff\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 86,
+  "latitude": 46.9216,
+  "location_code": "AC-9989",
+  "longitude": -114.086042,
+  "modified_at": "2025-11-25T20:11:31.085625+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:02:27.061755+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-6386\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 87,
+  "latitude": 46.921318,
+  "location_code": "AC-6386",
+  "longitude": -114.085443,
+  "modified_at": "2025-11-25T20:12:46.608053+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:02:30.07222+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-1581\",\"color\":\"#f97316\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 88,
+  "latitude": 46.921796,
+  "location_code": "AC-1581",
+  "longitude": -114.085418,
+  "modified_at": "2025-11-25T19:46:50.888981+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:02:39.14785+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-7749\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 89,
+  "latitude": 46.921498,
+  "location_code": "AC-7749",
+  "longitude": -114.085735,
+  "modified_at": "2025-11-25T20:03:49.115921+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:02:51.472131+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-8150\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 90,
+  "latitude": 46.921406,
+  "location_code": "AC-8150",
+  "longitude": -114.085697,
+  "modified_at": "2025-11-25T21:52:20.094058+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:04:07.978609+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"mid_size_jet\",\"tailNumber\":\"N2PG\",\"color\":\"#ef4444\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 91,
+  "latitude": 46.921783,
+  "location_code": "AC-2117",
+  "longitude": -114.08627,
+  "modified_at": "2026-02-07T23:01:15.041775+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:04:28.527261+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-2261\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 92,
+  "latitude": 46.922026,
+  "location_code": "AC-2261",
+  "longitude": -114.085597,
+  "modified_at": "2025-11-25T20:04:28.931266+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:06:35.897844+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-8585\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 93,
+  "latitude": 46.921412,
+  "location_code": "AC-8585",
+  "longitude": -114.08533,
+  "modified_at": "2025-11-25T20:02:15.007157+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:06:38.865337+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-7984\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 94,
+  "latitude": 46.921588,
+  "location_code": "AC-7984",
+  "longitude": -114.085626,
+  "modified_at": "2025-11-25T20:03:44.167663+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:08:39.976487+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":268,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-802\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 95,
+  "latitude": 46.92251,
+  "location_code": "AC-802",
+  "longitude": -114.086221,
+  "modified_at": "2026-05-28T20:56:27.127311+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:23:22.797988+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-6004\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 96,
+  "latitude": 46.921673,
+  "location_code": "AC-6004",
+  "longitude": -114.085379,
+  "modified_at": "2025-11-27T21:09:42.358084+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:23:25.826699+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"0\",\"tailNumber\":\"AC-6189\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 97,
+  "latitude": 46.921852,
+  "location_code": "AC-6189",
+  "longitude": -114.08517,
+  "modified_at": "2025-11-25T21:18:22.652959+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T18:23:35.779032+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":274,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-420\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 98,
+  "latitude": 46.922562,
+  "location_code": "AC-420",
+  "longitude": -114.086141,
+  "modified_at": "2026-05-28T20:56:17.369618+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:01:01.876678+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":355,\"aircraftType\":\"ultra_long_range\",\"tailNumber\":\"N162WC\",\"color\":\"#f43f5e\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 100,
+  "latitude": 46.92098,
+  "location_code": "AC-8593",
+  "longitude": -114.086193,
+  "modified_at": "2026-05-28T20:54:52.13759+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:12:53.142526+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":130,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-9788\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 101,
+  "latitude": 46.921311,
+  "location_code": "AC-9788",
+  "longitude": -114.085289,
+  "modified_at": "2025-11-25T20:13:05.804583+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:47:38.464569+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-580\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 102,
+  "latitude": 46.921678,
+  "location_code": "AC-580",
+  "longitude": -114.085527,
+  "modified_at": "2025-11-25T21:52:32.31203+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:47:42.381994+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":78,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-4270\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 103,
+  "latitude": 46.919019,
+  "location_code": "AC-4270",
+  "longitude": -114.08635,
+  "modified_at": "2025-11-27T23:52:27.249806+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:47:43.078658+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-5099\",\"color\":\"#ffffff\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 104,
+  "latitude": 46.921603,
+  "location_code": "AC-5099",
+  "longitude": -114.085885,
+  "modified_at": "2025-11-25T22:29:51.155408+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:47:43.25514+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":274,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-1232\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 105,
+  "latitude": 46.922642,
+  "location_code": "AC-1232",
+  "longitude": -114.08629,
+  "modified_at": "2026-05-28T20:56:51.569845+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T20:47:43.690046+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":338,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-5959\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 106,
+  "latitude": 46.922569,
+  "location_code": "AC-5959",
+  "longitude": -114.086465,
+  "modified_at": "2026-05-28T20:56:07.022589+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-25T21:32:13.018087+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":310,\"aircraftType\":\"7\",\"tailNumber\":\"AC-8255\",\"color\":\"#ffffff\"}",
+  "display_order": 0,
+  "gate": null,
+  "id": 107,
+  "latitude": 46.921563,
+  "location_code": "AC-8255",
+  "longitude": -114.086212,
+  "modified_at": "2025-11-25T22:29:54.308554+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-27T04:22:49.245822+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":128,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-822\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 108,
+  "latitude": 46.921761,
+  "location_code": "AC-8223",
+  "longitude": -114.085268,
+  "modified_at": "2025-11-27T05:01:14.856919+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2025-11-27T04:27:04.158567+00:00",
+  "description": "{\"type\":\"generic_aircraft\",\"rotation\":258,\"aircraftType\":\"light_single\",\"tailNumber\":\"AC-681\",\"color\":\"#ffffff\"}",
+  "display_order": 1,
+  "gate": null,
+  "id": 109,
+  "latitude": 46.922444,
+  "location_code": "AC-681",
+  "longitude": -114.086521,
+  "modified_at": "2026-05-28T20:55:59.401529+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2026-02-05T18:52:28.857684+00:00",
+  "description": "",
+  "display_order": 1,
+  "gate": null,
+  "id": 110,
+  "latitude": null,
+  "location_code": "GOLD-HANGARS",
+  "longitude": null,
+  "modified_at": "2026-02-05T18:52:28.857733+00:00",
+  "polygon": null,
+  "terminal": null
+ },
+ {
+  "airport": "MSO",
+  "created_at": "2026-07-06T11:18:08.675951+00:00",
+  "description": "",
+  "display_order": 1,
+  "gate": null,
+  "id": 111,
+  "latitude": null,
+  "location_code": "",
+  "longitude": null,
+  "modified_at": "2026-07-06T11:18:08.675951+00:00",
+  "polygon": null,
+  "terminal": null
+ }
+]
