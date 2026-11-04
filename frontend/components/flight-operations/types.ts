@@ -304,13 +304,8 @@ export function componentFlightToApiRequest(
     result.created_by_source = flight.source
   }
 
-  // Only include call_sign if explicitly provided (for creates)
-  // Don't send it on updates as it might conflict with existing data
-  if (flight.id && flight.id.startsWith('manual-')) {
-    // This is a new flight, set call_sign
-    result.call_sign = `MAN-${Date.now()}`
-  }
-
+  // call_sign is intentionally never generated: the aircraft is identified by its tail number
+  // (aircraft_id). A call sign is only stored when staff enter one for a flight that uses one.
   // Filter out any undefined/null values (except cleared times)
   Object.keys(result).forEach((key) => {
     if (TIME_COLUMN_NAMES.has(key)) return

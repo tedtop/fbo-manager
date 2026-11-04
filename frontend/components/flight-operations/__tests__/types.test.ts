@@ -262,8 +262,8 @@ describe('componentFlightToApiRequest', () => {
     })
   })
 
-  it('adds a MAN- call_sign only for manual- ids', () => {
-    expect(componentFlightToApiRequest({ id: 'manual-1' }).call_sign).toMatch(/^MAN-\d+$/)
+  it('never generates a call_sign (the tail number identifies the aircraft)', () => {
+    expect(componentFlightToApiRequest({ id: 'manual-1' }).call_sign).toBeUndefined()
     expect(componentFlightToApiRequest({ id: '42' }).call_sign).toBeUndefined()
   })
 
