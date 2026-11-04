@@ -7,9 +7,9 @@
 -- nothing (see 20261102000400_revoke_anon_access.sql). Values are jsonb so later settings can be numbers,
 -- booleans or small objects; tail_number_prefix is a JSON string.
 --
--- Additive and safe to re-run. Rollback: frontend/supabase/rollbacks/20261104000400_app_setting.down.sql
+-- Additive and safe to re-run. Rollback: frontend/supabase/rollbacks/20261104000800_app_setting.down.sql
 -- Apply to live ONLY with: supabase db query --linked -f <this file>  (never `supabase db push`),
--- then: supabase migration repair --linked --status applied 20261104000400
+-- then: supabase migration repair --linked --status applied 20261104000800
 
 begin;
 
