@@ -36,7 +36,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('flight').delete().in('tail_number', tails)
   await db.from('aircraft').delete().in('tail_number', tails)
 })
 
@@ -64,7 +64,7 @@ async function submitAndExpectClosed(page: Page) {
 
 async function readFlight(tail: string) {
   return waitForDbRow(async () => {
-    const { data } = await db.from('flight').select('*').eq('aircraft_id', tail).maybeSingle()
+    const { data } = await db.from('flight').select('*').eq('tail_number', tail).maybeSingle()
     return data
   })
 }
@@ -210,7 +210,7 @@ test.describe('Add Flight sheet persists real rows', () => {
     await expect(page.locator('#timeError')).toContainText(/scheduled arrival/i)
     await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeVisible()
     expect(alerted).toBe(false)
-    const { data } = await db.from('flight').select('id').eq('aircraft_id', tailNone)
+    const { data } = await db.from('flight').select('id').eq('tail_number', tailNone)
     expect(data ?? []).toHaveLength(0)
   })
 
@@ -244,7 +244,7 @@ test.describe('Add Flight sheet persists real rows', () => {
     await expect(page.getByRole('heading', { name: 'Add New Flight' })).toBeVisible()
     await expect(page.getByPlaceholder('e.g., N12345')).toHaveValue(tailFail)
     await expect(page.locator('#origin')).toHaveValue('KFAIL')
-    const { data } = await db.from('flight').select('id').eq('aircraft_id', tailFail)
+    const { data } = await db.from('flight').select('id').eq('tail_number', tailFail)
     expect(data ?? []).toHaveLength(0)
 
     // Network recovers: the same sheet, same input, now saves and says so.

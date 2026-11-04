@@ -58,7 +58,7 @@ export type FlightSource =
 export interface Flight {
   // Core identification
   id: string
-  tailNumber: string // aircraft_id (FK to aircraft.tail_number)
+  tailNumber: string // tail_number (FK to aircraft.tail_number)
   aircraftType: string // derived from aircraft table
   callSign?: string // call_sign
 
@@ -305,7 +305,7 @@ export function componentFlightToApiRequest(
   }
 
   // call_sign is intentionally never generated: the aircraft is identified by its tail number
-  // (aircraft_id). A call sign is only stored when staff enter one for a flight that uses one.
+  // (tail_number). A call sign is only stored when staff enter one for a flight that uses one.
   // Filter out any undefined/null values (except cleared times)
   Object.keys(result).forEach((key) => {
     if (TIME_COLUMN_NAMES.has(key)) return

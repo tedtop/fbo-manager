@@ -10,7 +10,7 @@ const draftOf = (over: Parameters<typeof row>[0]) => mapExtractedRowToFlightDraf
 function flight(over: Partial<ExistingFlightLike> = {}): ExistingFlightLike {
   return {
     id: 1,
-    aircraft_id: 'N116FE',
+    tail_number: 'N116FE',
     scheduled_arrival_time: '2026-11-05T16:00:00+00:00', // 09:00 Phoenix
     scheduled_departure_time: '2026-11-06T00:30:00+00:00', // 17:30 Phoenix
     contact_name: 'Acme Aviation',
@@ -24,7 +24,7 @@ describe('findDuplicateFlight', () => {
   const d = draftOf({ arrival_time: '09:00', departure_time: '17:30', services: 'fuel' })
 
   it('no flights for the tail: add', () => {
-    expect(findDuplicateFlight(d, [flight({ aircraft_id: 'N999ZZ' })])).toMatchObject({ match: null, suggestion: 'add' })
+    expect(findDuplicateFlight(d, [flight({ tail_number: 'N999ZZ' })])).toMatchObject({ match: null, suggestion: 'add' })
     expect(findDuplicateFlight(d, [])).toMatchObject({ match: null, suggestion: 'add' })
   })
 
@@ -37,7 +37,7 @@ describe('findDuplicateFlight', () => {
   })
 
   it('tail comparison ignores case, spaces and dashes', () => {
-    expect(findDuplicateFlight(d, [flight({ aircraft_id: 'n-116-fe' })]).suggestion).toBe('skip')
+    expect(findDuplicateFlight(d, [flight({ tail_number: 'n-116-fe' })]).suggestion).toBe('skip')
   })
 
   it('same tail but outside the window: add (a second visit)', () => {
@@ -104,7 +104,7 @@ describe('findDuplicateFlight', () => {
   })
 
   it('a draft with no tail never matches', () => {
-    expect(findDuplicateFlight({ ...d, tailNumber: '' }, [flight({ aircraft_id: '' })]).suggestion).toBe('add')
+    expect(findDuplicateFlight({ ...d, tailNumber: '' }, [flight({ tail_number: '' })]).suggestion).toBe('add')
   })
 })
 
@@ -120,7 +120,7 @@ describe('re-importing the same sheet', () => {
   let nextId = 100
   const imported: ExistingFlightLike[] = drafts.map((x) => ({
     id: nextId++,
-    aircraft_id: x.tailNumber,
+    tail_number: x.tailNumber,
     scheduled_arrival_time: x.scheduledArrivalTime,
     scheduled_departure_time: x.scheduledDepartureTime,
     is_quick_turn: x.isQuickTurn,
@@ -156,7 +156,7 @@ describe('re-importing the same sheet', () => {
       if (r.suggestion === 'add') {
         pool.push({
           id: `draft-${i}`,
-          aircraft_id: x.tailNumber,
+          tail_number: x.tailNumber,
           scheduled_arrival_time: x.scheduledArrivalTime,
           scheduled_departure_time: x.scheduledDepartureTime,
           contact_name: x.customer,

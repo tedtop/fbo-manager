@@ -64,7 +64,7 @@ export function FuelOrderCard({
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">Flight:</span>
             <span className="font-mono text-foreground">
-              {transaction.flight.call_sign ?? transaction.flight.aircraft_id}
+              {transaction.flight.call_sign ?? transaction.flight.tail_number}
             </span>
           </div>
         )}

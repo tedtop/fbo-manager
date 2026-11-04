@@ -91,7 +91,7 @@ export const REVIEW_REASON_LABELS: Record<ScheduleReviewReason, string> = {
 /** Minimal structural subset of a flights.repo FlightRow, so tests and callers need no database types. */
 export interface ExistingFlightLike {
   id: number | string
-  aircraft_id: string
+  tail_number: string
   scheduled_arrival_time: string | null
   scheduled_departure_time: string | null
   is_quick_turn?: boolean | null

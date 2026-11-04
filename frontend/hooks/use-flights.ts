@@ -31,7 +31,7 @@ export const flightKeys = {
 function rowToFlight(row: any): Flight {
   return apiFlightToComponentFlight({
     id: row.id,
-    aircraft: row.aircraft_id,
+    aircraft: row.tail_number,
     aircraft_type_display: row.aircraft?.aircraft_type_display,
     call_sign: row.call_sign,
     scheduled_arrival_time: row.scheduled_arrival_time,
@@ -108,7 +108,7 @@ export function useFlights(params?: {
     mutationFn: async (flight: Partial<Flight>) => {
       const requestData = componentFlightToApiRequest(flight)
       const row = await createFlightRepo(db, {
-        aircraft_id: requestData.aircraft,
+        tail_number: requestData.aircraft,
         call_sign: requestData.call_sign,
         scheduled_arrival_time: requestData.scheduled_arrival_time,
         scheduled_departure_time: requestData.scheduled_departure_time,
@@ -144,7 +144,7 @@ export function useFlights(params?: {
     }) => {
       const requestData = componentFlightToApiRequest(updates)
       const dbUpdates: Record<string, any> = {}
-      if (requestData.aircraft !== undefined) dbUpdates.aircraft_id = requestData.aircraft
+      if (requestData.aircraft !== undefined) dbUpdates.tail_number = requestData.aircraft
       if (requestData.call_sign !== undefined) dbUpdates.call_sign = requestData.call_sign
       if (requestData.scheduled_arrival_time !== undefined) dbUpdates.scheduled_arrival_time = requestData.scheduled_arrival_time
       if (requestData.scheduled_departure_time !== undefined) dbUpdates.scheduled_departure_time = requestData.scheduled_departure_time

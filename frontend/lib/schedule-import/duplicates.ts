@@ -66,7 +66,7 @@ export function findDuplicateFlight<F extends ExistingFlightLike>(
   let candidateCount = 0
   if (tail) {
     for (const f of existingFlights) {
-      if (f.deleted_at || normalizeTail(f.aircraft_id) !== tail) continue
+      if (f.deleted_at || normalizeTail(f.tail_number) !== tail) continue
       const d = timeDistance(draft, f)
       if (d === null || d.min > windowMs) continue
       candidateCount++

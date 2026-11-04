@@ -42,14 +42,14 @@ test.beforeAll(async () => {
     new Date(Math.min(startOfToday + 24 * 3600_000 - 5 * 60_000, Math.max(startOfToday + 5 * 60_000, now + offsetMin * 60_000))).toISOString()
   const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false, flight_status: 'scheduled' as const }
   const { error: flightError } = await db.from('flight').insert([
-    { ...base, aircraft_id: tailArr, scheduled_arrival_time: today(60) },
-    { ...base, aircraft_id: tailDep, scheduled_departure_time: today(120) },
+    { ...base, tail_number: tailArr, scheduled_arrival_time: today(60) },
+    { ...base, tail_number: tailDep, scheduled_departure_time: today(120) },
   ])
   if (flightError) throw flightError
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('flight').delete().in('tail_number', tails)
   await db.from('aircraft').delete().in('tail_number', tails)
   await db.from('users').delete().eq('id', userId)
 })

@@ -174,7 +174,7 @@ export type Database = {
       flight: {
         Row: {
           id: number
-          aircraft_id: string
+          tail_number: string
           call_sign: string | null
           scheduled_arrival_time: string | null
           scheduled_departure_time: string | null
@@ -208,7 +208,7 @@ export type Database = {
         }
         Insert: {
           id?: number
-          aircraft_id: string
+          tail_number: string
           call_sign?: string | null
           scheduled_arrival_time?: string | null
           scheduled_departure_time?: string | null
@@ -240,7 +240,7 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'flight_aircraft_id_fkey'
-            columns: ['aircraft_id']
+            columns: ['tail_number']
             referencedRelation: 'aircraft'
             referencedColumns: ['tail_number']
           },

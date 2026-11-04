@@ -31,7 +31,7 @@ export default defineConfig({
         /** Latest flight row for an aircraft tail (null if none). Used to verify what the UI really persisted. */
         async getFlightByTail(tail: string) {
           const db = createE2EDbClient()
-          const { data, error } = await db.from('flight').select('*').eq('aircraft_id', tail).order('id', { ascending: false }).limit(1)
+          const { data, error } = await db.from('flight').select('*').eq('tail_number', tail).order('id', { ascending: false }).limit(1)
           if (error) throw new Error(`getFlightByTail: ${error.message}`)
           return data?.[0] ?? null
         },
@@ -90,7 +90,7 @@ export default defineConfig({
             .from('flight')
             .insert({
               created_by_id: 1,
-              aircraft_id: tail,
+              tail_number: tail,
               origin: 'KAAA',
               destination: 'KBBB',
               scheduled_arrival_time: arrivalInMin === undefined ? null : iso(arrivalInMin),
@@ -124,7 +124,7 @@ export default defineConfig({
         /** Removes the flights and aircraft seeded for the given tails. */
         async cleanFlights(tails: string[]) {
           const db = createE2EDbClient()
-          const { error: flightError } = await db.from('flight').delete().in('aircraft_id', tails)
+          const { error: flightError } = await db.from('flight').delete().in('tail_number', tails)
           if (flightError) throw new Error(`cleanFlights: flight: ${flightError.message}`)
           const { error: aircraftError } = await db.from('aircraft').delete().in('tail_number', tails)
           if (aircraftError) throw new Error(`cleanFlights: aircraft: ${aircraftError.message}`)

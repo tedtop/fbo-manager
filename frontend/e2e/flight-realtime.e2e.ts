@@ -26,7 +26,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().eq('aircraft_id', tail)
+  await db.from('flight').delete().eq('tail_number', tail)
   await db.from('aircraft').delete().eq('tail_number', tail)
   await db.from('users').delete().eq('id', userId)
 })
@@ -46,7 +46,7 @@ test('a flight inserted, updated and soft-deleted elsewhere shows up, changes an
   const departure = new Date(Math.min(startOfToday + 24 * 3600_000 - 5 * 60_000, Math.max(startOfToday + 5 * 60_000, soon.getTime()))).toISOString()
   const { data: flight, error } = await db
     .from('flight')
-    .insert({ created_by_id: userId, aircraft_id: tail, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false, flight_status: 'scheduled', scheduled_departure_time: departure })
+    .insert({ created_by_id: userId, tail_number: tail, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false, flight_status: 'scheduled', scheduled_departure_time: departure })
     .select('id')
     .single()
   if (error) throw error

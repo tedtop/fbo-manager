@@ -53,19 +53,19 @@ test.beforeAll(async () => {
   // is_quick_turn is set explicitly: a bulk insert sends null for keys missing from some rows.
   const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false }
   const { error: flightError } = await db.from('flight').insert([
-    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: today(60), scheduled_departure_time: today(120), is_quick_turn: true, flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailArr, scheduled_arrival_time: today(90), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailDep, scheduled_departure_time: today(240), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailDelayed, scheduled_departure_time: today(300), flight_status: 'delayed' },
-    { ...base, aircraft_id: tailTomorrow, scheduled_departure_time: noonInDays(1), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailMonth, scheduled_departure_time: noonInDays(30), flight_status: 'scheduled' },
-    { ...base, aircraft_id: tailStay, scheduled_arrival_time: noonInDays(-10), scheduled_departure_time: noonInDays(2), flight_status: 'scheduled' },
+    { ...base, tail_number: tailTurn, scheduled_arrival_time: today(60), scheduled_departure_time: today(120), is_quick_turn: true, flight_status: 'scheduled' },
+    { ...base, tail_number: tailArr, scheduled_arrival_time: today(90), flight_status: 'scheduled' },
+    { ...base, tail_number: tailDep, scheduled_departure_time: today(240), flight_status: 'scheduled' },
+    { ...base, tail_number: tailDelayed, scheduled_departure_time: today(300), flight_status: 'delayed' },
+    { ...base, tail_number: tailTomorrow, scheduled_departure_time: noonInDays(1), flight_status: 'scheduled' },
+    { ...base, tail_number: tailMonth, scheduled_departure_time: noonInDays(30), flight_status: 'scheduled' },
+    { ...base, tail_number: tailStay, scheduled_arrival_time: noonInDays(-10), scheduled_departure_time: noonInDays(2), flight_status: 'scheduled' },
   ])
   if (flightError) throw flightError
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('flight').delete().in('tail_number', tails)
   await db.from('aircraft').delete().in('tail_number', tails)
   await db.from('users').delete().eq('id', userId)
 })

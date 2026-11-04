@@ -354,7 +354,7 @@ describe.skipIf(!psqlAvailable)('migration file (direct SQL against the local da
     return `begin;
       insert into users (id, username, email, password, role) values (990001, 'zz-scratch', 'zz@example.test', 'x', 'admin') on conflict do nothing;
       insert into aircraft (tail_number) values ('ZZSCRATCH1');
-      insert into flight (aircraft_id, scheduled_departure_time, created_by_id, services)
+      insert into flight (tail_number, scheduled_departure_time, created_by_id, services)
         values ('ZZSCRATCH1', now(), 990001, ${servicesLiteral});
       ${backfillBlock()}
       ${expectSql}
@@ -371,7 +371,7 @@ describe.skipIf(!psqlAvailable)('migration file (direct SQL against the local da
       scratch(
         lit,
         `select string_agg(s.key, ',' order by s.key) from flight_service fs join service s on s.id = fs.service_id
-           join flight f on f.id = fs.flight_id where f.aircraft_id = 'ZZSCRATCH1';`
+           join flight f on f.id = fs.flight_id where f.tail_number = 'ZZSCRATCH1';`
       )
     )
     expect(res.ok, res.out).toBe(true)

@@ -21,7 +21,7 @@ export type FlightWithRelations = FlightRow & {
 
 const FLIGHT_SELECT = `
   *,
-  aircraft:aircraft_id ( tail_number, aircraft_type_icao, aircraft_type_display ),
+  aircraft:tail_number ( tail_number, aircraft_type_icao, aircraft_type_display ),
   location:location_id ( location_code, description, latitude, longitude ),
   created_by:created_by_id ( id, first_name, last_name, username, role )
 `

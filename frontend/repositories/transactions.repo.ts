@@ -13,7 +13,7 @@ export type TransactionInsert = TablesInsert<'fuel_transaction'>
 export type TransactionUpdate = TablesUpdate<'fuel_transaction'>
 
 export type TransactionWithRelations = TransactionRow & {
-  flight: { id: number; aircraft_id: string; call_sign: string | null } | null
+  flight: { id: number; tail_number: string; call_sign: string | null } | null
   fueler_assignments: Array<{
     id: number
     fueler_id: number
@@ -25,7 +25,7 @@ export type TransactionWithRelations = TransactionRow & {
 
 const TX_SELECT = `
   *,
-  flight:flight_id ( id, aircraft_id, call_sign ),
+  flight:flight_id ( id, tail_number, call_sign ),
   fueler_assignments:fueler_assignment ( id, fueler_id, assigned_at, fueler:fueler_id ( id, fueler_name ) ),
   fuel_truck:fuel_truck_id ( id, equipment_id, equipment_name )
 `

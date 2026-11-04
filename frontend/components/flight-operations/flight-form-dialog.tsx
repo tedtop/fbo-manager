@@ -213,7 +213,7 @@ export function FlightFormDialog({
     onReload: (freshRow) => {
       const reloaded = apiFlightToComponentFlight({
         id: freshRow.id,
-        aircraft: freshRow.aircraft_id,
+        aircraft: freshRow.tail_number,
         call_sign: freshRow.call_sign,
         scheduled_arrival_time: freshRow.scheduled_arrival_time,
         scheduled_departure_time: freshRow.scheduled_departure_time,

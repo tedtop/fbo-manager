@@ -48,22 +48,22 @@ test.beforeAll(async () => {
   const { data: flights, error: flightError } = await db
     .from('flight')
     .insert(
-      tails.map((aircraft_id) => ({
-        aircraft_id,
+      tails.map((tail_number) => ({
+        tail_number,
         created_by_id: userId,
         origin: 'KAAA',
         destination: 'KBBB',
         scheduled_departure_time: departure,
-        flight_status: aircraft_id === tailDeparted ? ('departed' as const) : ('scheduled' as const),
+        flight_status: tail_number === tailDeparted ? ('departed' as const) : ('scheduled' as const),
       }))
     )
-    .select('id, aircraft_id')
+    .select('id, tail_number')
   if (flightError) throw flightError
-  for (const f of flights ?? []) ids[f.aircraft_id as string] = f.id
+  for (const f of flights ?? []) ids[f.tail_number as string] = f.id
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('flight').delete().in('tail_number', tails)
   await db.from('aircraft').delete().in('tail_number', tails)
   await db.from('users').delete().eq('id', userId)
 })
@@ -218,7 +218,7 @@ test.describe('Flight edit, status change, delete', () => {
     })
     // Soft delete: the row is still there, just stamped.
     expect(row.id).toBe(ids[tailDelete])
-    expect(row.aircraft_id).toBe(tailDelete)
+    expect(row.tail_number).toBe(tailDelete)
 
     await page.reload()
     await expect(page.getByText(tailConflict).first()).toBeVisible({ timeout: 15_000 })

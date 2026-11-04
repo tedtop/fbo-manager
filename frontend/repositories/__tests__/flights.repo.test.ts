@@ -33,7 +33,7 @@ describe('flights.repo', () => {
     const creator = await makeUser(db, { username: 'frontdesk-1', role: 'frontdesk' })
 
     const flight = await createFlight(db, {
-      aircraft_id: aircraft.tail_number,
+      tail_number: aircraft.tail_number,
       scheduled_departure_time: new Date().toISOString(),
       location_id: location.id,
       created_by_id: creator.id,
@@ -49,7 +49,7 @@ describe('flights.repo', () => {
     const creator = await makeUser(db)
     await expect(
       createFlight(db, {
-        aircraft_id: 'N-DOES-NOT-EXIST',
+        tail_number: 'N-DOES-NOT-EXIST',
         scheduled_departure_time: new Date().toISOString(),
         created_by_id: creator.id,
       })
@@ -226,7 +226,7 @@ describe('flights.repo', () => {
     const aircraft = await makeAircraft(db)
 
     const flight = await createFlight(db, {
-      aircraft_id: aircraft.tail_number,
+      tail_number: aircraft.tail_number,
       scheduled_departure_time: new Date().toISOString(),
       created_by_id: creator.id,
     })
@@ -240,7 +240,7 @@ describe('flights.repo', () => {
   // path (hooks/use-flights.ts createMutation) never sends created_by_id.
   // KNOWN BUG F9: flips when B17 lands real creator attribution.
   const formPayload = (tail: string) => ({
-    aircraft_id: tail,
+    tail_number: tail,
     call_sign: 'N123AB',
     scheduled_arrival_time: '2026-03-10T14:00:00.000Z',
     scheduled_departure_time: '2026-03-10T14:45:00.000Z',
@@ -301,7 +301,7 @@ describe('flights.repo', () => {
     // Adapter -> update request -> repo, the same path the board uses.
     const flight = apiFlightToComponentFlight({
       id: created.id,
-      aircraft: created.aircraft_id,
+      aircraft: created.tail_number,
       fuel_order_notes: created.fuel_order_notes,
       location_id: created.location_id,
       created_at: created.created_at,
@@ -364,7 +364,7 @@ describe('flights.repo', () => {
 describe('flights.repo time model', () => {
   async function base() {
     const [aircraft, creator] = await Promise.all([makeAircraft(db), makeUser(db)])
-    return { aircraft_id: aircraft.tail_number, created_by_id: creator.id }
+    return { tail_number: aircraft.tail_number, created_by_id: creator.id }
   }
 
   it('rejects a flight with neither scheduled time (CHECK flight_has_scheduled_time_check)', async () => {

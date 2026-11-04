@@ -41,16 +41,16 @@ test.beforeAll(async () => {
     new Date(Math.min(startOfToday + 24 * 3600_000 - 5 * 60_000, Math.max(startOfToday + 5 * 60_000, now + offsetMin * 60_000))).toISOString()
   const base = { created_by_id: userId, origin: 'KAAA', destination: 'KBBB', is_quick_turn: false, flight_status: 'scheduled' as const }
   const { error: flightError } = await db.from('flight').insert([
-    { ...base, aircraft_id: tailTurn, scheduled_arrival_time: today(60), scheduled_departure_time: today(120), is_quick_turn: true },
-    { ...base, aircraft_id: tailStay, scheduled_arrival_time: today(30), scheduled_departure_time: today(400) },
-    { ...base, aircraft_id: tailArr, scheduled_arrival_time: today(90) },
-    { ...base, aircraft_id: tailDep, scheduled_departure_time: today(240) },
+    { ...base, tail_number: tailTurn, scheduled_arrival_time: today(60), scheduled_departure_time: today(120), is_quick_turn: true },
+    { ...base, tail_number: tailStay, scheduled_arrival_time: today(30), scheduled_departure_time: today(400) },
+    { ...base, tail_number: tailArr, scheduled_arrival_time: today(90) },
+    { ...base, tail_number: tailDep, scheduled_departure_time: today(240) },
   ])
   if (flightError) throw flightError
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('flight').delete().in('tail_number', tails)
   await db.from('aircraft').delete().in('tail_number', tails)
   await db.from('users').delete().eq('id', userId)
 })

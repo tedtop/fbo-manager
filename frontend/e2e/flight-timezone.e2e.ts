@@ -45,7 +45,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await db.from('flight').delete().in('aircraft_id', tails)
+  await db.from('flight').delete().in('tail_number', tails)
   await db.from('aircraft').delete().in('tail_number', tails)
   await db.from('users').delete().eq('id', userId)
 })
@@ -75,7 +75,7 @@ test.describe('Timezone handling (B10)', () => {
 
     // DB holds the true instants: local 23:30 on `date`, local 00:30 on the following local date.
     const created = await waitForDbRow(async () => {
-      const { data } = await db.from('flight').select('*').eq('aircraft_id', tailCreate).maybeSingle()
+      const { data } = await db.from('flight').select('*').eq('tail_number', tailCreate).maybeSingle()
       return data
     })
     const expectedArrival = phoenixInstant(date, '23:30')
@@ -103,7 +103,7 @@ test.describe('Timezone handling (B10)', () => {
     await page.getByRole('button', { name: 'Update Flight' }).click()
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
     const after = await waitForDbRow(async () => {
-      const { data } = await db.from('flight').select('*').eq('aircraft_id', tailCreate).single()
+      const { data } = await db.from('flight').select('*').eq('tail_number', tailCreate).single()
       return data?.origin === 'KTEB' ? data : null
     })
     expect(new Date(after.scheduled_arrival_time as string).toISOString()).toBe(expectedArrival)
@@ -113,7 +113,7 @@ test.describe('Timezone handling (B10)', () => {
   test('editing a seeded 23:30 -> 00:30 flight round-trips and a changed departure lands on the right instant', async ({ page }) => {
     const date = '2027-01-10'
     const { error } = await db.from('flight').insert({
-      aircraft_id: tailEdit,
+      tail_number: tailEdit,
       created_by_id: userId,
       origin: 'KAAA',
       destination: 'KBBB',
@@ -142,7 +142,7 @@ test.describe('Timezone handling (B10)', () => {
     await page.getByRole('button', { name: 'Update Flight' }).click()
     await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
     const after = await waitForDbRow(async () => {
-      const { data } = await db.from('flight').select('*').eq('aircraft_id', tailEdit).single()
+      const { data } = await db.from('flight').select('*').eq('tail_number', tailEdit).single()
       return new Date(data?.scheduled_departure_time as string).toISOString() === phoenixInstant(addDays(date, 1), '01:15')
         ? data
         : null
@@ -154,7 +154,7 @@ test.describe('Timezone handling (B10)', () => {
     // Exactly six weeks from now (minute-aligned): same weekday, week offset +6. Phoenix has no DST.
     const inSixWeeks = new Date(Math.floor((Date.now() + 42 * 24 * 3_600_000) / 60_000) * 60_000).toISOString()
     const { error } = await db.from('flight').insert({
-      aircraft_id: tailFar,
+      tail_number: tailFar,
       created_by_id: userId,
       origin: 'KAAA',
       destination: 'KBBB',
