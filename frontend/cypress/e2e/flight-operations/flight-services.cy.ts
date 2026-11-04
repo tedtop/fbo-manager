@@ -8,7 +8,8 @@ const tailFilterOn = `CS3${stamp}` // seeded with GPU
 const tailFilterOff = `CS4${stamp}` // seeded without services
 const tailNoConflict = `CS5${stamp}` // two edits in a row
 const tailFail = `CS6${stamp}` // typed into the form while the catalog fetch fails (never saved)
-const tails = [tailCreate, tailEdit, tailFilterOn, tailFilterOff, tailNoConflict, tailFail]
+const tailTks = `CS7${stamp}` // TKS fluid with a gallon quantity (B26f)
+const tails = [tailCreate, tailEdit, tailFilterOn, tailFilterOff, tailNoConflict, tailFail, tailTks]
 const productName = `Ramp Fee ${stamp}`
 let productId: number | null = null
 
@@ -42,6 +43,7 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
     cy.task('seedFlight', { tail: tailFilterOn, departureInMin: 360, services: ['gpu'] })
     cy.task('seedFlight', { tail: tailFilterOff, departureInMin: 360 })
     cy.task('seedFlight', { tail: tailNoConflict, departureInMin: 360, services: ['hangar'] })
+    cy.task('seedFlight', { tail: tailTks, departureInMin: 360 })
     // A billable-only item: lives in `product`, must never become a pill or a filter option.
     cy.task('seedFeeProduct', { name: productName, sku: `E2E-SVC-${stamp}` }).then((id) => {
       productId = id as number
@@ -156,6 +158,29 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
     cy.get('input[placeholder="e.g., N12345"]').clear().type(tailFail)
     cy.get('input[placeholder="e.g., N12345"]').should('have.value', tailFail)
     cy.get('[role="dialog"]').contains('button', 'Add Flight').should('be.enabled')
+  })
+
+  it('TKS Fluid takes a gallon quantity: saved on the junction, shown on the card, preselected on edit and changeable', () => {
+    const qty = 'input[aria-label="TKS Fluid quantity (gal)"]'
+    openBoard(tailTks)
+    openEditSheet(tailTks)
+    cy.get(qty).should('not.exist') // a quantity input only exists while the pill is selected
+    pill('tks_fluid').click()
+    cy.get(qty).should('have.value', '1')
+    cy.get(qty).clear().type('12')
+    update()
+    cy.contains('Edit Flight').should('not.exist')
+    cy.task('getFlightServiceQuantity', { tail: tailTks, key: 'tks_fluid' }).should('eq', 12)
+    cardPillLabels(tailTks).should('deep.eq', ['TKS Fluid · 12 gal'])
+
+    openEditSheet(tailTks)
+    pill('tks_fluid').should('have.attr', 'aria-pressed', 'true')
+    cy.get(qty).should('have.value', '12')
+    cy.get(qty).clear().type('20')
+    update()
+    cy.contains('Edit Flight').should('not.exist')
+    cy.task('getFlightServiceQuantity', { tail: tailTks, key: 'tks_fluid' }).should('eq', 20)
+    cardPillLabels(tailTks).should('deep.eq', ['TKS Fluid · 20 gal'])
   })
 
   it('the next edit after a services edit has no false concurrency conflict', () => {

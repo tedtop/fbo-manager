@@ -420,6 +420,7 @@ export function FlightFormDialog({
       contactName: formData.contactName,
       contactNotes: formData.contactNotes,
       services: formData.services || [],
+      serviceQuantities: formData.serviceQuantities,
       notes: formData.notes,
       fuelOrderNotes: formData.fuelOrderNotes ?? '',
       locationId: initialData?.locationId,
@@ -741,6 +742,10 @@ export function FlightFormDialog({
               <ServicePillPicker
                 value={formData.services || []}
                 onChange={(services) => setFormData({ ...formData, services })}
+                quantities={formData.serviceQuantities}
+                onQuantitiesChange={(serviceQuantities) =>
+                  setFormData((f) => ({ ...f, serviceQuantities }))
+                }
               />
             </div>
 

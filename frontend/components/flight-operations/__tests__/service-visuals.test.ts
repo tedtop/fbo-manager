@@ -1,10 +1,10 @@
-import { Bus, Sparkles, Tag, Wrench } from 'lucide-react'
+import { Bus, Droplets, Sparkles, Tag, Wrench } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 import { fallbackServiceLabel, GENERIC_SERVICE_COLOR, getServiceVisual } from '../service-visuals'
 
 const SEEDED = [
   'fuel', 'hangar', 'catering', 'gpu', 'lav', 'oxygen', 'courtesy_car', 'rental_car',
-  'passengers', 'coffee', 'ice', 'dishes', 'cleaning', 'maintenance', 'ground_transport',
+  'passengers', 'coffee', 'ice', 'dishes', 'cleaning', 'maintenance', 'ground_transport', 'tks_fluid',
 ]
 
 describe('getServiceVisual', () => {
@@ -22,6 +22,12 @@ describe('getServiceVisual', () => {
     expect(getServiceVisual('cleaning')).toMatchObject({ Icon: Sparkles, color: expect.stringContaining('emerald') })
     expect(getServiceVisual('maintenance')).toMatchObject({ Icon: Wrench, color: expect.stringContaining('slate') })
     expect(getServiceVisual('ground_transport')).toMatchObject({ Icon: Bus, color: expect.stringContaining('pink') })
+  })
+
+  it('gives tks_fluid the droplets icon and lime colours, from the key or from the catalog row', () => {
+    expect(getServiceVisual('tks_fluid')).toEqual({ Icon: Droplets, color: 'bg-lime-500/10 text-lime-500 border-lime-500/20' })
+    expect(getServiceVisual('anything', { icon: 'droplets', color: 'lime' }).Icon).toBe(Droplets)
+    expect(getServiceVisual('tks_fluid', { icon: 'nope', color: 'nope' }).Icon).toBe(Droplets)
   })
 
   it('lets the catalog row (icon name + colour token) win over the key defaults', () => {

@@ -8,11 +8,13 @@ import {
   findFlightById,
   hiddenAtForStatusChange,
   serviceKeysFromRow,
+  serviceQuantitiesFromRow,
   setFlightHidden,
   updateFlight as updateFlightRepo,
   type FlightFilters
 } from '@/repositories/flights.repo'
-import { setFlightServices } from '@/repositories/services.repo'
+import { findActiveServices, setFlightServices } from '@/repositories/services.repo'
+import { serviceKeys } from '@/hooks/use-services'
 import { describeError } from '@/lib/error-message'
 import {
   type Flight,
@@ -53,6 +55,7 @@ function rowToFlight(row: any): Flight {
     contact_notes: row.contact_notes,
     // B26b: the junction (embedded flight_service) is the single source of the key array
     services: serviceKeysFromRow(row),
+    service_quantities: serviceQuantitiesFromRow(row),
     fuel_order_notes: row.fuel_order_notes,
     location_id: row.location_id,
     passenger_count: row.passenger_count,
@@ -116,9 +119,22 @@ export function useFlights(params?: {
   else if (query.isSuccess) lastError.current = null
 
   // Writes the services through the RPC, then re-reads the flight (fresh updated_at + embedded services).
-  const saveServices = async (flightId: number, keys: string[], failureTitle: string) => {
+  const saveServices = async (
+    flightId: number,
+    keys: string[],
+    quantities: Record<string, number> | null | undefined,
+    failureTitle: string
+  ) => {
     try {
-      await setFlightServices(db, flightId, keys)
+      // Quantities go out only for services whose catalog quantity_unit is set (the catalog is cached).
+      let sendable: Record<string, number> | undefined
+      if (quantities && Object.keys(quantities).length > 0) {
+        const catalog = await qc.ensureQueryData({ queryKey: serviceKeys.active(), queryFn: () => findActiveServices(db) })
+        sendable = Object.fromEntries(
+          keys.flatMap((k) => (catalog.some((s) => s.key === k && s.quantity_unit) && quantities[k] !== undefined ? [[k, quantities[k]]] : []))
+        )
+      }
+      await setFlightServices(db, flightId, keys, sendable)
     } catch (err) {
       // The flight row was already written, so the board must refresh even though the mutation fails. (A plain
       // onSettled invalidate would also refetch after a refused compare-and-swap and clobber the stale card.)
@@ -158,7 +174,7 @@ export function useFlights(params?: {
       if (keys.length === 0) return rowToFlight(row)
       // Create is two steps (insert, then the idempotent RPC). A failure here leaves the flight created
       // without its services, so say so; the board refreshes (saveServices invalidates) and shows the new flight.
-      return rowToFlight(await saveServices(Number(row.id), keys, 'Flight created, but its services were not saved'))
+      return rowToFlight(await saveServices(Number(row.id), keys, requestData.service_quantities, 'Flight created, but its services were not saved'))
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })
@@ -221,7 +237,7 @@ export function useFlights(params?: {
       if (keys === undefined) return rowToFlight(row)
       // The RPC bumps updated_at again, so the flight is re-read afterwards: the caller (and the board)
       // must see the post-RPC updated_at or the next edit's compare-and-swap would report a false conflict.
-      return rowToFlight(await saveServices(Number(id), keys, 'Flight updated, but its services were not saved'))
+      return rowToFlight(await saveServices(Number(id), keys, requestData.service_quantities, 'Flight updated, but its services were not saved'))
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })

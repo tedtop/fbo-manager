@@ -159,6 +159,8 @@ export function FlightCard({
   )
   const [localServices, setLocalServices, resetLocalServices] =
     useSyncedDraft<string[]>(flight.services)
+  const [localQuantities, setLocalQuantities, resetLocalQuantities] =
+    useSyncedDraft<Record<string, number>>(flight.serviceQuantities ?? {})
   const notes = flight.notes || ''
   const [countdown, setCountdown] = useState<{
     text: string
@@ -239,6 +241,7 @@ export function FlightCard({
       onEdit({
         ...flight,
         services: localServices,
+        serviceQuantities: localQuantities,
         notes,
         passengers: passengerCount ? Number.parseInt(passengerCount) : undefined
       })
@@ -502,6 +505,7 @@ export function FlightCard({
                     variant="ghost"
                     onClick={() => {
                       resetLocalServices()
+                      resetLocalQuantities()
                       setIsEditingServices(false)
                     }}
                     className="h-6 text-xs px-2"
@@ -510,14 +514,23 @@ export function FlightCard({
                   </Button>
                 </div>
               </div>
-              <ServicePillPicker value={localServices} onChange={setLocalServices} />
+              <ServicePillPicker
+                value={localServices}
+                onChange={setLocalServices}
+                quantities={localQuantities}
+                onQuantitiesChange={setLocalQuantities}
+              />
             </div>
           ) : (
             <>
               {localServices.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1.5 border-t border-border">
                   {localServices.map((serviceKey) => (
-                    <ServicePill key={serviceKey} serviceKey={serviceKey} />
+                    <ServicePill
+                      key={serviceKey}
+                      serviceKey={serviceKey}
+                      quantity={localQuantities[serviceKey]}
+                    />
                   ))}
                   <button
                     onClick={() => setIsEditingServices(true)}

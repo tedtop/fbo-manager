@@ -624,6 +624,8 @@ export type Database = {
           sort_order: number
           active: boolean
           product_id: number | null
+          // B26f: NULL = plain toggle; 'gal' etc. = the picker asks for flight_service.quantity
+          quantity_unit: string | null
           created_at: string
           updated_at: string
         }
@@ -636,6 +638,7 @@ export type Database = {
           sort_order?: number
           active?: boolean
           product_id?: number | null
+          quantity_unit?: string | null
         }
         Update: Partial<Database['public']['Tables']['service']['Insert']>
         Relationships: []

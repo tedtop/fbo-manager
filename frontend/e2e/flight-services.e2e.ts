@@ -15,7 +15,8 @@ const tailFilterOn = uniqueValue('NSV').toUpperCase() // seeded with GPU
 const tailFilterOff = uniqueValue('NSV').toUpperCase() // seeded without GPU
 const tailNoConflict = uniqueValue('NSV').toUpperCase() // two edits in a row
 const tailBilling = uniqueValue('NSV').toUpperCase() // placeholder aircraft for the form tests (never saved)
-const tails = [tailCreate, tailEdit, tailFilterOn, tailFilterOff, tailNoConflict, tailBilling]
+const tailTks = uniqueValue('NSV').toUpperCase() // TKS fluid with a gallon quantity (B26f)
+const tails = [tailCreate, tailEdit, tailFilterOn, tailFilterOff, tailNoConflict, tailBilling, tailTks]
 const ids: Record<string, number> = {}
 let userId: number
 let productId: number | null = null
@@ -54,7 +55,7 @@ test.beforeAll(async () => {
   if (aircraftError) throw aircraftError
 
   const departure = new Date(Date.now() + 6 * 3_600_000).toISOString()
-  const seed = [tailEdit, tailFilterOn, tailFilterOff, tailNoConflict]
+  const seed = [tailEdit, tailFilterOn, tailFilterOff, tailNoConflict, tailTks]
   const { data: flights, error: flightError } = await db
     .from('flight')
     .insert(
@@ -125,6 +126,19 @@ async function junctionKeys(tail: string): Promise<string[]> {
     .in('id', (data ?? []).map((r) => r.service_id))
   if (serviceError) throw serviceError
   return (services ?? []).map((r) => r.key).sort()
+}
+
+async function junctionQuantity(tail: string, key: string): Promise<number | null> {
+  const { data: service, error: serviceError } = await db.from('service').select('id').eq('key', key).single()
+  if (serviceError) throw serviceError
+  const { data, error } = await db
+    .from('flight_service')
+    .select('quantity')
+    .eq('flight_id', ids[tail])
+    .eq('service_id', service.id)
+    .maybeSingle()
+  if (error) throw error
+  return data?.quantity ?? null
 }
 
 async function legacyServices(tail: string): Promise<string[]> {
@@ -254,6 +268,30 @@ test.describe('Service catalog on the board, form and toolbar (B26)', () => {
     await dialog.getByPlaceholder('e.g., N12345').fill(tailBilling)
     await expect(dialog.getByPlaceholder('e.g., N12345')).toHaveValue(tailBilling)
     await expect(dialog.getByRole('button', { name: 'Add Flight', exact: true })).toBeEnabled()
+  })
+
+  test('TKS Fluid takes a gallon quantity: saved on the junction, shown on the card, preselected on edit and changeable', async ({ page }) => {
+    await openBoard(page, tailTks)
+    await openEditSheet(page, tailTks)
+    const qty = page.getByRole('spinbutton', { name: 'TKS Fluid quantity (gal)' })
+    await expect(qty).toHaveCount(0) // a quantity input only exists while the pill is selected
+    await pill(page, 'tks_fluid').click()
+    await expect(qty).toHaveValue('1')
+    await qty.fill('12')
+    await page.getByRole('button', { name: 'Update Flight' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
+
+    await expect.poll(() => junctionQuantity(tailTks, 'tks_fluid'), { timeout: 10_000 }).toBe(12)
+    await expect.poll(() => cardPillLabels(page, tailTks), { timeout: 15_000 }).toEqual(['TKS Fluid · 12 gal'])
+
+    await openEditSheet(page, tailTks)
+    await expect(pill(page, 'tks_fluid')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('spinbutton', { name: 'TKS Fluid quantity (gal)' })).toHaveValue('12')
+    await page.getByRole('spinbutton', { name: 'TKS Fluid quantity (gal)' }).fill('20')
+    await page.getByRole('button', { name: 'Update Flight' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({ timeout: 10_000 })
+    await expect.poll(() => junctionQuantity(tailTks, 'tks_fluid'), { timeout: 10_000 }).toBe(20)
+    await expect.poll(() => cardPillLabels(page, tailTks), { timeout: 15_000 }).toEqual(['TKS Fluid · 20 gal'])
   })
 
   test('the next edit after a services edit has no false concurrency conflict', async ({ page }) => {

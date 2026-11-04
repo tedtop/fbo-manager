@@ -18,7 +18,10 @@ export type FlightWithRelations = FlightRow & {
     role: string
   } | null
   // B26b: the flight's board services (junction rows with their catalog key)
-  flight_service?: Array<{ service: { key: string; sort_order: number } | null }> | null
+  flight_service?: Array<{
+    quantity?: number | null
+    service: { key: string; sort_order: number; quantity_unit?: string | null } | null
+  }> | null
 }
 
 // The flight's service keys from the embedded junction rows, in catalog order. The junction is the single
@@ -30,12 +33,23 @@ export function serviceKeysFromRow(row: Pick<FlightWithRelations, 'flight_servic
     .map((s) => s.key)
 }
 
+// key -> quantity for the flight's services that carry a quantity_unit (B26f); plain toggles are left out.
+export function serviceQuantitiesFromRow(
+  row: Pick<FlightWithRelations, 'flight_service'>
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const fs of row.flight_service ?? []) {
+    if (fs.service?.quantity_unit && typeof fs.quantity === 'number') out[fs.service.key] = fs.quantity
+  }
+  return out
+}
+
 const FLIGHT_SELECT = `
   *,
   aircraft:tail_number ( tail_number, aircraft_type_icao, aircraft_type_display ),
   location:location_id ( location_code, description, latitude, longitude ),
   created_by:created_by_id ( id, first_name, last_name, username, role ),
-  flight_service ( service:service_id ( key, sort_order ) )
+  flight_service ( quantity, service:service_id ( key, sort_order, quantity_unit ) )
 `
 
 export interface FlightFilters {

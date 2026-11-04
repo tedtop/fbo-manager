@@ -3,6 +3,7 @@ import {
   Car,
   Coffee,
   Droplet,
+  Droplets,
   Fuel,
   type LucideIcon,
   Snowflake,
@@ -26,6 +27,7 @@ const ICONS: Record<string, LucideIcon> = {
   'utensils-crossed': UtensilsCrossed,
   zap: Zap,
   droplet: Droplet,
+  droplets: Droplets,
   wind: Wind,
   car: Car,
   users: Users,
@@ -52,7 +54,8 @@ const COLORS: Record<string, string> = {
   teal: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
   emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   slate: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-  pink: 'bg-pink-500/10 text-pink-500 border-pink-500/20'
+  pink: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
+  lime: 'bg-lime-500/10 text-lime-500 border-lime-500/20'
 }
 
 export const GENERIC_SERVICE_COLOR = 'bg-muted text-muted-foreground border-border'
@@ -74,7 +77,8 @@ const KEY_VISUALS: Record<string, { icon: string; color: string }> = {
   dishes: { icon: 'utensils-crossed', color: 'teal' },
   cleaning: { icon: 'sparkles', color: 'emerald' },
   maintenance: { icon: 'wrench', color: 'slate' },
-  ground_transport: { icon: 'bus', color: 'pink' }
+  ground_transport: { icon: 'bus', color: 'pink' },
+  tks_fluid: { icon: 'droplets', color: 'lime' }
 }
 
 export interface ServiceVisual {

@@ -13,6 +13,10 @@ import { makeFlight } from '@/tests/support/factories'
 const db = createTestClient()
 
 const MIGRATION = path.resolve(__dirname, '../../supabase/migrations/20261104000200_service_catalog.sql')
+const TKS_MIGRATION = path.resolve(
+  __dirname,
+  '../../supabase/migrations/20261104001300_service_tks_fluid_quantity.sql'
+)
 const DB_URL =
   process.env.SUPABASE_TEST_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/postgres'
 // Local demo JWT secret shipped with every `supabase start` (not a secret); used to mint an
@@ -22,7 +26,7 @@ const LOCAL_JWT_SECRET =
 
 const SEEDED_KEYS = [
   'fuel', 'hangar', 'catering', 'gpu', 'lav', 'oxygen', 'courtesy_car', 'rental_car',
-  'passengers', 'coffee', 'ice', 'dishes', 'cleaning', 'maintenance', 'ground_transport',
+  'passengers', 'coffee', 'ice', 'dishes', 'cleaning', 'maintenance', 'ground_transport', 'tks_fluid',
 ]
 
 function b64url(input: Buffer | string) {
@@ -107,11 +111,11 @@ afterEach(async () => {
 })
 
 describe('service catalog seed', () => {
-  it('has the 15 seeded board services with unique keys, no product link and no price column', async () => {
+  it('has the 16 seeded board services with unique keys, no product link and no price column', async () => {
     const { data, error } = await db.from('service').select('*').order('sort_order')
     expect(error).toBeNull()
-    expect(data).toHaveLength(15)
-    expect(new Set(data?.map((s) => s.key)).size).toBe(15)
+    expect(data).toHaveLength(16)
+    expect(new Set(data?.map((s) => s.key)).size).toBe(16)
     expect(data?.map((s) => s.key)).toEqual(SEEDED_KEYS)
     expect(data?.every((s) => s.product_id === null && s.active)).toBe(true)
     expect(data?.every((s) => !('default_price' in s))).toBe(true)
@@ -324,7 +328,7 @@ describe('access control', () => {
     const authed = authenticatedClient()
     const cat = await authed.from('service').select('key')
     expect(cat.error).toBeNull()
-    expect(cat.data).toHaveLength(15)
+    expect(cat.data).toHaveLength(16)
 
     const flight = await makeFlight(db)
     const rpc = await authed.rpc('set_flight_services', {
@@ -406,5 +410,95 @@ describe.skipIf(!psqlAvailable)('migration file (direct SQL against the local da
     expect(res.out).toContain('flight.services has keys with no catalog row: mystery_item, other_mystery')
     const { count } = await db.from('flight_service').select('*', { count: 'exact', head: true })
     expect(count).toBe(0)
+  })
+})
+
+// B26f: service.quantity_unit + the tks_fluid service (migration 20261104001300).
+describe('service quantity (TKS fluid)', () => {
+  it('seeds tks_fluid as a gallon-quantity service with no product link and the other 15 as plain toggles', async () => {
+    const { data, error } = await db.from('service').select('*')
+    expect(error).toBeNull()
+    const tks = data?.find((s) => s.key === 'tks_fluid')
+    expect(tks).toMatchObject({
+      label: 'TKS Fluid',
+      icon: 'droplets',
+      color: 'lime',
+      sort_order: 160,
+      quantity_unit: 'gal',
+      product_id: null,
+      active: true,
+    })
+    expect(Math.max(...(data ?? []).map((s) => s.sort_order))).toBe(160)
+    expect(data?.filter((s) => s.key !== 'tks_fluid').every((s) => s.quantity_unit === null)).toBe(true)
+  })
+
+  it('stores a quantity through the RPC, round-trips it, and a plain key string leaves it untouched', async () => {
+    const flight = await makeFlight(db)
+    const read = async () => {
+      const { data } = await db
+        .from('flight_service')
+        .select('quantity')
+        .eq('flight_id', flight.id)
+        .eq('service_id', await serviceId('tks_fluid'))
+        .single()
+      return data?.quantity
+    }
+    const first = await db.rpc('set_flight_services', {
+      p_flight_id: flight.id,
+      p_services: [{ key: 'tks_fluid', quantity: 12 }, 'fuel'],
+    })
+    expect(first.error).toBeNull()
+    expect(await read()).toBe(12)
+
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['tks_fluid', 'fuel'] })
+    expect(await read()).toBe(12)
+
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: [{ key: 'tks_fluid', quantity: 20 }] })
+    expect(await read()).toBe(20)
+
+    // A bare key on a new row defaults to 1.
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: [] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['tks_fluid'] })
+    expect(await read()).toBe(1)
+  })
+
+  it('rejects quantity 0 and a negative quantity and leaves the flight unchanged', async () => {
+    const flight = await makeFlight(db)
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel'] })
+    for (const quantity of [0, -3]) {
+      const bad = await db.rpc('set_flight_services', {
+        p_flight_id: flight.id,
+        p_services: [{ key: 'tks_fluid', quantity }],
+      })
+      expect(bad.error?.code).toBe('23514')
+    }
+    expect(await junctionKeys(flight.id)).toEqual(['fuel'])
+  })
+
+  it('rejects a blank quantity_unit', async () => {
+    const bad = await db
+      .from('service')
+      .insert({ key: 'zz_test_blank_unit', label: 'x', icon: 'x', color: 'x', quantity_unit: '  ' })
+    expect(bad.error?.code).toBe('23514')
+  })
+})
+
+describe.skipIf(!psqlAvailable)('B26f migration file (direct SQL against the local database)', () => {
+  it('is idempotent: running it again changes nothing and keeps a single tks_fluid row', async () => {
+    const again = psql(['-f', TKS_MIGRATION])
+    expect(again.ok, again.out).toBe(true)
+    const { data } = await db.from('service').select('key, quantity_unit').eq('key', 'tks_fluid')
+    expect(data).toEqual([{ key: 'tks_fluid', quantity_unit: 'gal' }])
+  })
+
+  it('does not overwrite catalog edits on a re-run (ON CONFLICT DO NOTHING)', async () => {
+    await db.from('service').update({ label: 'TKS (edited)' }).eq('key', 'tks_fluid')
+    try {
+      expect(psql(['-f', TKS_MIGRATION]).ok).toBe(true)
+      const { data } = await db.from('service').select('label').eq('key', 'tks_fluid').single()
+      expect(data?.label).toBe('TKS (edited)')
+    } finally {
+      await db.from('service').update({ label: 'TKS Fluid' }).eq('key', 'tks_fluid')
+    }
   })
 })

@@ -21,6 +21,8 @@ export interface FlightRow {
   contact_name?: string | null
   contact_notes?: string | null
   services?: string[] | null
+  // B26f: key -> quantity for services with a quantity_unit; consumed by use-flights, never sent as a column
+  service_quantities?: Record<string, number> | null
   fuel_order_notes?: string | null
   location_id?: number | null
   passenger_count?: number | null
@@ -82,6 +84,7 @@ export interface Flight {
 
   // Services and logistics
   services: string[] // services (jsonb)
+  serviceQuantities?: Record<string, number> // flight_service.quantity per service key (only services with a unit)
   fuelOrderNotes?: string // fuel_order_notes
   passengers?: number // passenger_count
   notes?: string // notes
@@ -220,6 +223,7 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     contactNotes: (apiFlight as any).contact_notes || undefined,
     passengers: (apiFlight as any).passenger_count || undefined,
     services: (apiFlight as any).services || [],
+    serviceQuantities: apiFlight.service_quantities ?? undefined,
     notes: (apiFlight as any).notes || undefined,
     fuelOrderNotes: apiFlight.fuel_order_notes || undefined,
     locationId: apiFlight.location_id ?? undefined,
@@ -292,6 +296,10 @@ export function componentFlightToApiRequest(
 
   if (flight.services !== undefined) {
     result.services = flight.services
+  }
+
+  if (flight.serviceQuantities !== undefined) {
+    result.service_quantities = flight.serviceQuantities
   }
 
   if (flight.notes !== undefined) {

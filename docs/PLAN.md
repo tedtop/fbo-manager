@@ -460,3 +460,22 @@ The prompt targets printed (not handwritten) tabular schedules in any orientatio
 7. Is there anything on the sheet that should NOT create a flight (maintenance, tows, crew only)?
 8. Which IANA zone is the FBO in? The importer takes it as a parameter; the repo currently uses the browser/server local zone (B10).
 9. Does the sheet carry customer contact, passenger count, origin or destination that should map to flight fields?
+
+### B26 billing answers and TKS (Ted, 2026-11-04)
+
+What the front desk bills, and where each item lives:
+
+1. **Ramp fee**: a flat fee per visit that varies by aircraft type. It is a billable-only item (`product` Ramp Fee, id 8), with no board pill. A Settings-driven ramp-fee schedule by aircraft class (Small GA, Mid-size GA, Light jet, Midsize jet, Heavy jet) is a separate backlog item (B51, design first).
+2. **Oil**: sold per can and handed to the customer. Billable-only (`product` Oil (Qt), id 10), no board presence, no `service` row. The sell flow is invoicing scope (B53).
+3. **TKS fluid**: sold per gallon, and the ramp helps put it in, so it needs a board service pill with a quantity. Built as B26f below.
+4. Nothing else is billed.
+
+Rules that follow: the `product` table is the billing catalog; the `service` table is the board vocabulary only; a service links to a product through the nullable `service.product_id`, which stays NULL until Ted supplies prices and the mapping (B52). No prices are invented and no `product` rows are inserted or altered by B26f. The quantity of a service on a flight lives on `flight_service.quantity` (integer > 0, default 1).
+
+**B26f as built (2026-11-04, local only)**
+
+- Migration `20261104001300_service_tks_fluid_quantity.sql` (rollback in `supabase/rollbacks/`): nullable `service.quantity_unit text` (NULL = plain toggle; a non-blank unit such as 'gal' = the service carries a quantity); seeds `tks_fluid` (label 'TKS Fluid', icon `droplets`, colour token `lime`, sort_order 160, unit 'gal', `product_id` NULL). One transaction, idempotent (`add column if not exists`, `on conflict (key) do nothing`). `set_flight_services` is unchanged: it already takes `{key, quantity}` objects, keeps an existing quantity when a bare key string is sent, and a quantity < 1 fails the `flight_service` check (23514).
+- Reads: `FLIGHT_SELECT` embeds `flight_service ( quantity, service:service_id ( key, sort_order, quantity_unit ) )`; `Flight.serviceQuantities` (key -> quantity) holds only services that have a unit; `services` stays `string[]`.
+- Writes: create and update pass `{key, quantity}` for the services whose catalog `quantity_unit` is set and that have a quantity, bare keys otherwise (the catalog comes from the cached `['services','active']` query). The compare-and-swap and the "saved but services failed" refresh are unchanged.
+- UI: `ServicePillPicker` takes optional `quantities` and `onQuantitiesChange`; a selected quantity service shows a numeric input (min 1, default 1, accessible name 'TKS Fluid quantity (gal)') beside its pill; removing the pill drops its quantity. The card pill reads 'TKS Fluid · 12 gal'. The toolbar filter picks `tks_fluid` up from the catalog.
+

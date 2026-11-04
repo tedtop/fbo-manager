@@ -3,8 +3,14 @@ import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { createTestClient } from '@/tests/support/client'
 import { resetDatabase } from '@/tests/support/reset'
 import { makeFlight } from '@/tests/support/factories'
-import { findAllFlights, findFlightById, serviceKeysFromRow, updateFlight } from '@/repositories/flights.repo'
-import { findActiveServices, setFlightServices } from '@/repositories/services.repo'
+import {
+  findAllFlights,
+  findFlightById,
+  serviceKeysFromRow,
+  serviceQuantitiesFromRow,
+  updateFlight,
+} from '@/repositories/flights.repo'
+import { findActiveServices, servicesPayload, setFlightServices } from '@/repositories/services.repo'
 
 // B26b: services.repo + the embedded junction read + the dual write (migration 20261104000200).
 const db = createTestClient()
@@ -45,17 +51,46 @@ describe('serviceKeysFromRow (adapter)', () => {
   })
 })
 
+describe('serviceQuantitiesFromRow (adapter)', () => {
+  it('maps quantities of services that have a unit, skipping plain toggles, NULL quantities and missing services', () => {
+    expect(
+      serviceQuantitiesFromRow({
+        flight_service: [
+          { quantity: 12, service: { key: 'tks_fluid', sort_order: 160, quantity_unit: 'gal' } },
+          { quantity: 1, service: { key: 'fuel', sort_order: 10, quantity_unit: null } },
+          { quantity: 3, service: { key: 'gpu', sort_order: 40 } },
+          { quantity: null, service: { key: 'oil', sort_order: 170, quantity_unit: 'qt' } },
+          { quantity: 5, service: null },
+        ],
+      })
+    ).toEqual({ tks_fluid: 12 })
+  })
+
+  it('returns {} when the embed is missing or empty', () => {
+    expect(serviceQuantitiesFromRow({})).toEqual({})
+    expect(serviceQuantitiesFromRow({ flight_service: null })).toEqual({})
+    expect(serviceQuantitiesFromRow({ flight_service: [] })).toEqual({})
+  })
+})
+
+describe('servicesPayload', () => {
+  it('sends bare keys unless a quantity is given, and de-duplicates', () => {
+    expect(servicesPayload(['fuel', 'tks_fluid', 'fuel'], { tks_fluid: 12 })).toEqual(['fuel', { key: 'tks_fluid', quantity: 12 }])
+    expect(servicesPayload(['fuel', 'tks_fluid'])).toEqual(['fuel', 'tks_fluid'])
+  })
+})
+
 describe('findActiveServices', () => {
-  it('returns the 15 seeded services in sort_order and hides inactive ones', async () => {
+  it('returns the 16 seeded services in sort_order and hides inactive ones', async () => {
     const all = await findActiveServices(db)
-    expect(all).toHaveLength(15)
+    expect(all).toHaveLength(16)
     expect(all.map((s) => s.sort_order)).toEqual([...all.map((s) => s.sort_order)].sort((a, b) => a - b))
     expect(all[0].key).toBe('fuel')
     expect(all.map((s) => s.key)).toContain('ground_transport')
 
     await db.from('service').update({ active: false }).eq('key', 'ice')
     const active = await findActiveServices(db)
-    expect(active).toHaveLength(14)
+    expect(active).toHaveLength(15)
     expect(active.map((s) => s.key)).not.toContain('ice')
   })
 
@@ -66,6 +101,33 @@ describe('findActiveServices', () => {
     expect(error).toBeNull()
     const keys = (await findActiveServices(db)).map((s) => s.key)
     expect(keys.some((k) => k.includes('ramp'))).toBe(false)
+  })
+})
+
+describe('setFlightServices quantities + embedded read', () => {
+  it('round-trips a quantity through the embed and keeps it when a later save sends the bare key', async () => {
+    const flight = await makeFlight(db)
+    await setFlightServices(db, flight.id, ['fuel', 'tks_fluid'], { tks_fluid: 12 })
+    let row = await readFlight(flight.id)
+    expect(serviceKeysFromRow(row)).toEqual(['fuel', 'tks_fluid'])
+    expect(serviceQuantitiesFromRow(row)).toEqual({ tks_fluid: 12 })
+
+    await setFlightServices(db, flight.id, ['fuel', 'tks_fluid'])
+    expect(serviceQuantitiesFromRow(await readFlight(flight.id))).toEqual({ tks_fluid: 12 })
+
+    await setFlightServices(db, flight.id, ['fuel', 'tks_fluid'], { tks_fluid: 20 })
+    expect(serviceQuantitiesFromRow(await readFlight(flight.id))).toEqual({ tks_fluid: 20 })
+
+    await setFlightServices(db, flight.id, ['fuel'])
+    row = await readFlight(flight.id)
+    expect(serviceQuantitiesFromRow(row)).toEqual({})
+  })
+
+  it('rejects quantity 0 and leaves the flight unchanged', async () => {
+    const flight = await makeFlight(db)
+    await setFlightServices(db, flight.id, ['fuel'])
+    await expect(setFlightServices(db, flight.id, ['fuel', 'tks_fluid'], { tks_fluid: 0 })).rejects.toBeTruthy()
+    expect(serviceKeysFromRow(await readFlight(flight.id))).toEqual(['fuel'])
   })
 })
 

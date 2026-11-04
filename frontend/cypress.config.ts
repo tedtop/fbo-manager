@@ -141,6 +141,19 @@ export default defineConfig({
           return (services ?? []).map((r) => r.key).sort()
         },
 
+        /** flight_service.quantity of one service (by key) on the latest flight of a tail; null when absent. */
+        async getFlightServiceQuantity({ tail, key }: { tail: string; key: string }) {
+          const db = createE2EDbClient()
+          const { data: flights, error: flightError } = await db.from('flight').select('id').eq('tail_number', tail).order('id', { ascending: false }).limit(1)
+          if (flightError) throw new Error(`getFlightServiceQuantity: flight: ${flightError.message}`)
+          if (!flights?.length) return null
+          const { data: service, error: serviceError } = await db.from('service').select('id').eq('key', key).single()
+          if (serviceError) throw new Error(`getFlightServiceQuantity: service: ${serviceError.message}`)
+          const { data, error } = await db.from('flight_service').select('quantity').eq('flight_id', flights[0].id).eq('service_id', service.id).maybeSingle()
+          if (error) throw new Error(`getFlightServiceQuantity: ${error.message}`)
+          return data?.quantity ?? null
+        },
+
         /** Number of active rows in the service catalog. */
         async countActiveServices() {
           const db = createE2EDbClient()
