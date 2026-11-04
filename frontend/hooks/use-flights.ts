@@ -5,13 +5,16 @@ import {
   createFlight as createFlightRepo,
   deleteFlight as deleteFlightRepo,
   findAllFlights,
+  hiddenAtForStatusChange,
+  setFlightHidden,
   updateFlight as updateFlightRepo,
   type FlightFilters
 } from '@/repositories/flights.repo'
 import {
   type Flight,
   apiFlightToComponentFlight,
-  componentFlightToApiRequest
+  componentFlightToApiRequest,
+  mapStatusToBackend
 } from '@/components/flight-operations/types'
 import {
   keepPreviousData,
@@ -62,7 +65,8 @@ function rowToFlight(row: any): Flight {
         ? 'Front Desk'
         : 'Administration',
     created_at: row.created_at,
-    modified_at: row.modified_at
+    modified_at: row.modified_at,
+    hidden_at: row.hidden_at
   } as any)
 }
 
@@ -70,6 +74,7 @@ export function useFlights(params?: {
   today?: boolean
   startDate?: string
   endDate?: string
+  includeHidden?: boolean
 }) {
   const qc = useQueryClient()
   const db = createClient()
@@ -78,7 +83,8 @@ export function useFlights(params?: {
     ? {
         today: params.today,
         startDate: params.startDate,
-        endDate: params.endDate
+        endDate: params.endDate,
+        includeHidden: params.includeHidden
       }
     : undefined
 
@@ -163,9 +169,43 @@ export function useFlights(params?: {
       if (requestData.notes !== undefined) dbUpdates.notes = requestData.notes
       if (requestData.created_by_source !== undefined) dbUpdates.created_by_source = requestData.created_by_source
 
+      // D13: a status change to/from Departed also moves hidden_at (hides from the next day / un-hides). The
+      // flight's current values come from the cached board, so the save needs no extra read; a stale cache is
+      // caught by expectedModifiedAt like any other edit.
+      const previous = qc
+        .getQueriesData<Flight[]>({ queryKey: flightKeys.lists() })
+        .flatMap(([, list]) => list ?? [])
+        .find((f) => f.id === id)
+      if (previous && dbUpdates.flight_status !== undefined) {
+        const hiddenAt = hiddenAtForStatusChange(
+          {
+            flight_status: mapStatusToBackend(previous.status),
+            hidden_at: previous.hiddenAt ?? null,
+            actual_departure_time: previous.actualDepartureTime ?? null
+          },
+          dbUpdates.flight_status,
+          'actual_departure_time' in dbUpdates ? dbUpdates.actual_departure_time : undefined
+        )
+        if (hiddenAt !== undefined) dbUpdates.hidden_at = hiddenAt
+      }
+
       const row = await updateFlightRepo(db, Number(id), dbUpdates, expectedModifiedAt)
       return rowToFlight(row)
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
+  })
+
+  // Hide / Unhide button: same compare-and-swap guard as updateFlight (ConcurrencyConflictError).
+  const hiddenMutation = useMutation({
+    mutationFn: async ({
+      id,
+      hidden,
+      expectedModifiedAt
+    }: {
+      id: string
+      hidden: boolean
+      expectedModifiedAt?: string
+    }) => rowToFlight(await setFlightHidden(db, Number(id), hidden, expectedModifiedAt)),
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })
 
@@ -200,6 +240,8 @@ export function useFlights(params?: {
       updates: Partial<Flight>,
       expectedModifiedAt?: string
     ) => updateMutation.mutateAsync({ id, updates, expectedModifiedAt }),
+    setFlightHidden: (id: string, hidden: boolean, expectedModifiedAt?: string) =>
+      hiddenMutation.mutateAsync({ id, hidden, expectedModifiedAt }),
     deleteFlight: (id: string, options?: { keepRow?: boolean }) =>
       deleteMutation.mutateAsync({ id, keepRow: options?.keepRow }),
     forgetFlight,

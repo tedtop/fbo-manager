@@ -7,12 +7,16 @@ import {
   apiFlightToComponentFlight,
   componentFlightToApiRequest,
 } from '@/components/flight-operations/types'
+import { filterFlights } from '@/components/flight-operations/board-logic'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
+import { localNextDayStartIso, formatLocalDate } from '@/lib/local-date'
 import {
   createFlight,
   deleteFlight,
   findAllFlights,
   findFlightById,
+  hiddenAtForStatusChange,
+  setFlightHidden,
   updateFlight,
 } from '@/repositories/flights.repo'
 
@@ -424,5 +428,232 @@ describe('flights.repo time model', () => {
 
     const updated = await updateFlight(db, flight.id, { is_quick_turn: true })
     expect(updated.is_quick_turn).toBe(true)
+  })
+})
+
+// B43b / D13: Today + Future (open-ended range) and hidden flights.
+describe('flights.repo Today + Future and hidden', () => {
+  const ids = (rows: { id: number }[]) => rows.map((r) => r.id).sort((a, b) => a - b)
+  const sorted = (...rows: { id: number }[]) => ids(rows)
+
+  it('startDate without endDate has no upper bound: every stay ending on or after that day', () => {
+    return withTz('America/Phoenix', async () => {
+      // Mar 10 local = [2026-03-10T07:00Z, 2026-03-11T07:00Z)
+      const leftBefore = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-08T18:00:00.000Z',
+        scheduled_departure_time: '2026-03-10T06:59:00.000Z', // Mar 9 23:59 local
+      })
+      const leavesStartOfDay = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-08T18:00:00.000Z',
+        scheduled_departure_time: '2026-03-10T07:00:00.000Z',
+      })
+      const today = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-10T18:00:00.000Z',
+        scheduled_departure_time: '2026-03-10T20:00:00.000Z',
+      })
+      const farFuture = await makeFlight(db, {
+        scheduled_arrival_time: '2027-06-01T18:00:00.000Z',
+        scheduled_departure_time: '2027-06-02T18:00:00.000Z',
+      })
+      const arrivalOnly = await makeFlight(db, {
+        scheduled_arrival_time: '2026-03-01T18:00:00.000Z',
+        scheduled_departure_time: null,
+      })
+      const departureOnlyFuture = await makeFlight(db, {
+        scheduled_arrival_time: null,
+        scheduled_departure_time: '2026-09-01T18:00:00.000Z',
+      })
+      const departureOnlyPast = await makeFlight(db, {
+        scheduled_arrival_time: null,
+        scheduled_departure_time: '2026-03-09T18:00:00.000Z',
+      })
+
+      const results = await findAllFlights(db, { startDate: '2026-03-10' })
+      expect(ids(results)).toEqual(
+        sorted(leavesStartOfDay, today, farFuture, arrivalOnly, departureOnlyFuture)
+      )
+      expect(ids(results)).not.toContain(leftBefore.id)
+      expect(ids(results)).not.toContain(departureOnlyPast.id)
+    })
+  })
+
+  it('hides hidden flights by default, lists them with includeHidden, and keeps a future hidden_at visible', async () => {
+    const plain = await makeFlight(db)
+    const hiddenByHand = await makeFlight(db, { hidden_at: new Date(Date.now() - 60_000).toISOString() })
+    const hiddenTomorrow = await makeFlight(db, { hidden_at: new Date(Date.now() + 3_600_000).toISOString() })
+
+    expect(ids(await findAllFlights(db))).toEqual(sorted(plain, hiddenTomorrow))
+    expect(ids(await findAllFlights(db, { includeHidden: true }))).toEqual(
+      sorted(plain, hiddenByHand, hiddenTomorrow)
+    )
+  })
+
+  it('combines hidden with the date range and status filters', () => {
+    return withTz('America/Phoenix', async () => {
+      const shown = await makeFlight(db, {
+        scheduled_departure_time: '2026-03-10T18:00:00.000Z',
+        flight_status: 'departed',
+        hidden_at: '2099-01-01T00:00:00.000Z',
+      })
+      const hidden = await makeFlight(db, {
+        scheduled_departure_time: '2026-03-10T18:00:00.000Z',
+        flight_status: 'departed',
+        hidden_at: '2026-03-11T07:00:00.000Z',
+      })
+      await makeFlight(db, { scheduled_departure_time: '2026-03-10T18:00:00.000Z', flight_status: 'scheduled' })
+
+      const range = { startDate: '2026-03-10', endDate: '2026-03-10', status: 'departed' }
+      expect(ids(await findAllFlights(db, range))).toEqual([shown.id])
+      expect(ids(await findAllFlights(db, { ...range, includeHidden: true }))).toEqual(sorted(shown, hidden))
+    })
+  })
+
+  it('the server filter and filterFlights (board-logic) agree for Today + Future with hidden flights', () => {
+    return withTz('America/Phoenix', async () => {
+      const fixtures: Parameters<typeof makeFlight>[1][] = [
+        { scheduled_arrival_time: '2026-03-08T18:00:00.000Z', scheduled_departure_time: '2026-03-10T06:59:00.000Z' },
+        { scheduled_arrival_time: '2026-03-08T18:00:00.000Z', scheduled_departure_time: '2026-03-10T07:00:00.000Z' },
+        { scheduled_arrival_time: '2026-03-10T18:00:00.000Z', scheduled_departure_time: '2026-03-10T20:00:00.000Z' },
+        { scheduled_arrival_time: '2027-06-01T18:00:00.000Z', scheduled_departure_time: '2027-06-02T18:00:00.000Z' },
+        { scheduled_arrival_time: '2026-03-01T18:00:00.000Z', scheduled_departure_time: null },
+        { scheduled_arrival_time: null, scheduled_departure_time: '2026-09-01T18:00:00.000Z' },
+        { scheduled_arrival_time: null, scheduled_departure_time: '2026-03-09T18:00:00.000Z' },
+        { scheduled_departure_time: '2026-03-10T20:00:00.000Z', hidden_at: '2020-01-01T00:00:00.000Z' },
+        { scheduled_departure_time: '2026-03-10T20:00:00.000Z', hidden_at: '2099-01-01T00:00:00.000Z' },
+      ]
+      for (const f of fixtures) await makeFlight(db, f)
+
+      const toFlights = (rows: Awaited<ReturnType<typeof findAllFlights>>) =>
+        rows.map((r) =>
+          apiFlightToComponentFlight({
+            id: r.id,
+            aircraft: r.tail_number,
+            scheduled_arrival_time: r.scheduled_arrival_time,
+            scheduled_departure_time: r.scheduled_departure_time,
+            hidden_at: r.hidden_at,
+            created_at: r.created_at,
+          })
+        )
+      const now = new Date(2026, 2, 10, 12) // Mar 10 local
+      const filters = { search: '', status: 'all' as const, dateRange: 'today_future' as const, services: [] }
+
+      for (const showHidden of [false, true]) {
+        const server = await findAllFlights(db, { startDate: '2026-03-10', includeHidden: showHidden })
+        // Same rows in, same rows out: the client filter over the unfiltered table matches the server filter.
+        const everything = await findAllFlights(db, { includeHidden: true })
+        const client = filterFlights(toFlights(everything), { ...filters, showHidden }, now)
+        expect(client.map((f) => Number(f.id)).sort((a, b) => a - b)).toEqual(ids(server))
+      }
+    })
+  })
+
+  describe('Departed hides from the next day (hiddenAtForStatusChange)', () => {
+    const open = { flight_status: 'arrived' as const, hidden_at: null, actual_departure_time: null }
+
+    it('to Departed: the start of the day after the actual departure day (board zone)', () => {
+      return withTz('America/Phoenix', () => {
+        // 2026-03-10T23:30 local = 2026-03-11T06:30Z -> hidden from Mar 11 00:00 local = 07:00Z
+        const at = hiddenAtForStatusChange(open, 'departed', '2026-03-11T06:30:00.000Z')
+        expect(at).toBe('2026-03-11T07:00:00.000Z')
+      })
+    })
+
+    it('without an actual departure it counts today: visible now, hidden from tomorrow', () => {
+      const now = new Date(2026, 2, 10, 15, 0)
+      expect(hiddenAtForStatusChange(open, 'departed', undefined, now)).toBe(
+        localNextDayStartIso('2026-03-10')
+      )
+      // an explicitly cleared actual departure also counts today
+      expect(
+        hiddenAtForStatusChange(
+          { ...open, actual_departure_time: '2026-03-01T18:00:00.000Z' },
+          'departed',
+          null,
+          now
+        )
+      ).toBe(localNextDayStartIso('2026-03-10'))
+    })
+
+    it('uses the stored actual departure when the save does not carry one', () => {
+      return withTz('America/Phoenix', () => {
+        const at = hiddenAtForStatusChange(
+          { ...open, actual_departure_time: '2026-03-10T18:00:00.000Z' },
+          'departed',
+          undefined
+        )
+        expect(at).toBe('2026-03-11T07:00:00.000Z')
+      })
+    })
+
+    it('leaves hidden_at alone when the status does not change or the flight is already hidden', () => {
+      expect(hiddenAtForStatusChange({ ...open, flight_status: 'departed' }, 'departed', undefined)).toBeUndefined()
+      expect(
+        hiddenAtForStatusChange({ ...open, hidden_at: '2026-03-10T18:00:00.000Z' }, 'departed', undefined)
+      ).toBeUndefined()
+      expect(hiddenAtForStatusChange(open, 'scheduled', undefined)).toBeUndefined()
+    })
+
+    it('away from Departed (a status correction) clears hidden_at', () => {
+      expect(
+        hiddenAtForStatusChange({ ...open, flight_status: 'departed', hidden_at: '2026-03-11T07:00:00.000Z' }, 'arrived', undefined)
+      ).toBeNull()
+    })
+
+    it('stored with the status change, a flight departed yesterday is off the default board, one departed today is on it', () => {
+      return withTz('America/Phoenix', async () => {
+        const yesterday = new Date(Date.now() - 24 * 3_600_000).toISOString()
+        const gone = await makeFlight(db, { flight_status: 'arrived' })
+        await updateFlight(db, gone.id, {
+          flight_status: 'departed',
+          actual_departure_time: yesterday,
+          hidden_at: hiddenAtForStatusChange({ ...open }, 'departed', yesterday),
+        })
+        const today = await makeFlight(db, { flight_status: 'arrived' })
+        const updated = await updateFlight(db, today.id, {
+          flight_status: 'departed',
+          hidden_at: hiddenAtForStatusChange({ ...open }, 'departed', undefined),
+        })
+        expect(updated.hidden_at).not.toBeNull()
+        expect(ids(await findAllFlights(db))).toContain(today.id)
+        expect(ids(await findAllFlights(db))).not.toContain(gone.id)
+        expect(ids(await findAllFlights(db, { includeHidden: true }))).toContain(gone.id)
+      })
+    })
+  })
+
+  describe('setFlightHidden', () => {
+    it('Hide stores now(), Unhide clears it', async () => {
+      const flight = await makeFlight(db)
+      const before = Date.now()
+      const hidden = await setFlightHidden(db, flight.id, true)
+      expect(new Date(hidden.hidden_at as string).getTime()).toBeGreaterThanOrEqual(before - 1000)
+      expect(ids(await findAllFlights(db))).not.toContain(flight.id)
+
+      const shown = await setFlightHidden(db, flight.id, false)
+      expect(shown.hidden_at).toBeNull()
+      expect(ids(await findAllFlights(db))).toContain(flight.id)
+    })
+
+    it('respects expectedModifiedAt: a stale card gets ConcurrencyConflictError and the flight stays visible', async () => {
+      const flight = await makeFlight(db)
+      const stale = flight.modified_at
+      await updateFlight(db, flight.id, { notes: 'someone else edited' })
+
+      await expect(setFlightHidden(db, flight.id, true, stale)).rejects.toBeInstanceOf(ConcurrencyConflictError)
+      expect((await findFlightById(db, flight.id))?.hidden_at).toBeNull()
+    })
+
+    it('a general edit through the request mapper never writes hidden_at', async () => {
+      const flight = await makeFlight(db)
+      await setFlightHidden(db, flight.id, true)
+      const component = apiFlightToComponentFlight({
+        id: flight.id,
+        aircraft: flight.tail_number,
+        hidden_at: 'x',
+        created_at: flight.created_at,
+      })
+      expect(component.hiddenAt).toBe('x')
+      expect('hidden_at' in componentFlightToApiRequest(component)).toBe(false)
+    })
   })
 })

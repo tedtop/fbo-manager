@@ -33,19 +33,24 @@ export default function FlightOperationsPage() {
   const [filters, setFilters] = useState<FlightFilters>({
     search: '',
     status: 'all',
-    dateRange: 'today',
-    services: []
+    dateRange: 'today_future',
+    services: [],
+    showHidden: false
   })
 
   // Calendar view loads exactly the visible (local, Sunday-start) week, so navigating weeks always
   // fetches that week's flights. endDate is the last day of the week (inclusive). The list views load a
-  // bounded window (listFetchWindow); choosing "All Dates" opts in to the unbounded fetch (its own query key).
-  const dateParams =
-    view === 'calendar'
+  // bounded window (listFetchWindow, open-ended for Today + Future); choosing "All Dates" opts in to the
+  // unbounded fetch (its own query key). Show hidden is part of the query, so the server returns hidden
+  // flights only when asked.
+  const dateParams = {
+    ...(view === 'calendar'
       ? weekDateParams(new Date(), weekOffset)
       : filters.dateRange === 'all'
         ? undefined
-        : listFetchWindow(new Date())
+        : listFetchWindow(new Date(), filters.dateRange)),
+    includeHidden: filters.showHidden
+  }
 
   const {
     flights,
@@ -57,6 +62,7 @@ export default function FlightOperationsPage() {
     createFlight,
     updateFlight,
     deleteFlight,
+    setFlightHidden,
     forgetFlight
   } = useFlights(dateParams)
   const { createTransaction } = useTransactions()
@@ -125,6 +131,27 @@ export default function FlightOperationsPage() {
       if (err instanceof ConcurrencyConflictError) throw err
       toast({
         title: "Couldn't update flight",
+        description: describeError(err),
+        variant: 'destructive'
+      })
+      throw err
+    }
+  }
+
+  // Hide / Unhide from the card. Rethrows like handleEditFlight: a concurrency conflict is reported by the
+  // card itself, anything else gets a toast here.
+  const handleSetHidden = async (
+    flight: Flight,
+    hidden: boolean,
+    expectedModifiedAt?: string
+  ) => {
+    try {
+      await setFlightHidden(flight.id, hidden, expectedModifiedAt)
+      toast({ title: hidden ? 'Flight hidden' : 'Flight unhidden' })
+    } catch (err) {
+      if (err instanceof ConcurrencyConflictError) throw err
+      toast({
+        title: hidden ? "Couldn't hide flight" : "Couldn't unhide flight",
         description: describeError(err),
         variant: 'destructive'
       })
@@ -219,6 +246,12 @@ export default function FlightOperationsPage() {
           flights={flights}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
+          onHideFlight={(flight, expectedModifiedAt) =>
+            handleSetHidden(flight, true, expectedModifiedAt)
+          }
+          onUnhideFlight={(flight, expectedModifiedAt) =>
+            handleSetHidden(flight, false, expectedModifiedAt)
+          }
           onDeleteExited={forgetFlight}
           onOrderFuel={handleOrderFuel}
           loading={boardLoading}

@@ -31,6 +31,7 @@ export interface FlightRow {
   created_by_department?: string | null
   created_at: string
   modified_at?: string | null
+  hidden_at?: string | null
 }
 
 // Component types (from v0)
@@ -98,6 +99,9 @@ export interface Flight {
     department: string
   }
 
+  // B43b: hidden once this instant has passed; unset = never hidden (see isFlightHidden in board-logic)
+  hiddenAt?: string // hidden_at
+
   // Timestamps
   createdAt: string // created_at
   updatedAt: string // modified_at
@@ -106,8 +110,11 @@ export interface Flight {
 export interface FlightFilters {
   search: string
   status: FlightStatus | 'all'
-  dateRange: 'today' | 'tomorrow' | 'week' | 'all'
+  // today_future: every flight whose stay ends today or later, no upper bound (the default)
+  dateRange: 'today' | 'today_future' | 'tomorrow' | 'week' | 'all'
   services: string[]
+  // B43b: list hidden flights too (off by default)
+  showHidden: boolean
 }
 
 // Map DB flight_status to component status
@@ -218,6 +225,7 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     notes: (apiFlight as any).notes || undefined,
     fuelOrderNotes: apiFlight.fuel_order_notes || undefined,
     locationId: apiFlight.location_id ?? undefined,
+    hiddenAt: apiFlight.hidden_at ?? undefined,
     duration, // Calculated from arrival and departure times
     source: ((apiFlight as any).created_by_source as FlightSource) || 'qt',
     createdBy,
@@ -304,6 +312,8 @@ export function componentFlightToApiRequest(
     result.created_by_source = flight.source
   }
 
+  // hidden_at is deliberately not mapped: a general edit spreads the whole Flight, and must never write the
+  // hide flag. Hide/Unhide and the Departed auto-hide go through setFlightHidden / updateFlight in the repo.
   // call_sign is intentionally never generated: the aircraft is identified by its tail number
   // (tail_number). A call sign is only stored when staff enter one for a flight that uses one.
   // Filter out any undefined/null values (except cleared times)

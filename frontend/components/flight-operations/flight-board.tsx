@@ -25,6 +25,15 @@ interface FlightBoardProps {
   ) => void | Promise<void>
   // Should reject if the delete fails; the card then comes back and an error toast shows.
   onDeleteFlight: (id: string) => void | Promise<void>
+  // Hide / Unhide button on a card; same concurrency guard as edits (expectedModifiedAt).
+  onHideFlight?: (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => void | Promise<void>
+  onUnhideFlight?: (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => void | Promise<void>
   // Called once a deleted card has finished its exit animation and can leave the list.
   onDeleteExited?: (id: string) => void
   onOrderFuel?: (flight: Flight) => void
@@ -48,6 +57,8 @@ export function FlightBoard({
   flights,
   onEditFlight,
   onDeleteFlight,
+  onHideFlight,
+  onUnhideFlight,
   onDeleteExited,
   onOrderFuel,
   filters,
@@ -198,6 +209,8 @@ export function FlightBoard({
               theme={theme}
               onEditFlight={onEditFlight}
               onDeleteFlight={handleDelete}
+              onHideFlight={onHideFlight}
+              onUnhideFlight={onUnhideFlight}
               deletePhases={deletePhases}
               loading={loading}
               empty={col.empty}

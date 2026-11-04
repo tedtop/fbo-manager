@@ -136,19 +136,26 @@ describe('Flight board', () => {
       cy.contains(tailDelayed).should('exist')
     })
 
-    // B13 / F4: the date range filters by LOCAL day; the list fetch is bounded (-1..+14 days) until "All Dates".
-    it('default view is today only: tomorrow and 30-days-out flights are not shown', () => {
-      for (const t of [tailTurn, tailDep, tailDelayed, tailArr]) cy.contains(t).should('exist')
-      cy.contains(tailTomorrow).should('not.exist')
-      cy.contains(tailMonth).should('not.exist')
+    // B13 / F4: the date range filters by LOCAL day; the list fetch is bounded (-1..+14 days) except for
+    // Today + Future (no upper bound) and "All Dates".
+    // B43b: the default is Today + Future: every flight whose stay ends today or later, however far out.
+    it('default view is Today + Future: today, tomorrow and far-out flights are shown, past ones are not', () => {
+      for (const t of [tailTurn, tailDep, tailDelayed, tailArr, tailTomorrow, tailMonth, tailNext, tailFar]) {
+        cy.contains(t).should('exist')
+      }
+      cy.contains(tailPrev).should('not.exist') // left a week ago
+      openFilters()
+      cy.contains('label', 'Date Range').parent().find('[role="combobox"]').should('have.text', 'Today + Future')
     })
 
-    it('Tomorrow shows only tomorrow\'s flights', () => {
+    // B43: the plane that arrived and has no departure yet (tailArr) stays on the ramp, so it is on tomorrow too.
+    it('Tomorrow shows tomorrow\'s flights and the aircraft still on the ramp', () => {
       openFilters()
       filterSelect('Date Range', 'Tomorrow')
       cy.get('body').type('{esc}')
       cy.contains(tailTomorrow).should('exist')
-      for (const t of [tailTurn, tailDep, tailDelayed, tailArr, tailMonth]) cy.contains(t).should('not.exist')
+      cy.contains(tailArr).should('exist')
+      for (const t of [tailTurn, tailDep, tailDelayed, tailMonth]) cy.contains(t).should('not.exist')
     })
 
     it('Today shows only today\'s flights', () => {
@@ -162,8 +169,9 @@ describe('Flight board', () => {
     })
 
     it('All Dates opts in to the unbounded fetch and includes a flight 30 days out', () => {
-      cy.contains(tailMonth).should('not.exist')
       openFilters()
+      filterSelect('Date Range', 'Today') // bounded by the day (and the -1..+14 day fetch window)
+      cy.contains(tailMonth).should('not.exist')
       filterSelect('Date Range', 'All Dates')
       cy.get('body').type('{esc}')
       cy.contains(tailMonth, { timeout: 15_000 }).should('exist')

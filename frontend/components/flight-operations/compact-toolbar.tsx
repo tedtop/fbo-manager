@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Popover,
   PopoverContent,
@@ -91,17 +92,22 @@ export function CompactToolbar({
     onFiltersChange({
       search: '',
       status: 'all',
-      dateRange: 'today',
-      services: []
+      dateRange: 'today_future',
+      services: [],
+      showHidden: false
     })
   }
 
   const hasActiveFilters =
-    filters.search || filters.status !== 'all' || filters.services.length > 0
+    filters.search ||
+    filters.status !== 'all' ||
+    filters.services.length > 0 ||
+    filters.showHidden
   const activeFilterCount = [
     filters.search ? 1 : 0,
     filters.status !== 'all' ? 1 : 0,
-    filters.services.length
+    filters.services.length,
+    filters.showHidden ? 1 : 0
   ].reduce((a, b) => a + b, 0)
 
   return (
@@ -243,6 +249,7 @@ export function CompactToolbar({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="today_future">Today + Future</SelectItem>
                       <SelectItem value="tomorrow">Tomorrow</SelectItem>
                       <SelectItem value="week">This Week</SelectItem>
                       <SelectItem value="all">All Dates</SelectItem>
@@ -270,6 +277,22 @@ export function CompactToolbar({
                       </Badge>
                     ))}
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <label
+                    htmlFor="show-hidden-flights"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Show hidden
+                  </label>
+                  <Switch
+                    id="show-hidden-flights"
+                    checked={filters.showHidden}
+                    onCheckedChange={(checked) =>
+                      onFiltersChange({ ...filters, showHidden: checked })
+                    }
+                  />
                 </div>
               </div>
             </div>

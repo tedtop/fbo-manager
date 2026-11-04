@@ -31,6 +31,8 @@ export interface FlightFilters {
   endDate?: string
   today?: boolean
   status?: string
+  // B43b: also return hidden flights (off by default).
+  includeHidden?: boolean
 }
 
 export async function findAllFlights(
@@ -46,7 +48,9 @@ export async function findAllFlights(
   // Range bounds are local calendar days converted to UTC instants: [local 00:00 of start, local 00:00 of
   // the day after end). B43 overlap rule: a flight matches when its stay overlaps the range, i.e. scheduled
   // arrival < rangeEnd AND (no departure OR departure >= rangeStart). A departure-only flight matches on its
-  // departure day only. A plane that arrived before the range is therefore still returned.
+  // departure day only. A plane that arrived before the range is therefore still returned. With only a
+  // startDate (no endDate) the range has no upper bound: "Today + Future" = every flight whose stay ends on
+  // or after that day. flightInRange in components/flight-operations/board-logic.ts applies the same rule.
   let rangeStart: string | undefined
   let rangeEnd: string | undefined
   if (filters?.today) {
@@ -70,6 +74,13 @@ export async function findAllFlights(
       rangeEnd ? `${DEP}.lt.${rangeEnd}` : undefined
     ].filter(Boolean)
     query = query.or(`and(${stay.join(',')}),and(${departureOnly.join(',')})`)
+  }
+
+  // B43b: a flight is hidden once its hidden_at has passed (a future hidden_at, set when a flight departs,
+  // keeps it visible until the day after). Same test as isFlightHidden in board-logic. A second `or` is
+  // ANDed with the range filter above.
+  if (!filters?.includeHidden) {
+    query = query.or(`hidden_at.is.null,hidden_at.gt.${new Date().toISOString()}`)
   }
 
   if (filters?.status) {
@@ -107,6 +118,31 @@ export async function createFlight(
   return data as FlightWithRelations
 }
 
+// B43b / D13: setting a flight to Departed hides it from the start of the day after its departure day (board
+// time zone), so it stays on the board for the departure day. The instant is stored in hidden_at, the same
+// column the Hide button writes (now()), so the board has one hidden test (see isFlightHidden in board-logic).
+// This returns the hidden_at to send together with a status change (undefined = leave it alone):
+//  - to Departed, not hidden yet: the start of the day after the actual departure day (else today); a flight
+//    already hidden by hand keeps its earlier hidden_at.
+//  - away from Departed (a status correction): null, so the flight is back on the board.
+// It is a pure function over the flight's current values (the hook takes them from the cached board, so a save
+// needs no extra read); updateFlight itself writes exactly what it is given.
+export function hiddenAtForStatusChange(
+  current: Pick<FlightRow, 'flight_status' | 'hidden_at' | 'actual_departure_time'>,
+  nextStatus: FlightRow['flight_status'],
+  nextActualDeparture: string | null | undefined,
+  now: Date = new Date()
+): string | null | undefined {
+  if (current.flight_status === nextStatus) return undefined
+  if (nextStatus === 'departed') {
+    if (current.hidden_at) return undefined
+    // undefined = the save does not touch the actual departure; null = it clears it (then today counts)
+    const departure = nextActualDeparture === undefined ? current.actual_departure_time : nextActualDeparture
+    return localNextDayStartIso(formatLocalDate(departure ? new Date(departure) : now))
+  }
+  return current.flight_status === 'departed' ? null : undefined
+}
+
 export async function updateFlight(
   db: SupabaseClient<Database>,
   id: number,
@@ -125,6 +161,16 @@ export async function updateFlight(
     throw error
   }
   return data as FlightWithRelations
+}
+
+// Hide button / Unhide: hidden_at = now() hides the flight immediately, null brings it back.
+export function setFlightHidden(
+  db: SupabaseClient<Database>,
+  id: number,
+  hidden: boolean,
+  expectedModifiedAt?: string
+): Promise<FlightWithRelations> {
+  return updateFlight(db, id, { hidden_at: hidden ? new Date().toISOString() : null }, expectedModifiedAt)
 }
 
 // Soft delete: the row stays in the table with `deleted_at` set so it can be looked up later.

@@ -3,7 +3,7 @@ import { createE2EDbClient } from './support/db'
 import { uniqueValue } from './support/unique'
 
 // B18 (F11): loading / empty / error states of the flight board.
-//   - empty day: plain "No ... today" copy, no Clear filters action
+//   - empty day: plain "No ... today or later" copy, no Clear filters action
 //   - filters that match nothing: the message names the filters and Clear filters works
 //   - a failed flight fetch: error state with Retry that recovers
 //   - a week change keeps the previous flights on screen (no skeleton flash)
@@ -73,7 +73,7 @@ test.describe('Flight board states', () => {
     })
     await page.goto('/')
 
-    await expect(page.getByText('No flights today')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('No flights today or later')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('No arrivals', { exact: true })).toBeVisible()
     await expect(page.getByText('No departures', { exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Arrivals' })).toBeVisible()

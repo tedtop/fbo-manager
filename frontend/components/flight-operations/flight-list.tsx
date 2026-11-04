@@ -26,6 +26,14 @@ interface FlightListProps {
     expectedModifiedAt?: string
   ) => void | Promise<void>
   onDeleteFlight: (id: string) => void
+  onHideFlight?: (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => void | Promise<void>
+  onUnhideFlight?: (
+    flight: Flight,
+    expectedModifiedAt?: string
+  ) => void | Promise<void>
   deletePhases?: Record<string, FlightDeletePhase>
   onOrderFuel?: (flight: Flight) => void
   linkedFlightIds?: Set<string>
@@ -42,6 +50,8 @@ export function FlightList({
   empty,
   onEditFlight,
   onDeleteFlight,
+  onHideFlight,
+  onUnhideFlight,
   deletePhases,
   onOrderFuel,
   linkedFlightIds,
@@ -110,6 +120,8 @@ export function FlightList({
                   theme={theme}
                   onEdit={onEditFlight}
                   onDelete={onDeleteFlight}
+                  onHide={onHideFlight}
+                  onUnhide={onUnhideFlight}
                   onOrderFuel={onOrderFuel}
                   isLinked={isLinked}
                   linkColor={linkColor}

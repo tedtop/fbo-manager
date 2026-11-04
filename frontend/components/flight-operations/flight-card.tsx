@@ -27,7 +27,7 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { flightradarUrl, type LinkColor } from './board-logic'
+import { flightradarUrl, isFlightHidden, type LinkColor } from './board-logic'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
 import { useSyncedDraft } from '@/hooks/use-synced-draft'
 import { useToast } from '@/hooks/use-toast'
@@ -40,6 +40,8 @@ import {
   Clock,
   Coffee as CoffeeIcon,
   Droplet,
+  Eye,
+  EyeOff,
   Fuel as FuelIcon,
   MapPin,
   Pencil,
@@ -94,6 +96,9 @@ interface FlightCardProps {
   theme: 'dark' | 'light'
   onEdit: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
   onDelete: (id: string) => void
+  // Hide / Unhide button (B43b); same compare-and-swap guard as a status change. Omit to hide the button.
+  onHide?: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
+  onUnhide?: (flight: Flight, expectedModifiedAt?: string) => void | Promise<void>
   onOrderFuel?: (flight: Flight) => void
   isLinked?: boolean
   linkColor?: LinkColor
@@ -201,6 +206,8 @@ export function FlightCard({
   theme,
   onEdit,
   onDelete,
+  onHide,
+  onUnhide,
   onOrderFuel,
   isLinked,
   linkColor,
@@ -231,6 +238,8 @@ export function FlightCard({
   const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
 
   const status = statusConfig[flight.status]
+  // Only on the board while "Show hidden" is on: the card is muted, marked Hidden and offers Unhide.
+  const isHidden = isFlightHidden(flight, new Date())
   const isArrival = column
     ? column === 'arrival'
     : flight.type === 'arrival' ||
@@ -287,6 +296,20 @@ export function FlightCard({
     })
   }
 
+  const toggleHidden = () => {
+    const handler = isHidden ? onUnhide : onHide
+    void Promise.resolve(handler?.(flight, flight.updatedAt)).catch((err) => {
+      // Other failures are toasted by the page handler; a conflict is reported here, as for status changes.
+      if (err instanceof ConcurrencyConflictError) {
+        toast({
+          title: 'Flight was changed by someone else',
+          description: `The flight was not ${isHidden ? 'unhidden' : 'hidden'}. Check the latest details and try again.`,
+          variant: 'destructive'
+        })
+      }
+    })
+  }
+
   const saveChanges = () => {
     // Failures are toasted by the page handler; swallow the rethrow so it isn't unhandled.
     void Promise.resolve(
@@ -323,8 +346,10 @@ export function FlightCard({
               isLinked && linkColor ? linkColor.ring : 'ring-primary/50'
             }`,
           deleteState && 'pointer-events-none',
-          deleteState === 'zapping' && 'animate-flight-zap'
+          deleteState === 'zapping' && 'animate-flight-zap',
+          isHidden && 'opacity-60'
         )}
+        data-hidden={isHidden || undefined}
         aria-busy={deleteState ? true : undefined}
         onMouseEnter={() => onHover?.(flight.id)}
         onMouseLeave={() => onHover?.(null)}
@@ -390,6 +415,14 @@ export function FlightCard({
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {isHidden && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-semibold px-1.5 py-0 text-muted-foreground"
+                >
+                  Hidden
+                </Badge>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Badge
@@ -490,7 +523,7 @@ export function FlightCard({
                   className="h-7 text-xs"
                 >
                   <FuelIcon className="w-3 h-3 mr-1" />
-                  Order Fuel
+                  Fuel Request
                 </Button>
               )}
             </div>
@@ -710,6 +743,21 @@ export function FlightCard({
               <Pencil className="w-3 h-3 mr-1" />
               Edit
             </Button>
+            {(isHidden ? onUnhide : onHide) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleHidden}
+                className="h-6 text-xs"
+              >
+                {isHidden ? (
+                  <Eye className="w-3 h-3 mr-1" />
+                ) : (
+                  <EyeOff className="w-3 h-3 mr-1" />
+                )}
+                {isHidden ? 'Unhide' : 'Hide'}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

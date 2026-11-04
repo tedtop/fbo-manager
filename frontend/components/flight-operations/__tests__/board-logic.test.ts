@@ -8,6 +8,7 @@ import {
   emptyStateMessage,
   filterFlights,
   hasActiveFilters,
+  isFlightHidden,
   LINK_COLORS,
   linkedFlightIds,
   listFetchWindow,
@@ -43,6 +44,7 @@ const noFilters: FlightFilters = {
   status: 'all',
   dateRange: 'all',
   services: [],
+  showHidden: false,
 }
 
 describe('partitionFlights', () => {
@@ -204,7 +206,7 @@ describe('filterFlights', () => {
   })
 
   it('combines search, status and services with AND', () => {
-    const f = { search: 'n', status: 'scheduled' as const, dateRange: 'all' as const, services: ['fuel'] }
+    const f = { search: 'n', status: 'scheduled' as const, dateRange: 'all' as const, services: ['fuel'], showHidden: false }
     expect(ids(filterFlights(flights, f))).toEqual(['a'])
   })
 })
@@ -452,6 +454,105 @@ describe('filterFlights stay overlap (B43)', () => {
   })
 })
 
+// B43b / D13: Today + Future is open-ended; hidden flights (hidden_at passed) leave the board unless Show hidden.
+describe('filterFlights Today + Future and hidden (B43b)', () => {
+  const ids = (list: Flight[]) => list.map((f) => f.id)
+  const tz = 'America/Phoenix'
+  const now = () => new Date(2026, 5, 10, 13, 30) // Wed Jun 10 local; local Jun 10 = [06-10T07:00Z, 06-11T07:00Z)
+  const run = (flights: Flight[], filters: Partial<FlightFilters>) =>
+    withTz(tz, () => ids(filterFlights(flights, { ...noFilters, dateRange: 'today_future', ...filters }, now())))
+  const stay = (id: string, arrivalTime?: string, departureTime?: string, extra: Partial<Flight> = {}) =>
+    makeFlight({ id, arrivalTime, departureTime, ...extra })
+
+  describe('Today + Future', () => {
+    it('keeps every flight whose stay ends today or later, with no upper bound', () => {
+      const flights = [
+        stay('leftYesterday', '2026-06-08T17:00:00Z', '2026-06-10T06:59:00Z'), // departed Jun 9 23:59 local
+        stay('leavesTodayStart', '2026-06-08T17:00:00Z', '2026-06-10T07:00:00Z'), // Jun 10 00:00 local
+        stay('today', '2026-06-10T17:00:00Z', '2026-06-10T19:00:00Z'),
+        stay('tomorrow', '2026-06-11T17:00:00Z', '2026-06-11T19:00:00Z'),
+        stay('farFuture', '2027-03-01T17:00:00Z', '2027-03-02T19:00:00Z'),
+        stay('arrivalOnly', '2026-06-01T17:00:00Z'),
+        stay('departureOnlyFuture', undefined, '2026-09-01T17:00:00Z'),
+        stay('departureOnlyPast', undefined, '2026-06-09T17:00:00Z'),
+      ]
+      expect(run(flights, {})).toEqual([
+        'leavesTodayStart', 'today', 'tomorrow', 'farFuture', 'arrivalOnly', 'departureOnlyFuture',
+      ])
+    })
+    it('is a superset of Today and Tomorrow for the same flights', () => {
+      const flights = [
+        stay('today', '2026-06-10T17:00:00Z', '2026-06-10T19:00:00Z'),
+        stay('tomorrow', '2026-06-11T17:00:00Z', '2026-06-11T19:00:00Z'),
+      ]
+      expect(run(flights, { dateRange: 'today' })).toEqual(['today'])
+      expect(run(flights, { dateRange: 'tomorrow' })).toEqual(['tomorrow'])
+      expect(run(flights, {})).toEqual(['today', 'tomorrow'])
+    })
+    it('dateRangeBounds starts at local midnight today and has no end', () => {
+      withTz(tz, () => {
+        const bounds = dateRangeBounds('today_future', now())
+        expect(bounds?.start.getTime()).toBe(new Date('2026-06-10T07:00:00Z').getTime())
+        expect(bounds?.end).toBeNull()
+      })
+    })
+    it('listFetchWindow has a start date but no end date', () => {
+      withTz(tz, () => {
+        expect(listFetchWindow(now(), 'today_future')).toEqual({ startDate: '2026-06-07' })
+        expect(listFetchWindow(now(), 'today')).toEqual({ startDate: '2026-06-07', endDate: '2026-06-24' })
+      })
+    })
+  })
+
+  describe('hidden', () => {
+    const visible = stay('visible', '2026-06-10T17:00:00Z', '2026-06-10T19:00:00Z')
+    const hiddenByHand = stay('hand', '2026-06-10T17:00:00Z', '2026-06-10T19:00:00Z', {
+      hiddenAt: '2026-06-10T18:00:00Z', // before "now" (Jun 10 20:30Z)
+    })
+    // Departed today: hidden_at is the start of tomorrow (local), still in the future
+    const departedToday = stay('departedToday', '2026-06-10T10:00:00Z', '2026-06-10T15:00:00Z', {
+      status: 'departed',
+      hiddenAt: '2026-06-11T07:00:00Z',
+    })
+    // Departed yesterday: hidden_at is the start of today (local), already passed
+    const departedYesterday = stay('departedYesterday', '2026-06-09T10:00:00Z', '2026-06-10T15:00:00Z', {
+      status: 'departed',
+      hiddenAt: '2026-06-10T07:00:00Z',
+    })
+    const all = [visible, hiddenByHand, departedToday, departedYesterday]
+
+    it('isFlightHidden is true only once hidden_at has passed', () => {
+      expect(isFlightHidden(visible, now())).toBe(false)
+      expect(isFlightHidden(hiddenByHand, now())).toBe(true)
+      expect(isFlightHidden(departedToday, now())).toBe(false)
+      expect(isFlightHidden(departedYesterday, now())).toBe(true)
+      // exactly at hidden_at counts as hidden (matches the repo's hidden_at.gt.now keep-rule)
+      expect(isFlightHidden({ hiddenAt: '2026-06-10T20:30:00Z' }, new Date('2026-06-10T20:30:00Z'))).toBe(true)
+    })
+    it('hides flights by default; a departed flight stays on its departure day and drops off the next', () => {
+      expect(run(all, {})).toEqual(['visible', 'departedToday'])
+      const tomorrow = () => new Date(2026, 5, 11, 9, 0)
+      withTz(tz, () => {
+        expect(ids(filterFlights(all, { ...noFilters, dateRange: 'all' }, tomorrow()))).toEqual(['visible'])
+      })
+    })
+    it('Show hidden lists every flight, hidden ones included', () => {
+      expect(run(all, { showHidden: true })).toEqual(['visible', 'hand', 'departedToday', 'departedYesterday'])
+    })
+    it('hidden is applied together with the other filters', () => {
+      expect(run(all, { showHidden: true, status: 'departed' })).toEqual(['departedToday', 'departedYesterday'])
+      expect(run(all, { status: 'departed' })).toEqual(['departedToday'])
+    })
+    it('Show hidden counts as an active filter and is cleared by clearActiveFilters', () => {
+      const f: FlightFilters = { ...noFilters, dateRange: 'today_future', showHidden: true }
+      expect(activeFilterParts(f)).toEqual(['showing hidden'])
+      expect(hasActiveFilters(f)).toBe(true)
+      expect(clearActiveFilters(f).showHidden).toBe(false)
+      expect(hasActiveFilters(clearActiveFilters(f))).toBe(false)
+    })
+  })
+})
+
 describe('dateRangeBounds / listFetchWindow', () => {
   it('all has no bounds', () => {
     expect(dateRangeBounds('all', new Date())).toBeNull()
@@ -484,7 +585,7 @@ describe('dateRangeBounds / listFetchWindow', () => {
         const { startDate, endDate } = listFetchWindow(now)
         const week = weekDateParams(now, 0)
         expect(startDate <= week.startDate).toBe(true)
-        expect(endDate >= week.endDate).toBe(true)
+        expect((endDate as string) >= week.endDate).toBe(true)
       }
     })
   })
@@ -672,7 +773,7 @@ describe('assignLinkColors', () => {
 })
 
 describe('empty state (B18)', () => {
-  const today: FlightFilters = { search: '', status: 'all', dateRange: 'today', services: [] }
+  const today: FlightFilters = { search: '', status: 'all', dateRange: 'today', services: [], showHidden: false }
 
   it('lists each active filter, status first, then search, then services', () => {
     expect(activeFilterParts(today)).toEqual([])
@@ -696,8 +797,9 @@ describe('empty state (B18)', () => {
         status: 'arrived',
         dateRange: 'tomorrow',
         services: ['fuel'],
+        showHidden: true,
       })
-    ).toEqual({ search: '', status: 'all', dateRange: 'tomorrow', services: [] })
+    ).toEqual({ search: '', status: 'all', dateRange: 'tomorrow', services: [], showHidden: false })
   })
 
   it('explains the filters when they emptied a list that has flights for the day', () => {
@@ -723,6 +825,9 @@ describe('empty state (B18)', () => {
     )
     expect(emptyStateMessage('flights', { ...today, dateRange: 'all' }, 0).title).toBe(
       'No flights found'
+    )
+    expect(emptyStateMessage('flights', { ...today, dateRange: 'today_future' }, 0).title).toBe(
+      'No flights today or later'
     )
   })
 })

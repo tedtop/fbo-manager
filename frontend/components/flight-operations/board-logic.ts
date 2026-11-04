@@ -4,15 +4,18 @@ import type { Flight, FlightFilters } from './types'
 // Pure board logic, extracted verbatim from flight-board.tsx and app/page.tsx (no behavior change).
 
 // Local-day [start, end) of the toolbar date range, or null for 'all'. today/tomorrow are local calendar
-// days; week is the Sunday-start local week containing `now` (same as weekRange).
+// days; week is the Sunday-start local week containing `now` (same as weekRange). today_future starts at
+// local midnight today and has no end (end: null).
 export function dateRangeBounds(
   dateRange: FlightFilters['dateRange'],
   now: Date
-): { start: Date; end: Date } | null {
+): { start: Date; end: Date | null } | null {
   const today = formatLocalDate(now)
   switch (dateRange) {
     case 'today':
       return { start: parseLocalDate(today), end: parseLocalDate(addLocalDays(today, 1)) }
+    case 'today_future':
+      return { start: parseLocalDate(today), end: null }
     case 'tomorrow':
       return {
         start: parseLocalDate(addLocalDays(today, 1)),
@@ -29,13 +32,14 @@ export function dateRangeBounds(
 // arrival < end AND (no departure OR departure >= start). A departure-only flight (no arrival) matches on
 // its departure day only. The repo's findAll applies the same rule server-side, so the row is fetched even
 // when the plane arrived before the fetch window. Actual times are used only when neither scheduled time
-// is set (then either one inside the range matches).
-function flightInRange(flight: Flight, start: Date, end: Date): boolean {
+// is set (then either one inside the range matches). With no end (Today + Future) the upper bounds drop out:
+// every flight whose stay ends at or after `start` matches.
+function flightInRange(flight: Flight, start: Date, end: Date | null): boolean {
   const ms = (t?: string) => (t ? new Date(toInstantIso(t)).getTime() : null)
   const arrival = ms(flight.arrivalTime)
   const departure = ms(flight.departureTime)
   const lo = start.getTime()
-  const hi = end.getTime()
+  const hi = end ? end.getTime() : Number.POSITIVE_INFINITY
 
   if (arrival !== null) return arrival < hi && (departure === null || departure >= lo)
   if (departure !== null) return departure >= lo && departure < hi
@@ -46,17 +50,27 @@ function flightInRange(flight: Flight, start: Date, end: Date): boolean {
   })
 }
 
+// B43b / D13: a flight is hidden once its hidden_at has passed. The Hide button stores now(); setting a flight
+// to Departed stores the start of the day after its departure day (flights.repo updateFlight), so it stays
+// visible on the departure day and drops off the next. findAllFlights applies the same test server-side.
+export function isFlightHidden(flight: Pick<Flight, 'hiddenAt'>, now: Date): boolean {
+  return !!flight.hiddenAt && new Date(flight.hiddenAt).getTime() <= now.getTime()
+}
+
 // Default list fetch window: local yesterday .. today+14, widened so the current week (used by the
-// 'week' filter) is always inside it. Dates are local "YYYY-MM-DD", both inclusive.
-export function listFetchWindow(now: Date): { startDate: string; endDate: string } {
+// 'week' filter) is always inside it. Dates are local "YYYY-MM-DD", both inclusive. For Today + Future
+// there is no end date (the fetch is unbounded above, matching the filter), so endDate is omitted.
+export function listFetchWindow(
+  now: Date,
+  dateRange?: FlightFilters['dateRange']
+): { startDate: string; endDate?: string } {
   const today = formatLocalDate(now)
   const week = weekDateParams(now, 0)
   const yesterday = addLocalDays(today, -1)
   const plus14 = addLocalDays(today, 14)
-  return {
-    startDate: week.startDate < yesterday ? week.startDate : yesterday,
-    endDate: week.endDate > plus14 ? week.endDate : plus14
-  }
+  const startDate = week.startDate < yesterday ? week.startDate : yesterday
+  if (dateRange === 'today_future') return { startDate }
+  return { startDate, endDate: week.endDate > plus14 ? week.endDate : plus14 }
 }
 
 export function filterFlights(
@@ -67,6 +81,7 @@ export function filterFlights(
   const bounds = dateRangeBounds(filters.dateRange, now)
   return flights.filter((flight) => {
     if (bounds && !flightInRange(flight, bounds.start, bounds.end)) return false
+    if (!filters.showHidden && isFlightHidden(flight, now)) return false
 
     // Filter by search
     if (filters.search) {
@@ -179,7 +194,7 @@ export function weekDateParams(
   return { startDate, endDate: addLocalDays(startDate, 6) }
 }
 
-// B18: empty-state copy. "Active filters" are the toolbar's search, status and services; the date range is
+// B18: empty-state copy. "Active filters" are the toolbar's search, status, services and Show hidden; the date range is
 // not one (it always has a value), so it only shapes the wording of a truly empty day/week.
 const titleCase = (value: string) =>
   value
@@ -195,6 +210,7 @@ export function activeFilterParts(filters: FlightFilters): string[] {
   if (filters.services.length > 0) {
     parts.push(`services = ${filters.services.map(titleCase).join(', ')}`)
   }
+  if (filters.showHidden) parts.push('showing hidden')
   return parts
 }
 
@@ -202,13 +218,14 @@ export function hasActiveFilters(filters: FlightFilters): boolean {
   return activeFilterParts(filters).length > 0
 }
 
-// Resets search, status and services but keeps the chosen date range.
+// Resets search, status, services and Show hidden but keeps the chosen date range.
 export function clearActiveFilters(filters: FlightFilters): FlightFilters {
-  return { ...filters, search: '', status: 'all', services: [] }
+  return { ...filters, search: '', status: 'all', services: [], showHidden: false }
 }
 
 const RANGE_PHRASE: Record<FlightFilters['dateRange'], string> = {
   today: 'today',
+  today_future: 'today or later',
   tomorrow: 'tomorrow',
   week: 'this week',
   all: 'found'
