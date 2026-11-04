@@ -5,6 +5,8 @@
 @source "../../apps/web/components/**/*.{js,ts,jsx,tsx}";
 @source "../components/**/*.{js,ts,jsx,tsx}";
 @source "../forms/**/*.{js,ts,jsx,tsx}";
+@source not "../.next";
+@source not "../.next-e2e";
 
 @custom-variant dark (&:is(.dark *));
 
