@@ -94,8 +94,8 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('#arrivalTime').type('14:30')
     cy.pickAirport('origin', 'KTEB')
     cy.pickAirport('destination', 'KASE')
-    cy.get('#fuel').click()
-    cy.get('#catering').click()
+    cy.get('button[data-service-key="fuel"]').click()
+    cy.get('button[data-service-key="catering"]').click()
     submit()
     cy.contains('h2', 'Add New Flight').should('not.exist')
 
@@ -135,7 +135,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('#quickTurn').should('have.attr', 'aria-checked', 'false') // editing departure unchecks QT
     cy.pickAirport('origin', 'KBOS')
     cy.pickAirport('destination', 'KMIA')
-    cy.get('#hangar').click()
+    cy.get('button[data-service-key="hangar"]').click()
     submit()
     cy.contains('h2', 'Add New Flight').should('not.exist')
 

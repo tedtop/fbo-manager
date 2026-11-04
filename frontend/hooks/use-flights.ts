@@ -5,11 +5,15 @@ import {
   createFlight as createFlightRepo,
   deleteFlight as deleteFlightRepo,
   findAllFlights,
+  findFlightById,
   hiddenAtForStatusChange,
+  serviceKeysFromRow,
   setFlightHidden,
   updateFlight as updateFlightRepo,
   type FlightFilters
 } from '@/repositories/flights.repo'
+import { setFlightServices } from '@/repositories/services.repo'
+import { describeError } from '@/lib/error-message'
 import {
   type Flight,
   apiFlightToComponentFlight,
@@ -47,7 +51,8 @@ function rowToFlight(row: any): Flight {
     destination: row.destination,
     contact_name: row.contact_name,
     contact_notes: row.contact_notes,
-    services: row.services,
+    // B26b: the junction (embedded flight_service) is the single source of the key array
+    services: serviceKeysFromRow(row),
     fuel_order_notes: row.fuel_order_notes,
     location_id: row.location_id,
     passenger_count: row.passenger_count,
@@ -110,6 +115,21 @@ export function useFlights(params?: {
   if (query.error) lastError.current = query.error
   else if (query.isSuccess) lastError.current = null
 
+  // Writes the services through the RPC, then re-reads the flight (fresh modified_at + embedded services).
+  const saveServices = async (flightId: number, keys: string[], failureTitle: string) => {
+    try {
+      await setFlightServices(db, flightId, keys)
+    } catch (err) {
+      // The flight row was already written, so the board must refresh even though the mutation fails. (A plain
+      // onSettled invalidate would also refetch after a refused compare-and-swap and clobber the stale card.)
+      void qc.invalidateQueries({ queryKey: flightKeys.all })
+      throw new Error(`${failureTitle}: ${describeError(err)}`)
+    }
+    const fresh = await findFlightById(db, flightId)
+    if (!fresh) throw new Error(`${failureTitle}: the flight could not be reloaded`)
+    return fresh
+  }
+
   const createMutation = useMutation({
     mutationFn: async (flight: Partial<Flight>) => {
       const requestData = componentFlightToApiRequest(flight)
@@ -126,14 +146,19 @@ export function useFlights(params?: {
         destination: requestData.destination ?? '',
         contact_name: requestData.contact_name ?? '',
         contact_notes: requestData.contact_notes ?? '',
-        services: requestData.services ?? [],
+        // Services are written by set_flight_services below (junction + the legacy column in one transaction)
+        services: [],
         fuel_order_notes: requestData.fuel_order_notes ?? '',
         location_id: requestData.location_id,
         passenger_count: requestData.passenger_count,
         notes: requestData.notes ?? '',
         created_by_source: requestData.created_by_source ?? 'line-department'
       })
-      return rowToFlight(row)
+      const keys: string[] = requestData.services ?? []
+      if (keys.length === 0) return rowToFlight(row)
+      // Create is two steps (insert, then the idempotent RPC). A failure here leaves the flight created
+      // without its services, so say so; the board refreshes (saveServices invalidates) and shows the new flight.
+      return rowToFlight(await saveServices(Number(row.id), keys, 'Flight created, but its services were not saved'))
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })
@@ -162,7 +187,6 @@ export function useFlights(params?: {
       if (requestData.destination !== undefined) dbUpdates.destination = requestData.destination
       if (requestData.contact_name !== undefined) dbUpdates.contact_name = requestData.contact_name
       if (requestData.contact_notes !== undefined) dbUpdates.contact_notes = requestData.contact_notes
-      if (requestData.services !== undefined) dbUpdates.services = requestData.services
       if (requestData.fuel_order_notes !== undefined) dbUpdates.fuel_order_notes = requestData.fuel_order_notes
       if (requestData.location_id !== undefined) dbUpdates.location_id = requestData.location_id
       if (requestData.passenger_count !== undefined) dbUpdates.passenger_count = requestData.passenger_count
@@ -189,8 +213,15 @@ export function useFlights(params?: {
         if (hiddenAt !== undefined) dbUpdates.hidden_at = hiddenAt
       }
 
+      // A services-only edit still goes through the compare-and-swap: touching modified_at is a no-op write
+      // (the trigger sets the real value) that gives the guarded update something to write.
+      const keys: string[] | undefined = requestData.services
+      if (keys !== undefined && Object.keys(dbUpdates).length === 0) dbUpdates.modified_at = new Date().toISOString()
       const row = await updateFlightRepo(db, Number(id), dbUpdates, expectedModifiedAt)
-      return rowToFlight(row)
+      if (keys === undefined) return rowToFlight(row)
+      // The RPC bumps modified_at again, so the flight is re-read afterwards: the caller (and the board)
+      // must see the post-RPC modified_at or the next edit's compare-and-swap would report a false conflict.
+      return rowToFlight(await saveServices(Number(id), keys, 'Flight updated, but its services were not saved'))
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: flightKeys.all })
   })

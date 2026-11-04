@@ -36,11 +36,8 @@ import { ConcurrencyConflictError } from '@/lib/concurrency'
 import {
   AlertCircle,
   ArrowLeftRight,
-  Car,
   Check,
   Clock,
-  Coffee as CoffeeIcon,
-  Droplet,
   Eye,
   EyeOff,
   Fuel as FuelIcon,
@@ -48,17 +45,13 @@ import {
   Pencil,
   Plane,
   Plus,
-  Snowflake,
   Trash2,
   User,
   Users,
-  UtensilsCrossed,
-  Warehouse,
-  Wind,
-  X,
-  Zap
+  X
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ServicePill, ServicePillPicker } from './service-pill-picker'
 import { FlightCardSkeletonBody } from './flight-card-skeleton'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { Flight } from './types'
@@ -138,73 +131,6 @@ const statusConfig = {
   }
 }
 
-const serviceConfig = {
-  fuel: {
-    label: 'Fuel',
-    icon: FuelIcon,
-    color: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-  },
-  hangar: {
-    label: 'Hangar',
-    icon: Warehouse,
-    color: 'bg-violet-500/10 text-violet-500 border-violet-500/20'
-  },
-  catering: {
-    label: 'Catering',
-    icon: UtensilsCrossed,
-    color: 'bg-green-500/10 text-green-500 border-green-500/20'
-  },
-  gpu: {
-    label: 'GPU',
-    icon: Zap,
-    color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-  },
-  lav: {
-    label: 'Lav',
-    icon: Droplet,
-    color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20'
-  },
-  oxygen: {
-    label: 'Oxygen',
-    icon: Wind,
-    color: 'bg-purple-500/10 text-purple-500 border-purple-500/20'
-  },
-  courtesy_car: {
-    label: 'Courtesy Car',
-    icon: Car,
-    color: 'bg-orange-500/10 text-orange-500 border-orange-500/20'
-  },
-  rental_car: {
-    label: 'Rental Car',
-    icon: Car,
-    color: 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-  },
-  passengers: {
-    label: 'Passengers',
-    icon: Users,
-    color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
-  },
-  coffee: {
-    label: 'Coffee',
-    icon: CoffeeIcon,
-    color: 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-  },
-  ice: {
-    label: 'Ice',
-    icon: Snowflake,
-    color: 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-  },
-  dishes: {
-    label: 'Dishes',
-    icon: UtensilsCrossed,
-    color: 'bg-teal-500/10 text-teal-500 border-teal-500/20'
-  }
-}
-
-const availableServices = Object.keys(serviceConfig) as Array<
-  keyof typeof serviceConfig
->
-
 export function FlightCard({
   flight,
   theme,
@@ -273,14 +199,6 @@ export function FlightCard({
 
     return () => clearInterval(interval)
   }, [flight.arrivalTime, flight.departureTime, isArrival])
-
-  const toggleService = (service: string) => {
-    setLocalServices(
-      localServices.includes(service)
-        ? localServices.filter((s) => s !== service)
-        : [...localServices, service]
-    )
-  }
 
   // Status changes use the same compare-and-swap guard as the edit sheet: a card that is out of
   // date (someone else saved the flight since it was loaded) is refused instead of overwriting.
@@ -592,51 +510,15 @@ export function FlightCard({
                   </Button>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1">
-                {availableServices.map((serviceKey) => {
-                  const service = serviceConfig[serviceKey]
-                  const Icon = service.icon
-                  const isSelected = localServices.includes(serviceKey)
-                  return (
-                    <button
-                      key={serviceKey}
-                      onClick={() => toggleService(serviceKey)}
-                      className={cn(
-                        'flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border transition-all',
-                        isSelected
-                          ? service.color
-                          : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/40'
-                      )}
-                    >
-                      <Icon className="w-3 h-3" />
-                      {service.label}
-                    </button>
-                  )
-                })}
-              </div>
+              <ServicePillPicker value={localServices} onChange={setLocalServices} />
             </div>
           ) : (
             <>
               {localServices.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1.5 border-t border-border">
-                  {localServices.map((serviceKey) => {
-                    const service =
-                      serviceConfig[serviceKey as keyof typeof serviceConfig]
-                    if (!service) return null
-                    const Icon = service.icon
-                    return (
-                      <div
-                        key={serviceKey}
-                        className={cn(
-                          'flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border',
-                          service.color
-                        )}
-                      >
-                        <Icon className="w-3 h-3" />
-                        {service.label}
-                      </div>
-                    )
-                  })}
+                  {localServices.map((serviceKey) => (
+                    <ServicePill key={serviceKey} serviceKey={serviceKey} />
+                  ))}
                   <button
                     onClick={() => setIsEditingServices(true)}
                     className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"

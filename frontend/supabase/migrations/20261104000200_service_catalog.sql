@@ -134,8 +134,8 @@ create policy "flight_service_delete_authenticated" on flight_service for delete
 --    a plain key string leaves an existing row's quantity/notes/price_override untouched.
 --    SECURITY INVOKER so RLS applies. Bumps flight.modified_at (the edit-concurrency check
 --    reads it) and dual-writes flight.services as an array of keys until B26e drops it.
---    Unknown keys raise; an inactive key raises unless the flight already has it (so a retired
---    service never blocks editing an old flight). Returns the resulting keys (sort order).
+--    Unknown keys and inactive keys both raise (no exception for keys the flight already has;
+--    Ted, 2026-11-04: retired services need not stay on flights). Returns the resulting keys (sort order).
 -- ============================================================
 create or replace function set_flight_services(p_flight_id bigint, p_services jsonb)
 returns text[]
@@ -182,9 +182,7 @@ begin
   select string_agg(s.key, ', ' order by s.key) into v_bad
   from jsonb_each(v_map) j
   join service s on s.key = j.key
-  where not s.active
-    and not exists (select 1 from flight_service fs
-                    where fs.flight_id = p_flight_id and fs.service_id = s.id);
+  where not s.active;
   if v_bad is not null then
     raise exception 'inactive service key(s): %', v_bad using errcode = '22023';
   end if;

@@ -118,7 +118,7 @@ test.describe('Flight edit, status change, delete', () => {
     await pickAirport(page, 'destination', 'KASE')
     await page.locator('#contactName').fill('Edited Contact')
     await page.locator('#notes').fill('edited by e2e')
-    await page.getByRole('checkbox', { name: 'Hangar' }).click()
+    await page.getByRole('button', { name: 'Hangar', exact: true }).click()
 
     page.once('dialog', (d) => {
       throw new Error(`Unexpected alert: ${d.message()}`)

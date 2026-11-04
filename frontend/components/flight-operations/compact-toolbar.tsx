@@ -27,6 +27,7 @@ import {
   Search,
   X
 } from 'lucide-react'
+import { useServices } from '@/hooks/use-services'
 import { useEffect, useRef } from 'react'
 import type { FlightFilters } from './types'
 
@@ -44,14 +45,6 @@ interface CompactToolbarProps {
   fetching?: boolean
 }
 
-const serviceOptions = [
-  { value: 'fuel', label: 'Fuel' },
-  { value: 'hangar', label: 'Hangar' },
-  { value: 'catering', label: 'Catering' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'ground_transport', label: 'Ground Transport' }
-]
-
 export function CompactToolbar({
   view,
   onViewChange,
@@ -62,6 +55,7 @@ export function CompactToolbar({
   theme
 }: CompactToolbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const { services } = useServices()
 
   // Add keyboard shortcut: "/" to focus search
   useEffect(() => {
@@ -262,16 +256,16 @@ export function CompactToolbar({
                     Required Services
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {serviceOptions.map((service) => (
+                    {services.map((service) => (
                       <Badge
-                        key={service.value}
+                        key={service.key}
                         variant={
-                          filters.services.includes(service.value)
+                          filters.services.includes(service.key)
                             ? 'default'
                             : 'outline'
                         }
                         className="cursor-pointer"
-                        onClick={() => toggleService(service.value)}
+                        onClick={() => toggleService(service.key)}
                       >
                         {service.label}
                       </Badge>

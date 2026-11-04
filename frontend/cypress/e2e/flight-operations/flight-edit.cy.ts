@@ -62,7 +62,7 @@ describe('Flight edit, status change, delete', () => {
       cy.pickAirport('destination', 'KASE')
       cy.get('#contactName').clear().type('Edited Contact')
       cy.get('#notes').clear().type('edited by cypress')
-      cy.get('#hangar').click()
+      cy.get('button[data-service-key="hangar"]').click()
       cy.contains('button', 'Update Flight').click()
       cy.contains('Edit Flight').should('not.exist')
       cy.contains('[role="status"]', 'Flight updated').should('be.visible')

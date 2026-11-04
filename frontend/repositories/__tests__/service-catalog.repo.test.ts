@@ -233,14 +233,14 @@ describe('set_flight_services', () => {
     expect(await legacyServices(flight.id)).toEqual(['fuel'])
   })
 
-  it('raises on an inactive key unless the flight already has it', async () => {
+  it('raises on any inactive key, even one the flight already has', async () => {
     const flight = await makeFlight(db)
     await db.from('service').update({ active: false }).eq('key', 'ice')
     const res = await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['ice'] })
     expect(res.error?.message).toContain('inactive service key(s): ice')
     expect(await junctionKeys(flight.id)).toEqual([])
 
-    // A service retired after the flight got it must not block editing that flight.
+    // No exception for a key the flight already holds: retired services do not stay on flights.
     await db.from('service').update({ active: true }).eq('key', 'ice')
     await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['ice'] })
     await db.from('service').update({ active: false }).eq('key', 'ice')
@@ -248,8 +248,11 @@ describe('set_flight_services', () => {
       p_flight_id: flight.id,
       p_services: ['ice', 'fuel'],
     })
-    expect(keep.error).toBeNull()
-    expect(await junctionKeys(flight.id)).toEqual(['fuel', 'ice'])
+    expect(keep.error?.message).toContain('inactive service key(s): ice')
+    expect(await junctionKeys(flight.id)).toEqual(['ice'])
+    const drop = await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel'] })
+    expect(drop.error).toBeNull()
+    expect(await junctionKeys(flight.id)).toEqual(['fuel'])
   })
 
   it('raises for a missing flight and for malformed input', async () => {

@@ -37,6 +37,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AircraftTypeCombobox } from './aircraft-type-combobox'
 import { AirportCombobox } from './airport-combobox'
 import { prefillAirports } from './airport-prefill'
+import { ServicePillPicker } from './service-pill-picker'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import {
   applyArrivalChange,
@@ -452,14 +453,6 @@ export function FlightFormDialog({
     }
   }
 
-  const services = [
-    'fuel',
-    'hangar',
-    'catering',
-    'maintenance',
-    'ground_transport'
-  ]
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -745,30 +738,10 @@ export function FlightFormDialog({
 
             <div className="space-y-2">
               <Label>Services</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {services.map((service) => (
-                  <div key={service} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={service}
-                      checked={formData.services?.includes(service)}
-                      onCheckedChange={(checked) => {
-                        const newServices = checked
-                          ? [...(formData.services || []), service]
-                          : (formData.services || []).filter(
-                              (s) => s !== service
-                            )
-                        setFormData({ ...formData, services: newServices })
-                      }}
-                    />
-                    <label
-                      htmlFor={service}
-                      className="text-sm capitalize cursor-pointer"
-                    >
-                      {service.replace('_', ' ')}
-                    </label>
-                  </div>
-                ))}
-              </div>
+              <ServicePillPicker
+                value={formData.services || []}
+                onChange={(services) => setFormData({ ...formData, services })}
+              />
             </div>
 
             <div className="space-y-2">

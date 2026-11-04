@@ -17,13 +17,25 @@ export type FlightWithRelations = FlightRow & {
     username: string
     role: string
   } | null
+  // B26b: the flight's board services (junction rows with their catalog key)
+  flight_service?: Array<{ service: { key: string; sort_order: number } | null }> | null
+}
+
+// The flight's service keys from the embedded junction rows, in catalog order. The junction is the single
+// source; the legacy flight.services column is deliberately not read (set_flight_services keeps it in sync).
+export function serviceKeysFromRow(row: Pick<FlightWithRelations, 'flight_service'>): string[] {
+  return (row.flight_service ?? [])
+    .flatMap((fs) => (fs.service ? [fs.service] : []))
+    .sort((a, b) => a.sort_order - b.sort_order || a.key.localeCompare(b.key))
+    .map((s) => s.key)
 }
 
 const FLIGHT_SELECT = `
   *,
   aircraft:tail_number ( tail_number, aircraft_type_icao, aircraft_type_display ),
   location:location_id ( location_code, description, latitude, longitude ),
-  created_by:created_by_id ( id, first_name, last_name, username, role )
+  created_by:created_by_id ( id, first_name, last_name, username, role ),
+  flight_service ( service:service_id ( key, sort_order ) )
 `
 
 export interface FlightFilters {
@@ -89,7 +101,7 @@ export async function findAllFlights(
 
   const { data, error } = await query
   if (error) throw error
-  return data as FlightWithRelations[]
+  return data as unknown as FlightWithRelations[]
 }
 
 export async function findFlightById(
@@ -102,7 +114,7 @@ export async function findFlightById(
     .eq('id', id)
     .single()
   if (error && error.code !== 'PGRST116') throw error
-  return data as FlightWithRelations | null
+  return data as unknown as FlightWithRelations | null
 }
 
 export async function createFlight(
@@ -115,7 +127,7 @@ export async function createFlight(
     .select(FLIGHT_SELECT)
     .single()
   if (error) throw error
-  return data as FlightWithRelations
+  return data as unknown as FlightWithRelations
 }
 
 // B43b / D13: setting a flight to Departed hides it from the start of the day after its departure day (board
@@ -160,7 +172,7 @@ export async function updateFlight(
     }
     throw error
   }
-  return data as FlightWithRelations
+  return data as unknown as FlightWithRelations
 }
 
 // Hide button / Unhide: hidden_at = now() hides the flight immediately, null brings it back.

@@ -99,12 +99,16 @@ export default defineConfig({
               scheduled_departure_time: departureInMin === null ? null : iso(departureInMin),
               ...(isQuickTurn ? { is_quick_turn: true } : {}),
               flight_status: status,
-              ...(services ? { services } : {}),
               ...(hiddenInMin === undefined ? {} : { hidden_at: iso(hiddenInMin) }),
             })
             .select('id')
             .single()
           if (flightError) throw new Error(`seedFlight: flight: ${flightError.message}`)
+          // B26: services live in flight_service; the RPC also keeps the legacy flight.services column in sync.
+          if (services?.length) {
+            const { error: servicesError } = await db.rpc('set_flight_services', { p_flight_id: data.id, p_services: services })
+            if (servicesError) throw new Error(`seedFlight: services: ${servicesError.message}`)
+          }
           return data.id
         },
 

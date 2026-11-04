@@ -80,8 +80,8 @@ test.describe('Add Flight sheet persists real rows', () => {
     await page.locator('#arrivalTime').fill('14:30')
     await pickAirport(page, 'origin', 'KTEB')
     await pickAirport(page, 'destination', 'KASE')
-    await page.getByRole('checkbox', { name: 'Fuel' }).click()
-    await page.getByRole('checkbox', { name: 'Catering' }).click()
+    await page.getByRole('button', { name: 'Fuel', exact: true }).click()
+    await page.getByRole('button', { name: 'Catering', exact: true }).click()
     await submitAndExpectClosed(page)
 
     const aircraft = await waitForDbRow(async () => {
@@ -120,7 +120,7 @@ test.describe('Add Flight sheet persists real rows', () => {
     await expect(page.getByRole('checkbox', { name: 'QT' })).not.toBeChecked() // editing departure unchecks QT
     await pickAirport(page, 'origin', 'KBOS')
     await pickAirport(page, 'destination', 'KMIA')
-    await page.getByRole('checkbox', { name: 'Hangar' }).click()
+    await page.getByRole('button', { name: 'Hangar', exact: true }).click()
     await submitAndExpectClosed(page)
 
     const flight = await readFlight(tailExisting)
