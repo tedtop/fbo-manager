@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createE2EDbClient } from './support/db'
 
+// The Settings page has more than one form with a Save button; scope to the tail prefix form.
+const tailPrefixForm = (page: Page) => page.locator('form', { has: page.locator('#tailPrefix') })
+
 const db = createE2EDbClient()
 
 async function setPrefixInDb(prefix: string) {
@@ -51,7 +54,7 @@ test.describe('Tail number prefix (Settings)', () => {
 
     await page.getByRole('button', { name: /^C-/ }).click()
     await expect(page.locator('#tailPrefix')).toHaveValue('C-')
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await tailPrefixForm(page).getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Settings saved', { exact: true })).toBeVisible()
 
     await openAddFlight(page)
@@ -62,7 +65,7 @@ test.describe('Tail number prefix (Settings)', () => {
     await page.goto('/settings')
     await page.locator('#tailPrefix').fill('N 1')
     await expect(page.locator('#tailPrefixError')).toContainText(/letters, numbers and hyphens/i)
-    await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
+    await expect(tailPrefixForm(page).getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
   })
 
   test('an empty prefix means no prefill', async ({ page }) => {
