@@ -40,7 +40,7 @@ employee ID (database trigger `guard_profile_columns`).
    contact. Scopes: only `openid`, `email`, `profile` (no verification needed). Then **Publish app** so it is "In
    production"; in "Testing" only listed test users can sign in and sessions expire after 7 days.
 2. **Credentials > Create credentials > OAuth client ID > Web application**.
-   - Authorized JavaScript origins: `https://fbo-manager-production.up.railway.app` and `http://localhost:4000`
+   - Authorized JavaScript origins: `https://minuteman.up.railway.app` and `http://localhost:4000`
    - Authorized redirect URIs: `https://qkuhvlrdidhumyyxokil.supabase.co/auth/v1/callback`
      (and `http://127.0.0.1:54321/auth/v1/callback` if you want Google locally)
 3. Copy the **Client ID** and **Client secret**.
@@ -48,9 +48,9 @@ employee ID (database trigger `guard_profile_columns`).
 ### 2. Supabase (live project `qkuhvlrdidhumyyxokil`)
 
 - **Authentication > Providers > Google**: enable, paste Client ID and secret.
-- **Authentication > URL Configuration**: Site URL `https://fbo-manager-production.up.railway.app` (it is
+- **Authentication > URL Configuration**: Site URL `https://minuteman.up.railway.app` (it is
   `http://localhost:3000` today, so invite emails link to the wrong place), and Redirect URLs
-  `https://fbo-manager-production.up.railway.app/auth/callback` and `http://localhost:4000/auth/callback`.
+  `https://minuteman.up.railway.app/auth/callback` and `http://localhost:4000/auth/callback`.
 
 ### 3. Database
 
@@ -71,5 +71,5 @@ Google can be tried locally: export `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` an
 `frontend/supabase/config.toml`, restart the stack. Tests do not use Google; they create users through the admin API
 (`e2e/users-access.e2e.ts`).
 
-The Quick Dev Login buttons are still on the login page (B37). `admin@fbo.local` and `user@fbo.local` need a role
+The Quick Dev Login buttons are still on the login page (B37). `admin@minutemanfbo.local` and `user@fbo.local` need a role
 like anyone else or they land on `/pending`; the e2e seed gives them Administrator and Line Department.
