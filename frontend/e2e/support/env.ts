@@ -41,5 +41,5 @@ export function assertSafeE2ETarget(url: string): void {
 
 export const DEV_USERS = {
   admin: { email: 'admin@fbo.local', password: 'devadmin', role: 'Administrator' as const },
-  user: { email: 'user@fbo.local', password: 'devuser', role: 'Line Technician' as const },
+  user: { email: 'user@fbo.local', password: 'devuser', role: 'Line Department' as const },
 }

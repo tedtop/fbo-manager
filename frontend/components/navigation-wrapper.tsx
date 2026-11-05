@@ -53,11 +53,13 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Hide navigation on auth pages
+  // Hide navigation on auth pages, and on /pending where no module link would work yet
   const isAuthPage =
     pathname?.startsWith('/login') ||
     pathname?.startsWith('/signup') ||
-    pathname?.startsWith('/forgot-password')
+    pathname?.startsWith('/register') ||
+    pathname?.startsWith('/forgot-password') ||
+    pathname?.startsWith('/pending')
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme: handleThemeChange }}>

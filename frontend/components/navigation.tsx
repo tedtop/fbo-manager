@@ -1,6 +1,9 @@
 'use client'
 
+import { useMyPermissions } from '@/hooks/use-permissions'
+import { NAV_ITEMS } from '@/lib/access'
 import { useAuth } from '@/providers/auth-provider'
+import { accessAtLeast } from '@/types/domain/users'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,18 +16,6 @@ import { Menu, Moon, Sun, User } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
-const navigation = [
-  { name: 'Flight Ops', href: '/' },
-  { name: 'Parking', href: '/parking' },
-  { name: 'Fuel Dispatch', href: '/fuel-dispatch' },
-  { name: 'Fuel Farm', href: '/fuel-farm' },
-  { name: 'Truck Sheets', href: '/truck-sheets' },
-  { name: 'Invoicing', href: '/invoicing' },
-  { name: 'Equipment', href: '/equipment' },
-  { name: 'Line Schedule', href: '/line-schedule' },
-  { name: 'Training', href: '/training' },
-  { name: 'Users', href: '/users' }
-]
 
 interface NavigationProps {
   theme?: 'dark' | 'light'
@@ -35,6 +26,12 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { supabase } = useAuth()
+  const { access, loading: accessLoading } = useMyPermissions()
+  // Show only the pages this user's roles open. While permissions load, show none rather than
+  // flashing links that would bounce them; the middleware is what actually enforces access.
+  const navigation = accessLoading
+    ? []
+    : NAV_ITEMS.filter((item) => accessAtLeast(access, item.module, 'view'))
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

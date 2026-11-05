@@ -1,5 +1,7 @@
 'use client'
 
+import { GoogleSignInButton } from '@/components/forms/google-sign-in-button'
+import { safeNextPath } from '@/lib/access'
 import { loginFormSchema } from '@/lib/validation'
 import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@/components/ui/button'
@@ -71,13 +73,27 @@ export function LoginForm() {
         {(authError || search.has('error')) && (
           <div className="px-6">
             <ErrorMessage>
-              {authError || "That account doesn't exist."}{' '}
-              <Link href="/register" className="underline font-medium">
-                Sign up
-              </Link>
+              {authError || "Google sign-in didn't complete. Please try again."}
             </ErrorMessage>
           </div>
         )}
+
+        <div className="px-6 pb-4">
+          <GoogleSignInButton
+            next={safeNextPath(search.get('next'))}
+            onError={setAuthError}
+          />
+          <div className="relative mt-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                or use email
+              </span>
+            </div>
+          </div>
+        </div>
 
         <form onSubmit={onSubmitHandler}>
           <CardContent className="space-y-4">

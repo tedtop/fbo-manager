@@ -46,7 +46,7 @@ the whole suite:
 
 1. `e2e/support/seed.ts` creates those two accounts via the Supabase Admin API against the
    local stack (idempotent — safe to run against an already-seeded stack) and grants them
-   roles (Administrator / Line Technician) seeded by
+   roles (Administrator / Line Department) seeded by
    `supabase/migrations/20260703000200_user_management_schema.sql`.
 2. For each account, launches a real browser, clicks the real dev-login button (a real
    `supabase.auth.signInWithPassword` call, real cookies), and saves the session to
@@ -83,6 +83,7 @@ re-seeds the dev accounts automatically on the next run).
 | Flight board: seeded flights display, split/arrivals/departures toggle, tail-number search, status filter, date range (Today/Today + Future/Tomorrow/All Dates), Hide / Unhide, Show hidden, Departed hides from the next day (B43b) | `flight-board.e2e.ts` | Seeds via service role, cleans up its own rows. The default is Today + Future (open-ended: a flight 30 days out is shown); Today, Tomorrow and week fetches are bounded (local yesterday to +14 days); "All Dates" is the unbounded fetch |
 | Flight create: Add Flight sheet persists real rows | `flight-create.e2e.ts` | New tail creates the aircraft (ICAO GLF6 via the type combobox); QT departure = arrival + 1 h saved as a quick turn; arrival-only and departure-only (hangar pull) store a NULL other time and show in one column; actual times saved and shown; inline validation (no scheduled time, no aircraft type) with no `alert()`; failed insert shows an error toast, keeps the sheet open, retry succeeds. Times asserted as real instants (browser zone pinned to America/Phoenix, UTC-7). Relies on local migration `20261102000500` (flight.created_by_id default 1, live parity) |
 | Flight edit: edit, status, delete, conflict | `flight-edit.e2e.ts` | Edit sheet persists changed fields; fuel order notes persist and survive an unrelated edit; status dropdown offers only real DB statuses and persists; Delete asks an AlertDialog confirmation, cancel leaves card and row untouched, confirm soft-deletes (`deleted_at` set, row kept); edit-concurrency conflict UI keeps the other write; failed edit and failed status change show an error toast and write nothing |
+| New sign-up access: pending page, promotion from Users | `users-access.e2e.ts` | Creates a role-less user through the admin API (Google cannot run here); profile gets the Google-style name split; sign-in lands on `/pending`, `/users` bounces back; admin promotes them in Users (Role column) and the database shows the assignment with `assigned_by`; Check again then lets them in while Users stays closed. Also asserts the login page offers Continue with Google. See `docs/google-signin.md` |
 | Flight timezone (B10) | `flight-timezone.e2e.ts` | Browser zone pinned to America/Phoenix; a 23:30 local entry keeps its date and time after reload and an edit does not shift it; editing a 23:30 to 00:30 flight round-trips; calendar navigation loads the visible week more than 4 weeks ahead. Asserts DB instants, board card labels and form fields |
 
 Arrivals/departures is also covered by Cypress (`cypress/e2e/flight-operations/*.cy.ts`, port 4210, see the root README):

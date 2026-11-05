@@ -4,6 +4,12 @@ import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
 import { useModuleAccess } from '@/hooks/use-permissions'
 import { useRoles } from '@/hooks/use-roles'
 import { useUsers } from '@/hooks/use-users'
+import {
+  accountRemovalBlocked,
+  isAwaitingAccess,
+  roleChangeBlocked
+} from '@/lib/user-guards'
+import { useAuth } from '@/providers/auth-provider'
 import type { ProfileWithRoles } from '@/types/domain/users'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,10 +50,13 @@ export default function UsersPage() {
     inviteUser,
     updateUser,
     setUserStatus,
+    setUserRoles,
     deleteUser,
     refetch
   } = useUsers()
   const { roles } = useRoles()
+  const { session } = useAuth()
+  const currentUserId = session?.user?.id ?? null
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<
@@ -70,9 +79,16 @@ export default function UsersPage() {
   }
 
   const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
+    // New sign-ups waiting for a role first, then newest accounts first.
+    const ordered = [...users].sort((a, b) => {
+      const pending = Number(isAwaitingAccess(b)) - Number(isAwaitingAccess(a))
+      return pending || b.created_at.localeCompare(a.created_at)
+    })
+    return ordered.filter((u) => {
       if (statusFilter !== 'all' && u.status !== statusFilter) return false
-      if (
+      if (roleFilter === 'none') {
+        if (u.roles.length > 0) return false
+      } else if (
         roleFilter !== 'all' &&
         !u.roles.some((r) => String(r.id) === roleFilter)
       )
@@ -89,6 +105,13 @@ export default function UsersPage() {
 
   const handleSubmit = async (data: UserFormData) => {
     if (editingUser) {
+      const blocked = roleChangeBlocked(
+        users,
+        editingUser.id,
+        currentUserId,
+        roles.filter((r) => data.roleIds.includes(r.id)).map((r) => r.name)
+      )
+      if (blocked) throw new Error(blocked)
       await updateUser(editingUser.id, {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -111,8 +134,43 @@ export default function UsersPage() {
     refetch()
   }
 
+  const handleSetRole = async (user: ProfileWithRoles, value: string) => {
+    const role = roles.find((r) => String(r.id) === value)
+    const blocked = roleChangeBlocked(
+      users,
+      user.id,
+      currentUserId,
+      role ? [role.name] : []
+    )
+    if (blocked) {
+      showError(blocked)
+      return
+    }
+    const name = `${user.first_name} ${user.last_name}`.trim() || user.email
+    try {
+      await setUserRoles(user.id, role ? [role.id] : [])
+      showSuccess(
+        role ? `${name} is now ${role.name}` : `${name} no longer has a role`
+      )
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to change role')
+    }
+  }
+
   const handleToggleStatus = async (user: ProfileWithRoles) => {
     const next = user.status === 'active' ? 'disabled' : 'active'
+    if (next === 'disabled') {
+      const blocked = accountRemovalBlocked(
+        users,
+        user.id,
+        currentUserId,
+        'deactivate'
+      )
+      if (blocked) {
+        showError(blocked)
+        return
+      }
+    }
     try {
       await setUserStatus(user.id, next)
       showSuccess(next === 'active' ? 'User reactivated' : 'User deactivated')
@@ -122,6 +180,16 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (user: ProfileWithRoles) => {
+    const blocked = accountRemovalBlocked(
+      users,
+      user.id,
+      currentUserId,
+      'delete'
+    )
+    if (blocked) {
+      showError(blocked)
+      return
+    }
     if (
       !confirm(
         `Permanently delete ${user.first_name} ${user.last_name}? This cannot be undone.`
@@ -161,6 +229,7 @@ export default function UsersPage() {
 
   const activeCount = users.filter((u) => u.status === 'active').length
   const disabledCount = users.filter((u) => u.status === 'disabled').length
+  const awaitingCount = users.filter(isAwaitingAccess).length
 
   return (
     <div className="space-y-6">
@@ -168,7 +237,7 @@ export default function UsersPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Users</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage staff accounts, roles, and module access
+            New sign-ups appear here with no role. Pick a role to give them access.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -191,7 +260,7 @@ export default function UsersPage() {
       {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
       {error && <ErrorMessage>Failed to load users</ErrorMessage>}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="rounded-lg bg-card px-4 py-5 shadow-sm border border-border">
           <div className="text-sm font-medium text-muted-foreground">
             Total Users
@@ -200,6 +269,27 @@ export default function UsersPage() {
             {users.length}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() =>
+            setRoleFilter((f) => (f === 'none' ? 'all' : 'none'))
+          }
+          aria-pressed={roleFilter === 'none'}
+          className={`rounded-lg bg-card px-4 py-5 text-left shadow-sm border ${
+            roleFilter === 'none' ? 'border-primary' : 'border-border'
+          }`}
+        >
+          <div className="text-sm font-medium text-muted-foreground">
+            Awaiting access
+          </div>
+          <div
+            className={`mt-2 text-3xl font-bold ${
+              awaitingCount > 0 ? 'text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            {awaitingCount}
+          </div>
+        </button>
         <div className="rounded-lg bg-card px-4 py-5 shadow-sm border border-border">
           <div className="text-sm font-medium text-muted-foreground">
             Active
@@ -244,6 +334,7 @@ export default function UsersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All roles</SelectItem>
+            <SelectItem value="none">No role (awaiting access)</SelectItem>
             {roles.map((role) => (
               <SelectItem key={role.id} value={String(role.id)}>
                 {role.name}
@@ -269,7 +360,8 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Roles</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
                   <TableHead>Employee ID</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12" />
@@ -283,7 +375,7 @@ export default function UsersPage() {
                         `${user.first_name} ${user.last_name}`.trim()
                       ) : (
                         <span className="text-muted-foreground italic">
-                          Pending signup
+                          No name yet
                         </span>
                       )}
                     </TableCell>
@@ -291,11 +383,7 @@ export default function UsersPage() {
                       {user.email}
                     </TableCell>
                     <TableCell>
-                      {user.roles.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">
-                          No roles
-                        </span>
-                      ) : (
+                      {user.roles.length > 1 ? (
                         <div className="flex flex-wrap gap-1">
                           {user.roles.map((role) => (
                             <Badge key={role.id} variant="secondary">
@@ -303,7 +391,36 @@ export default function UsersPage() {
                             </Badge>
                           ))}
                         </div>
+                      ) : (
+                        <Select
+                          value={
+                            user.roles[0] ? String(user.roles[0].id) : 'none'
+                          }
+                          onValueChange={(v) => handleSetRole(user, v)}
+                        >
+                          <SelectTrigger
+                            className="h-8 w-44"
+                            aria-label={`Role for ${user.email}`}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              {isAwaitingAccess(user)
+                                ? 'Awaiting access'
+                                : 'No role'}
+                            </SelectItem>
+                            {roles.map((role) => (
+                              <SelectItem key={role.id} value={String(role.id)}>
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {new Date(user.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {user.employee_id || '—'}

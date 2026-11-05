@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import type { NextRequest, NextResponse } from 'next/server'
+import { type AccessState, parseAccessState } from '@/lib/access'
 import type { Database } from '@/types/database'
 
 export async function updateSession(
@@ -28,5 +29,12 @@ export async function updateSession(
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  return { response, user }
+  /** Role / status snapshot for the signed-in user; null (fail closed) when the RPC errors. */
+  const getAccess = async (): Promise<AccessState | null> => {
+    const { data, error } = await supabase.rpc('get_my_access')
+    if (error) return null
+    return parseAccessState(data)
+  }
+
+  return { response, user, getAccess }
 }

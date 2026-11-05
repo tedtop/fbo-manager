@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { GoogleSignInButton } from '@/components/forms/google-sign-in-button'
 import { registerFormSchema } from '@/lib/validation'
 import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@/components/ui/button'
@@ -48,6 +49,20 @@ export function RegisterForm() {
             Join our flight operations platform
           </CardDescription>
         </CardHeader>
+
+        <div className="px-6 pb-4">
+          <GoogleSignInButton onError={setFormError} />
+          <div className="relative mt-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                or use email
+              </span>
+            </div>
+          </div>
+        </div>
 
         <form
           onSubmit={handleSubmit(async (data) => {

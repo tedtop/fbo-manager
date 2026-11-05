@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/providers/auth-provider'
 import { findAllProfiles } from '@/repositories/profiles.repo'
+import { setUserRoles } from '@/repositories/user-roles.repo'
 import {
   type InviteUserInput,
   type UpdateUserInput,
@@ -43,6 +44,12 @@ export function useUsers() {
     onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
   })
 
+  const setRolesMutation = useMutation({
+    mutationFn: ({ userId, roleIds }: { userId: string; roleIds: number[] }) =>
+      setUserRoles(db, userId, roleIds, currentUserId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
+  })
+
   const setStatusMutation = useMutation({
     mutationFn: ({
       userId,
@@ -64,6 +71,9 @@ export function useUsers() {
     inviteUser: (input: InviteUserInput) => inviteMutation.mutateAsync(input),
     updateUser: (userId: string, input: UpdateUserInput) =>
       updateMutation.mutateAsync({ userId, input }),
+    /** Replace a user's roles (the quick promote / change-role control on the Users page). */
+    setUserRoles: (userId: string, roleIds: number[]) =>
+      setRolesMutation.mutateAsync({ userId, roleIds }),
     setUserStatus: (userId: string, status: 'active' | 'disabled') =>
       setStatusMutation.mutateAsync({ userId, status }),
     deleteUser: (userId: string) => deleteMutation.mutateAsync(userId),

@@ -26,6 +26,16 @@ export async function requireUsersAdmin(): Promise<
     return { ok: false, status: 401, error: 'Not authenticated' }
   }
 
+  // A disabled account keeps its roles but must not be able to run admin actions.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('status')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (profile?.status !== 'active') {
+    return { ok: false, status: 403, error: 'Your account is not active' }
+  }
+
   const access = await findModuleAccessForUser(supabase as any, user.id)
   if (!accessAtLeast(access, 'users', 'manage')) {
     return {
