@@ -1,5 +1,6 @@
 'use client'
 
+import { TailNumberLink } from '@/components/aircraft/tail-number-link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -61,7 +62,9 @@ export function AircraftSheet({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <SheetHeader className="border-b border-border p-4">
-          <SheetTitle>{plane.tailNumber}</SheetTitle>
+          <SheetTitle>
+            <TailNumberLink tail={plane.tailNumber} />
+          </SheetTitle>
           <SheetDescription>
             {plane.typeDisplay || 'Aircraft on the ramp'}
           </SheetDescription>

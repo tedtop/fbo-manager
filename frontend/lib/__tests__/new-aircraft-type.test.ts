@@ -13,6 +13,10 @@ const HIT: AircraftLookupResult = {
   typeIcao: 'C25A',
   typeDescription: 'Citation CJ2',
   manufacturer: 'Cessna',
+  owner: null,
+  ownerCountry: null,
+  photoUrl: null,
+  photoThumbUrl: null,
   source: 'adsbdb'
 }
 
