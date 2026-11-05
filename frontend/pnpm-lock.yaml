@@ -189,9 +189,6 @@ importers:
       '@biomejs/biome':
         specifier: 1.9.4
         version: 1.9.4
-      '@playwright/test':
-        specifier: ^1.61.1
-        version: 1.61.1
       '@tailwindcss/postcss':
         specifier: ^4.1.9
         version: 4.1.16
@@ -3828,6 +3825,7 @@ snapshots:
   '@playwright/test@1.61.1':
     dependencies:
       playwright: 1.61.1
+    optional: true
 
   '@radix-ui/number@1.1.1': {}
 
@@ -5741,13 +5739,15 @@ snapshots:
 
   pify@2.3.0: {}
 
-  playwright-core@1.61.1: {}
+  playwright-core@1.61.1:
+    optional: true
 
   playwright@1.61.1:
     dependencies:
       playwright-core: 1.61.1
     optionalDependencies:
       fsevents: 2.3.2
+    optional: true
 
   postcss-value-parser@4.2.0: {}
 

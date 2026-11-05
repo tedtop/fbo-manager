@@ -12,10 +12,10 @@ Ted works the flight add/edit form in another chat. The loop must not touch `fli
 - **B43b:** when does an arrival-only flight (no scheduled departure) drop off the board: after an actual departure, a departed/cancelled status, or an age cut-off? B43's overlap rule shows it on every later day. Also fixes the stale Cypress spec "Tomorrow shows only tomorrow's flights".
 - **B45 (schedule sheet scan):** needs a sample printout saved under `docs/samples/`, the FBO's time zone, whether aircraft types are ICAO codes or free text, and the sheet's columns (PLAN section 6). B45c is blocked on the sample; B45b waits for the form and schema work to settle.
 - **Biome:** clean up the ~60 existing lint errors, or drop Biome? Lint CI (`lint.yml`) stays off until then.
-- **CI:** re-enable `test.yml` on pull requests and pushes to `master` after one clean full local run (Playwright plus Cypress on private ports). Deploy gate `typescript.ignoreBuildErrors` stays until a production build is checked with a private dist dir.
+- **CI:** re-enable `test.yml` on pull requests and pushes to `master` after one clean full local run (Cypress on private ports). Deploy gate `typescript.ignoreBuildErrors` stays until a production build is checked with a private dist dir.
 - **B27a:** needs approval to add react-markdown, remark-gfm and rehype-slug.
 - **B29/B30/B38:** RLS live apply, RLS policies and the admin role need Ted's go-ahead (auth and live data).
-- **Not verified:** the full Playwright and Cypress suites have not been run together since this session's changes (agents ran subsets). The local equipment repo tests fail (`equipment.sort_order` missing) because someone else's uncommitted equipment migration is not applied to the local DB.
+- **Not verified:** the full Cypress suites have not been run together since this session's changes (agents ran subsets). The local equipment repo tests fail (`equipment.sort_order` missing) because someone else's uncommitted equipment migration is not applied to the local DB.
 
 ## Notes
 - Live `flight` table was emptied on 2026-11-04 at Ted's request (146 sample rows; backup in `docs/archive/flight-backup-2026-11-04.json`, untracked).

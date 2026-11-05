@@ -9,7 +9,7 @@ node_modules
 .turbo
 
 # Test artifacts / dev-only tooling not needed in a production image.
-e2e/test-results
-e2e/playwright-report
+cypress/screenshots
+cypress/videos
 coverage
 *.log

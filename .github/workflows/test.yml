@@ -30,22 +30,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium --with-deps
-
       - name: Start local Supabase stack
         run: pnpm supabase:start
 
       - name: Run repository integration tests (vitest)
         run: pnpm test:repos
 
-      - name: Run end-to-end tests (Playwright)
-        run: pnpm e2e
-
       - name: Install Cypress binary
         run: pnpm exec cypress install
 
-      - name: Run end-to-end tests (Cypress)
+      - name: Run end-to-end tests (Cypress, the only browser-test tool)
         run: pnpm test:cypress
 
       - name: Stop local Supabase stack

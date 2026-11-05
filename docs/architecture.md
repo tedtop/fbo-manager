@@ -98,15 +98,14 @@ equipment, training/certifications, truck sheets, parking, department scheduling
 
 ## Testing
 
-Three layers, documented in their own READMEs:
+Two layers, documented in their own READMEs:
 
 - `frontend/tests/` (vitest) — repository-layer integration tests against a real,
   disposable local Supabase/Postgres stack. Proves a query is correct.
-- `frontend/e2e/` (Playwright) — drives the real app in a real browser through real
-  Supabase Auth login, ending every spec with a direct DB read. Proves a form's save
-  button actually persists data, not just that it renders without error.
-- `frontend/cypress/` (Cypress) — same idea for the arrivals/departures module only; started with
-  `pnpm test:cypress` (own dev server on port 4210; Playwright uses 4100).
+- `frontend/cypress/` (Cypress, the only browser-test tool, docs/PLAN.md D14) — drives the real app in a
+  real browser through real Supabase Auth login, ending every spec with a direct DB read. Proves a form's
+  save button actually persists data, not just that it renders without error. Started with
+  `pnpm test:cypress` (own dev server on port 4210); see `frontend/cypress/README.md`.
 
 ## Deployment
 

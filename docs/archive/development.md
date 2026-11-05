@@ -107,7 +107,7 @@ docker compose exec api uv run -- pytest api/tests/test_api.py -k "test_name"
 
 ### Frontend (Recommended Additions)
 - Unit tests: Vitest or Jest
-- Components: Testing Library + Playwright
+- Components: Testing Library + Cypress
 
 ---
 

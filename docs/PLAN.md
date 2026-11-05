@@ -7,8 +7,8 @@ Goal: Ted can use the board daily, ASAP. Working style: screen-by-screen; finish
 
 ## Test tooling (verified)
 - vitest 3 (`vitest.config.ts`): `environment: node`, includes only `**/__tests__/**/*.test.ts`, sequential, real local Supabase (no mocks). No jsdom, no @testing-library installed. So "component tests" would need new devDependencies; avoid.
-- Playwright e2e (`e2e/*.e2e.ts`, `playwright.config.ts`): starts its own `next dev` on :3100 against local Supabase `127.0.0.1:54321`; `global-setup.ts` seeds `admin@minutemanfbo.local`/`user@fbo.local` and saves storage state (project `admin`); specs seed rows with the service-role client from `e2e/support/db.ts`, use `uniqueValue()`, drive the UI and finish with a direct DB read (`waitForDbRow`). Pattern to copy: `e2e/equipment.e2e.ts`.
-- Decision D1: board suite = (a) vitest pure-logic tests for the adapter (`types.ts`) and filtering (extracted pure functions), (b) vitest repo tests for flights (extend existing), (c) Playwright e2e for UI flows. No jsdom.
+- Cypress e2e (`cypress/e2e/<area>/*.cy.ts`, `cypress.config.ts`, `scripts/test-cypress.ts`; the only browser-test tool since D14): `pnpm test:cypress` starts its own `next dev` on :4210 against local Supabase `127.0.0.1:54321` (browser zone pinned to America/Phoenix); `cy.login()` logs in through the real login form via `cy.session` (dev accounts `admin@minutemanfbo.local` / `user@minutemanfbo.local` seeded by `cypress/tasks/seed.ts`); specs seed rows with service-role tasks (`cypress/tasks/*`, `cypress.config.ts`), use a per-run stamp for unique values, drive the UI and finish with a direct DB read through a `cy.task`. Pattern to copy: `cypress/e2e/flight-operations/flight-edit.cy.ts`.
+- Decision D1: board suite = (a) vitest pure-logic tests for the adapter (`types.ts`) and filtering (extracted pure functions), (b) vitest repo tests for flights (extend existing), (c) browser e2e for UI flows (Cypress since D14). No jsdom.
 - Environment caveat: Docker currently runs a different project's Supabase stack ("ski-jobs") on ports 54321/54322, so the fbo local stack is not up. e2e/repo tests need `pnpm supabase:stop` there (Ted's call) or a `supabase/config.toml` port change. See risk R1.
 
 ## Audit findings (file:line, verified by reading)
@@ -56,15 +56,16 @@ Tooling:
 - `useFlights` gets a realtime subscription (pattern: `hooks/use-equipment-realtime.ts`) and surfaces mutation errors via `useToast`.
 
 ## Decisions log
-- D1 (2026-11-02): No jsdom/RTL; pure-logic vitest + Playwright e2e. Reuses existing patterns.
+- D1 (2026-11-02): No jsdom/RTL; pure-logic vitest + browser e2e (Cypress since D14). Reuses existing patterns.
 - D2 (2026-11-02, Ted decided): Model scheduled and actual times. Rename arrival_time/departure_time to scheduled_arrival_time/scheduled_departure_time; add nullable actual_arrival_time/actual_departure_time and is_quick_turn. QT checkbox is preselected between the two scheduled boxes and sets departure = arrival + 1 h; editing departure unchecks QT. Needs a migration (file only; applying to the live shared DB waits for Ted). Staff currently write QT on the board by hand.
 - D6 (2026-11-02, Ted): Transient aircraft always have an arrival and a departure (departure may be unknown when entered). Hangared aircraft may have only a departure (pulled from hangar; last arrival possibly days ago) or only an arrival (returning after maintenance, a long trip or a season away). So both scheduled times are nullable with a CHECK that at least one is set. We do not track hangar membership yet and may never hard-constrain it.
 - D8 (2026-11-02, Ted): Claude may apply schema changes to the live Supabase for this project via the Supabase CLI (`supabase db push` / migrations), after verifying them against the local stack. Still never touch `fuel_tank_readings`. Live ref `qkuhvlrdidhumyyxokil` is linked (2026-11-02; 146 flight rows). Do not use `db push`: see B01c. Destructive changes (drops, renames) get a backfill-safe migration and are reported in the commit box.
-- D9 (2026-11-02, Ted): Add a full Cypress suite for the arrivals/departures module only (B08b-B08e), alongside the existing Playwright pattern; no migration of the other modules. Duplicate coverage with Playwright is accepted; Playwright stays the repo default for other modules.
+- D9 (2026-11-02, Ted): Add a full Cypress suite for the arrivals/departures module only (B08b-B08e), alongside the existing second browser runner; no migration of the other modules. Duplicate coverage was accepted; the other runner stayed the repo default for other modules. **Superseded by D14 (2026-11-05).**
 - D10 (2026-11-02, Ted): Services carry prices, so store them relationally rather than as free-text keys. Today `flight.services` is a jsonb array of strings (no cross-reference table); live data uses keys that match neither the form nor the pills (cleaning 39, lavatory 34, transport 31). Proposed: `service` catalog + `flight_service` junction, optionally linked to `product` (10 rows, SKU + price) for invoicing. See B26.
 - D11 (2026-11-02, Ted): Documentation is a first-class module, built and updated simultaneously with each module it documents, cross-linked both ways, shown in a left slide-in panel beside the right-side form sheet (B27, B28). Also 2026-11-02: legacy `django_*` and `auth_*` tables dropped from live (migration 20261102000100, backup kept locally outside the repo).
 - D12 (2026-11-04, Ted asked, rules proposed): Flights can be bulk-added by scanning the front desk's printed schedule (B45). Scan -> free OCR (Tesseract, Cloud Vision fallback) + rule parser -> per-row review -> import through `flights.repo`; nothing is written without the review step. Import never overwrites values already on the board (fill-only updates), so re-scanning the same sheet cannot create duplicates or undo staff edits. Details: "B45 Schedule sheet import design".
 - D13 (2026-11-04, Ted): Finished flights leave the board by being **hidden**, not by an age cut-off. A flight set to Departed is hidden from the day after it departed; staff can also hide any flight by hand (Hide button right of Edit). Hidden is a stored flag (`flight.hidden_at`), shown again with a Show hidden filter. Date presets become Today, Today + Future (default), Tomorrow. Resolves B43b. Also: the card's "Order Fuel" button is now "Fuel Request"; Biome clean-up deferred (B48).
+- D14 (2026-11-05, Ted): **One browser-test tool: Cypress. Supersedes D9.** The duplicated Playwright suite (`e2e/`, `playwright.config.ts`, the `@playwright/test` dependency, the `pnpm e2e*` scripts and its CI step) is removed; every scenario it covered now lives in `cypress/e2e/<area>/` (flight-operations, equipment, invoicing, settings, api, users, schedule-import), with the Node-side Supabase helpers in `cypress/tasks/`. Vitest stays for unit and repository integration tests. Entry point: `pnpm test:cypress` (own dev server on :4210, `CYPRESS_BASE_URL` for a private port). Why: two runners for the same flows doubled the maintenance and let the two suites drift (D9 had accepted that cost). Docs: `frontend/cypress/README.md`.
 - D7 (2026-11-02, Ted): Direction of travel: customers (e.g. Greg, N446FM, pulled most mornings 6:00-6:30 with a T/O top-off note) should post pull times and service notes (T/O fuel, TKS fluid) from home. Needs customer accounts and auth: design only, waits for Ted (B24, B25).
 - D5 (2026-11-02, Ted): stop ski-jobs Supabase containers for the local test stack (B01); delete flight-board-ui/ and /flight-ops (B21).
 - D3 (proposed): canonical route `/`; others redirect.
@@ -137,7 +138,7 @@ Status: design for review (2026-11-04). No code written. Implements D11. Sub-ite
 - A grep guard (optional, B27d): the test also fails if a `HelpButton` in `components/` uses a module/anchor pair not in the registry (regex scan of source files).
 
 ### 5. Test plan
-Playwright (`e2e/docs.e2e.ts`, repo default) and a mirrored Cypress spec under `cypress/e2e/flight-operations/` (D9). Flight-form specs need the local stack (B01); the rest do not.
+Cypress spec `cypress/e2e/docs/docs.cy.ts` (D14). Flight-form specs need the local stack (B01); the rest do not.
 1. Open the board, click toolbar Help: docs panel visible (`getByRole('complementary', {name: 'Documentation'})`), URL contains `?docs=flight-operations`.
 2. Open Add Flight, type tail `N123AB` in the form, click the "?" next to QT: both the form dialog and the docs panel are visible at 1280x800; docs scrolled so the `#quick-turn` heading is in the viewport (`toBeInViewport`) and highlighted; the form is still open.
 3. With docs open, type in a form field and click a docs link: the form stays open (no outside-dismiss) and typing still works (focus not trapped).
@@ -153,7 +154,7 @@ Playwright (`e2e/docs.e2e.ts`, repo default) and a mirrored Cypress spec under `
 - **B27a (S)**: registry, front-matter parser, `load.ts`, `docs.test.ts`, `content/docs/flight-operations/usage-guide.md` stub with required headings and anchors; add the three dependencies; `app/docs/[module]/page.tsx` + `/docs` index (full-page rendering proves the pipeline). No panel yet.
 - **B27b (M)**: `DocsProvider` + `buildDocsUrl`, static JSON route, `DocsPanel` (non-Radix aside, widths, mobile, scroll-to-anchor, highlight, link scheme overrides), nav "Docs" item, `docs-prose` styles. Includes the spike for risk R5.
 - **B27c (S)**: `SheetContent` `overlay` prop, `FlightFormDialog` cooperation (modal flip, outside-interact guard), `HelpButton` placed in toolbar, form header, QT, times and services; `ui-conventions.md` section "Docs panel" and the same-PR rule.
-- **B27d (S)**: Playwright + Cypress specs from section 5, README test notes; verify on the local stack once B01 is up.
+- **B27d (S)**: Cypress specs from section 5, README test notes; verify on the local stack once B01 is up.
 B27 itself is "design done" (review). B28 (content) can start after B27a lands, and finishes after B09-B09c.
 
 ### 7. B28 outline: Arrivals/Departures usage guide (headings only; reflects current behavior)
@@ -319,8 +320,8 @@ join service s on s.key = coalesce(m.key, e.k);
 - **Repository/RPC tests** (vitest, local DB): `services.repo` (active sorted; inactive hidden from the picker query); flights repo embed returns `flight_services` and maps to keys; RPC: add/remove, idempotent re-set, unknown key raises, stale `p_expected_updated_at` raises conflict, junction change bumps `flight.updated_at`, cascade on hard flight delete, restrict on catalog delete, UNIQUE(flight_id, service_id).
 - **Migration test**: seed a legacy-shaped `flight.services` (with `lavatory`, `transport`, `cleaning`, plus an unknown key) and assert correct mapping, duplicate collapse, and that the unknown key **raises** with the transaction rolled back.
 - **Adapter/unit tests**: `rowToFlight` embed to `string[]`; `componentFlightToApiRequest` no longer emits `services`; `board-logic` services filter on keys; picker component (renders catalog pills, toggles, a retired service on a flight still renders).
-- **Playwright** (`e2e/`): in the form pick Fuel, Lav and Cleaning, save, assert the same three pills on the card; reopen the form and see them preselected; remove one and verify on the card; toolbar service filter lists catalog items and filters.
-- **Cypress**: same flow, plus a backfilled legacy flight (`lavatory`) showing the Lav pill.
+- **Cypress**: in the form pick Fuel, Lav and Cleaning, save, assert the same three pills on the card; reopen the form and see them preselected; remove one and verify on the card; toolbar service filter lists catalog items and filters.
+- Same Cypress spec: plus a backfilled legacy flight (`lavatory`) showing the Lav pill.
 - **Live check** (read-only) after apply: counts per section 3 step 6.
 
 ### 7. Breakdown
@@ -330,7 +331,7 @@ join service s on s.key = coalesce(m.key, e.k);
 | B26a | Migration: tables, seed, RLS, triggers, backfill (fails on unknown), `set_flight_services` RPC; local verify, backup, live apply via B01c, `types/database.ts`, migration test | M |
 | B26b | `services.repo`, `use-services`, flight select embed, `rowToFlight`, create/update write via RPC, repo and RPC tests | M |
 | B26c | Shared `ServicePillPicker`/`ServicePill` + `service-visuals`; wire card and form fly-out; toolbar filter from catalog; component tests | M |
-| B26d | Playwright + Cypress specs, live parity check | S |
+| B26d | Cypress specs, live parity check | S |
 | B26e | After Ted's sign-off: drop `flight.services` (backup, B01c apply, rollback documented), remove jsonb plumbing | S |
 
 Order a, b, c, d, e. B26a needs Docker back for local verification.
@@ -392,11 +393,11 @@ Decisions (Ted, 2026-11-04): retired/inactive services do not need to stay on fl
 - **Catalog:** `repositories/services.repo.ts` (`findActiveServices`, `setFlightServices`), `hooks/use-services.ts` (key `['services','active']`, staleTime 5 min). Only active rows are fetched.
 - **UI:** `components/flight-operations/service-visuals.ts` (icon name and colour token to lucide icon and Tailwind classes, per-key defaults for the seeded keys, generic `Tag` pill for unknown), `service-pill-picker.tsx`. Card and form fly-out use the picker; the card's read-only pills use `ServicePill`; the toolbar "Required Services" filter is `useServices()`.
 - **Picker contract:** `ServicePillPicker({ value: string[], onChange(keys: string[]), disabled?, className? })`; keys are `service.key`; reads the catalog itself; buttons `type="button"`, `aria-pressed`, accessible name = label, `data-service-key` for test selectors. A key in `value` that is not in the active catalog (retired) is shown as a selected generic pill so it can be removed (saving it would be refused by the RPC). `ServicePill({ serviceKey, className? })` is the read-only pill. Pure `ServicePillPickerView` / `ServicePillView` take the catalog explicitly (used by tests).
-- **Tests:** `services.repo.test.ts` (repo, embed, dual write, post-RPC updated_at compare-and-swap), `service-visuals.test.ts`, `service-pill-picker.test.ts` (react-dom/server markup), `service-catalog.repo.test.ts` updated for the inactive-key rule. Existing Playwright/Cypress service selectors changed from checkbox (`#hangar`) to the pills (`button` named "Hangar" / `button[data-service-key="hangar"]`); not run here (B26d).
+- **Tests:** `services.repo.test.ts` (repo, embed, dual write, post-RPC updated_at compare-and-swap), `service-visuals.test.ts`, `service-pill-picker.test.ts` (react-dom/server markup), `service-catalog.repo.test.ts` updated for the inactive-key rule. Existing Cypress service selectors changed from checkbox (`#hangar`) to the pills (`button` named "Hangar" / `button[data-service-key="hangar"]`); not run here (B26d).
 
 ## B45 Schedule sheet import design
 
-Status (2026-11-05): B45a, B45b and B45c are built and in review. Pure rules (mapping, leg pairing, duplicates, review state) are unit-tested against an inline fixture of the real sample (`docs/samples/schedule-sheet-2026-11-04.jpg`); the upload and review screen is `/flight-operations/import` (button on the board toolbar); one Playwright spec stubs the OCR and registry-lookup routes. **Extraction changed the same day (Ted's decision, the Anthropic account has no credit and API credit must never be spent on this project): the route no longer calls Claude by default. It runs free OCR and a rule-based parser, see "Extraction engines (free OCR)" below.** The real photo parses to all six rows through the real route. Implements D12.
+Status (2026-11-05): B45a, B45b and B45c are built and in review. Pure rules (mapping, leg pairing, duplicates, review state) are unit-tested against an inline fixture of the real sample (`docs/samples/schedule-sheet-2026-11-04.jpg`); the upload and review screen is `/flight-operations/import` (button on the board toolbar); one Cypress spec stubs the OCR and registry-lookup routes. **Extraction changed the same day (Ted's decision, the Anthropic account has no credit and API credit must never be spent on this project): the route no longer calls Claude by default. It runs free OCR and a rule-based parser, see "Extraction engines (free OCR)" below.** The real photo parses to all six rows through the real route. Implements D12.
 
 ### Extraction engines (free OCR)
 
@@ -474,7 +475,7 @@ Implemented as written below, plus: the type column is the tail lookup (section 
 - Badges: review reasons from `REVIEW_REASON_LABELS` (highlight the offending cell), duplicate badge naming the matched flight, with `fills` and `conflicts` listed ("board 14:00, sheet 14:30").
 - Blocking: `importable === false` rows cannot be included until fixed. Rows with `needsReview` can be imported but show an unacknowledged state the user must clear (one click) so nothing flagged is imported by accident.
 - Import: aircraft find-or-create by tail (type from `aircraftTypeIcao`, else the user must choose one), then `createFlight` for `add`, `updateFlight` with only the `fills` (and any conflicts the user explicitly accepted) for `update`, with `expectedUpdatedAt` for the concurrency check; the original files stored through `scanned-documents.repo`; success toast with counts (added, updated, skipped, errors). Writes go through `flights.repo` only; `flight-form-dialog.tsx` is not touched.
-- Tests: component/pure tests plus one Playwright spec that stubs `/api/ocr/schedule-sheet` (no live API call in CI).
+- Tests: component/pure tests plus one Cypress spec that stubs `/api/ocr/schedule-sheet` (no live API call in CI).
 
 ### 6. Open questions that need Ted's sample printout
 

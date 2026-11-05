@@ -63,8 +63,8 @@ Also never create, alter, or drop a table named `fuel_tank_readings`; it belongs
 
 ## Testing
 
-Three layers (vitest repository tests, Playwright e2e, Cypress for the arrivals/departures module), all against a real local Supabase stack — never mocks, never
-the shared/live project.
+Two layers, both against a real local Supabase stack — never mocks, never the shared/live project: vitest
+(unit and repository tests, no browser) and Cypress (the only browser-test tool, `docs/PLAN.md` D14).
 
 **One-time setup** (needs Docker Desktop running):
 
@@ -72,7 +72,7 @@ the shared/live project.
 cd frontend
 pnpm install
 pnpm supabase:start                                 # starts local Postgres/Auth/REST
-pnpm exec playwright install chromium --with-deps   # only needed for e2e, first time
+pnpm exec cypress install                           # only needed for the browser tests, first time
 ```
 
 **Repository tests** (vitest — proves `repositories/*.repo.ts` queries are correct against
@@ -91,26 +91,13 @@ pnpm tsc --noEmit     # typecheck, must exit 0
 pnpm lint             # Biome lint on the flight-operations files; lint:fix applies safe fixes
 ```
 
-**End-to-end tests** (Playwright — drives the real app in a real browser through a real
-login, ends every spec with a direct DB read to prove the record actually persisted):
-
-```bash
-pnpm supabase:reset   # first time / to get a fully clean slate (re-applies migrations)
-pnpm e2e              # headless, all specs
-pnpm e2e:ui           # Playwright's interactive UI — best while writing/debugging a spec
-```
-
-Playwright starts its own `next dev` on port 4100 (`E2E_BASE_URL` overrides) with the local
-Supabase URL and the well-known local demo anon key injected from `e2e/support/env.ts`; no `.env`
-file is needed. The local anon key is the public Supabase CLI demo key, not a secret.
-
-**Cypress** (arrivals/departures module only, per `docs/PLAN.md` D9 — Playwright stays the
-default for every other module). Specs live in `frontend/cypress/e2e/flight-operations/*.cy.ts`;
-`cypress.config.ts` has tasks `seedDevUsers`, `seedFlight` and `cleanFlights` (service role,
-local stack only, reusing `e2e/support/*`), and `cy.login()` logs in through the real login form
-via `cy.session`. `mobile.cy.ts` runs the key flows at 390x844. Cypress does not start the app, so
-the one-command entry starts its own dev server on port 4210 (never 3000/3100/4000/4100) pointed at
-the local stack, runs Cypress headless, and always stops that server:
+**Browser tests** (Cypress — drives the real app in a real browser through a real login, ends every
+spec with a direct DB read to prove the record actually persisted). Specs live in
+`frontend/cypress/e2e/<area>/*.cy.ts`; the Node-side helpers (service-role Supabase tasks, dev-user
+seeding, local-stack safety guard) are in `frontend/cypress/tasks/`, and `cy.login()` logs in through the
+real login form via `cy.session`. Cypress does not start the app, so the one-command entry starts its own
+`next dev` on port 4210 (never 4000) pointed at the local stack, runs Cypress headless with the browser
+zone pinned to America/Phoenix, and always stops that server:
 
 ```bash
 pnpm supabase:start                             # local stack must be up
@@ -119,18 +106,11 @@ pnpm test:cypress                               # starts next dev -p 4210, runs 
 pnpm test:cypress --spec 'cypress/e2e/flight-operations/mobile.cy.ts'   # extra args go to cypress run
 ```
 
-Manual two-terminal alternative (e.g. for `cypress:open`):
-
-```bash
-# terminal 1 (anon key = the multi-line LOCAL_ANON_KEY constant in e2e/support/env.ts; set all four vars or the app 500s)
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key> \
-  SUPABASE_URL=http://127.0.0.1:54321 SUPABASE_ANON_KEY=<local anon key> pnpm exec next dev -p 4210
-# terminal 2
-pnpm cypress:run      # headless
-pnpm cypress:open     # interactive runner
-```
-
-Override the target with `CYPRESS_BASE_URL`. Videos/screenshots are git-ignored.
+Override the target with `CYPRESS_BASE_URL` (use your own port when another session is testing). No `.env` file is
+needed: the local Supabase URL and the public Supabase CLI demo keys come from `cypress/tasks/env.ts`.
+Interactive runner: start `next dev` yourself (set all four `NEXT_PUBLIC_SUPABASE_*` / `SUPABASE_*` vars or the
+app 500s), then `pnpm cypress:open`. Videos/screenshots are git-ignored. Coverage, how auth works, safety
+rules and the known-bug list: `frontend/cypress/README.md`.
 
 **When done:**
 
@@ -139,9 +119,9 @@ pnpm supabase:stop
 ```
 
 (Fine to leave the stack running between sessions too — `supabase start` is idempotent.)
-These same suites (vitest repos, Playwright, Cypress) run in CI on every push/PR (`.github/workflows/test.yml`), so this is
+These same suites (vitest repos, Cypress) run in CI (`.github/workflows/test.yml`, currently manual trigger only), so this is
 exactly what a green check on GitHub means. See `frontend/tests/README.md` and
-`frontend/e2e/README.md` for how the isolation/safety guards work and current coverage.
+`frontend/cypress/README.md` for how the isolation/safety guards work and current coverage.
 
 ## Docs
 

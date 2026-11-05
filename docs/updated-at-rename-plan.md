@@ -58,7 +58,7 @@ flight-services specs.
   use-transactions`), `lib/concurrency.ts`, `components/flight-operations/types.ts`, the equipment, fuel-farm,
   fuel-dispatch and flight form dialogs: column names and the `expectedModifiedAt` / `modifiedAt` identifiers become
   `expectedUpdatedAt` / `updatedAt` (the Flight type field is already `updatedAt`).
-- Tests: repository tests, Playwright (`flight-edit, flight-services`), Cypress (`flight-edit, flight-services`,
+- Tests: repository tests, Cypress (`flight-edit, flight-services`,
   `cypress.config.ts` tasks), `types.test.ts`.
 - Docs: `edit-concurrency.md`, `architecture.md`, `PLAN.md`.
 
@@ -76,8 +76,8 @@ transaction, with no UPDATE statements:
 
 ### 3. Local proof before anything touches live
 - `supabase db reset` on a scratch stack (full replay including the rename), then `pnpm tsc --noEmit`, vitest
-  (repositories and components), Playwright and Cypress full suites. Use own ports and `NEXT_DIST_DIR` (other
-  sessions hold 4100/4210).
+  (repositories and components) and the Cypress full suite. Use own ports and `NEXT_DIST_DIR` (other
+  sessions hold 4210).
 - Edit-conflict specs (`flight-edit`, equipment, fuel) are the ones that prove the compare-and-swap still works.
 - Dry-run the migration on a copy of live structure inside a rolled-back transaction.
 

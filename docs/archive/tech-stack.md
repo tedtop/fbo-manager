@@ -167,7 +167,7 @@ This document provides a complete overview of the technologies used across the p
 ### Frontend
 - Not yet configured. Recommended next steps:
   - Unit tests with Vitest or Jest
-  - Component tests with Testing Library + Playwright
+  - Component tests with Testing Library + Cypress
   - Contract tests against generated `ApiClient` to catch schema drift
 
 ---
