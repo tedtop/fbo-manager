@@ -53,6 +53,7 @@ export function qtDispatchToFlight(dispatch: QTDispatch, fboZone: string): Fligh
     ? `${dispatch.QuantityInWeight.toLocaleString()} lbs (${dispatch.Quantity.toLocaleString()} gal)`
     : undefined
   const now = new Date().toISOString()
+  const status = boardStatus(dispatch.FlightStatus)
 
   return {
     id: `${QT_FLIGHT_PREFIX}${dispatch.TransactionID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`}`,
@@ -64,7 +65,7 @@ export function qtDispatchToFlight(dispatch: QTDispatch, fboZone: string): Fligh
     // Never a quick turn: that flag is the GA +1 hour rule and its "QT" chip would read as the QT source.
     isQuickTurn: false,
     type: arrivalTime && departureTime ? 'overnight' : arrivalTime ? 'arrival' : 'departure',
-    status: boardStatus(dispatch.FlightStatus),
+    status,
     origin: known(dispatch.Origin),
     destination: known(dispatch.Destination),
     contactName: dispatch.AirlineName || undefined,
@@ -74,6 +75,8 @@ export function qtDispatchToFlight(dispatch: QTDispatch, fboZone: string): Fligh
       .join(' · ') || undefined,
     duration: Math.max(45, stayMinutes ?? 45),
     source: 'qt',
+    // Departed airline flights are hidden for now to keep the board short; "Show hidden" brings them back.
+    hiddenAt: status === 'departed' ? now : undefined,
     createdBy: { initials: 'AIR', name: 'QT Technologies', department: 'Airline dispatch' },
     createdAt: now,
     updatedAt: now

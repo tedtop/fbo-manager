@@ -47,6 +47,14 @@ describe('qtDispatchToFlight', () => {
     expect(status('Completed')).toBe('departed')
   })
 
+  it('hides departed airline flights by default, which Show hidden reveals', () => {
+    const filters: FlightFilters = { search: '', status: 'all', dateRange: 'all', services: [], showHidden: false }
+    const gone = qtDispatchToFlight(dispatch({ FlightStatus: 'In Flight' }), ZONE)
+    const here = qtDispatchToFlight(dispatch({ FlightStatus: 'In' }), ZONE)
+    expect(filterFlights([gone, here], filters)).toEqual([here])
+    expect(filterFlights([gone, here], { ...filters, showHidden: true })).toHaveLength(2)
+  })
+
   it('never flags an airline turn as a quick turn (that chip is also labelled QT)', () => {
     const quick = qtDispatchToFlight(dispatch({ DepartureDate: '2026-11-04 13:40' }), ZONE)
     expect(quick.isQuickTurn).toBe(false)
