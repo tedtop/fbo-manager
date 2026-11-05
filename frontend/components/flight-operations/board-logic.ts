@@ -91,6 +91,7 @@ export function filterFlights(
   return flights.filter((flight) => {
     if (bounds && !flightInRange(flight, bounds.start, bounds.end)) return false
     if (!filters.showHidden && isFlightHidden(flight, now)) return false
+    if (filters.hideAirlines && flight.source === 'qt') return false
 
     // Filter by search
     if (filters.search) {

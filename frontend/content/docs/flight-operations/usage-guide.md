@@ -2,7 +2,7 @@
 title: Arrivals and Departures usage guide
 module: flight-operations
 order: 1
-anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone]
+anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
 ---
 
 ## Overview
@@ -85,6 +85,14 @@ Use **Delete** at the bottom of the card. A confirmation names the tail ("Delete
 - **Date Range** choices: Today, **Today + Future** (the default), Tomorrow, This Week, All Dates. Days are local days. A flight is included when its stay overlaps the range; with only one scheduled time, that time (or an actual time) decides.
 - The view buttons switch between Split, Calendar, Arrivals Only and Departures Only.
 - Clearing the filters returns to Today + Future with nothing else selected.
+
+### Airline flights from QT {#airlines}
+
+Airline flights dispatched in QT (the airline fueling app) appear on the board automatically, next to the GA flights. They are marked with a **QT** source badge, a blue outline and tint, so they stand out from GA, and they show the airline, gate, fuel quantity and any MEL warning.
+
+- They are **read-only** here. To change an airline flight, change it in QT; the board follows QT within about a minute.
+- Use the **Airlines** checkbox in the toolbar to show or hide them. It is on by default.
+- Airline flights are not stored in the FBO database, so they cannot be hidden, deleted, given services or used for a fuel request from the board. Fuel for them is managed on the **Fuel Dispatch** page.
 
 ### Time zone and Zulu {#time-zone}
 

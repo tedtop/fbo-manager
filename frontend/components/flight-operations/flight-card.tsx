@@ -171,7 +171,9 @@ export function FlightCard({
     isUrgent: boolean
   }>({ text: '', isUrgent: false })
 
-  const isDbFlight = !flight.id.startsWith('manual-')
+  // Airline dispatches from QT are merged into the board live and read-only (change them in QT).
+  const isQt = flight.source === 'qt'
+  const isDbFlight = !flight.id.startsWith('manual-') && !isQt
   const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
 
   const status = statusConfig[flight.status]
@@ -243,7 +245,7 @@ export function FlightCard({
   // pills, with the compare-and-swap guard of status changes. Optimistic: the Fuel pill shows at once
   // and is reverted if the save fails (the page handler toasts non-conflict failures).
   const hasFuel = localServices.includes('fuel')
-  const canRequestFuel = ['scheduled', 'delayed', 'arrived'].includes(flight.status)
+  const canRequestFuel = !isQt && ['scheduled', 'delayed', 'arrived'].includes(flight.status)
   const [fuelPending, setFuelPending] = useState(false)
   const requestFuel = () => {
     if (hasFuel || fuelPending) return
@@ -298,6 +300,9 @@ export function FlightCard({
       <Card
         className={cn(
           'bg-card border-border hover:border-primary/20 transition-all relative',
+          // Airline (QT) flights: sky tint and left rule, so they read apart from GA. Before the link color,
+          // which keeps the border when the airline flight is a linked pair.
+          isQt && 'border-sky-500/50 border-l-4 border-l-sky-500 bg-sky-500/10',
           isLinked && linkColor && `border-l-4 ${linkColor.border}`,
           // Hover ring: a linked flight uses its link color on both cards so the pair reads as one.
           isHovered &&
@@ -559,16 +564,18 @@ export function FlightCard({
                       quantity={localQuantities[serviceKey]}
                     />
                   ))}
-                  <button
-                    onClick={() => setIsEditingServices(true)}
-                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </button>
+                  {!isQt && (
+                    <button
+                      onClick={() => setIsEditingServices(true)}
+                      className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add
+                    </button>
+                  )}
                 </div>
               )}
-              {localServices.length === 0 && (
+              {localServices.length === 0 && !isQt && (
                 <button
                   onClick={() => setIsEditingServices(true)}
                   className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors mt-1"
@@ -674,6 +681,14 @@ export function FlightCard({
           </div>
 
           {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}
+          {isQt ? (
+            <p
+              data-testid="qt-readonly"
+              className="pt-1.5 border-t border-border text-[11px] text-muted-foreground"
+            >
+              Airline flight from QT: read-only here, change it in QT.
+            </p>
+          ) : (
           <div className="flex gap-1 pt-1.5 border-t border-border">
             <Button
               variant="ghost"
@@ -734,6 +749,7 @@ export function FlightCard({
               <span className="sr-only">Delete</span>
             </Button>
           </div>
+          )}
         </div>
         {deleteState && (
           <FlightCardSkeletonBody className="absolute inset-0 animate-in fade-in duration-300" />

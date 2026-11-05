@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import {
   Popover,
@@ -91,7 +92,8 @@ export function CompactToolbar({
       status: 'all',
       dateRange: 'today_future',
       services: [],
-      showHidden: false
+      showHidden: false,
+      hideAirlines: false
     })
   }
 
@@ -291,6 +293,7 @@ export function CompactToolbar({
                     }
                   />
                 </div>
+
               </div>
             </div>
           </PopoverContent>
@@ -298,6 +301,23 @@ export function CompactToolbar({
       </div>
 
       <ZoneToggle />
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="show-airline-flights"
+          data-testid="show-airlines"
+          checked={!filters.hideAirlines}
+          onCheckedChange={(checked) =>
+            onFiltersChange({ ...filters, hideAirlines: checked === false })
+          }
+        />
+        <label
+          htmlFor="show-airline-flights"
+          className="cursor-pointer select-none text-xs font-medium text-muted-foreground"
+        >
+          Airlines
+        </label>
+      </div>
 
       <div className="relative">
         {/* Absolutely placed so it never shifts the toolbar. It fades in after 300ms, so quick refetches
