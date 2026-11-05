@@ -45,6 +45,13 @@ export const DOC_MODULES: readonly DocModule[] = [
     route: '/fuel-dispatch',
     docs: ['usage-guide'],
     helpAnchors: ['status', 'cards', 'changes', 'countdowns', 'filter', 'density', 'weather', 'fuel-sheet']
+  },
+  {
+    id: 'equipment',
+    title: 'Equipment',
+    route: '/equipment',
+    docs: ['usage-guide'],
+    helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'meter-readings', 'scans']
   }
 ]
 
