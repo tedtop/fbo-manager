@@ -1,8 +1,12 @@
+// Shape of QT Technologies' GetDispatchDetail dispatches. Dates are "YYYY-MM-DD HH:mm" in the
+// airport's local time (no zone); QT uses placeholder strings such as "Unknown" for unset values.
 export interface QTDispatch {
-  DispatchID?: string
+  TransactionID?: number | string
+  FlightID?: number | string
   FlightNumber: string
   TailNumber: string
   AirlineName: string
+  AirlineIcaoCode?: string
   AircraftType?: string
   Origin?: string
   Destination: string
@@ -11,16 +15,12 @@ export interface QTDispatch {
   QuantityInWeight: number // lbs
   DepartureDate?: string
   ArrivalDate?: string
+  TimeOnGround?: string
+  Gate?: string
+  TerminalNumber?: string
+  MEL?: boolean
+  MELMessage?: string
   ChangeFlags?: number
-}
-
-export interface QTConfig {
-  username: string
-  password: string
-  companyLocationId: string
-  userId: string
-  vapidPublicKey?: string
-  error?: string
 }
 
 export interface QTDispatchChange {

@@ -234,7 +234,7 @@ export default function FuelDispatchMonitorPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredDispatches.map((dispatch) => (
-              <DispatchCard key={dispatch.DispatchID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
+              <DispatchCard key={dispatch.TransactionID ??`${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
             ))}
           </div>
         )
@@ -254,7 +254,7 @@ export default function FuelDispatchMonitorPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredDispatches.map((dispatch) => (
-              <DispatchCard key={dispatch.DispatchID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
+              <DispatchCard key={dispatch.TransactionID ??`${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
                   ))}
                 </div>
               )}

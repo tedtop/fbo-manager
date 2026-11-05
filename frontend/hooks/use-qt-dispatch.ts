@@ -1,13 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
-import type { QTDispatch, QTConfig, QTDispatchChange } from '@/types/qt-dispatch'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { QTDispatch, QTDispatchChange } from '@/types/qt-dispatch'
 
-const LOCAL_PROXY_URL = ''  // Same origin
-const LOGIN_ENDPOINT = '/api/qt/login'
 const DISPATCH_ENDPOINT = '/api/qt/dispatch'
-const CONFIG_ENDPOINT = '/api/qt/config'
-const POLL_INTERVAL = 30000 // 30 seconds
+const POLL_SECONDS = 30
 
 interface UseQTDispatchReturn {
   dispatches: QTDispatch[]
@@ -19,226 +16,101 @@ interface UseQTDispatchReturn {
   changes: QTDispatchChange[]
 }
 
+// QT's ChangeFlags is a per-flight counter that only goes up; a rise means fuel, gate or times moved.
+function dispatchKey(d: QTDispatch): string {
+  return String(d.TransactionID ?? `${d.FlightNumber}_${d.TailNumber}`)
+}
+
+function detectChanges(next: QTDispatch[], previous: Map<string, QTDispatch>): QTDispatchChange[] {
+  if (previous.size === 0) return []
+
+  const detected: QTDispatchChange[] = []
+  for (const flight of next) {
+    const old = previous.get(dispatchKey(flight))
+    if (!old) {
+      detected.push({
+        type: 'new_flight',
+        flight,
+        message: `New flight added: ${flight.FlightNumber} to ${flight.Destination}`
+      })
+    } else if ((flight.ChangeFlags ?? 0) > (old.ChangeFlags ?? 0)) {
+      const base = `${flight.FlightNumber} to ${flight.Destination} (${flight.TailNumber})`
+      detected.push({
+        type: 'dispatch_update',
+        flight,
+        oldChangeFlags: old.ChangeFlags,
+        newChangeFlags: flight.ChangeFlags,
+        message:
+          flight.QuantityInWeight > 0
+            ? `${base} requested ${flight.QuantityInWeight} lbs of fuel`
+            : `${base} - Dispatch updated`
+      })
+    }
+  }
+  return detected
+}
+
 export function useQTDispatch(): UseQTDispatchReturn {
   const [dispatches, setDispatches] = useState<QTDispatch[]>([])
-  const [previousDispatches, setPreviousDispatches] = useState<QTDispatch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [refreshCountdown, setRefreshCountdown] = useState(30)
+  const [refreshCountdown, setRefreshCountdown] = useState(POLL_SECONDS)
   const [changes, setChanges] = useState<QTDispatchChange[]>([])
 
-  const qtCookiesRef = useRef<string | null>(null)
-  const qtConfigRef = useRef<QTConfig | null>(null)
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const previousRef = useRef<Map<string, QTDispatch>>(new Map())
+  const inFlightRef = useRef(false)
 
-  // Authenticate with QT
-  const authenticate = useCallback(async () => {
-    try {
-      // Get config from server
-      const configResponse = await fetch(`${LOCAL_PROXY_URL}${CONFIG_ENDPOINT}`)
-      const config: QTConfig = await configResponse.json()
-
-      if (!config.username || !config.password) {
-        throw new Error(config.error || 'QT credentials not configured')
-      }
-
-      qtConfigRef.current = config
-
-      // Login to QT
-      const loginResponse = await fetch(`${LOCAL_PROXY_URL}${LOGIN_ENDPOINT}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: config.username,
-          password: config.password,
-        }),
-      })
-
-      const loginData = await loginResponse.json()
-
-      if (loginResponse.ok && loginData.success) {
-        qtCookiesRef.current = loginData.qtCookies
-        return true
-      } else {
-        throw new Error(loginData.message || 'Login failed')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
-      return false
-    }
-  }, [])
-
-  // Detect changes between old and new dispatches
-  const detectChanges = useCallback(
-    (newDispatches: QTDispatch[], oldDispatches: QTDispatch[]): QTDispatchChange[] => {
-      if (!oldDispatches.length) return []
-
-      const detected: QTDispatchChange[] = []
-      const oldMap = new Map(
-        oldDispatches.map((d) => [`${d.FlightNumber}_${d.TailNumber}`, d])
-      )
-      const newMap = new Map(
-        newDispatches.map((d) => [`${d.FlightNumber}_${d.TailNumber}`, d])
-      )
-
-      // Check for new flights
-      for (const [key, flight] of newMap) {
-        if (!oldMap.has(key)) {
-          detected.push({
-            type: 'new_flight',
-            flight,
-            message: `New flight added: ${flight.FlightNumber} to ${flight.Destination}`,
-          })
-        }
-      }
-
-      // Check for ChangeFlags increments
-      for (const [key, newFlight] of newMap) {
-        const oldFlight = oldMap.get(key)
-        if (
-          oldFlight &&
-          newFlight.ChangeFlags !== undefined &&
-          oldFlight.ChangeFlags !== undefined &&
-          newFlight.ChangeFlags > oldFlight.ChangeFlags
-        ) {
-          let message = `${newFlight.FlightNumber} to ${newFlight.Destination} (${newFlight.TailNumber}) - Dispatch updated`
-
-          if (newFlight.QuantityInWeight && newFlight.QuantityInWeight > 0) {
-            message = `${newFlight.FlightNumber} to ${newFlight.Destination} (${newFlight.TailNumber}) requested ${newFlight.QuantityInWeight} lbs of fuel`
-          }
-
-          detected.push({
-            type: 'dispatch_update',
-            flight: newFlight,
-            oldChangeFlags: oldFlight.ChangeFlags,
-            newChangeFlags: newFlight.ChangeFlags,
-            message,
-          })
-        }
-      }
-
-      return detected
-    },
-    []
-  )
-
-  // Fetch dispatch data from QT
   const fetchDispatchData = useCallback(async () => {
-    if (!qtConfigRef.current) {
-      await authenticate()
-      if (!qtConfigRef.current) return
-    }
-
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     try {
-      setLoading(true)
-      setError(null)
-
-      const response = await fetch(`${LOCAL_PROXY_URL}${DISPATCH_ENDPOINT}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'QT-Cookies': qtCookiesRef.current || '',
-        },
-        body: JSON.stringify({
-          CompanyLocationID: qtConfigRef.current.companyLocationId,
-          UserID: qtConfigRef.current.userId,
-        }),
-      })
-
-      if (response.status === 401) {
-        // Session expired, re-authenticate
-        await authenticate()
-        return fetchDispatchData()
-      }
+      const response = await fetch(DISPATCH_ENDPOINT, { cache: 'no-store' })
+      const data = await response.json().catch(() => null)
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Server error: ${response.status}`)
+        throw new Error(data?.error || `Dispatch server error ${response.status}`)
+      }
+      if (!data?.Success) {
+        throw new Error(data?.ErrorMessage || 'QT returned an error for the dispatch list')
       }
 
-      const data = await response.json()
+      const next: QTDispatch[] = data.Detail?.Dispatches ?? []
+      const detected = detectChanges(next, previousRef.current)
+      if (detected.length > 0) setChanges(detected)
+      previousRef.current = new Map(next.map((d) => [dispatchKey(d), d]))
 
-      if (data.Success) {
-        const newDispatches: QTDispatch[] = data.Detail?.Dispatches || []
-
-        // Detect changes
-        const detectedChanges = detectChanges(newDispatches, previousDispatches)
-        if (detectedChanges.length > 0) {
-          setChanges(detectedChanges)
-        }
-
-        setPreviousDispatches(dispatches)
-        setDispatches(newDispatches)
-        setLastUpdated(new Date())
-      } else {
-        throw new Error(data.ErrorMessage || 'Failed to fetch dispatch data')
-      }
+      setDispatches(next)
+      setLastUpdated(new Date())
+      setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch dispatch data')
     } finally {
+      inFlightRef.current = false
       setLoading(false)
     }
-  }, [dispatches, previousDispatches, authenticate, detectChanges])
+  }, [])
 
-  // Start refresh countdown
-  const startRefreshCountdown = useCallback(() => {
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current)
-    }
-
-    setRefreshCountdown(30)
-
-    countdownIntervalRef.current = setInterval(() => {
-      setRefreshCountdown((prev) => {
-        if (prev <= 1) {
-          fetchDispatchData()
-          return 30
-        }
-        return prev - 1
-      })
+  // One tick per second drives both the visible countdown and the poll.
+  const secondsRef = useRef(POLL_SECONDS)
+  useEffect(() => {
+    fetchDispatchData()
+    const timer = setInterval(() => {
+      secondsRef.current -= 1
+      if (secondsRef.current <= 0) {
+        secondsRef.current = POLL_SECONDS
+        fetchDispatchData()
+      }
+      setRefreshCountdown(secondsRef.current)
     }, 1000)
+    return () => clearInterval(timer)
   }, [fetchDispatchData])
 
-  // Manual refetch
   const refetch = useCallback(async () => {
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current)
-    }
+    secondsRef.current = POLL_SECONDS
+    setRefreshCountdown(POLL_SECONDS)
     await fetchDispatchData()
-    startRefreshCountdown()
-  }, [fetchDispatchData, startRefreshCountdown])
+  }, [fetchDispatchData])
 
-  // Initialize
-  useEffect(() => {
-    const init = async () => {
-      const success = await authenticate()
-      if (success) {
-        await fetchDispatchData()
-        startRefreshCountdown()
-      }
-    }
-
-    init()
-
-    return () => {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current)
-      }
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-      }
-    }
-  }, []) // Only run once on mount
-
-  return {
-    dispatches,
-    loading,
-    error,
-    lastUpdated,
-    refreshCountdown,
-    refetch,
-    changes,
-  }
+  return { dispatches, loading, error, lastUpdated, refreshCountdown, refetch, changes }
 }

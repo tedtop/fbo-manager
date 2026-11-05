@@ -25,12 +25,20 @@ export function DispatchCard({ dispatch }: DispatchCardProps) {
 
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return 'N/A'
-    try {
-      return format(new Date(dateString), 'MMM d, h:mm a')
-    } catch {
-      return 'N/A'
-    }
+    // QT sends "YYYY-MM-DD HH:mm" in airport-local time; the "T" form parses the same everywhere
+    // (Safari rejects the space) and stays local, with no zone shift.
+    const date = new Date(dateString.replace(' ', 'T'))
+    if (Number.isNaN(date.getTime())) return 'N/A'
+    return format(date, 'MMM d, h:mm a')
   }
+
+  // QT's placeholders for "not assigned", same sets as Minuteman.
+  const gateUnknown = new Set(['', '?'])
+  const terminalUnknown = new Set(['', '-', '?', '0'])
+  const gateLabel =
+    dispatch.Gate && !gateUnknown.has(dispatch.Gate)
+      ? `${dispatch.TerminalNumber && !terminalUnknown.has(dispatch.TerminalNumber) ? dispatch.TerminalNumber : ''}${dispatch.Gate}`
+      : null
 
   const cardBorderClass =
     dispatch.FlightStatus === 'In Flight'
@@ -67,16 +75,25 @@ export function DispatchCard({ dispatch }: DispatchCardProps) {
           </div>
         </div>
 
-        {dispatch.AircraftType && (
+        {(dispatch.AircraftType || gateLabel) && (
           <div className="bg-muted/30 p-3 rounded-lg">
             <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-              Aircraft Type
+              Aircraft{gateLabel ? ' / Gate' : ' Type'}
             </div>
             <div className="text-sm font-semibold text-foreground">
-              {dispatch.AircraftType}
+              {[dispatch.AircraftType, gateLabel && `Gate ${gateLabel}`].filter(Boolean).join(' · ')}
             </div>
           </div>
         )}
+
+        <div className="bg-muted/30 p-3 rounded-lg">
+          <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+            Arrival
+          </div>
+          <div className="text-sm font-semibold text-foreground">
+            {formatDateTime(dispatch.ArrivalDate)}
+          </div>
+        </div>
 
         {dispatch.Origin && (
           <div className="bg-muted/30 p-3 rounded-lg">
@@ -109,6 +126,13 @@ export function DispatchCard({ dispatch }: DispatchCardProps) {
           </div>
         </div>
       </div>
+
+      {dispatch.MEL && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-800 dark:text-yellow-300">
+          <span aria-hidden>⚠️</span>
+          <span>{dispatch.MELMessage || 'MEL item on this aircraft'}</span>
+        </div>
+      )}
     </Card>
   )
 }
