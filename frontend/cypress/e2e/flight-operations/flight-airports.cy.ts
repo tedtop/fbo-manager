@@ -1,4 +1,4 @@
-// Mirror of e2e/flight-airports.e2e.ts (Playwright): Origin / Destination are airport comboboxes (B50).
+// Cypress spec: Origin / Destination are airport comboboxes (B50).
 // Needs the airport seed in the local database. Assumes the default Settings (home airport KMSO, FAA codes).
 import type { Database } from '../../../types/database'
 

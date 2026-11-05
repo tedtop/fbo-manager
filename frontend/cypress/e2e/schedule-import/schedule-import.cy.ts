@@ -1,4 +1,4 @@
-// Port of e2e/schedule-import.e2e.ts (Playwright). B45b: scan the front desk's schedule, review, import. The OCR
+// Cypress spec. B45b: scan the front desk's schedule, review, import. The OCR
 // route and the registry lookup are STUBBED with cy.intercept (no Anthropic call, no adsbdb call). The fixture mirrors
 // docs/samples/schedule-sheet-2026-11-04.jpg: six printed rows, one leg each (Action column), that become four
 // flights. Dates are shifted to the coming days so the board ("Today + Future") shows them, and the tails are random

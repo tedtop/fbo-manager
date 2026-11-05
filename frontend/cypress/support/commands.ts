@@ -1,4 +1,4 @@
-// Dev accounts seeded by e2e/support/seed.ts (same ones the login form's Quick Dev Login buttons use).
+// Dev accounts seeded by cypress/tasks/seed.ts (same ones the login form's Quick Dev Login buttons use).
 const LOGIN_BUTTON = { admin: 'Log in as Admin', user: 'Log in as User' } as const
 
 declare global {

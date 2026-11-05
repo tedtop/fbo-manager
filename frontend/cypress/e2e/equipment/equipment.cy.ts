@@ -1,6 +1,6 @@
 import { taskUntil } from '../../support/task-poll'
 
-// Port of e2e/equipment.e2e.ts (Playwright): the equipment form's create and edit must really persist.
+// Cypress spec: the equipment form's create and edit must really persist.
 const stamp = Date.now().toString(36).toUpperCase()
 const createId = `E2E-EQ-${stamp}`
 const createName = `E2E Fuel Truck ${stamp}`

@@ -1,25 +1,18 @@
 import { taskUntil } from '../../support/task-poll'
 
-// Port of e2e/airport-picker.e2e.ts (Playwright): the airport combobox, mounted as the Settings "Home airport"
+// Cypress spec: the airport combobox, mounted as the Settings "Home airport"
 // picker (it is not wired into a flight form yet). Needs the airport seed in the local database. Changes
-// app_setting home_airport; the original value is read before and restored in after().
+// app_setting home_airport; the global before() in support/e2e.ts resets it to KMSO, and after() puts it back.
 const KEY = 'home_airport'
-let originalHome: string | null = null
 
 describe('Airport picker (Settings home airport)', () => {
-  before(() => {
-    cy.task('getAppSetting', KEY).then((value) => {
-      originalHome = value as string | null
-    })
-  })
-
   beforeEach(() => {
     cy.task('setAppSetting', { key: KEY, value: 'KMSO' })
     cy.login()
   })
 
   after(() => {
-    cy.task('setAppSetting', { key: KEY, value: originalHome })
+    cy.task('resetAppSettings')
   })
 
   it('GPI lists Glacier Park first and Guapi second; picking Glacier saves KGPI and survives a reload', () => {

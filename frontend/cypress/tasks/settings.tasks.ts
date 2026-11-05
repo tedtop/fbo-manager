@@ -20,4 +20,17 @@ export const settingsTasks = {
     if (error) throw new Error(`setAppSetting: ${error.message}`)
     return null
   },
+
+  /**
+   * Puts the settings other specs depend on back to the app defaults (tail prefix N, home airport KMSO), so a spec
+   * that died mid-test cannot leave the shared local DB in a state the next spec trips over.
+   */
+  async resetAppSettings() {
+    const db = createE2EDbClient()
+    const { error } = await db
+      .from('app_setting')
+      .upsert([{ key: 'tail_number_prefix', value: 'N' }, { key: 'home_airport', value: 'KMSO' }], { onConflict: 'key' })
+    if (error) throw new Error(`resetAppSettings: ${error.message}`)
+    return null
+  },
 }

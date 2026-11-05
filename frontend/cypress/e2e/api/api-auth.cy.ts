@@ -1,4 +1,4 @@
-// Port of e2e/api-auth.e2e.ts (Playwright). middleware.ts skips auth for every /api/ path, so each route checks for
+// Cypress spec. middleware.ts skips auth for every /api/ path, so each route checks for
 // itself. These are the routes that spend money (OCR) or reach a third party (QT, registry lookup): an anonymous
 // caller must get 401 before any body is read or any upstream is called.
 // (No DB proof here: a rejected call persists nothing; the 401 status and body are the observable outcome.)

@@ -1,4 +1,4 @@
-// Port of e2e/flight-create.e2e.ts (Playwright) plus departure-only, validation and cancel (BACKLOG B08d).
+// Cypress spec plus departure-only, validation and cancel (BACKLOG B08d).
 // NOT YET tags pin today's behavior; each flips when the matching backlog item lands:
 //   NOT YET: hangar pull preset (B24).
 // B09b: QT checkbox (preselected, departure = arrival + 1 h), optional scheduled times, actual times.

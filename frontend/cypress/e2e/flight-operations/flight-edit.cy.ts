@@ -1,4 +1,4 @@
-// Port of e2e/flight-edit.e2e.ts (Playwright): edit persists, status dropdown, soft delete, and the
+// Cypress spec: edit persists, status dropdown, soft delete, and the
 // edit-concurrency conflict dialog (PR #43). One seeded departure-only flight per test so tests never
 // interfere and tail text maps to exactly one card.
 // KNOWN BUG tags pin today's behavior; each flips when the matching backlog item lands.

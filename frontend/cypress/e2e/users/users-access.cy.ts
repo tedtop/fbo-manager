@@ -1,4 +1,4 @@
-// Port of e2e/users-access.e2e.ts (Playwright). New sign-ups (Google or email) have a profile and no role. They
+// Cypress spec. New sign-ups (Google or email) have a profile and no role. They
 // must be held on /pending until an admin gives them one in the Users module. Google itself cannot run here (it
 // needs Google's servers), so the new account is created through the admin API (cy.task); everything after the
 // sign-in redirect is the same path a Google user takes (docs/google-signin.md).

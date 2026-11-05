@@ -1,4 +1,4 @@
-// Port of e2e/flight-services.e2e.ts (Playwright), B26d: the service catalog end to end. Pills on the form
+// Cypress spec, B26d: the service catalog end to end. Pills on the form
 // and on the card come from the same `service` table; writes go through set_flight_services (flight_service
 // junction is the source, the legacy flight.services column is kept in sync).
 const stamp = Date.now().toString(36).toUpperCase()

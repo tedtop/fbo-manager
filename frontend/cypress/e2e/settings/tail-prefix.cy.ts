@@ -1,9 +1,8 @@
 import { taskUntil } from '../../support/task-poll'
 
-// Port of the "Tail number prefix (Settings)" spec in e2e/settings.e2e.ts (Playwright). Changes app_setting
-// tail_number_prefix; the original value is read before and restored in after().
+// Cypress spec. Changes app_setting
+// tail_number_prefix; the global before() in support/e2e.ts resets it to N, and after() puts it back.
 const KEY = 'tail_number_prefix'
-let originalPrefix: string | null = null
 
 const setPrefixInDb = (value: string) => cy.task('setAppSetting', { key: KEY, value })
 const tailInput = () => cy.get('input[placeholder="e.g., N12345"]')
@@ -22,19 +21,13 @@ const openAddFlight = () => {
 }
 
 describe('Tail number prefix (Settings)', () => {
-  before(() => {
-    cy.task('getAppSetting', KEY).then((value) => {
-      originalPrefix = value as string | null
-    })
-  })
-
   beforeEach(() => {
     setPrefixInDb('N')
     cy.login()
   })
 
   after(() => {
-    cy.task('setAppSetting', { key: KEY, value: originalPrefix })
+    cy.task('resetAppSettings')
   })
 
   it('a new flight starts with N in the tail field and typing continues after it', () => {

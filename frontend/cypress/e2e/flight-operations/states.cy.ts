@@ -1,4 +1,4 @@
-// Port of e2e/flight-states.e2e.ts (Playwright), B18 (F11): empty day, failed fetch with Retry, and a week change
+// Cypress spec, B18 (F11): empty day, failed fetch with Retry, and a week change
 // that keeps the previous flights on screen. (Filters that match nothing: empty-states.cy.ts.)
 // The flight fetch is GET /rest/v1/flight; writes (POST/PATCH) are never intercepted here.
 const stamp = Date.now().toString(36).toUpperCase()

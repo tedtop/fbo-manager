@@ -1,6 +1,6 @@
 import { taskUntil } from '../../support/task-poll'
 
-// Port of e2e/invoicing.e2e.ts (Playwright). This is the module the 2026-07-03 handoff explicitly flagged: "a
+// Cypress spec. This is the module the 2026-07-03 handoff explicitly flagged: "a
 // POS/invoicing ticket-entry form that renders and looks correct but silently doesn't persist to the database."
 // createInvoice() (repositories/invoices.repo.ts) does a multi-step write (fueling event -> invoice -> line items ->
 // gauge readings, with best-effort rollback since supabase-js has no client transactions), driven entirely through
