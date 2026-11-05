@@ -38,8 +38,8 @@ coordinated changes across two codebases for every feature with no technical ben
 since Supabase already serves the frontend directly via PostgREST, Auth, and Realtime.
 The Next.js app no longer talks to it or depends on anything it generates — its
 generated OpenAPI TypeScript client has been removed from `frontend/`, and no runtime
-path touches Django. The `backend/` directory itself is kept in the repo for
-historical reference only; it isn't run, deployed, or maintained. See
+path touches Django. The old `backend/` directory was deleted from the repo
+(it remains in git history before the cleanup commit). See
 `frontend/repositories/*.repo.ts` for the full list of entities and their query
 surface.
 

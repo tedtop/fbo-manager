@@ -1,5 +1,5 @@
 // Auto-generate with: npx supabase gen types typescript --project-id qkuhvlrdidhumyyxokil > types/database.ts
-// Manually maintained to match Django models in backend/api/models.py
+// Types for the Supabase schema (the original Django models were removed from the repo).
 
 // Per-department scheduling policy (ACL knobs live in data, not code)
 export type DepartmentSettings = {

@@ -67,13 +67,12 @@ this isn't optional.)
 
 ## 2. Point the service at `frontend/`, not the repo root
 
-This repo is a monorepo with an unrelated, dead `backend/` (Django) directory
-next to `frontend/`. Railway must be told the real app lives in `frontend/`:
+The app lives in `frontend/` (the old Django `backend/` directory has been removed).
+Railway must be told where the app is:
 
 1. Open the newly created service → **Settings** tab.
 2. Under **Source**, set **Root Directory** to `frontend`. This restricts
-   which files Railway pulls in for the build to `frontend/` only —
-   `backend/` will never be touched or considered.
+   which files Railway pulls in for the build to `frontend/` only.
 3. Still in **Settings**, find the **Config-as-code Path** (sometimes labeled
    **Config File Path**) field. Railway config files do **not** follow the
    Root Directory setting automatically — you must give the absolute
@@ -123,7 +122,7 @@ reasons; none of them are read by the deployed frontend app (verified by
 grepping `process.env.*` usage across `frontend/`):
 
 - `API_URL`, `NEXT_PUBLIC_API_URL`, `DEBUG`, `SECRET_KEY` — Django backend
-  only; `backend/` is dead and not deployed.
+  only; the backend was removed and is not deployed.
 - `SUPABASE_DB_HOST`, `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD`,
   `SUPABASE_DB_NAME`, `SUPABASE_DB_PORT` — only used for local Supabase CLI /
   direct-psql schema migration scripts run by hand from a dev machine, never
@@ -161,7 +160,7 @@ grepping `process.env.*` usage across `frontend/`):
 - **Build fails with a Supabase client error** — a `NEXT_PUBLIC_SUPABASE_*`
   variable is missing/misspelled in the service's Variables tab. Re-check
   step 4.
-- **Railway seems to be building `backend/` or picking the wrong
+- **Railway picking the wrong
   language/builder** — Root Directory (step 2) isn't set to `frontend`, or
   the Config-as-code Path isn't set to `/frontend/railway.json`.
 - **Invite emails link to `undefined/login`** — `NEXT_PUBLIC_SITE_URL` isn't

@@ -8,8 +8,7 @@
 #
 # Build from the repo root with the frontend/ directory as build context, e.g.:
 #   docker build -f frontend/Dockerfile.prod -t fbo-manager-frontend frontend
-# Never point the build context at the repo root — backend/ (dead Django code)
-# must never enter this build.
+# Keep the build context at frontend/ (not the repo root) so only the app enters the image.
 #
 # IMPORTANT — NEXT_PUBLIC_* build-time vars:
 # Next.js inlines NEXT_PUBLIC_* env vars into the client JS bundle at `next build`
