@@ -24,6 +24,7 @@
     "e2e:ui": "playwright test --ui",
     "e2e:seed": "tsx e2e/support/run-seed.ts",
     "test:cypress": "tsx scripts/test-cypress.ts",
+    "clean:next": "tsx scripts/clean-next.ts",
     "cypress:run": "cypress run",
     "cypress:open": "cypress open"
   },

@@ -55,6 +55,10 @@ export default defineConfig({
     timeout: 120_000,
     cwd: path.resolve(__dirname),
     env: {
+      // Private build folder so this server never fights `pnpm dev` over `.next`. One stable name
+      // per port (runs reuse it instead of piling up); `pnpm clean:next` removes it. Keep any
+      // NEXT_DIST_DIR override under .next-e2e/ so Tailwind ignores it.
+      NEXT_DIST_DIR: process.env.NEXT_DIST_DIR || `.next-e2e/pw-${new URL(E2E_BASE_URL).port}`,
       NEXT_PUBLIC_SUPABASE_URL: E2E_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
       SUPABASE_URL: E2E_SUPABASE_URL,

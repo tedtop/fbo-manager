@@ -2,17 +2,24 @@
 // local Supabase stack, waits for it, runs `cypress run` headless, and always stops the server it
 // started. Extra args are forwarded to `cypress run` (e.g. `pnpm test:cypress --spec <glob>`).
 import { type ChildProcess, spawn } from 'node:child_process'
+import { rmSync } from 'node:fs'
+import path from 'node:path'
 import { E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_URL, assertSafeE2ETarget } from '../e2e/support/env'
 
 const baseUrl = process.env.CYPRESS_BASE_URL ?? 'http://localhost:4210'
 const port = new URL(baseUrl).port
 assertSafeE2ETarget(E2E_SUPABASE_URL)
 
+// Private build folder, one stable name per port (so runs never pile up), removed when the run ends.
+// A caller-supplied NEXT_DIST_DIR is left alone. Always under .next-e2e/ so Tailwind ignores it.
+const ownDistDir = process.env.NEXT_DIST_DIR ? null : `.next-e2e/cy-${port}`
+
 const server: ChildProcess = spawn('pnpm', ['exec', 'next', 'dev', '-p', port], {
   stdio: 'inherit',
   detached: true, // own process group so the whole next dev tree can be stopped
   env: {
     ...process.env,
+    ...(ownDistDir ? { NEXT_DIST_DIR: ownDistDir } : {}),
     NEXT_PUBLIC_SUPABASE_URL: E2E_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
     SUPABASE_URL: E2E_SUPABASE_URL,
@@ -73,7 +80,12 @@ main()
     console.error(err instanceof Error ? err.message : err)
     return 1
   })
-  .then((code) => {
+  .then(async (code) => {
     stopServer()
+    if (ownDistDir) {
+      // Wait for next dev to let go of its build folder, then delete it.
+      for (let i = 0; i < 50 && !serverExited; i++) await new Promise((r) => setTimeout(r, 100))
+      rmSync(path.resolve(__dirname, '..', ownDistDir), { recursive: true, force: true })
+    }
     process.exit(code)
   })

@@ -109,3 +109,10 @@ now a matter of writing one spec per form following `equipment.e2e.ts`'s pattern
 plumbing. Prioritize by risk: forms with complex multi-step writes (like invoicing's) are worth
 more than simple single-table CRUD forms, which the vitest repo suite already indirectly proves
 work at the query level.
+
+## Build folders
+
+Each test server needs its own Next.js build folder because `pnpm dev` holds `.next`. This is automatic:
+Playwright uses `.next-e2e/pw-<port>` and `pnpm test:cypress` uses `.next-e2e/cy-<port>` (deleted when the
+run ends). If you start a server by hand, set `NEXT_DIST_DIR=.next-e2e/<name>`: keep it under `.next-e2e/`,
+which Tailwind ignores. `pnpm clean:next` removes stale ones (`--dry-run` lists them, `--force` removes all).
