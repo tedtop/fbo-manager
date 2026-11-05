@@ -20,7 +20,7 @@ import {
   rankAndFilterIcaoTypes
 } from '@/lib/icao-aircraft-types'
 import { cn } from '@/lib/utils'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 interface AircraftTypeComboboxProps {
@@ -32,6 +32,8 @@ interface AircraftTypeComboboxProps {
   usageCounts: Record<string, number>
   onSelect: (display: string, icao: string) => void
   disabled?: boolean
+  /** Shows a spinner and disables the field while a type lookup is running. */
+  loading?: boolean
 }
 
 const MAX_ROWS = 60
@@ -42,7 +44,8 @@ export function AircraftTypeCombobox({
   icao,
   usageCounts,
   onSelect,
-  disabled
+  disabled,
+  loading = false
 }: AircraftTypeComboboxProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -84,7 +87,8 @@ export function AircraftTypeCombobox({
           // biome-ignore lint/a11y/useSemanticElements: standard shadcn combobox trigger pattern
           role="combobox"
           aria-expanded={open}
-          disabled={disabled}
+          disabled={disabled || loading}
+          aria-busy={loading || undefined}
           className="w-full justify-between font-normal"
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
@@ -94,7 +98,14 @@ export function AircraftTypeCombobox({
                 : value
               : 'Select aircraft type'}
           </span>
-          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          {loading ? (
+            <Loader2
+              className="size-4 shrink-0 animate-spin opacity-70"
+              aria-label="Looking up aircraft type"
+            />
+          ) : (
+            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent

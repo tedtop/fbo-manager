@@ -25,12 +25,14 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { useAircraft } from '@/hooks/use-aircraft'
+import { useAircraftTypeLookup } from '@/hooks/use-aircraft-type-lookup'
 import { useAirportSettings } from '@/hooks/use-airports'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { isBlankTail } from '@/lib/app-settings'
 import { formatLocalDate } from '@/lib/local-date'
 import { useToast } from '@/hooks/use-toast'
 import { describeError } from '@/lib/error-message'
+import { findIcaoType, formatIcaoType } from '@/lib/icao-aircraft-types'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { FlightRow } from '@/repositories/flights.repo'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -145,6 +147,13 @@ export function FlightFormDialog({
   const [isEditingAircraftType, setIsEditingAircraftType] = useState(false)
   // ICAO code of the selected aircraft type; undefined until known (falls back to the aircraft record)
   const [aircraftTypeIcao, setAircraftTypeIcao] = useState<string | undefined>()
+
+  // Tail of a just-created aircraft whose type is being looked up in the registry; cleared on a
+  // manual pick, a different tail, or once the result has been applied.
+  const [lookupTail, setLookupTail] = useState<string | null>(null)
+  const typeLookup = useAircraftTypeLookup(lookupTail)
+  const lookingUpType = lookupTail !== null && typeLookup.isFetching
+  const lookupMissed = lookupTail !== null && !typeLookup.isFetching && !typeLookup.data
 
   const usageCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -290,6 +299,11 @@ export function FlightFormDialog({
       )
     }
     setTailError(null)
+    setLookupTail((current) =>
+      current && current.toUpperCase() === tailNumber.trim().toUpperCase()
+        ? current
+        : null
+    )
     setFormData({
       ...formData,
       tailNumber,
@@ -307,6 +321,7 @@ export function FlightFormDialog({
         aircraftType: (newAircraft as any).aircraft_type_display || 'Unknown'
       })
       setIsEditingAircraftType(true)
+      setLookupTail(newAircraft.tail_number)
     } catch (error) {
       console.error('Failed to create aircraft:', error)
       toast({
@@ -319,10 +334,31 @@ export function FlightFormDialog({
 
   const handleAircraftTypeChange = (display: string, icao: string) => {
     setTypeError(null)
+    setLookupTail(null)
     setAircraftTypeIcao(icao)
     setIsEditingAircraftType(true)
     setFormData({ ...formData, aircraftType: display })
   }
+
+  // Apply the registry type once the lookup for the current tail returns. Results for a tail
+  // the form has moved on from are dropped (lookupTail is cleared when the tail changes).
+  useEffect(() => {
+    const hit = typeLookup.data
+    if (!lookupTail || typeLookup.isFetching || !hit) return
+    if (hit.tail !== lookupTail.toUpperCase()) return
+    const catalog = findIcaoType(hit.typeIcao)
+    const display = catalog
+      ? formatIcaoType(catalog)
+      : `${hit.manufacturer ?? ''} ${hit.typeDescription}`.trim()
+    const icao = catalog?.icao ?? hit.typeIcao
+    setLookupTail(null)
+    setTypeError(null)
+    setAircraftTypeIcao(icao)
+    setFormData((current) => ({ ...current, aircraftType: display }))
+    updateAircraft(lookupTail, display, icao).catch((error) => {
+      console.error('Failed to save looked-up aircraft type:', error)
+    })
+  }, [lookupTail, typeLookup.data, typeLookup.isFetching, updateAircraft])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -519,7 +555,13 @@ export function FlightFormDialog({
                   icao={aircraftTypeIcao}
                   usageCounts={usageCounts}
                   onSelect={handleAircraftTypeChange}
+                  loading={lookingUpType}
                 />
+                {lookupMissed && (
+                  <p className="text-xs text-muted-foreground">
+                    No registry match for {lookupTail}; pick a type
+                  </p>
+                )}
                 {typeError && (
                   <p
                     id="typeError"
