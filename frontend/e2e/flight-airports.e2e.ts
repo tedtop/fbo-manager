@@ -11,7 +11,8 @@ test.use({ timezoneId: 'America/Phoenix' })
 
 const tailGpi = uniqueValue('NC2E').toUpperCase()
 const tailKeep = uniqueValue('NC2E').toUpperCase()
-const tails = [tailGpi, tailKeep]
+const tailClear = uniqueValue('NC2E').toUpperCase()
+const tails = [tailGpi, tailKeep, tailClear]
 
 async function setSetting(key: string, value: string) {
   const { error } = await db
@@ -168,5 +169,46 @@ test.describe('Airport pickers on the flight form', () => {
     await expect(
       page.locator('[data-testid="flight-origin"][title^="KMSO"]')
     ).toHaveCount(0)
+  })
+
+  test('an airport that was set can be cleared again (Clear option) and saves as empty', async ({
+    page
+  }) => {
+    const { error } = await db.from('flight').insert({
+      tail_number: tailClear,
+      origin: 'KMSO',
+      destination: 'KIAD',
+      scheduled_departure_time: new Date(Date.now() + 2 * 3_600_000).toISOString(),
+      flight_status: 'scheduled'
+    })
+    if (error) throw error
+
+    await page.goto('/')
+    const card = page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: new RegExp(`${tailClear}(?![0-9])`) })
+    await card.getByRole('button', { name: 'Edit' }).click()
+    await expect(page.locator('#destination')).toContainText('Washington')
+
+    await page.locator('#destination').click()
+    await page.getByRole('option', { name: 'Clear (no airport)' }).click()
+    await expect(page.locator('#destination')).toContainText('Select destination')
+    await expect(page.locator('#origin')).toContainText('Missoula') // the other end is untouched
+
+    await page.getByRole('button', { name: 'Update Flight' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit Flight' })).toBeHidden({
+      timeout: 10_000
+    })
+
+    await expect
+      .poll(async () => {
+        const { data } = await db
+          .from('flight')
+          .select('origin, destination')
+          .eq('tail_number', tailClear)
+          .single()
+        return data
+      })
+      .toEqual({ origin: 'KMSO', destination: '' })
   })
 })

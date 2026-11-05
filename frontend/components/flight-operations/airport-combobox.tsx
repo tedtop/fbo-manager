@@ -24,7 +24,7 @@ import {
   storedCode
 } from '@/lib/airports'
 import { cn } from '@/lib/utils'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface AirportComboboxProps {
@@ -118,6 +118,14 @@ export function AirportCombobox({
             onValueChange={setQuery}
           />
           <CommandList>
+            {value && !typed && (
+              <CommandGroup>
+                <CommandItem value="clear-airport" onSelect={() => pick('')}>
+                  <X className="size-4 shrink-0 opacity-70" />
+                  Clear (no airport)
+                </CommandItem>
+              </CommandGroup>
+            )}
             {!typed && <CommandEmpty>Type a code, name or city.</CommandEmpty>}
             {typed && isFetching && results.length === 0 && (
               <CommandEmpty>Searching...</CommandEmpty>
