@@ -54,6 +54,9 @@ export function AirportCombobox({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
+  // The highlighted row, controlled so the first result is preselected as results arrive
+  // (cmdk only does that itself when it filters): Enter picks it, arrows move it.
+  const [highlighted, setHighlighted] = useState('')
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), DEBOUNCE_MS)
@@ -69,6 +72,17 @@ export function AirportCombobox({
   const typed = query.trim()
   const ambiguous = isAmbiguous(results, typed)
   const hasExact = results.some((a) => isExactCodeMatch(a, typed))
+
+  // Results belong to the debounced query: only preselect once they match what is typed.
+  const resultsMatchQuery = debounced === typed
+  const firstId = results[0]?.id
+  useEffect(() => {
+    if (!open) return
+    if (!typed) setHighlighted(value ? 'clear-airport' : '')
+    else if (resultsMatchQuery && firstId !== undefined)
+      setHighlighted(`airport-${firstId}`)
+    else if (resultsMatchQuery && !isFetching) setHighlighted(`typed-${typed}`)
+  }, [open, typed, resultsMatchQuery, firstId, isFetching, value])
 
   const pick = (code: string) => {
     onChange(code)
@@ -111,7 +125,11 @@ export function AirportCombobox({
         className="w-(--radix-popover-trigger-width) min-w-80 p-0"
         align="start"
       >
-        <Command shouldFilter={false}>
+        <Command
+          shouldFilter={false}
+          value={highlighted}
+          onValueChange={setHighlighted}
+        >
           <CommandInput
             placeholder="Code or name (MSO, KMSO, Kalispell)"
             value={query}

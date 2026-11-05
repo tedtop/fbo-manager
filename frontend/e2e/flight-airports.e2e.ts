@@ -211,4 +211,28 @@ test.describe('Airport pickers on the flight form', () => {
       })
       .toEqual({ origin: 'KMSO', destination: '' })
   })
+
+  test('the first match is preselected: Enter picks it, arrows pick another', async ({
+    page
+  }) => {
+    await openAddFlightSheet(page)
+    const destination = page.locator('#destination')
+    const selectedRow = page.locator('[cmdk-item][aria-selected="true"]')
+
+    // Type and press Enter: the first result (Las Vegas) is already highlighted.
+    await destination.click()
+    await page.getByPlaceholder(/Code or name/).fill('las')
+    await expect(selectedRow).toContainText('Harry Reid')
+    await page.keyboard.press('Enter')
+    await expect(destination).toContainText('Harry Reid')
+
+    // Arrow down once, then Enter: the second result.
+    await destination.click()
+    await page.getByPlaceholder(/Code or name/).fill('las')
+    await expect(selectedRow).toContainText('Harry Reid')
+    await page.keyboard.press('ArrowDown')
+    await expect(selectedRow).toContainText('Las Cruces')
+    await page.keyboard.press('Enter')
+    await expect(destination).toContainText('Las Cruces')
+  })
 })
