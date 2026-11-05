@@ -89,8 +89,11 @@ export default function ParkingManagementPage() {
               <strong className="text-foreground">Config Mode:</strong> 1) Click
               "New area" and name it. 2) Select it in the list (or click it on
               the map). 3) Press "Draw boundary", click each corner on the map
-              and double-click the last one. The boundary saves as soon as it is
-              finished; use "Edit shape" to adjust it later.
+              and double-click to finish the shape (Esc cancels). 4) An area
+              with a boundary is editable as soon as you select it: drag a
+              corner, drag a midpoint to add one, or drag the shape to move it;
+              changes save automatically. "Snap to grid" squares the shape up to
+              the map as you see it. Click empty map or press Esc to deselect.
             </>
           ) : (
             <>

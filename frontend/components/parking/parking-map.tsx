@@ -15,7 +15,8 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useParking } from '@/hooks/use-parking'
 import { useToast } from '@/hooks/use-toast'
 import { getAircraftDefinition } from '@/lib/aircraft-types'
-import { findAreaAtPoint, polygonBounds, ringOf } from '@/lib/parking-geometry'
+import { resolveAreaClick } from '@/lib/area-selection'
+import { polygonBounds, ringOf } from '@/lib/parking-geometry'
 import {
   areaOfPlane,
   countAircraftByArea,
@@ -31,7 +32,11 @@ import { AircraftSheet } from './aircraft-sheet'
 import { syncAreaLayers } from './area-layers'
 import { AreaPanel } from './area-panel'
 import { type AreaFormValues, AreaSheet } from './area-sheet'
-import { type Notice, useAreaDrawing } from './use-area-drawing'
+import {
+  DRAW_FINISH_HINT,
+  type Notice,
+  useAreaDrawing
+} from './use-area-drawing'
 import { useMapInstance } from './use-map-instance'
 import { usePlaneMarkers } from './use-plane-markers'
 
@@ -113,13 +118,15 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     onSave: async (id, polygon) => {
       await parking.setBoundary(id, polygon)
     },
-    onNotice: setNotice
+    onNotice: setNotice,
+    onDeselect: () => setSelectedAreaId(null)
   })
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !loaded) return
     const highlighted = editing ? selectedAreaId : null
+    // The editable MapboxDraw copy stands in for the saved polygon while it exists.
     syncAreaLayers(
       map,
       parking.areas,
@@ -279,6 +286,8 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     setSelectedAreaId(area.id)
     const map = mapRef.current
     const ring = ringOf(area.polygon)
+    // On a phone the drawer would cover the shape that is now ready to drag.
+    if (ring && isMobile) setDrawerOpen(false)
     if (map && ring) {
       const [west, south, east, north] = polygonBounds(ring)
       map.fitBounds(
@@ -308,8 +317,9 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     const area = clearTarget
     setClearTarget(null)
     if (!area) return
-    drawing.finish()
     try {
+      // A drag still waiting for its debounce must not re-create the boundary afterwards.
+      await drawing.flushPending()
       await parking.setBoundary(area.id, null)
       setNotice({
         kind: 'success',
@@ -324,15 +334,23 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     setDrawerOpen(false)
     drawing.startDraw()
   }
-  const startEditingShape = () => {
-    setDrawerOpen(false)
-    drawing.startEdit()
-  }
+  const snapSelectedToGrid = () =>
+    drawing.snapToGrid(mapRef.current?.getBearing() ?? 0)
 
   // --- map-level interaction ----------------------------------------------------------------
 
-  const live = useRef({ editing, drawMode: drawing.mode, areas: parking.areas })
-  live.current = { editing, drawMode: drawing.mode, areas: parking.areas }
+  const live = useRef({
+    editing,
+    drawMode: drawing.mode,
+    areas: parking.areas,
+    selectedId: selectedAreaId
+  })
+  live.current = {
+    editing,
+    drawMode: drawing.mode,
+    areas: parking.areas,
+    selectedId: selectedAreaId
+  }
 
   useEffect(() => {
     const map = mapRef.current
@@ -342,11 +360,21 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
       setContextMenu(null)
       const target = e.originalEvent.target as HTMLElement | null
       if (target?.closest('.parking-plane')) return
-      const { editing: isEditing, drawMode, areas } = live.current
+      if (target?.closest('.mapboxgl-ctrl')) return
+      const { editing: isEditing, drawMode, areas, selectedId } = live.current
       if (isEditing) {
-        if (drawMode !== 'idle') return
-        const area = findAreaAtPoint([e.lngLat.lng, e.lngLat.lat], areas)
-        if (area) setSelectedAreaId(area.id)
+        // While drawing, clicks place corners.
+        if (drawMode === 'drawing') return
+        const action = resolveAreaClick({
+          point: [e.lngLat.lng, e.lngLat.lat],
+          areas,
+          selectedId,
+          onDrawShape: map
+            .queryRenderedFeatures(e.point)
+            .some((f) => f.layer?.id.startsWith('gl-draw'))
+        })
+        if (action.kind === 'select') setSelectedAreaId(action.areaId)
+        else if (action.kind === 'deselect') setSelectedAreaId(null)
       } else {
         setSelectedTail(null)
         setPlaneSheetOpen(false)
@@ -390,8 +418,8 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
       onEdit={(area) => openAreaSheet(area)}
       onArchive={setArchiveTarget}
       onDraw={startDrawing}
-      onEditShape={startEditingShape}
-      onFinishDrawing={drawing.finish}
+      onSnapToGrid={snapSelectedToGrid}
+      onCancelDrawing={drawing.cancelDraw}
       onClearBoundary={() => selectedArea && setClearTarget(selectedArea)}
     />
   )
@@ -424,6 +452,12 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
           {markers.pending > 0 && (
             <output className="pointer-events-none absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-sm font-semibold text-black shadow-lg">
               Saving...
+            </output>
+          )}
+
+          {editing && drawing.mode === 'drawing' && (
+            <output className="pointer-events-none absolute top-16 left-1/2 z-20 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-full bg-primary px-4 py-1.5 text-center text-sm font-semibold text-primary-foreground shadow-lg">
+              {DRAW_FINISH_HINT}
             </output>
           )}
 

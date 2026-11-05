@@ -6,7 +6,7 @@ import { KIND_META, type ParkingAreaKind } from '@/lib/parking-map'
 import { cn } from '@/lib/utils'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
 import { Archive, Check, Pencil, Plus } from 'lucide-react'
-import type { DrawMode } from './use-area-drawing'
+import { DRAW_FINISH_HINT, type DrawMode, EDIT_HINT } from './use-area-drawing'
 
 interface AreaPanelProps {
   areas: readonly ParkingAreaRow[]
@@ -20,8 +20,8 @@ interface AreaPanelProps {
   onEdit: (area: ParkingAreaRow) => void
   onArchive: (area: ParkingAreaRow) => void
   onDraw: () => void
-  onEditShape: () => void
-  onFinishDrawing: () => void
+  onSnapToGrid: () => void
+  onCancelDrawing: () => void
   onClearBoundary: () => void
 }
 
@@ -50,13 +50,12 @@ export function AreaPanel({
   onEdit,
   onArchive,
   onDraw,
-  onEditShape,
-  onFinishDrawing,
+  onSnapToGrid,
+  onCancelDrawing,
   onClearBoundary
 }: AreaPanelProps) {
   const selected = areas.find((a) => a.id === selectedId) ?? null
   const hasBoundary = Boolean(selected?.polygon)
-  const busy = drawMode !== 'idle'
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -150,16 +149,38 @@ export function AreaPanel({
         {selected ? (
           <>
             <p className="text-sm font-medium">Boundary for {selected.code}</p>
-            {drawMode === 'idle' ? (
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={onDraw}>
-                  {hasBoundary ? 'Redraw boundary' : 'Draw boundary'}
+            {drawMode === 'drawing' ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Click each corner of the boundary on the map.{' '}
+                  <strong className="text-foreground">
+                    {DRAW_FINISH_HINT}
+                  </strong>
+                </p>
+                <Button size="sm" variant="outline" onClick={onCancelDrawing}>
+                  Cancel drawing
                 </Button>
-                {hasBoundary && (
-                  <>
-                    <Button size="sm" variant="outline" onClick={onEditShape}>
-                      Edit shape
-                    </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={onDraw}>
+                    {hasBoundary ? 'Redraw boundary' : 'Draw boundary'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onSnapToGrid}
+                    disabled={!hasBoundary}
+                    title={
+                      hasBoundary
+                        ? 'Square the shape up into a rectangle aligned with the map as you see it'
+                        : 'Draw a boundary first'
+                    }
+                  >
+                    Snap to grid
+                  </Button>
+                  {hasBoundary && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -167,26 +188,18 @@ export function AreaPanel({
                     >
                       Clear boundary
                     </Button>
-                  </>
+                  )}
+                </div>
+                {drawMode === 'editing' && (
+                  <p className="text-xs text-muted-foreground">{EDIT_HINT}</p>
                 )}
-              </div>
-            ) : (
-              <Button size="sm" variant="outline" onClick={onFinishDrawing}>
-                {drawMode === 'drawing' ? 'Cancel drawing' : 'Done editing'}
-              </Button>
-            )}
-            {busy && (
-              <p className="text-xs text-muted-foreground">
-                {drawMode === 'drawing'
-                  ? 'Drawing on the map...'
-                  : 'Editing the shape on the map...'}
-              </p>
+              </>
             )}
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
             Select an area to draw or edit its boundary. You can also click an
-            area on the map.
+            area on the map; click empty map to deselect.
           </p>
         )}
       </div>
