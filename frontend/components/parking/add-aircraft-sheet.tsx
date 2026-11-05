@@ -1,15 +1,9 @@
 'use client'
 
+import { AircraftTypeCombobox } from '@/components/flight-operations/aircraft-type-combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
 import {
   Sheet,
   SheetContent,
@@ -19,10 +13,18 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AIRCRAFT_TYPES, DEFAULT_AIRCRAFT_TYPE } from '@/lib/aircraft-types'
+import { useAircraftTypeLookup } from '@/hooks/use-aircraft-type-lookup'
+import {
+  type AircraftTypeChoice,
+  UNKNOWN_AIRCRAFT_TYPE,
+  effectiveAircraftType,
+  tailForLookup
+} from '@/lib/new-aircraft-type'
 import { normalizeTailNumber, tailNumberError } from '@/lib/parking-map'
 import type { AircraftRow } from '@/repositories/aircraft.repo'
 import { useEffect, useMemo, useState } from 'react'
+
+const LOOKUP_DEBOUNCE_MS = 400
 
 interface AddAircraftSheetProps {
   open: boolean
@@ -31,8 +33,13 @@ interface AddAircraftSheetProps {
   available: readonly AircraftRow[]
   /** Existing tail numbers (parked or not), to catch duplicates when creating. */
   knownTailNumbers: ReadonlySet<string>
+  /** Aircraft per ICAO type code, to rank the type picker. */
+  usageCounts: Record<string, number>
   onPlaceExisting: (tailNumber: string) => Promise<void>
-  onCreateAndPlace: (tailNumber: string, typeId: string) => Promise<void>
+  onCreateAndPlace: (
+    tailNumber: string,
+    type: AircraftTypeChoice
+  ) => Promise<void>
 }
 
 function messageOf(err: unknown): string {
@@ -47,13 +54,16 @@ export function AddAircraftSheet({
   onOpenChange,
   available,
   knownTailNumbers,
+  usageCounts,
   onPlaceExisting,
   onCreateAndPlace
 }: AddAircraftSheetProps) {
   const [tab, setTab] = useState('existing')
   const [search, setSearch] = useState('')
   const [tail, setTail] = useState('')
-  const [typeId, setTypeId] = useState(DEFAULT_AIRCRAFT_TYPE)
+  // Only a type the user picked by hand; the registry lookup never writes here.
+  const [pickedType, setPickedType] = useState<AircraftTypeChoice | null>(null)
+  const [debouncedTail, setDebouncedTail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -62,10 +72,33 @@ export function AddAircraftSheet({
     setTab('existing')
     setSearch('')
     setTail('')
-    setTypeId(DEFAULT_AIRCRAFT_TYPE)
+    setPickedType(null)
+    setDebouncedTail('')
     setError(null)
     setBusy(false)
   }, [open])
+
+  // Wait for a pause in typing so the registry is not queried on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedTail(tail), LOOKUP_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [tail])
+
+  const currentLookupTail = tailForLookup(tail, knownTailNumbers)
+  const lookupTail = currentLookupTail === debouncedTail ? debouncedTail : null
+  const typeLookup = useAircraftTypeLookup(lookupTail)
+  const lookupPending =
+    !pickedType &&
+    currentLookupTail !== null &&
+    (lookupTail === null || typeLookup.isFetching)
+  const lookingUpType =
+    !pickedType && lookupTail !== null && typeLookup.isFetching
+  const lookupMissed =
+    !pickedType &&
+    lookupTail !== null &&
+    !typeLookup.isFetching &&
+    !typeLookup.data
+  const type = effectiveAircraftType(pickedType, lookupTail, typeLookup.data)
 
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -103,7 +136,7 @@ export function AddAircraftSheet({
       )
       return
     }
-    void run(() => onCreateAndPlace(normalized, typeId))
+    void run(() => onCreateAndPlace(normalized, type ?? UNKNOWN_AIRCRAFT_TYPE))
   }
 
   return (
@@ -187,23 +220,19 @@ export function AddAircraftSheet({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-type">Aircraft type</Label>
-                <Select value={typeId} onValueChange={setTypeId}>
-                  <SelectTrigger id="new-type" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AIRCRAFT_TYPES.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium">{t.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {t.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <AircraftTypeCombobox
+                  id="new-type"
+                  value={type?.display ?? ''}
+                  icao={type?.icao}
+                  usageCounts={usageCounts}
+                  onSelect={(display, icao) => setPickedType({ display, icao })}
+                  loading={lookingUpType}
+                />
+                {lookupMissed && (
+                  <p className="text-xs text-muted-foreground">
+                    No registry match; pick a type
+                  </p>
+                )}
               </div>
             </form>
           </TabsContent>
@@ -228,7 +257,7 @@ export function AddAircraftSheet({
             <Button
               type="submit"
               form="new-aircraft-form"
-              disabled={busy}
+              disabled={busy || lookupPending}
               className="w-full sm:w-auto"
             >
               {busy ? 'Adding...' : 'Create and place'}

@@ -14,9 +14,12 @@ import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useParking } from '@/hooks/use-parking'
 import { useToast } from '@/hooks/use-toast'
-import { getAircraftDefinition } from '@/lib/aircraft-types'
 import { resolveAreaClick } from '@/lib/area-selection'
 import { BASEMAPS } from '@/lib/basemaps'
+import {
+  type AircraftTypeChoice,
+  countTypeUsage
+} from '@/lib/new-aircraft-type'
 import { polygonBounds, ringOf } from '@/lib/parking-geometry'
 import {
   areaOfPlane,
@@ -234,11 +237,14 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     })
   }
 
-  const createAndPlace = async (tailNumber: string, typeId: string) => {
+  const createAndPlace = async (
+    tailNumber: string,
+    type: AircraftTypeChoice
+  ) => {
     await parking.createAircraft({
       tail_number: tailNumber,
-      aircraft_type_icao: typeId,
-      aircraft_type_display: getAircraftDefinition(typeId).name,
+      aircraft_type_icao: type.icao,
+      aircraft_type_display: type.display,
       airline_icao: '',
       fleet_id: ''
     })
@@ -608,6 +614,7 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
           (a) => !parkedTails.has(a.tail_number)
         )}
         knownTailNumbers={new Set(parking.aircraft.map((a) => a.tail_number))}
+        usageCounts={countTypeUsage(parking.aircraft)}
         onPlaceExisting={placeAtMapCentre}
         onCreateAndPlace={createAndPlace}
       />
