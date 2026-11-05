@@ -41,6 +41,15 @@ import { MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+/** Start date when an admin has set one, else the sign-up date. Date-only strings are formatted as written so no time zone shifts the day. */
+function formatJoined(user: { hire_date: string | null; created_at: string }): string {
+  if (user.hire_date) {
+    const [y, m, d] = user.hire_date.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString()
+  }
+  return new Date(user.created_at).toLocaleDateString()
+}
+
 export default function UsersPage() {
   const { allowed, loading: accessLoading } = useModuleAccess('users', 'manage')
   const {
@@ -96,7 +105,7 @@ export default function UsersPage() {
       if (search) {
         const q = search.toLowerCase()
         const haystack =
-          `${u.first_name} ${u.last_name} ${u.email} ${u.employee_id ?? ''}`.toLowerCase()
+          `${u.first_name} ${u.last_name} ${u.email} ${u.employee_id ?? ''} ${u.badge_id ?? ''}`.toLowerCase()
         if (!haystack.includes(q)) return false
       }
       return true
@@ -117,6 +126,8 @@ export default function UsersPage() {
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
         employeeId: data.employeeId,
+        badgeId: data.badgeId,
+        hireDate: data.hireDate,
         roleIds: data.roleIds
       })
       showSuccess('User updated')
@@ -127,6 +138,8 @@ export default function UsersPage() {
         lastName: data.lastName,
         phoneNumber: data.phoneNumber,
         employeeId: data.employeeId,
+        badgeId: data.badgeId,
+        hireDate: data.hireDate,
         roleIds: data.roleIds
       })
       showSuccess(`Invitation sent to ${data.email}`)
@@ -363,6 +376,7 @@ export default function UsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Employee ID</TableHead>
+                  <TableHead>Badge ID</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -420,10 +434,13 @@ export default function UsersPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {formatJoined(user)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {user.employee_id || '—'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user.badge_id || '—'}
                     </TableCell>
                     <TableCell>
                       <Badge
