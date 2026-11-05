@@ -118,6 +118,8 @@ export interface FlightFilters {
   services: string[]
   // B43b: list hidden flights too (off by default)
   showHidden: boolean
+  // Hide the airline flights that come from QT (shown by default; unset = shown)
+  hideAirlines?: boolean
 }
 
 // Map DB flight_status to component status

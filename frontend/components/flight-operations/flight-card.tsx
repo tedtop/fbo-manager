@@ -47,6 +47,8 @@ import {
   MapPin,
   Pencil,
   Plane,
+  PlaneLanding,
+  PlaneTakeoff,
   Plus,
   Trash2,
   User,
@@ -171,7 +173,9 @@ export function FlightCard({
     isUrgent: boolean
   }>({ text: '', isUrgent: false })
 
-  const isDbFlight = !flight.id.startsWith('manual-')
+  // Airline dispatches from QT are merged into the board live and read-only (change them in QT).
+  const isQt = flight.source === 'qt'
+  const isDbFlight = !flight.id.startsWith('manual-') && !isQt
   const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
 
   const status = statusConfig[flight.status]
@@ -188,6 +192,8 @@ export function FlightCard({
     flight.type === 'quick_turn' ||
     flight.type === 'overnight' ||
     flight.type === 'long_term'
+  const PlaneIcon = isQt ? Plane : isArrival ? PlaneLanding : PlaneTakeoff
+
 
   // Update countdown every minute
   useEffect(() => {
@@ -243,7 +249,7 @@ export function FlightCard({
   // pills, with the compare-and-swap guard of status changes. Optimistic: the Fuel pill shows at once
   // and is reverted if the save fails (the page handler toasts non-conflict failures).
   const hasFuel = localServices.includes('fuel')
-  const canRequestFuel = ['scheduled', 'delayed', 'arrived'].includes(flight.status)
+  const canRequestFuel = !isQt && ['scheduled', 'delayed', 'arrived'].includes(flight.status)
   const [fuelPending, setFuelPending] = useState(false)
   const requestFuel = () => {
     if (hasFuel || fuelPending) return
@@ -322,17 +328,38 @@ export function FlightCard({
           {/* Header with tail number, aircraft type, and status */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              <Plane
+              {/* Airlines get the big plane; GA gets the landing / takeoff glyphs. */}
+              <PlaneIcon
+                data-testid={isQt ? 'airline-icon' : undefined}
                 className={cn(
                   'w-4 h-4',
                   isArrival ? 'text-green-500' : 'text-blue-500'
                 )}
               />
-              {flight.tailNumber && (
-                <TailNumberLink
-                  tail={flight.tailNumber}
-                  className="text-lg font-bold font-mono text-foreground hover:text-primary hover:underline underline-offset-2"
-                />
+              {isQt && flight.callSign ? (
+                // Airlines are known by flight number, with the tail alongside: UA1026 (N345NN)
+                <>
+                  <span data-testid="qt-callsign" className="text-lg font-bold font-mono text-foreground">
+                    {flight.callSign}
+                  </span>
+                  {flight.tailNumber && (
+                    <span className="font-mono text-sm text-muted-foreground">
+                      (
+                      <TailNumberLink
+                        tail={flight.tailNumber}
+                        className="hover:text-primary hover:underline underline-offset-2"
+                      />
+                      )
+                    </span>
+                  )}
+                </>
+              ) : (
+                flight.tailNumber && (
+                  <TailNumberLink
+                    tail={flight.tailNumber}
+                    className="text-lg font-bold font-mono text-foreground hover:text-primary hover:underline underline-offset-2"
+                  />
+                )
               )}
               {isLinked && (
                 <TooltipProvider>
@@ -559,16 +586,18 @@ export function FlightCard({
                       quantity={localQuantities[serviceKey]}
                     />
                   ))}
-                  <button
-                    onClick={() => setIsEditingServices(true)}
-                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </button>
+                  {!isQt && (
+                    <button
+                      onClick={() => setIsEditingServices(true)}
+                      className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add
+                    </button>
+                  )}
                 </div>
               )}
-              {localServices.length === 0 && (
+              {localServices.length === 0 && !isQt && (
                 <button
                   onClick={() => setIsEditingServices(true)}
                   className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] border border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-colors mt-1"
@@ -674,6 +703,14 @@ export function FlightCard({
           </div>
 
           {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}
+          {isQt ? (
+            <p
+              data-testid="qt-readonly"
+              className="pt-1.5 border-t border-border text-[11px] text-muted-foreground"
+            >
+              Airline flight from QT: read-only here, change it in QT.
+            </p>
+          ) : (
           <div className="flex gap-1 pt-1.5 border-t border-border">
             <Button
               variant="ghost"
@@ -734,6 +771,7 @@ export function FlightCard({
               <span className="sr-only">Delete</span>
             </Button>
           </div>
+          )}
         </div>
         {deleteState && (
           <FlightCardSkeletonBody className="absolute inset-0 animate-in fade-in duration-300" />

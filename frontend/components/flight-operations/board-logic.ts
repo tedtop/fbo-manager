@@ -91,12 +91,14 @@ export function filterFlights(
   return flights.filter((flight) => {
     if (bounds && !flightInRange(flight, bounds.start, bounds.end)) return false
     if (!filters.showHidden && isFlightHidden(flight, now)) return false
+    if (filters.hideAirlines && flight.source === 'qt') return false
 
     // Filter by search
     if (filters.search) {
       const searchLower = filters.search.toLowerCase()
       const matchesSearch =
         flight.tailNumber.toLowerCase().includes(searchLower) ||
+        flight.callSign?.toLowerCase().includes(searchLower) ||
         flight.aircraftType.toLowerCase().includes(searchLower) ||
         flight.origin?.toLowerCase().includes(searchLower) ||
         flight.destination?.toLowerCase().includes(searchLower) ||
