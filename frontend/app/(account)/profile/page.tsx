@@ -122,6 +122,16 @@ export default function ProfilePage() {
           <Input value={profile.employee_id ?? 'Not assigned'} disabled />
         </div>
 
+        <div className="space-y-2">
+          <Label>Badge ID</Label>
+          <Input value={profile.badge_id ?? 'Not assigned'} disabled />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Start date</Label>
+          <Input value={profile.hire_date ?? 'Not set'} disabled />
+        </div>
+
         <Button type="submit" disabled={saving}>
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>

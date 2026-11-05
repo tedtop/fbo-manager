@@ -1066,6 +1066,8 @@ export type Database = {
           last_name: string
           phone_number: string
           employee_id: string | null
+          badge_id: string | null
+          hire_date: string | null
           status: 'active' | 'disabled'
           created_at: string
           updated_at: string
@@ -1079,6 +1081,8 @@ export type Database = {
           last_name?: string
           phone_number?: string
           employee_id?: string | null
+          badge_id?: string | null
+          hire_date?: string | null
           status?: 'active' | 'disabled'
           created_by?: string | null
           updated_by?: string | null

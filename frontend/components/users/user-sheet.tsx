@@ -23,6 +23,8 @@ export interface UserFormData {
   lastName: string
   phoneNumber: string
   employeeId: string
+  badgeId: string
+  hireDate: string
   roleIds: number[]
 }
 
@@ -32,6 +34,8 @@ const EMPTY_FORM: UserFormData = {
   lastName: '',
   phoneNumber: '',
   employeeId: '',
+  badgeId: '',
+  hireDate: '',
   roleIds: []
 }
 
@@ -64,6 +68,8 @@ export function UserSheet({
         lastName: user.last_name,
         phoneNumber: user.phone_number,
         employeeId: user.employee_id ?? '',
+        badgeId: user.badge_id ?? '',
+        hireDate: user.hire_date ?? '',
         roleIds: user.roles.map((r) => r.id)
       })
     } else {
@@ -157,19 +163,20 @@ export function UserSheet({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Input
+              id="phoneNumber"
+              type="tel"
+              value={formData.phoneNumber}
+              onChange={(e) =>
+                setFormData({ ...formData, phoneNumber: e.target.value })
+              }
+              placeholder="(555) 555-1234"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input
-                id="phoneNumber"
-                type="tel"
-                value={formData.phoneNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, phoneNumber: e.target.value })
-                }
-                placeholder="(555) 555-1234"
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="employeeId">Employee ID</Label>
               <Input
@@ -179,45 +186,89 @@ export function UserSheet({
                   setFormData({ ...formData, employeeId: e.target.value })
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Printed on the front of the airport badge.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="badgeId">Badge ID</Label>
+              <Input
+                id="badgeId"
+                value={formData.badgeId}
+                onChange={(e) =>
+                  setFormData({ ...formData, badgeId: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Small number on the back of the badge. The airport needs it
+                once a year.
+              </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Roles</Label>
+            <Label htmlFor="hireDate">Start date</Label>
+            <Input
+              id="hireDate"
+              type="date"
+              value={formData.hireDate}
+              onChange={(e) =>
+                setFormData({ ...formData, hireDate: e.target.value })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              The day they started at Minuteman, shown as Joined and used for
+              work anniversaries.
+            </p>
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium leading-none">Roles</legend>
+            <p className="text-xs text-muted-foreground">
+              Roles decide which modules this person can open. Pick one or
+              more.
+            </p>
             {roles.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No roles exist yet. Create one under Users &rarr; Roles.
               </p>
             ) : (
-              <div className="space-y-2 rounded-md border border-border p-3">
+              <div className="space-y-2">
                 {roles.map((role) => {
                   const inputId = `role-${role.id}`
+                  const selected = formData.roleIds.includes(role.id)
                   return (
-                    <div
+                    <label
                       key={role.id}
-                      className="flex items-start gap-2 text-sm"
+                      htmlFor={inputId}
+                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/40 ${
+                        selected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border'
+                      }`}
                     >
                       <Checkbox
                         id={inputId}
-                        checked={formData.roleIds.includes(role.id)}
+                        checked={selected}
                         onCheckedChange={() => toggleRole(role.id)}
+                        className="mt-0.5"
                       />
-                      <Label htmlFor={inputId} className="font-normal">
-                        <span className="font-medium text-foreground">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-foreground">
                           {role.name}
                         </span>
                         {role.description && (
-                          <span className="block text-xs text-muted-foreground">
+                          <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
                             {role.description}
                           </span>
                         )}
-                      </Label>
-                    </div>
+                      </span>
+                    </label>
                   )
                 })}
               </div>
             )}
-          </div>
+          </fieldset>
 
           <SheetFooter className="mt-auto flex-row justify-end gap-2 px-0">
             <Button
