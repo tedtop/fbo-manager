@@ -2,6 +2,7 @@
 
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { equipmentTypeIcon, equipmentTypeLabel } from '@/lib/app-settings'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { StatusBadge, type EquipmentStatus } from './status-badge'
 import type { EquipmentDomain } from '@/types/domain/equipment'
@@ -26,9 +27,11 @@ interface EquipmentStatusCardProps {
   equipment: EquipmentDomain
   onStatusChange: (id: number, status: EquipmentStatus) => void
   onEdit: (equipment: EquipmentDomain) => void
+  /** Open maintenance items (count badge); 0 or missing shows nothing. */
+  openItems?: number
 }
 
-export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: EquipmentStatusCardProps) {
+export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit, openItems = 0 }: EquipmentStatusCardProps) {
   const { settings } = useAppSettings()
   const icon = equipmentTypeIcon(settings.equipmentTypes, eq.equipment_type)
   const borderColor = STATUS_BORDER[eq.status] ?? 'border-l-border'
@@ -51,7 +54,9 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xl flex-shrink-0" aria-hidden="true">{icon}</span>
           <div className="min-w-0">
-            <p className="font-semibold text-foreground truncate">{eq.equipment_name}</p>
+            <Link href={`/equipment/${eq.id}`} className="block font-semibold text-foreground truncate hover:underline" data-testid={`equipment-link-${eq.equipment_id}`}>
+              {eq.equipment_name}
+            </Link>
             <p className="text-xs text-muted-foreground">{equipmentTypeLabel(settings.equipmentTypes, eq.equipment_type)}</p>
           </div>
         </div>
@@ -65,11 +70,20 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit }: E
       </div>
 
       {/* Status badge */}
-      <div>
+      <div className="flex items-center gap-2 flex-wrap">
         <StatusBadge
           status={eq.status as EquipmentStatus}
           onStatusChange={s => onStatusChange(eq.id, s)}
         />
+        {openItems > 0 && (
+          <Link
+            href={`/equipment/${eq.id}`}
+            className="rounded-full border border-yellow-500/60 px-2 py-0.5 text-xs text-yellow-800 dark:text-yellow-300"
+            data-testid="open-maintenance-count"
+          >
+            {openItems} open maintenance {openItems === 1 ? 'item' : 'items'}
+          </Link>
+        )}
       </div>
 
       {/* Info rows */}

@@ -13,6 +13,7 @@ import { validateReadings } from '@/components/truck-sheets/reading-validation'
 import { READING_TYPE_LABELS } from '@/components/truck-sheets/truck-sheet-review'
 import { ScanPages } from '@/components/truck-sheets/scan-pages'
 import { useTruckSheetScans } from '@/hooks/use-truck-scans'
+import { useModuleAccess } from '@/hooks/use-permissions'
 import { ErrorMessage } from '@/messages/error-message'
 
 function fmt(n: number | null, digits = 1): string {
@@ -29,6 +30,7 @@ export default function TruckSheetDetailPage({
   const router = useRouter()
   const { data: sheet, isLoading, error } = useTruckSheet(Number(id))
   const { data: scans } = useTruckSheetScans(sheet ? [sheet.id] : [])
+  const { allowed: canOpenEquipment } = useModuleAccess('equipment')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -89,9 +91,13 @@ export default function TruckSheetDetailPage({
         <div className="flex items-center gap-3 mt-2 flex-wrap">
           <span className="text-2xl" aria-hidden="true">⛽</span>
           <h1 className="text-2xl font-bold">
-            <Link href={`/truck-sheets/trucks/${encodeURIComponent(sheet.truck_number)}`} className="hover:underline" title="All sheets and scans for this truck">
-              Truck {sheet.truck_number}
-            </Link>
+            {canOpenEquipment ? (
+              <Link href={`/equipment/${sheet.fuel_truck_id}`} className="hover:underline" title="Equipment page for this truck">
+                Truck {sheet.truck_number}
+              </Link>
+            ) : (
+              <>Truck {sheet.truck_number}</>
+            )}
           </h1>
           <Badge variant={isJetA ? 'default' : 'secondary'}>{isJetA ? 'Jet A' : 'Avgas'}</Badge>
           {warnings > 0 && (

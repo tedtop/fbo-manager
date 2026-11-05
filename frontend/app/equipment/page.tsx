@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { useEquipment } from '@/hooks/use-equipment'
+import { useOpenMaintenanceCounts } from '@/hooks/use-equipment-maintenance'
 import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import type { EquipmentInsert } from '@/repositories/equipment.repo'
 import type { EquipmentDomain } from '@/types/domain/equipment'
@@ -37,6 +38,7 @@ export default function EquipmentPage() {
   } = useEquipment()
   useEquipmentRealtime()
   const { settings } = useAppSettings()
+  const { data: openCounts } = useOpenMaintenanceCounts()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] =
@@ -207,6 +209,7 @@ export default function EquipmentPage() {
               equipment={item}
               onStatusChange={handleStatusChange}
               onEdit={handleEdit}
+              openItems={openCounts?.get(item.id) ?? 0}
             />
           ))}
         </div>

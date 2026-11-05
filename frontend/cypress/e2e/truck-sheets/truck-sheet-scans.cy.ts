@@ -96,7 +96,8 @@ describe('truck sheet page scans', () => {
     })
 
     // the truck page: the day with both pages in order, a page opens full size
-    cy.visit(`/truck-sheets/trucks/${TRUCK}`)
+    cy.visit(`/truck-sheets/trucks/${TRUCK}`) // the old truck page redirects to the equipment detail page
+    cy.url({ timeout: 15_000 }).should('include', '/equipment/')
     cy.get(`[data-testid="truck-day-${DATE}"]`).within(() => {
       cy.get('[data-testid^="scan-thumb-"]').should('have.length', 2)
       cy.get('[data-testid="scan-thumb-1"] img').should('have.attr', 'alt').and('include', 'page 1')

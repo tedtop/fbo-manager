@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useSession } from '@/hooks/use-session'
+import { useModuleAccess } from '@/hooks/use-permissions'
 import { useDeleteTruckSheet, useFuelTrucks, useTruckSheets } from '@/hooks/use-truck-sheets'
 import { validateReadings } from '@/components/truck-sheets/reading-validation'
 import { ErrorMessage } from '@/messages/error-message'
@@ -41,6 +42,7 @@ export default function TruckSheetsPage() {
   const { data: sheets = [], isLoading, error } = useTruckSheets()
   const { data: trucks = [] } = useFuelTrucks()
   const { mutate: deleteSheet } = useDeleteTruckSheet()
+  const { allowed: canOpenEquipment } = useModuleAccess('equipment')
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -155,14 +157,18 @@ export default function TruckSheetsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-lg" aria-hidden="true">⛽</span>
-                          <Link
-                            href={`/truck-sheets/trucks/${encodeURIComponent(sheet.truck_number)}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="font-mono font-semibold text-lg underline-offset-2 hover:underline"
-                            title={`All sheets and scans for truck ${sheet.truck_number}`}
-                          >
-                            {sheet.truck_number}
-                          </Link>
+                          {canOpenEquipment ? (
+                            <Link
+                              href={`/equipment/${sheet.fuel_truck_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-mono font-semibold text-lg underline-offset-2 hover:underline"
+                              title={`Equipment page for truck ${sheet.truck_number}`}
+                            >
+                              {sheet.truck_number}
+                            </Link>
+                          ) : (
+                            <span className="font-mono font-semibold text-lg">{sheet.truck_number}</span>
+                          )}
                           <Badge variant={isJetA ? 'default' : 'secondary'}>
                             {isJetA ? 'Jet A' : 'Avgas'}
                           </Badge>
