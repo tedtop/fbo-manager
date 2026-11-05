@@ -90,7 +90,7 @@ Use **Delete** at the bottom of the card. A confirmation names the tail ("Delete
 
 Airline flights dispatched in QT (the airline fueling app) appear on the board automatically, next to the GA flights. They are marked with a **QT** source badge, a blue outline and tint, so they stand out from GA, and they show the airline, gate, fuel quantity and any MEL warning.
 
-- They are **read-only** here. To change an airline flight, change it in QT; the board follows QT within about a minute.
+- They are **read-only** here. To change an airline flight, change it in QT; the board follows QT within about 30 seconds.
 - Use the **Airlines** checkbox in the toolbar to show or hide them. It is on by default.
 - Airline flights are not stored in the FBO database, so they cannot be hidden, deleted, given services or used for a fuel request from the board. Fuel for them is managed on the **Fuel Dispatch** page.
 

@@ -5,7 +5,7 @@ import { qtDispatchesToFlights } from '@/lib/qt-flights'
 import type { QTDispatch } from '@/types/qt-dispatch'
 import { useEffect, useMemo, useState } from 'react'
 
-const POLL_MS = 60_000
+const POLL_MS = 30_000
 
 // The live QT airline dispatches as board flights. Quiet by design: when the user has no Fuel Farm
 // access (403) or QT is down, the board simply shows no airline flights rather than an error banner.
