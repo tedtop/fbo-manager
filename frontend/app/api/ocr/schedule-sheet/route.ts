@@ -1,9 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type NextRequest, NextResponse } from 'next/server'
+import { type ExtractDeps, extractScheduleSheet, type SheetExtraction } from '@/lib/schedule-import/extract-sheet'
 import {
   mergeScheduleSheets,
   normalizeScheduleSheet
 } from '@/lib/schedule-import/normalize'
+import { tesseractOcr } from '@/lib/schedule-import/ocr-tesseract'
+import { visionConfigured, visionOcr } from '@/lib/schedule-import/ocr-vision'
 import type { ExtractedScheduleSheet } from '@/lib/schedule-import/types'
 
 export type {
@@ -11,6 +14,9 @@ export type {
   ExtractedScheduleSheet
 } from '@/lib/schedule-import/types'
 
+// The Claude vision path below is the LAST resort: Ted does not pay API credit for this project. It runs only when
+// SCHEDULE_OCR_ALLOW_CLAUDE=1 (and ANTHROPIC_API_KEY is set) and the sheet's format is not the one the parser knows.
+// Default engines are Tesseract, then Google Cloud Vision (lib/schedule-import/extract-sheet.ts).
 // Same model as the truck-sheet route unless SCHEDULE_OCR_MODEL overrides it.
 const DEFAULT_MODEL = 'claude-opus-4-8'
 
@@ -75,7 +81,7 @@ async function extractFromFile(
   client: Anthropic,
   file: File,
   model: string
-): Promise<{ ok: true; sheet: ExtractedScheduleSheet } | { ok: false; response: NextResponse }> {
+): Promise<SheetExtraction> {
   const isPdf = file.type === 'application/pdf'
   const bytes = await file.arrayBuffer()
   const base64 = Buffer.from(bytes).toString('base64')
@@ -99,13 +105,7 @@ async function extractFromFile(
     })
   } catch (err) {
     console.error('[OCR schedule-sheet] Claude API error:', err)
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: 'Extraction failed. Check ANTHROPIC_API_KEY and model availability.' },
-        { status: 502 }
-      )
-    }
+    return { ok: false, status: 502, error: 'Extraction failed. Check ANTHROPIC_API_KEY and model availability.' }
   }
 
   const rawText = message.content[0]?.type === 'text' ? message.content[0].text : ''
@@ -113,39 +113,23 @@ async function extractFromFile(
   const jsonMatch = rawText.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
     console.error('[OCR schedule-sheet] No JSON in response:', rawText)
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: 'Could not parse extraction response', raw_text: rawText },
-        { status: 502 }
-      )
-    }
+    return { ok: false, status: 502, error: 'Could not parse extraction response', raw_text: rawText }
   }
 
   let parsed: unknown
   try {
     parsed = JSON.parse(jsonMatch[0])
   } catch {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: 'Invalid JSON in extraction response', raw_text: rawText },
-        { status: 502 }
-      )
-    }
+    return { ok: false, status: 502, error: 'Invalid JSON in extraction response', raw_text: rawText }
   }
 
-  return { ok: true, sheet: normalizeScheduleSheet(parsed, rawText) }
+  return { ok: true, sheet: normalizeScheduleSheet(parsed, rawText), engine: 'claude' }
 }
 
-// POST multipart/form-data with one or more `file` entries (image or PDF; one entry per photo, or one PDF holding all
-// pages). Always answers with a single ExtractedScheduleSheet: with several files the rows are concatenated in upload
-// order and each row's `page` is its file number.
+// POST multipart/form-data with one or more `file` entries (photos; one entry per photo). Always answers with a single
+// ExtractedScheduleSheet: with several files the rows are concatenated in upload order and each row's `page` is its
+// file number. PDFs are not read yet (no free rasterizer): photos only.
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
-  }
-
   let formData: FormData
   try {
     formData = await req.formData()
@@ -158,21 +142,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
   for (const file of files) {
-    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) {
+    if (file.type === 'application/pdf') {
       return NextResponse.json(
-        { error: 'File must be an image (JPEG, PNG) or PDF' },
+        { error: 'PDF is not supported yet: please upload photos (JPEG or PNG) of the sheet' },
         { status: 400 }
       )
     }
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'File must be an image (JPEG, PNG)' }, { status: 400 })
+    }
   }
 
-  const client = new Anthropic() // reads ANTHROPIC_API_KEY from process.env
-  const model = process.env.SCHEDULE_OCR_MODEL || DEFAULT_MODEL
+  const claudeAllowed = process.env.SCHEDULE_OCR_ALLOW_CLAUDE === '1' && !!process.env.ANTHROPIC_API_KEY
+  const deps: ExtractDeps = {
+    tesseract: tesseractOcr,
+    vision: visionConfigured() ? (f) => visionOcr(f) : undefined,
+    claude: claudeAllowed
+      ? (f) => extractFromFile(new Anthropic(), f, process.env.SCHEDULE_OCR_MODEL || DEFAULT_MODEL)
+      : undefined
+  }
 
   const sheets: ExtractedScheduleSheet[] = []
   for (const file of files) {
-    const result = await extractFromFile(client, file, model)
-    if (!result.ok) return result.response
+    const result = await extractScheduleSheet(file, deps)
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error, ...(result.raw_text !== undefined ? { raw_text: result.raw_text } : {}) },
+        { status: result.status }
+      )
+    }
     sheets.push(result.sheet)
   }
 
