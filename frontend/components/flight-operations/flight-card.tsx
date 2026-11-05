@@ -47,6 +47,8 @@ import {
   MapPin,
   Pencil,
   Plane,
+  PlaneLanding,
+  PlaneTakeoff,
   Plus,
   Trash2,
   User,
@@ -190,6 +192,8 @@ export function FlightCard({
     flight.type === 'quick_turn' ||
     flight.type === 'overnight' ||
     flight.type === 'long_term'
+  const PlaneIcon = isQt ? (isArrival ? PlaneLanding : PlaneTakeoff) : Plane
+
 
   // Update countdown every minute
   useEffect(() => {
@@ -300,10 +304,6 @@ export function FlightCard({
       <Card
         className={cn(
           'bg-card border-border hover:border-primary/20 transition-all relative',
-          // Airline (QT) flights: a barely-there indigo tint and border, so they read apart from GA without
-          // fighting the link colors or the amber note strip. Before the link color, which keeps the left
-          // border when the airline flight is a linked pair.
-          isQt && 'border-indigo-300/60 bg-indigo-500/[0.04] dark:border-indigo-400/25 dark:bg-indigo-400/[0.06]',
           isLinked && linkColor && `border-l-4 ${linkColor.border}`,
           // Hover ring: a linked flight uses its link color on both cards so the pair reads as one.
           isHovered &&
@@ -328,7 +328,9 @@ export function FlightCard({
           {/* Header with tail number, aircraft type, and status */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              <Plane
+              {/* Airlines get the landing / takeoff glyphs, GA keeps the plain plane. */}
+              <PlaneIcon
+                data-testid={isQt ? 'airline-icon' : undefined}
                 className={cn(
                   'w-4 h-4',
                   isArrival ? 'text-green-500' : 'text-blue-500'
