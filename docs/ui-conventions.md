@@ -66,6 +66,14 @@ Keep destructive confirmations as `AlertDialog` (or `Dialog` where already in pl
 - Save results use toasts (`useToast`): a short title on success ("Flight created", "Flight updated", "Flight deleted"); on failure a `destructive` toast titled "Couldn't <verb> <thing>" with the error message as description. Handlers rethrow after toasting so the Sheet stays open with the user's input. Edit-concurrency conflicts are the exception: they use the conflict UI in the form, not a toast.
 - Validation problems are inline text in the form, never `alert()`.
 
+## Docs panel
+
+- **What**: documentation opens in a slide-in panel on the LEFT (`components/docs/docs-panel.tsx`, mounted once in `navigation-wrapper.tsx`), so a user can read it while using a form. It is a plain `<aside data-docs-panel>`, not a Radix Dialog: no overlay, no focus trap, no scroll lock. From `lg` up it is 420px wide and the page shifts right; below `lg` it is full width above the form with a Back button.
+- **State**: the URL is the source of truth: `?docs=<module>` plus `#<anchor>` (`lib/docs/docs-url.ts`, `providers/docs-provider.tsx`). `useDocs()` gives `openDocs(module, anchor?)` / `closeDocs()`; it keeps other query params and survives client navigation.
+- **Help affordance**: every module gets a `HelpButton` (`components/docs/help-button.tsx`) in its toolbar or header, and next to fields that need explaining. `anchor` must be one of the module's `helpAnchors` in `lib/docs/registry.ts`. Docs link back with `module:<id>` and `doc:<module>/<slug>#anchor` links.
+- **Forms**: a `Sheet` form that can be open next to the panel passes `modal={!docsOpen}` to `Sheet`, `overlay={!docsOpen}` to `SheetContent` (new prop, default `true`), and ignores outside interaction and Escape whose target is inside `[data-docs-panel]` (see `flight-form-dialog.tsx`). Modal exactly as before while docs are closed.
+- **Same-PR rule**: any PR that changes a module's user-visible behavior updates `frontend/content/docs/<module>/` in the same PR; the reviewer checks the diff for it.
+
 ## Status (as of 2026-11-04)
 
 Already `Sheet`: `equipment/equipment-form-dialog.tsx`, `fuel-dispatch/transaction-form-dialog.tsx`, `fuel-farm/tank-form-dialog.tsx`, `invoicing/fuel-ticket-sheet.tsx`, `parking/aircraft-sheet.tsx`, `roles/role-sheet.tsx`, `training/completion-sheet.tsx`, `training/course-form-sheet.tsx`, `users/user-sheet.tsx`, `flight-operations/flight-form-dialog.tsx` (the file keeps its old name but renders a `Sheet`), `fuel-dispatch/fueler-assign-dialog.tsx`, `invoicing/settle-invoice-dialog.tsx` (both renamed-in-place Sheets).

@@ -230,3 +230,16 @@
     animation: flight-zap-reduced 200ms linear forwards;
   }
 }
+
+/* Docs panel (B27b): heading flash after scroll-to-anchor. */
+@keyframes docs-highlight {
+  0%, 60% { background-color: color-mix(in oklab, var(--primary) 25%, transparent); }
+  100% { background-color: transparent; }
+}
+.docs-prose .docs-highlight {
+  animation: docs-highlight 2s ease-out;
+  border-radius: 0.25rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-prose .docs-highlight { animation: none; background-color: color-mix(in oklab, var(--primary) 25%, transparent); }
+}

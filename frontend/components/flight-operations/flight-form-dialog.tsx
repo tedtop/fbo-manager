@@ -41,6 +41,8 @@ import { AircraftTypeCombobox } from './aircraft-type-combobox'
 import { AirportCombobox } from './airport-combobox'
 import { prefillAirports } from './airport-prefill'
 import { ServicePillPicker } from './service-pill-picker'
+import { HelpButton } from '@/components/docs/help-button'
+import { useDocs } from '@/providers/docs-provider'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import {
   applyArrivalChange,
@@ -111,6 +113,11 @@ export function FlightFormDialog({
   const appliedPrefix = useRef(tailPrefix)
   // Every date and time in this form is wall-clock in the display zone (FBO zone, or UTC in Zulu mode).
   const { zone, isZulu, suffixAt, banner } = useDisplayZone()
+  // The docs panel lives outside this Sheet. Clicks, focus and Escape inside it must not dismiss the form.
+  const { open: docsOpen } = useDocs()
+  const keepOpenForDocs = (e: Event) => {
+    if (docsOpen && e.target instanceof Element && e.target.closest('[data-docs-panel]')) e.preventDefault()
+  }
   const zoneRef = useRef(zone)
   const { homeAirport, homeCountry, displayPreference } = useAirportSettings()
   // Origin/Destination the person has picked or typed: the home-airport prefill never overwrites these.
@@ -534,14 +541,20 @@ export function FlightFormDialog({
   )
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    // While the docs panel is open the form turns non-modal (no overlay, focus not trapped) so both stay usable
+    // side by side; with docs closed it is modal exactly as before.
+    <Sheet open={open} onOpenChange={onOpenChange} modal={!docsOpen}>
       <SheetContent
         side="right"
+        overlay={!docsOpen}
+        onInteractOutside={keepOpenForDocs}
+        onEscapeKeyDown={keepOpenForDocs}
         className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
       >
         <SheetHeader className="border-b border-border p-4">
-          <SheetTitle>
+          <SheetTitle className="flex items-center gap-1">
             {initialData ? 'Edit Flight' : 'Add New Flight'}
+            <HelpButton module="flight-operations" anchor="add-flight" topic="Add a flight" />
           </SheetTitle>
           <SheetDescription>
             {initialData
@@ -666,6 +679,7 @@ export function FlightFormDialog({
                 >
                   {zoneLabel}
                 </span>
+                <HelpButton module="flight-operations" anchor="times" topic="Scheduled and actual times" />
               </Label>
               <p
                 data-testid="form-zone-hint"
@@ -724,6 +738,12 @@ export function FlightFormDialog({
                     >
                       QT
                     </label>
+                    <HelpButton
+                      module="flight-operations"
+                      anchor="quick-turn"
+                      topic="Quick turn"
+                      className="size-5"
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -843,7 +863,10 @@ export function FlightFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Services</Label>
+              <Label>
+                Services
+                <HelpButton module="flight-operations" anchor="services" topic="Services" />
+              </Label>
               <ServicePillPicker
                 value={formData.services || []}
                 onChange={(services) => setFormData({ ...formData, services })}
