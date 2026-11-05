@@ -101,3 +101,47 @@ export function toDateInput(timestamp?: string, zone?: string): string {
 export function toTimeInput(timestamp?: string, zone?: string): string {
   return timestamp ? formatLocalTime(new Date(timestamp), zone) : ''
 }
+
+// The form's date and "HH:mm" fields, all wall-clock in one zone.
+export interface FormTimes {
+  date: string
+  arrival: string
+  departure: string
+  actualArrival: string
+  actualDeparture: string
+}
+
+// Rebuilds the instants the form would save (same chaining rules as the submit handler) in `from`, and
+// re-reads them as date/time strings in `to`. Used when the Zulu toggle flips while the sheet is open:
+// the typed instants stay put, only their display changes. With no time typed, a date that was "today"
+// in `from` becomes today in `to`; any other date is kept.
+export function convertFormZone(
+  form: FormTimes,
+  from: string,
+  to: string,
+  now: Date = new Date()
+): FormTimes {
+  if (from === to) return form
+  const arrival = buildTimestamp(form.date, form.arrival, undefined, from)
+  const departure = buildTimestamp(form.date, form.departure, form.arrival, from)
+  const actualArrival = buildTimestamp(form.date, form.actualArrival, undefined, from)
+  const actualDeparture = buildTimestamp(
+    form.date,
+    form.actualDeparture,
+    form.actualArrival || form.arrival,
+    from
+  )
+  const anchor = arrival ?? departure ?? actualArrival ?? actualDeparture
+  const date = anchor
+    ? toDateInput(anchor, to)
+    : form.date === formatLocalDate(now, from)
+      ? formatLocalDate(now, to)
+      : form.date
+  return {
+    date,
+    arrival: toTimeInput(arrival, to),
+    departure: toTimeInput(departure, to),
+    actualArrival: toTimeInput(actualArrival, to),
+    actualDeparture: toTimeInput(actualDeparture, to)
+  }
+}

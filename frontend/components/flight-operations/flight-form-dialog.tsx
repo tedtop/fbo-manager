@@ -29,6 +29,7 @@ import { useAircraftTypeLookup } from '@/hooks/use-aircraft-type-lookup'
 import { useAirportSettings } from '@/hooks/use-airports'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { isBlankTail } from '@/lib/app-settings'
+import { useDisplayZone } from '@/hooks/use-display-zone'
 import { formatLocalDate } from '@/lib/local-date'
 import { useToast } from '@/hooks/use-toast'
 import { describeError } from '@/lib/error-message'
@@ -46,6 +47,7 @@ import {
   applyDepartureChange,
   applyQuickTurnChange,
   buildTimestamp,
+  convertFormZone,
   isQuickTurnSaved,
   toDateInput,
   toTimeInput,
@@ -107,6 +109,9 @@ export function FlightFormDialog({
   const { settings } = useAppSettings()
   const tailPrefix = settings.tailNumberPrefix
   const appliedPrefix = useRef(tailPrefix)
+  // Every date and time in this form is wall-clock in the display zone (FBO zone, or UTC in Zulu mode).
+  const { zone, isZulu, suffixAt, banner } = useDisplayZone()
+  const zoneRef = useRef(zone)
   const { homeAirport, homeCountry, displayPreference } = useAirportSettings()
   // Origin/Destination the person has picked or typed: the home-airport prefill never overwrites these.
   const airportTouched = useRef({ origin: false, destination: false })
@@ -116,7 +121,7 @@ export function FlightFormDialog({
     source: 'line-department',
     tailNumber: tailPrefix
   })
-  const [date, setDate] = useState(formatLocalDate(new Date())) // Separate date state (local calendar date)
+  const [date, setDate] = useState(formatLocalDate(new Date(), zone)) // Separate date state (local calendar date)
   const [arrivalTime, setArrivalTime] = useState('')
   const [departureTime, setDepartureTime] = useState('')
   // QT is preselected for new flights (D2): departure follows arrival + 1 h until edited by hand
@@ -177,15 +182,15 @@ export function FlightFormDialog({
     // Extract date and times from timestamps (date from the arrival, else the departure)
     const dateSource = flight.arrivalTime ?? flight.departureTime
     if (dateSource) {
-      setDate(toDateInput(dateSource))
+      setDate(toDateInput(dateSource, zone))
     }
     setScheduled({
-      arrival: toTimeInput(flight.arrivalTime),
-      departure: toTimeInput(flight.departureTime),
+      arrival: toTimeInput(flight.arrivalTime, zone),
+      departure: toTimeInput(flight.departureTime, zone),
       quickTurn: flight.isQuickTurn ?? false
     })
-    setActualArrivalTime(toTimeInput(flight.actualArrivalTime))
-    setActualDepartureTime(toTimeInput(flight.actualDepartureTime))
+    setActualArrivalTime(toTimeInput(flight.actualArrivalTime, zone))
+    setActualDepartureTime(toTimeInput(flight.actualDepartureTime, zone))
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open is intentionally included so the form resets whenever the Sheet reopens; applyFlightToForm is a stable in-component helper
@@ -202,7 +207,7 @@ export function FlightFormDialog({
       })
       setTailError(null)
       airportTouched.current = { origin: false, destination: false }
-      setDate(formatLocalDate(new Date()))
+      setDate(formatLocalDate(new Date(), zone))
       setScheduled({ arrival: '', departure: '', quickTurn: true })
       setActualArrivalTime('')
       setActualDepartureTime('')
@@ -248,6 +253,31 @@ export function FlightFormDialog({
         : next
     })
   }, [initialData, open, arrivalTime, departureTime, homeAirport])
+
+  // The Zulu toggle (or the FBO zone setting arriving) changed while the sheet is open: keep the same
+  // instants and re-read them in the new zone instead of reinterpreting the typed strings.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the zone itself changes
+  useEffect(() => {
+    const from = zoneRef.current
+    if (from === zone) return
+    zoneRef.current = zone
+    const next = convertFormZone(
+      {
+        date,
+        arrival: arrivalTime,
+        departure: departureTime,
+        actualArrival: actualArrivalTime,
+        actualDeparture: actualDepartureTime
+      },
+      from,
+      zone
+    )
+    setDate(next.date)
+    setArrivalTime(next.arrival)
+    setDepartureTime(next.departure)
+    setActualArrivalTime(next.actualArrival)
+    setActualDepartureTime(next.actualDeparture)
+  }, [zone])
 
   const editSession = useRecordEditSession<FlightRow>({
     table: 'flight',
@@ -372,17 +402,24 @@ export function FlightFormDialog({
 
     // Construct timestamps from date and time values. A time earlier than the one before it in the
     // sequence (arrival -> departure) falls on the next day, e.g. a QT arrival at 23:30 departs at 00:30.
-    const arrivalTimestamp = buildTimestamp(date, arrivalTime)
+    const arrivalTimestamp = buildTimestamp(date, arrivalTime, undefined, zone)
     const departureTimestamp = buildTimestamp(
       date,
       departureTime,
-      arrivalTime
+      arrivalTime,
+      zone
     )
-    const actualArrivalTimestamp = buildTimestamp(date, actualArrivalTime)
+    const actualArrivalTimestamp = buildTimestamp(
+      date,
+      actualArrivalTime,
+      undefined,
+      zone
+    )
     const actualDepartureTimestamp = buildTimestamp(
       date,
       actualDepartureTime,
-      actualArrivalTime || arrivalTime
+      actualArrivalTime || arrivalTime,
+      zone
     )
     const savedQuickTurn = isQuickTurnSaved(scheduled)
 
@@ -489,6 +526,12 @@ export function FlightFormDialog({
       setSaving(false)
     }
   }
+
+  // Suffix for the form's date (an edited July flight is MDT even in November; the hint follows it, in the
+  // board banner's wording); "Z" in Zulu mode.
+  const zoneLabel = suffixAt(
+    buildTimestamp(date, arrivalTime || departureTime || '12:00', undefined, zone)
+  )
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -615,7 +658,21 @@ export function FlightFormDialog({
             </div>
 
             <div className="space-y-3">
-              <Label>Scheduled Times (24hr) *</Label>
+              <Label>
+                Scheduled Times (24hr) *
+                <span
+                  data-testid="form-zone-label"
+                  className="font-mono text-xs text-muted-foreground"
+                >
+                  {zoneLabel}
+                </span>
+              </Label>
+              <p
+                data-testid="form-zone-hint"
+                className="text-xs text-muted-foreground"
+              >
+                {isZulu ? banner : `Times in ${zoneLabel}`}
+              </p>
               <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
                   <div className="space-y-2">
@@ -638,7 +695,10 @@ export function FlightFormDialog({
                       htmlFor="actualArrivalTime"
                       className="text-xs text-muted-foreground"
                     >
-                      Actual
+                      Actual{' '}
+                      <span data-testid="form-zone-label-actual">
+                        {zoneLabel}
+                      </span>
                     </Label>
                     <TimeInput
                       id="actualArrivalTime"
@@ -688,7 +748,10 @@ export function FlightFormDialog({
                       htmlFor="actualDepartureTime"
                       className="text-xs text-muted-foreground"
                     >
-                      Actual
+                      Actual{' '}
+                      <span data-testid="form-zone-label-actual">
+                        {zoneLabel}
+                      </span>
                     </Label>
                     <TimeInput
                       id="actualDepartureTime"

@@ -5,6 +5,7 @@ import {
   applyDepartureChange,
   applyQuickTurnChange,
   buildTimestamp,
+  convertFormZone,
   toDateInput,
   toTimeInput,
   isQuickTurnSaved,
@@ -235,5 +236,45 @@ describe('zone-aware buildTimestamp / toDateInput / toTimeInput (Denver 2026)', 
       expect(buildTimestamp('2026-01-15', '23:30')).toBe('2026-01-16T06:30:00.000Z')
       expect(toTimeInput('2026-01-16T06:30:00Z')).toBe('23:30')
     })
+  })
+})
+
+describe('convertFormZone', () => {
+  const form = { date: '2026-11-10', arrival: '07:30', departure: '08:30', actualArrival: '', actualDeparture: '' }
+
+  it('keeps the instants when Denver (MST) flips to Zulu and back', () => {
+    const zulu = convertFormZone(form, 'America/Denver', 'UTC')
+    expect(zulu).toEqual({ date: '2026-11-10', arrival: '14:30', departure: '15:30', actualArrival: '', actualDeparture: '' })
+    expect(convertFormZone(zulu, 'UTC', 'America/Denver')).toEqual(form)
+  })
+
+  it('uses MDT in summer (07:30 Denver = 13:30Z)', () => {
+    expect(convertFormZone({ ...form, date: '2026-07-10' }, 'America/Denver', 'UTC').arrival).toBe('13:30')
+  })
+
+  it('moves the date across midnight and keeps the rollover chain', () => {
+    const late = { ...form, arrival: '18:30', departure: '19:30', actualArrival: '18:40', actualDeparture: '19:35' }
+    const zulu = convertFormZone(late, 'America/Denver', 'UTC')
+    expect(zulu).toMatchObject({ date: '2026-11-11', arrival: '01:30', departure: '02:30', actualArrival: '01:40', actualDeparture: '02:35' })
+    expect(convertFormZone(zulu, 'UTC', 'America/Denver')).toEqual(late)
+  })
+
+  it('handles a QT that crosses local midnight', () => {
+    const qt = { ...form, arrival: '23:30', departure: '00:30' }
+    const zulu = convertFormZone(qt, 'America/Denver', 'UTC')
+    expect(zulu).toMatchObject({ date: '2026-11-11', arrival: '06:30', departure: '07:30' })
+    expect(convertFormZone(zulu, 'UTC', 'America/Denver')).toEqual(qt)
+  })
+
+  it('departure-only works; blank form follows "today" only', () => {
+    expect(convertFormZone({ ...form, arrival: '' }, 'America/Denver', 'UTC')).toMatchObject({ arrival: '', departure: '15:30' })
+    const now = new Date('2026-11-10T03:00:00Z') // Nov 9 evening in Denver, Nov 10 in UTC
+    const blank = { date: '2026-11-09', arrival: '', departure: '', actualArrival: '', actualDeparture: '' }
+    expect(convertFormZone(blank, 'America/Denver', 'UTC', now).date).toBe('2026-11-10')
+    expect(convertFormZone({ ...blank, date: '2026-12-01' }, 'America/Denver', 'UTC', now).date).toBe('2026-12-01')
+  })
+
+  it('is a no-op for the same zone', () => {
+    expect(convertFormZone(form, 'UTC', 'UTC')).toBe(form)
   })
 })
