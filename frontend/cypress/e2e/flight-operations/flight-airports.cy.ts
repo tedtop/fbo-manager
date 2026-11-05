@@ -7,7 +7,8 @@ type FlightRow = Database['public']['Tables']['flight']['Row']
 const stamp = Date.now().toString(36).toUpperCase()
 const tailGpi = `CA1${stamp}`
 const tailHome = `CA2${stamp}`
-const tails = [tailGpi, tailHome]
+const tailClear = `CA3${stamp}`
+const tails = [tailGpi, tailHome, tailClear]
 
 const TAIL_PLACEHOLDER = 'e.g., N12345'
 
@@ -34,7 +35,8 @@ const submit = () => {
 
 describe('Airport pickers on the flight form', () => {
   before(() => {
-    tails.forEach((tail) => cy.task('seedAircraft', tail))
+    cy.task('seedAircraft', tailGpi)
+    cy.task('seedAircraft', tailHome)
   })
 
   after(() => {
@@ -94,5 +96,79 @@ describe('Airport pickers on the flight form', () => {
       expect(flight.destination).to.eq('KMSO')
       expect(flight.origin ?? '').to.eq('') // nothing is known about where it came from
     })
+    // An arrival's card shows no "From" line: the destination (home) is not what it came from.
+    cy.contains('[data-slot="card"]', tailHome, { timeout: 15_000 }).should('be.visible')
+    cy.contains('[data-slot="card"]', tailHome).find('[data-testid="flight-origin"]').should('not.exist')
+  })
+
+  it('the home airport is prefilled on the known end, and never over something the person picked', () => {
+    openAddFlightSheet()
+    cy.get('#origin').should('contain.text', 'Select origin')
+    cy.get('#destination').should('contain.text', 'Select destination')
+
+    // Departure only (hangar pull): leaves from home.
+    cy.get('#departureTime').type('09:00')
+    cy.get('#origin').should('contain.text', 'Missoula')
+    cy.get('#destination').should('contain.text', 'Select destination')
+
+    // Add an arrival (QT is off after typing a departure): a turn has no known home end, the prefill clears.
+    cy.get('#arrivalTime').type('08:00')
+    cy.get('#origin').should('contain.text', 'Select origin')
+    cy.get('#destination').should('contain.text', 'Select destination')
+
+    // Arrival only: lands at home.
+    cy.get('#departureTime').clear()
+    cy.get('#destination').should('contain.text', 'Missoula')
+    cy.get('#origin').should('contain.text', 'Select origin')
+
+    // A picked destination is never overwritten when the times change afterwards.
+    cy.pickAirport('destination', 'KASE')
+    cy.get('#arrivalTime').clear()
+    cy.get('#departureTime').type('10:00')
+    cy.get('#destination').should('contain.text', 'Aspen')
+    cy.get('#origin').should('contain.text', 'Missoula') // the untouched end still follows the times
+  })
+
+  it('an airport that was set can be cleared again (Clear option) and saves as empty', () => {
+    cy.task('seedFlight', { tail: tailClear, origin: 'KMSO', destination: 'KIAD', departureInMin: 120 })
+    cy.login()
+    cy.visit('/')
+    cy.contains('[data-slot="card"]', tailClear, { timeout: 15_000 }).contains('button', 'Edit').click()
+    cy.contains('h2', 'Edit Flight').should('be.visible')
+    cy.get('#destination').should('contain.text', 'Washington')
+
+    cy.get('#destination').click()
+    cy.contains('[role="option"]', 'Clear (no airport)').click()
+    cy.get('#destination').should('contain.text', 'Select destination')
+    cy.get('#origin').should('contain.text', 'Missoula') // the other end is untouched
+
+    cy.contains('button', 'Update Flight').click()
+    cy.contains('h2', 'Edit Flight').should('not.exist')
+    cy.task('getFlightByTail', tailClear).should((flight: FlightRow) => {
+      expect(flight.origin).to.eq('KMSO')
+      expect(flight.destination).to.eq('')
+    })
+  })
+
+  it('the first match is preselected: Enter picks it, arrows pick another', () => {
+    openAddFlightSheet()
+    const codeInput = 'input[placeholder^="Code or name"]'
+    const selectedRow = '[cmdk-item][aria-selected="true"]'
+
+    // Type and press Enter: the first result (Las Vegas) is already highlighted.
+    cy.get('#destination').click()
+    cy.get(codeInput).type('las')
+    cy.get(selectedRow).should('contain.text', 'Harry Reid')
+    cy.get(codeInput).type('{enter}')
+    cy.get('#destination').should('contain.text', 'Harry Reid')
+
+    // Arrow down once, then Enter: the second result.
+    cy.get('#destination').click()
+    cy.get(codeInput).type('las')
+    cy.get(selectedRow).should('contain.text', 'Harry Reid')
+    cy.get(codeInput).type('{downarrow}')
+    cy.get(selectedRow).should('contain.text', 'Las Cruces')
+    cy.get(codeInput).type('{enter}')
+    cy.get('#destination').should('contain.text', 'Las Cruces')
   })
 })

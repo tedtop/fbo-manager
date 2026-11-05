@@ -17,7 +17,8 @@ const tailCancel = `CE7${stamp}`
 const tailDeparted = `CE8${stamp}`
 const tailFuel = `CE9${stamp}`
 const tailMenu = `CEA${stamp}`
-const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted, tailFuel, tailMenu]
+const tailStale = `CEB${stamp}`
+const tails = [tailEdit, tailStatus, tailDelete, tailConflict, tailEditFail, tailStatusFail, tailCancel, tailDeparted, tailFuel, tailMenu, tailStale]
 const ids: Record<string, number> = {}
 
 const card = (tail: string) => cy.contains('[data-slot="card"]', tail)
@@ -218,6 +219,28 @@ describe('Flight edit, status change, delete', () => {
       .should('contain.text', 'forced cypress failure')
     cy.task('getFlightByTail', tailStatusFail).should((row: FlightRow) => {
       expect(row.flight_status).to.eq('scheduled')
+    })
+  })
+
+  // B44: the card's status dropdown passes the flight's updated_at, so a card that is out of date
+  // is refused by the compare-and-swap instead of overwriting the other write.
+  it('stale status change: row changed behind the card is refused with a toast and the other write is kept', () => {
+    openBoard(tailStale)
+    // Keep the card stale: refetches (realtime, polling) must not refresh it before the click.
+    cy.intercept({ method: 'GET', pathname: '/rest/v1/flight' }, { forceNetworkError: true })
+
+    cy.task('touchFlight', { id: ids[tailStale], notes: 'changed behind the card' })
+    cy.task('getFlightByTail', tailStale).then((bumped: FlightRow) => {
+      card(tailStale).contains('Scheduled').click()
+      cy.contains('[role="menuitem"]', 'Delayed').click()
+
+      cy.contains('[role="status"]', 'Flight was changed by someone else', { timeout: 10_000 }).should('be.visible')
+      cy.contains('[role="status"]', 'Flight updated').should('not.exist')
+      cy.task('getFlightByTail', tailStale).should((after: FlightRow) => {
+        expect(after.flight_status).to.eq('scheduled')
+        expect(after.notes).to.eq('changed behind the card')
+        expect(after.updated_at).to.eq(bumped.updated_at)
+      })
     })
   })
 

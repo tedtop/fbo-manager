@@ -87,6 +87,8 @@ describe('Hide finished flights', () => {
       card(tail).contains('button', 'Unhide').should('be.visible')
       card(tail).contains('button', /^Hide$/).should('not.exist')
     }
+    // An ordinary card in the same list is not marked.
+    card(tailHideMe).contains('Hidden').should('not.exist')
     // counted as an active filter on the Filters button
     cy.contains('button', 'Filters').should('contain.text', '1')
 

@@ -12,7 +12,8 @@ const tailPrev = `CBP${stamp}` // departure exactly one week ago (previous calen
 const tailFar = `CBF${stamp}` // departure exactly six weeks from now (beyond the old +-4 week window)
 const tailTomorrow = `CBM${stamp}` // departure tomorrow (local day), noon
 const tailMonth = `CBX${stamp}` // departure 30 days out (outside the default -1..+14 day fetch window)
-const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev, tailFar, tailTomorrow, tailMonth]
+const tailStay = `CBS${stamp}` // B43: arrived 10 days ago, leaves in 2 days (on the ramp today and tomorrow)
+const tails = [tailTurn, tailDep, tailDelayed, tailArr, tailNext, tailPrev, tailFar, tailTomorrow, tailMonth, tailStay]
 
 const DAY = 24 * 60
 const MIN = 60_000
@@ -62,6 +63,7 @@ describe('Flight board', () => {
     cy.task('seedFlight', { tail: tailFar, departureInMin: 42 * DAY })
     cy.task('seedFlight', { tail: tailTomorrow, departureInMin: noonMin(1) })
     cy.task('seedFlight', { tail: tailMonth, departureInMin: noonMin(30) })
+    cy.task('seedFlight', { tail: tailStay, arrivalInMin: noonMin(-10), departureInMin: noonMin(2) })
   })
 
   after(() => {
@@ -82,6 +84,10 @@ describe('Flight board', () => {
       shownTimes(tailArr, 1) // arrival-only flight appears once (arrivals column only)
       // A quick turn lands in BOTH columns.
       shownTimes(tailTurn, 2)
+      // ...and shows its QT badge on both cards.
+      cy.get('[data-slot="card"]').filter(`:contains("${tailTurn}")`).should('have.length', 2).each(($card) => {
+        cy.wrap($card).contains('QT').should('be.visible')
+      })
     })
 
     it('toggles departures only / arrivals only / split', () => {
@@ -140,7 +146,7 @@ describe('Flight board', () => {
     // Today + Future (no upper bound) and "All Dates".
     // B43b: the default is Today + Future: every flight whose stay ends today or later, however far out.
     it('default view is Today + Future: today, tomorrow and far-out flights are shown, past ones are not', () => {
-      for (const t of [tailTurn, tailDep, tailDelayed, tailArr, tailTomorrow, tailMonth, tailNext, tailFar]) {
+      for (const t of [tailTurn, tailDep, tailDelayed, tailArr, tailStay, tailTomorrow, tailMonth, tailNext, tailFar]) {
         cy.contains(t).should('exist')
       }
       cy.contains(tailPrev).should('not.exist') // left a week ago
@@ -148,13 +154,15 @@ describe('Flight board', () => {
       cy.contains('label', 'Date Range').parent().find('[role="combobox"]').should('have.text', 'Today + Future')
     })
 
-    // B43: the plane that arrived and has no departure yet (tailArr) stays on the ramp, so it is on tomorrow too.
+    // B43: aircraft on the ramp show on every day of their stay. The arrival-only (return) flight has no departure,
+    // so it stays listed from its arrival day onward; the stay arrived before the fetch window.
     it('Tomorrow shows tomorrow\'s flights and the aircraft still on the ramp', () => {
       openFilters()
       filterSelect('Date Range', 'Tomorrow')
       cy.get('body').type('{esc}')
       cy.contains(tailTomorrow).should('exist')
       cy.contains(tailArr).should('exist')
+      cy.contains(tailStay).should('exist')
       for (const t of [tailTurn, tailDep, tailDelayed, tailMonth]) cy.contains(t).should('not.exist')
     })
 
@@ -163,7 +171,7 @@ describe('Flight board', () => {
       filterSelect('Date Range', 'Tomorrow')
       filterSelect('Date Range', 'Today')
       cy.get('body').type('{esc}')
-      for (const t of [tailTurn, tailDep, tailDelayed, tailArr]) cy.contains(t).should('exist')
+      for (const t of [tailTurn, tailDep, tailDelayed, tailArr, tailStay]) cy.contains(t).should('exist')
       cy.contains(tailTomorrow).should('not.exist')
       cy.contains(tailMonth).should('not.exist')
     })

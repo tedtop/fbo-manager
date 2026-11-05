@@ -23,6 +23,12 @@ type SeedFlightOptions = {
   services?: string[]
   /** Minutes from now for flight.hidden_at (negative = already hidden); omit for a flight that is not hidden. */
   hiddenInMin?: number
+  /** Airport codes stored on the row (default KAAA -> KBBB). */
+  origin?: string
+  destination?: string
+  /** Explicit ISO instants; they win over arrivalInMin / departureInMin. */
+  arrivalAt?: string
+  departureAt?: string
 }
 
 export default defineConfig({
@@ -81,7 +87,7 @@ export default defineConfig({
         },
 
         /** Inserts one aircraft + one flight via the service role. Returns the created flight id. */
-        async seedFlight({ tail, arrivalInMin, departureInMin = 180, status = 'scheduled', services, isQuickTurn, hiddenInMin }: SeedFlightOptions) {
+        async seedFlight({ tail, arrivalInMin, departureInMin = 180, status = 'scheduled', services, isQuickTurn, hiddenInMin, origin = 'KAAA', destination = 'KBBB', arrivalAt, departureAt }: SeedFlightOptions) {
           const db = createE2EDbClient()
           const iso = (min: number) => new Date(Date.now() + min * 60_000).toISOString()
 
@@ -103,10 +109,10 @@ export default defineConfig({
             .insert({
               created_by_id: 1,
               tail_number: tail,
-              origin: 'KAAA',
-              destination: 'KBBB',
-              scheduled_arrival_time: arrivalInMin === undefined ? null : iso(arrivalInMin),
-              scheduled_departure_time: departureInMin === null ? null : iso(departureInMin),
+              origin,
+              destination,
+              scheduled_arrival_time: arrivalAt ?? (arrivalInMin === undefined ? null : iso(arrivalInMin)),
+              scheduled_departure_time: departureAt ?? (departureInMin === null ? null : iso(departureInMin)),
               ...(isQuickTurn ? { is_quick_turn: true } : {}),
               flight_status: status,
               ...(hiddenInMin === undefined ? {} : { hidden_at: iso(hiddenInMin) }),

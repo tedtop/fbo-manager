@@ -87,7 +87,7 @@ main()
     if (ownDistDir) {
       // Wait for next dev to let go of its build folder, then delete it.
       for (let i = 0; i < 50 && !serverExited; i++) await new Promise((r) => setTimeout(r, 100))
-      rmSync(path.resolve(__dirname, '..', ownDistDir), { recursive: true, force: true })
+      rmSync(path.resolve(__dirname, '..', ownDistDir), { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
     }
     process.exit(code)
   })
