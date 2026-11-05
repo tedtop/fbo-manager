@@ -168,6 +168,8 @@ export function mapExtractedRowToFlightDraft(
   return {
     tailNumber: tail,
     aircraftTypeRaw: typeRaw,
+    originRaw: str(row.origin),
+    destinationRaw: str(row.destination),
     customer: str(row.customer).replace(/\s+/g, ' '),
     scheduledArrivalTime: arrival?.iso ?? null,
     scheduledDepartureTime: departure?.iso ?? null,

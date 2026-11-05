@@ -11,6 +11,7 @@ import {
   type ReviewExistingFlight,
   type TailTypeLookup
 } from '../review'
+import { row } from './fixtures'
 import { SAMPLE_SHEET } from './sample-sheet'
 
 // Registry lookups are mocked: the printed Type column (CJ2, ENCORE, G-IVSP...) is never used.
@@ -162,5 +163,45 @@ describe('re-importing the same sheet', () => {
   it('an explicit Add on a duplicate adds a new flight', () => {
     const forced = { ...items[0], actionOverride: 'add' as const, includeOverride: true }
     expect(evaluateReviewItems([forced], board, TZ)[0].plan).toBe('add')
+  })
+})
+
+describe('origin and destination', () => {
+  const AIRPORTS = [
+    { ident: 'KSEA', icao: 'KSEA', iata: 'SEA', faa: 'SEA', name: 'Seattle Tacoma Intl', city: 'Seattle', region: 'US-WA', country: 'US' },
+    { ident: 'KMSO', icao: 'KMSO', iata: 'MSO', faa: 'MSO', name: 'Missoula Montana', city: 'Missoula', region: 'US-MT', country: 'US' }
+  ]
+  const sheet = {
+    ...SAMPLE_SHEET,
+    rows: [
+      { ...SAMPLE_SHEET.rows[0], origin: 'SEA', destination: 'MSO' },
+      { ...SAMPLE_SHEET.rows[2], origin: 'BOISE' },
+      SAMPLE_SHEET.rows[4]
+    ]
+  }
+  const items = buildReviewItems(sheet, TZ)
+  const opts = { ...TZ, airports: AIRPORTS, homeCountry: 'US' }
+
+  it('printed codes auto-resolve to the stored ICAO code and are written on add; place names wait for a pick; blank stays blank', () => {
+    const evals = evaluateReviewItems(items, [], opts)
+    expect(evals[0].origin).toMatchObject({ code: 'KSEA', fromUser: false })
+    expect(evals[0].destination.code).toBe('KMSO')
+    expect(evals[1].origin).toMatchObject({ code: null, resolution: { state: 'unmatched' } })
+    expect(evals[1].destination.code).toBe('') // nothing printed
+    const adds = planImport(items, evals, TZ).flatMap((o) => (o.kind === 'add' ? [o.insert] : []))
+    expect(adds.map((a) => [a.origin, a.destination])).toEqual([['KSEA', 'KMSO'], ['', ''], ['', '']])
+  })
+
+  it('a pick in the combobox replaces the printed text', () => {
+    const picked = items.map((i, n) => (n === 1 ? { ...i, originOverride: 'KSEA' } : i))
+    const evals = evaluateReviewItems(picked, [], opts)
+    expect(evals[1].origin).toMatchObject({ code: 'KSEA', fromUser: true })
+  })
+
+  it('an arrival row and a departure row pair into origin from the arrival and destination from the departure', () => {
+    const a = row({ tail_number: 'N1A', arrival_date: '2026-11-04', arrival_time: '09:00', origin: 'SEA' })
+    const d = row({ tail_number: 'N1A', departure_date: '2026-11-04', departure_time: '12:00', destination: 'MSO' })
+    const [pair] = buildReviewItems({ ...SAMPLE_SHEET, rows: [a, d] }, TZ)
+    expect(pair).toMatchObject({ originPrinted: 'SEA', destinationPrinted: 'MSO' })
   })
 })

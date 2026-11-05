@@ -140,3 +140,21 @@ describe('mergeScheduleSheets', () => {
     expect(m.date_range_start).toBeNull()
   })
 })
+
+describe('normalizeScheduleSheet origin and destination', () => {
+  it('keeps printed airports (or from/to aliases), upper case; blank tokens and absent columns add no key', () => {
+    const sheet = normalizeScheduleSheet({
+      rows: [
+        { tail_number: 'N1A', origin: ' sea ', destination: 'mso', arrival_time: '0900' },
+        { tail_number: 'N2B', from: 'KBZN', to: '-', arrival_time: '0900' },
+        { tail_number: 'N3C', coming_from: 'Boise ID', next_stop: 'tbd', arrival_time: '0900' },
+        { tail_number: 'N4D', arrival_time: '0900' }
+      ]
+    })
+    expect(sheet.rows[0]).toMatchObject({ origin: 'SEA', destination: 'MSO' })
+    expect(sheet.rows[1].origin).toBe('KBZN')
+    expect('destination' in sheet.rows[1]).toBe(false)
+    expect(sheet.rows[2].origin).toBe('BOISE ID')
+    expect('origin' in sheet.rows[3]).toBe(false)
+  })
+})

@@ -52,6 +52,9 @@ export function mergeLegRows(arrival: ExtractedScheduleRow, departure: Extracted
     aircraft_type: arrival.aircraft_type || departure.aircraft_type,
     customer: joinDistinct([arrival.customer, departure.customer], ' / '),
     group_date: arrival.group_date || departure.group_date,
+    // The aircraft came from the arrival row's origin and goes to the departure row's destination.
+    ...(arrival.origin ? { origin: arrival.origin } : {}),
+    ...(departure.destination ? { destination: departure.destination } : {}),
     arrival_date: arrival.arrival_date,
     arrival_time: arrival.arrival_time,
     departure_date: departure.departure_date,

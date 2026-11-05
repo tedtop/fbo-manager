@@ -5,10 +5,13 @@
 //   items + existing flights -> evaluateReviewItems -> per-row evaluation (times, QT, reasons, duplicate, plan)
 //   items + evaluations -> planImport -> add / fill-update operations for the hook to write through flights.repo
 
+import type { AirportLike } from '@/lib/airports'
 import { findIcaoType, formatIcaoType } from '@/lib/icao-aircraft-types'
 import { mapExtractedRowToFlightDraft, QUICK_TURN_MAX_MINUTES } from './map-row'
 import { isPlausibleTail, normalizeTail } from './normalize'
 import { pairSingleLegRows } from './pair-legs'
+import { type AirportChoice, resolveAirportChoice } from './resolve-airport'
+import { matchPrintedType } from './resolve-type'
 import { findDuplicateFlight } from './duplicates'
 import type {
   DuplicateResult,
@@ -41,6 +44,12 @@ export interface ScheduleReviewItem {
   typePrinted: string
   /** The user's own type for this aircraft (an ICAO code or free text); null = use the registry lookup by tail. */
   typeOverride: string | null
+  /** Origin / destination as printed (code or place name), '' when the sheet has none. */
+  originPrinted: string
+  destinationPrinted: string
+  /** The user's pick from the airport combobox (a stored code, '' = none); null = what the printed text resolves to. */
+  originOverride: string | null
+  destinationOverride: string | null
   customer: string
   arrival: WallTime
   departure: WallTime
@@ -66,12 +75,18 @@ export type TailTypeLookup =
   | { state: 'found'; icao: string; display: string }
   | { state: 'none' }
 
-export type TypeSource = 'override' | 'registry' | 'none'
+export type TypeSource = 'override' | 'registry' | 'printed' | 'none'
 
-/** The aircraft type to use: the user's override, else the registry lookup by tail, else nothing (never the printed text). */
+/**
+ * The aircraft type to use, in priority order: the user's choice, the registry lookup by tail (adsbdb returns an ICAO
+ * designator), the printed Type text when it names exactly one ICAO type (matchPrintedType), else unresolved (the user
+ * picks one in the card; the import still allows it as UNKN). The printed text is only tried once the lookup has
+ * finished without an answer: a running lookup (pending) wins the wait.
+ */
 export function resolveAircraftType(
   override: string | null,
-  lookup: TailTypeLookup | undefined
+  lookup: TailTypeLookup | undefined,
+  printed = ''
 ): { icao: string | null; display: string; source: TypeSource } {
   const typed = (override ?? '').trim()
   if (typed) {
@@ -79,6 +94,10 @@ export function resolveAircraftType(
     return hit ? { icao: hit.icao, display: formatIcaoType(hit), source: 'override' } : { icao: null, display: typed, source: 'override' }
   }
   if (lookup?.state === 'found') return { icao: lookup.icao, display: lookup.display, source: 'registry' }
+  if (lookup?.state !== 'pending') {
+    const guess = matchPrintedType(printed)
+    if (guess) return { icao: guess.icao, display: formatIcaoType(guess), source: 'printed' }
+  }
   return { icao: null, display: '', source: 'none' }
 }
 
@@ -93,6 +112,11 @@ export interface ReviewEvaluation {
   typeIcao: string | null
   typeDisplay: string
   typeSource: TypeSource
+  /** No ICAO type yet (nothing found, or free text): the card asks the user to pick one. */
+  typeUnresolved: boolean
+  /** Origin / destination: the stored code to write, how the printed text resolved, or that the user must pick. */
+  origin: AirportChoice
+  destination: AirportChoice
   /** The tail's registry lookup is still running. */
   lookupPending: boolean
   /** The reasons that apply to the CURRENT (edited) values. */
@@ -128,6 +152,10 @@ function itemFrom(sourceRows: ExtractedScheduleRow[], row: ExtractedScheduleRow,
     tail: draft.tailNumber,
     typePrinted: draft.aircraftTypeRaw,
     typeOverride: null,
+    originPrinted: draft.originRaw,
+    destinationPrinted: draft.destinationRaw,
+    originOverride: null,
+    destinationOverride: null,
     customer: draft.customer,
     arrival: wallOf(draft.scheduledArrivalTime),
     departure: wallOf(draft.scheduledDepartureTime),
@@ -216,6 +244,8 @@ export function currentDraft(item: ScheduleReviewItem, timeZone: string): Schedu
   return {
     tailNumber: tail,
     aircraftTypeRaw: item.typePrinted,
+    originRaw: item.originPrinted,
+    destinationRaw: item.destinationPrinted,
     customer: item.customer.trim(),
     scheduledArrivalTime: arr?.iso ?? null,
     scheduledDepartureTime: dep?.iso ?? null,
@@ -240,7 +270,18 @@ const PENDING = 'pending-'
 export function evaluateReviewItems(
   items: readonly ScheduleReviewItem[],
   existing: readonly ReviewExistingFlight[],
-  { timeZone = SCHEDULE_TIME_ZONE, lookups = {} }: { timeZone?: string; lookups?: Readonly<Record<string, TailTypeLookup>> } = {}
+  {
+    timeZone = SCHEDULE_TIME_ZONE,
+    lookups = {},
+    airports = [],
+    homeCountry
+  }: {
+    timeZone?: string
+    lookups?: Readonly<Record<string, TailTypeLookup>>
+    /** The airport table rows for the printed codes (see airportCodeToLookUp). */
+    airports?: readonly AirportLike[]
+    homeCountry?: string
+  } = {}
 ): ReviewEvaluation[] {
   const pool: ReviewExistingFlight[] = [...existing]
   const out: ReviewEvaluation[] = []
@@ -259,7 +300,8 @@ export function evaluateReviewItems(
     const plan: PlannedAction = include && action !== 'skip' ? action : 'skip'
     const blocking = plan !== 'skip' && d.needsReview && !item.acknowledged
     const lookup = d.tailNumber ? lookups[d.tailNumber] : undefined
-    const type = resolveAircraftType(item.typeOverride, lookup)
+    const type = resolveAircraftType(item.typeOverride, lookup, item.typePrinted)
+    const airportOpts = { homeCountry }
 
     out.push({
       arrivalIso: d.scheduledArrivalTime,
@@ -269,6 +311,9 @@ export function evaluateReviewItems(
       typeIcao: type.icao,
       typeDisplay: type.display,
       typeSource: type.source,
+      typeUnresolved: type.icao === null,
+      origin: resolveAirportChoice(item.originPrinted, item.originOverride, airports, airportOpts),
+      destination: resolveAirportChoice(item.destinationPrinted, item.destinationOverride, airports, airportOpts),
       lookupPending: lookup?.state === 'pending' && !item.typeOverride?.trim(),
       reasons: d.reasons,
       needsReview: d.needsReview,
@@ -398,8 +443,8 @@ export function planImport(
           scheduled_departure_time: d.scheduledDepartureTime,
           is_quick_turn: d.isQuickTurn,
           flight_status: 'scheduled',
-          origin: '',
-          destination: '',
+          origin: ev.origin.code ?? '',
+          destination: ev.destination.code ?? '',
           contact_name: d.customer,
           contact_notes: '',
           services: [],

@@ -14,6 +14,9 @@ export interface ExtractedScheduleRow {
   arrival_time: string // 24 h "HH:mm", '' when blank; unparseable text is kept verbatim so the mapper can flag it
   departure_date: string
   departure_time: string
+  /** Where the aircraft is coming from / going next, as printed (code or place name). Absent or '' when the sheet has no such column. */
+  origin?: string
+  destination?: string
   services: string // services text as printed (fuel, GPU, lav, catering ...)
   notes: string // remarks / comments column
   raw_row_text: string // the whole row transcribed as one line, for the review screen
@@ -54,6 +57,9 @@ export type ScheduleDirection = 'arrival_only' | 'departure_only' | 'both' | 'no
 export interface ScheduleFlightDraft {
   tailNumber: string
   aircraftTypeRaw: string // what the sheet printed: unreliable free text, display only (type comes from the tail lookup)
+  /** Airports as printed (see ExtractedScheduleRow.origin/destination); '' when not printed. Resolved to a stored code in the review. */
+  originRaw: string
+  destinationRaw: string
   customer: string // -> flight.contact_name
   scheduledArrivalTime: string | null // ISO 8601 with local offset, e.g. 2026-03-08T09:00:00-07:00
   scheduledDepartureTime: string | null

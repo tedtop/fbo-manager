@@ -104,6 +104,11 @@ function yearOf(date: string | null): number | undefined {
   return m ? Number(m[1]) : undefined
 }
 
+// Printed airport text ("SEA", "Seattle", "KBZN"): trimmed, upper case, blank/placeholder tokens dropped.
+function airportText(v: unknown): string {
+  return isBlankToken(v) ? '' : str(v).replace(/\s+/g, ' ').toUpperCase()
+}
+
 function isConfidence(v: unknown): v is ExtractionConfidence {
   return v === 'high' || v === 'medium' || v === 'low'
 }
@@ -140,6 +145,10 @@ export function normalizeScheduleSheet(parsed: unknown, rawText?: string): Extra
       confidence: isConfidence(r.confidence) ? r.confidence : 'medium',
       page: Number.isInteger(r.page) && (r.page as number) > 0 ? (r.page as number) : 1
     }
+    const origin = airportText(r.origin ?? r.from ?? r.coming_from)
+    const destination = airportText(r.destination ?? r.to ?? r.next_stop)
+    if (origin) row.origin = origin
+    if (destination) row.destination = destination
     // A row with nothing identifying on it is a blank/decoration line, not a flight.
     const hasContent =
       row.tail_number || row.arrival_time || row.departure_time || row.customer || row.raw_row_text
