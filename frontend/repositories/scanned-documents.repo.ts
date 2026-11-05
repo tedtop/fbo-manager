@@ -28,7 +28,7 @@ function sanitizeFilename(name: string): string {
 }
 
 /** {doc_type}/{yyyy}/{mm}/{uuid}-{filename} — unique, sortable, greppable. */
-export function buildScanPath(docType: ScannedDocType, filename: string): string {
+export function buildScanPath(docType: ScannedDocType | 'schedule_sheet', filename: string): string {
   const now = new Date()
   const yyyy = now.getUTCFullYear()
   const mm = String(now.getUTCMonth() + 1).padStart(2, '0')
@@ -86,6 +86,24 @@ export async function uploadScannedDocument(
     throw error
   }
   return data
+}
+
+/**
+ * B45b: keeps the original photo/PDF of a front-desk schedule sheet in the private bucket under schedule_sheet/.
+ * Object only, no scanned_documents row: the table's doc_type check allows just truck_sheet and invoice_slip, and
+ * widening it is a migration (not part of B45b). Returns the storage path.
+ */
+export async function uploadScheduleSheetScan(
+  db: SupabaseClient<Database>,
+  file: File,
+  filename: string
+): Promise<string> {
+  const path = buildScanPath('schedule_sheet', filename)
+  const { error } = await db.storage
+    .from(SCANS_BUCKET)
+    .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false })
+  if (error) throw error
+  return path
 }
 
 /** Signed URL for viewing a scan (the bucket is private by design). */

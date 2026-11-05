@@ -5,7 +5,7 @@
 //   items + existing flights -> evaluateReviewItems -> per-row evaluation (times, QT, reasons, duplicate, plan)
 //   items + evaluations -> planImport -> add / fill-update operations for the hook to write through flights.repo
 
-import { findIcaoType } from '@/lib/icao-aircraft-types'
+import { findIcaoType, formatIcaoType } from '@/lib/icao-aircraft-types'
 import { mapExtractedRowToFlightDraft, QUICK_TURN_MAX_MINUTES } from './map-row'
 import { isPlausibleTail, normalizeTail } from './normalize'
 import { pairSingleLegRows } from './pair-legs'
@@ -37,7 +37,10 @@ export interface ScheduleReviewItem {
   /** The mapper's output for the row as extracted (reasons, services mapping). Edits live in the fields below. */
   draft: ScheduleFlightDraft
   tail: string
-  typeText: string
+  /** The Type column as printed: front-desk free text, never trusted. Shown as "as printed" and offered as a suggestion. */
+  typePrinted: string
+  /** The user's own type for this aircraft (an ICAO code or free text); null = use the registry lookup by tail. */
+  typeOverride: string | null
   customer: string
   arrival: WallTime
   departure: WallTime
@@ -57,6 +60,28 @@ export interface ReviewExistingFlight extends ExistingFlightLike {
   notes?: string | null
 }
 
+/** Result of the registry lookup (adsbdb via /api/aircraft/lookup) for one tail. */
+export type TailTypeLookup =
+  | { state: 'pending' }
+  | { state: 'found'; icao: string; display: string }
+  | { state: 'none' }
+
+export type TypeSource = 'override' | 'registry' | 'none'
+
+/** The aircraft type to use: the user's override, else the registry lookup by tail, else nothing (never the printed text). */
+export function resolveAircraftType(
+  override: string | null,
+  lookup: TailTypeLookup | undefined
+): { icao: string | null; display: string; source: TypeSource } {
+  const typed = (override ?? '').trim()
+  if (typed) {
+    const hit = findIcaoType(typed.replace(/[\s-]/g, ''))
+    return hit ? { icao: hit.icao, display: formatIcaoType(hit), source: 'override' } : { icao: null, display: typed, source: 'override' }
+  }
+  if (lookup?.state === 'found') return { icao: lookup.icao, display: lookup.display, source: 'registry' }
+  return { icao: null, display: '', source: 'none' }
+}
+
 export type PlannedAction = 'add' | 'update' | 'skip'
 
 export interface ReviewEvaluation {
@@ -64,7 +89,12 @@ export interface ReviewEvaluation {
   departureIso: string | null
   isQuickTurn: boolean
   direction: ScheduleDirection
-  aircraftTypeIcao: string | null
+  /** Resolved type (see resolveAircraftType); icao null when free text or nothing. */
+  typeIcao: string | null
+  typeDisplay: string
+  typeSource: TypeSource
+  /** The tail's registry lookup is still running. */
+  lookupPending: boolean
   /** The reasons that apply to the CURRENT (edited) values. */
   reasons: ScheduleReviewReason[]
   needsReview: boolean
@@ -96,7 +126,8 @@ function itemFrom(sourceRows: ExtractedScheduleRow[], row: ExtractedScheduleRow,
     sourceRows,
     draft,
     tail: draft.tailNumber,
-    typeText: draft.aircraftTypeRaw,
+    typePrinted: draft.aircraftTypeRaw,
+    typeOverride: null,
     customer: draft.customer,
     arrival: wallOf(draft.scheduledArrivalTime),
     departure: wallOf(draft.scheduledDepartureTime),
@@ -137,7 +168,6 @@ function wallToIso(w: WallTime, timeZone: string): { iso: string; instantMs: num
 const RECOMPUTED: ScheduleReviewReason[] = [
   'missing_tail',
   'suspicious_tail',
-  'unknown_aircraft_type',
   'missing_date',
   'unparseable_date',
   'unparseable_time',
@@ -160,8 +190,6 @@ export function currentDraft(item: ScheduleReviewItem, timeZone: string): Schedu
 
   if (!tail) flag('missing_tail')
   else if (!isPlausibleTail(tail)) flag('suspicious_tail')
-  const icao = item.typeText.trim() ? findIcaoType(item.typeText.replace(/[\s-]/g, '')) : undefined
-  if (item.typeText.trim() && !icao) flag('unknown_aircraft_type')
 
   for (const w of [item.arrival, item.departure]) {
     if (w.time && !w.date) flag('missing_date')
@@ -187,8 +215,7 @@ export function currentDraft(item: ScheduleReviewItem, timeZone: string): Schedu
 
   return {
     tailNumber: tail,
-    aircraftTypeIcao: icao?.icao ?? null,
-    aircraftTypeRaw: item.typeText.trim(),
+    aircraftTypeRaw: item.typePrinted,
     customer: item.customer.trim(),
     scheduledArrivalTime: arr?.iso ?? null,
     scheduledDepartureTime: dep?.iso ?? null,
@@ -213,7 +240,7 @@ const PENDING = 'pending-'
 export function evaluateReviewItems(
   items: readonly ScheduleReviewItem[],
   existing: readonly ReviewExistingFlight[],
-  { timeZone = SCHEDULE_TIME_ZONE }: { timeZone?: string } = {}
+  { timeZone = SCHEDULE_TIME_ZONE, lookups = {} }: { timeZone?: string; lookups?: Readonly<Record<string, TailTypeLookup>> } = {}
 ): ReviewEvaluation[] {
   const pool: ReviewExistingFlight[] = [...existing]
   const out: ReviewEvaluation[] = []
@@ -231,13 +258,18 @@ export function evaluateReviewItems(
     const include = d.importable && (item.includeOverride ?? suggestion !== 'skip')
     const plan: PlannedAction = include && action !== 'skip' ? action : 'skip'
     const blocking = plan !== 'skip' && d.needsReview && !item.acknowledged
+    const lookup = d.tailNumber ? lookups[d.tailNumber] : undefined
+    const type = resolveAircraftType(item.typeOverride, lookup)
 
     out.push({
       arrivalIso: d.scheduledArrivalTime,
       departureIso: d.scheduledDepartureTime,
       isQuickTurn: d.isQuickTurn,
       direction: d.direction,
-      aircraftTypeIcao: d.aircraftTypeIcao,
+      typeIcao: type.icao,
+      typeDisplay: type.display,
+      typeSource: type.source,
+      lookupPending: lookup?.state === 'pending' && !item.typeOverride?.trim(),
       reasons: d.reasons,
       needsReview: d.needsReview,
       importable: d.importable,
@@ -267,13 +299,16 @@ export interface ImportSummary {
   update: number
   skip: number
   blocking: number
+  /** Rows to add whose type lookup is still running. */
+  lookupsPending: number
 }
 
 export function summarizeReview(evals: readonly ReviewEvaluation[]): ImportSummary {
-  const s: ImportSummary = { add: 0, update: 0, skip: 0, blocking: 0 }
+  const s: ImportSummary = { add: 0, update: 0, skip: 0, blocking: 0, lookupsPending: 0 }
   for (const e of evals) {
     s[e.plan] += 1
     if (e.blocking) s.blocking += 1
+    if (e.plan === 'add' && e.lookupPending) s.lookupsPending += 1
   }
   return s
 }
@@ -281,7 +316,7 @@ export function summarizeReview(evals: readonly ReviewEvaluation[]): ImportSumma
 /** The import button is enabled when something will be written and nothing flagged is unacknowledged. */
 export function canImport(evals: readonly ReviewEvaluation[]): boolean {
   const s = summarizeReview(evals)
-  return s.add + s.update > 0 && s.blocking === 0
+  return s.add + s.update > 0 && s.blocking === 0 && s.lookupsPending === 0
 }
 
 /** Calendar span the board lookup should cover (inclusive local dates, padded one day), or null when no row has a date. */
@@ -355,8 +390,8 @@ export function planImport(
         kind: 'add',
         itemId: item.id,
         tailNumber: d.tailNumber,
-        aircraftTypeDisplay: d.aircraftTypeRaw || 'Unknown',
-        aircraftTypeIcao: d.aircraftTypeIcao ?? 'UNKN',
+        aircraftTypeDisplay: ev.typeDisplay || 'Unknown',
+        aircraftTypeIcao: ev.typeIcao ?? 'UNKN',
         insert: {
           tail_number: d.tailNumber,
           scheduled_arrival_time: d.scheduledArrivalTime,

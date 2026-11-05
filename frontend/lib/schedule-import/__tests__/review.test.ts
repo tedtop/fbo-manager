@@ -7,11 +7,21 @@ import {
   planImport,
   summarizeReview,
   unpairItem,
-  type ReviewExistingFlight
+  resolveAircraftType,
+  type ReviewExistingFlight,
+  type TailTypeLookup
 } from '../review'
 import { SAMPLE_SHEET } from './sample-sheet'
 
-const TZ = { timeZone: 'America/Denver' }
+// Registry lookups are mocked: the printed Type column (CJ2, ENCORE, G-IVSP...) is never used.
+const LOOKUPS: Record<string, TailTypeLookup> = {
+  N509CQ: { state: 'found', icao: 'GLF4', display: 'Gulfstream IV' },
+  N868CB: { state: 'found', icao: 'C25A', display: 'Cessna 525A CitationJet CJ2' },
+  N33PX: { state: 'pending' },
+  N555HM: { state: 'none' }
+}
+const RESOLVED = { ...LOOKUPS, N33PX: { state: 'found', icao: 'BE40', display: 'Beechjet 400' } satisfies TailTypeLookup }
+const TZ = { timeZone: 'America/Denver', lookups: RESOLVED }
 
 describe('review items from the sample sheet', () => {
   const items = buildReviewItems(SAMPLE_SHEET, TZ)
@@ -24,15 +34,36 @@ describe('review items from the sample sheet', () => {
     expect(items[3].sourceRows).toHaveLength(2)
   })
 
-  it('on an empty board every row is an add and flagged rows block the import until acknowledged', () => {
+  it('on an empty board every row is an add, none flagged: the printed type is not a review reason', () => {
     const evals = evaluateReviewItems(items, [], TZ)
     expect(evals.map((e) => e.plan)).toEqual(['add', 'add', 'add', 'add'])
     expect(evals[1]).toMatchObject({ isQuickTurn: true, direction: 'both' })
     expect(evals[3]).toMatchObject({ isQuickTurn: false })
-    expect(summarizeReview(evals)).toEqual({ add: 4, update: 0, skip: 0, blocking: 4 }) // unknown free-text types
+    expect(summarizeReview(evals)).toEqual({ add: 4, update: 0, skip: 0, blocking: 0, lookupsPending: 0 })
+    expect(canImport(evals)).toBe(true)
+  })
+
+  it('the type comes from the tail lookup, an override wins, printed text is never used', () => {
+    const evals = evaluateReviewItems(items, [], TZ)
+    expect(evals.map((e) => [e.typeIcao, e.typeDisplay, e.typeSource])).toEqual([
+      ['GLF4', 'Gulfstream IV', 'registry'],
+      ['C25A', 'Cessna 525A CitationJet CJ2', 'registry'],
+      ['BE40', 'Beechjet 400', 'registry'],
+      [null, '', 'none'] // lookup found nothing: empty, "BRAVO" is not used
+    ])
+    expect(items[3].typePrinted).toBe('BRAVO')
+    expect(resolveAircraftType('c525', undefined)).toMatchObject({ icao: 'C525', source: 'override' })
+    expect(resolveAircraftType('Beech Bonanza', { state: 'none' })).toEqual({ icao: null, display: 'Beech Bonanza', source: 'override' })
+    expect(resolveAircraftType('', { state: 'found', icao: 'GLF4', display: 'x' }).source).toBe('registry')
+  })
+
+  it('a running lookup blocks adding until it finishes or the user types a type', () => {
+    const pending = { ...TZ, lookups: LOOKUPS }
+    const evals = evaluateReviewItems(items, [], pending)
+    expect(summarizeReview(evals).lookupsPending).toBe(1)
     expect(canImport(evals)).toBe(false)
-    const acked = items.map((i) => ({ ...i, acknowledged: true }))
-    expect(canImport(evaluateReviewItems(acked, [], TZ))).toBe(true)
+    const typed = items.map((i) => (i.tail === 'N33PX' ? { ...i, typeOverride: 'BE40' } : i))
+    expect(canImport(evaluateReviewItems(typed, [], pending))).toBe(true)
   })
 
   it('unpair splits a pair back into its printed rows', () => {
@@ -51,7 +82,7 @@ describe('review items from the sample sheet', () => {
 })
 
 describe('re-importing the same sheet', () => {
-  const items = buildReviewItems(SAMPLE_SHEET, TZ).map((i) => ({ ...i, acknowledged: true }))
+  const items = buildReviewItems(SAMPLE_SHEET, TZ)
   const first = planImport(items, evaluateReviewItems(items, [], TZ), TZ)
   const board: ReviewExistingFlight[] = first.map((op, n) => {
     if (op.kind !== 'add') throw new Error('expected add')
@@ -77,7 +108,8 @@ describe('re-importing the same sheet', () => {
       created_by_source: 'front-desk',
       flight_status: 'scheduled'
     })
-    expect(first[0].kind === 'add' && first[0]).toMatchObject({ aircraftTypeDisplay: 'G-IVSP', aircraftTypeIcao: 'UNKN' })
+    expect(first[0].kind === 'add' && first[0]).toMatchObject({ aircraftTypeDisplay: 'Gulfstream IV', aircraftTypeIcao: 'GLF4' })
+    expect(first[3].kind === 'add' && first[3]).toMatchObject({ aircraftTypeDisplay: 'Unknown', aircraftTypeIcao: 'UNKN' }) // no registry hit
   })
 
   it('second pass over the board finds every flight and adds nothing', () => {

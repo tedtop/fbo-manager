@@ -99,9 +99,9 @@ describe('sample sheet mapping (America/Denver)', () => {
     expect(drafts.every((d) => d.importable)).toBe(true)
   })
 
-  it('keeps the free-text type and flags it, maps the car to rental_car and keeps the rest in notes', () => {
-    expect(drafts[0]).toMatchObject({ aircraftTypeRaw: 'G-IVSP', aircraftTypeIcao: null })
-    expect(drafts[0].reviewReasons).toContain('unknown_aircraft_type')
+  it('keeps the free-text type as printed only (not mapped, not flagged), maps the car to rental_car and keeps the rest in notes', () => {
+    expect(drafts[0].aircraftTypeRaw).toBe('G-IVSP')
+    expect(drafts[0].reviewReasons).toEqual([])
     expect(drafts[0].notes).toContain('Confirmed 11/04/2026')
     expect(drafts[3].services).toEqual(['rental_car'])
     expect(drafts[3].notes).toContain('Fullsize Hertz - Status: Confirmed')

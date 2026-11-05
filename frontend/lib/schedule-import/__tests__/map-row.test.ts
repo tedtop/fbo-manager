@@ -21,7 +21,7 @@ describe('mapExtractedRowToFlightDraft: a normal row', () => {
 
   it('normalizes tail, type and customer', () => {
     expect(draft.tailNumber).toBe('N116FE')
-    expect(draft.aircraftTypeIcao).toBe('C525')
+    expect(draft.aircraftTypeRaw).toBe('c525') // printed text as-is, never mapped
     expect(draft.customer).toBe('Acme Aviation')
   })
 
@@ -234,9 +234,10 @@ describe('needs_review', () => {
     ])
   })
 
-  it('unknown aircraft type text is kept raw and flagged; a blank type is not', () => {
+  it('the printed type is kept raw for display and never mapped or flagged', () => {
     const d = mapExtractedRowToFlightDraft(row({ aircraft_type: 'CITATION CJ3', arrival_time: '09:00' }), PHX)
-    expect(d).toMatchObject({ aircraftTypeIcao: null, aircraftTypeRaw: 'CITATION CJ3', reviewReasons: ['unknown_aircraft_type'] })
+    expect(d).toMatchObject({ aircraftTypeRaw: 'CITATION CJ3', reviewReasons: [], needsReview: false })
+    expect(d).not.toHaveProperty('aircraftTypeIcao')
     expect(mapExtractedRowToFlightDraft(row({ aircraft_type: '', arrival_time: '09:00' }), PHX).needsReview).toBe(false)
   })
 

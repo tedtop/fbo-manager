@@ -9,7 +9,7 @@ export const aircraftLookupKeys = {
   tail: (tail: string) => ['aircraft-type-lookup', tail] as const
 }
 
-async function fetchLookup(tail: string): Promise<AircraftLookupResult | null> {
+export async function fetchLookup(tail: string): Promise<AircraftLookupResult | null> {
   const res = await fetch(`${LOOKUP_URL}?tail=${encodeURIComponent(tail)}`)
   if (!res.ok) throw new Error(`Aircraft lookup failed (${res.status})`)
   const body = (await res.json()) as { result: AircraftLookupResult | null }

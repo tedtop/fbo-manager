@@ -1,7 +1,6 @@
 // ExtractedScheduleRow -> ScheduleFlightDraft (BACKLOG B45a; rules in docs/PLAN.md "B45 Schedule sheet import design").
 // Pure: no network, no database, no dependence on the process TZ.
 
-import { findIcaoType } from '@/lib/icao-aircraft-types'
 import {
   isBlankToken,
   isPlausibleTail,
@@ -86,10 +85,9 @@ export function mapExtractedRowToFlightDraft(
   if (!tail) flag('missing_tail')
   else if (!isPlausibleTail(tail)) flag('suspicious_tail')
 
-  // Aircraft type: exact ICAO designator only; anything else stays as the printed text.
+  // Aircraft type: the printed Type column is front-desk free text and is NOT trusted or mapped. It is kept as
+  // `aircraftTypeRaw` for display ("as printed"); the type comes from the registry lookup by tail (B45b review).
   const typeRaw = str(row.aircraft_type)
-  const icao = typeRaw ? findIcaoType(typeRaw.replace(/[\s-]/g, '')) : undefined
-  if (typeRaw && !icao) flag('unknown_aircraft_type')
 
   // Dates. A time without its own date inherits the day heading, then the sheet date.
   const defaultYear = yearOf(parseDate(row.group_date)) ?? yearOf(sheetDate)
@@ -169,7 +167,6 @@ export function mapExtractedRowToFlightDraft(
 
   return {
     tailNumber: tail,
-    aircraftTypeIcao: icao?.icao ?? null,
     aircraftTypeRaw: typeRaw,
     customer: str(row.customer).replace(/\s+/g, ' '),
     scheduledArrivalTime: arrival?.iso ?? null,

@@ -37,7 +37,6 @@ export type ScheduleReviewReason =
   | 'low_confidence'
   | 'missing_tail'
   | 'suspicious_tail'
-  | 'unknown_aircraft_type'
   | 'missing_date'
   | 'unparseable_date'
   | 'unparseable_time'
@@ -54,8 +53,7 @@ export type ScheduleDirection = 'arrival_only' | 'departure_only' | 'both' | 'no
 /** A flight ready for the review screen; maps 1:1 onto a flights.repo insert (see PLAN.md B45 mapping rules). */
 export interface ScheduleFlightDraft {
   tailNumber: string
-  aircraftTypeIcao: string | null // set only on an exact ICAO designator hit
-  aircraftTypeRaw: string // what the sheet printed (shown when the ICAO lookup missed)
+  aircraftTypeRaw: string // what the sheet printed: unreliable free text, display only (type comes from the tail lookup)
   customer: string // -> flight.contact_name
   scheduledArrivalTime: string | null // ISO 8601 with local offset, e.g. 2026-03-08T09:00:00-07:00
   scheduledDepartureTime: string | null
@@ -75,7 +73,6 @@ export const REVIEW_REASON_LABELS: Record<ScheduleReviewReason, string> = {
   low_confidence: 'Low reading confidence',
   missing_tail: 'No tail number',
   suspicious_tail: 'Tail number does not look like a valid registration',
-  unknown_aircraft_type: 'Aircraft type is not a known ICAO code',
   missing_date: 'No date for this row (no day heading or sheet date)',
   unparseable_date: 'A date could not be read',
   unparseable_time: 'A time could not be read',

@@ -24,10 +24,12 @@ import {
   PlaneLanding,
   PlaneTakeoff,
   Plus,
+  ScanLine,
   Search,
   X
 } from 'lucide-react'
 import { useServices } from '@/hooks/use-services'
+import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import type { FlightFilters } from './types'
 
@@ -306,6 +308,12 @@ export function CompactToolbar({
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </output>
         )}
+        <Button asChild variant="outline" size="sm" className="mr-2 h-9 bg-transparent text-foreground">
+          <Link href="/flight-operations/import" title="Import schedule" aria-label="Import schedule">
+            <ScanLine className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Import schedule</span>
+          </Link>
+        </Button>
         <Button onClick={onAddFlight} size="sm" className="h-9">
           <Plus className="w-4 h-4 mr-2" />
           Add Flight
