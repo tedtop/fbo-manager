@@ -11,7 +11,7 @@ import {
   toStoredHeading
 } from '@/lib/parking-map'
 import { popPose, pushPose } from '@/lib/parking-undo'
-import mapboxgl from 'mapbox-gl'
+import { type Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 import { aircraftIconUrl } from './aircraft-icon'
 
@@ -20,7 +20,7 @@ const PUBLISH_INTERVAL_MS = 100
 const MIN_LABEL_ICON_PX = 16
 
 type Entry = {
-  marker: mapboxgl.Marker
+  marker: Marker
   el: HTMLDivElement
   img: HTMLImageElement
   label: HTMLSpanElement
@@ -29,7 +29,7 @@ type Entry = {
 }
 
 type Options = {
-  mapRef: RefObject<mapboxgl.Map | null>
+  mapRef: RefObject<MapLibreMap | null>
   loaded: boolean
   planes: readonly ParkedPlane[]
   /** Operations mode: planes can be dragged and moved with the keyboard. */
@@ -325,7 +325,7 @@ export function usePlaneMarkers({
         onSelectRef.current(tail, { open: true })
       })
 
-      const marker = new mapboxgl.Marker({
+      const marker = new Marker({
         element: el,
         draggable: false,
         rotation: plane.heading,

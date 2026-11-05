@@ -1,4 +1,8 @@
-import { resolveAreaClick } from '@/lib/area-selection'
+import {
+  CLICK_SETTLE_MS,
+  isMapClickSuppressed,
+  resolveAreaClick
+} from '@/lib/area-selection'
 import { describe, expect, it } from 'vitest'
 
 const big = {
@@ -62,5 +66,61 @@ describe('resolveAreaClick', () => {
 
   it('still switches areas when the click is on a different polygon over the editable shape', () => {
     expect(click([3, 3], 1, true)).toEqual({ kind: 'select', areaId: 2 })
+  })
+})
+
+describe('isMapClickSuppressed', () => {
+  it('ignores clicks while a polygon is being drawn', () => {
+    expect(
+      isMapClickSuppressed({ drawing: true, finishedAt: null, now: 1000 })
+    ).toBe(true)
+  })
+
+  it('lets clicks through when nothing was drawn recently', () => {
+    expect(
+      isMapClickSuppressed({ drawing: false, finishedAt: null, now: 1000 })
+    ).toBe(false)
+  })
+
+  it('ignores the click that closes a shape, right after drawing finished', () => {
+    expect(
+      isMapClickSuppressed({ drawing: false, finishedAt: 1000, now: 1000 })
+    ).toBe(true)
+    expect(
+      isMapClickSuppressed({
+        drawing: false,
+        finishedAt: 1000,
+        now: 1000 + CLICK_SETTLE_MS - 1
+      })
+    ).toBe(true)
+  })
+
+  it('accepts clicks again once the settle window has passed', () => {
+    expect(
+      isMapClickSuppressed({
+        drawing: false,
+        finishedAt: 1000,
+        now: 1000 + CLICK_SETTLE_MS
+      })
+    ).toBe(false)
+  })
+
+  it('honours a custom settle window', () => {
+    expect(
+      isMapClickSuppressed({
+        drawing: false,
+        finishedAt: 0,
+        now: 50,
+        settleMs: 100
+      })
+    ).toBe(true)
+    expect(
+      isMapClickSuppressed({
+        drawing: false,
+        finishedAt: 0,
+        now: 150,
+        settleMs: 100
+      })
+    ).toBe(false)
   })
 })

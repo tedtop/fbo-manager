@@ -4,6 +4,9 @@ import {
   toGeoJsonPolygon
 } from '@/lib/parking-geometry'
 import { createSaveScheduler } from '@/lib/save-scheduler'
+// @ts-ignore -- @mapbox/mapbox-gl-draw ships no type declarations
+import MapboxDraw from '@mapbox/mapbox-gl-draw'
+import { DRAW_STYLES } from './draw-styles'
 
 export type Notice = { kind: 'info' | 'success' | 'error'; text: string }
 
@@ -12,6 +15,37 @@ export const EDIT_HINT =
   'Drag a corner to move it, a midpoint to add a corner, or the shape to move it all. Changes save automatically. Esc or a click on empty map to deselect.'
 
 const SAVE_DELAY_MS = 400
+
+/**
+ * MapboxDraw hard-codes Mapbox's DOM class names. MapLibre uses `maplibregl-*`, and Draw
+ * needs them for its control container and to recognise the map canvas (it ignores key
+ * presses whose target is not the canvas, which would break Enter / Esc). The constants are
+ * module-level, so this runs once, before the first MapboxDraw is constructed.
+ */
+export function applyMapLibreClassNames(): void {
+  const classes = MapboxDraw.constants.classes
+  classes.CANVAS = 'maplibregl-canvas'
+  classes.CONTROL_BASE = 'maplibregl-ctrl'
+  classes.CONTROL_PREFIX = 'maplibregl-ctrl-'
+  classes.CONTROL_GROUP = 'maplibregl-ctrl-group'
+  classes.ATTRIBUTION = 'maplibregl-ctrl-attrib'
+}
+
+/** A Draw control (no toolbar; the app drives its modes) styled for MapLibre. */
+export function createDrawControl(): MapboxDraw {
+  applyMapLibreClassNames()
+  return new MapboxDraw({
+    displayControlsDefault: false,
+    defaultMode: 'simple_select',
+    styles: DRAW_STYLES
+  })
+}
+
+/** The map seen as the source of Draw's `draw.*` events, which MapLibre's event types omit. */
+export type DrawEventSource = {
+  on(type: string, listener: (event: never) => void): unknown
+  off(type: string, listener: (event: never) => void): unknown
+}
 
 export type SaveJob = {
   areaId: number

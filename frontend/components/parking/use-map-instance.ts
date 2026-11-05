@@ -1,9 +1,19 @@
 'use client'
 
+import {
+  BASEMAP_STORAGE_KEY,
+  type BasemapId,
+  DEFAULT_BASEMAP_ID,
+  buildMapStyle,
+  getBasemap,
+  readStoredBasemapId
+} from '@/lib/basemaps'
+import { configureMapLibreWorker } from '@/lib/maplibre-worker'
 import { normalizeHeading } from '@/lib/parking-map'
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import { Map as MapLibreMap, NavigationControl } from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
+import { swapBasemap } from './basemap-layer'
 
 // Minuteman Aviation ramp - the default view for day-to-day operations.
 const DEFAULT_CENTER: [number, number] = [
@@ -51,10 +61,13 @@ function readSavedView(): {
   }
 }
 
-/** Creates the satellite map in `containerRef` and exposes its load state and bearing. */
+/** Creates the satellite map in `containerRef` and exposes its load state, bearing and basemap. */
 export function useMapInstance(containerRef: RefObject<HTMLDivElement | null>) {
-  const mapRef = useRef<mapboxgl.Map | null>(null)
+  const mapRef = useRef<MapLibreMap | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [basemapId, setBasemapIdState] = useState<BasemapId>(DEFAULT_BASEMAP_ID)
+  // The basemap the map's style currently holds (the choice is applied after it changes).
+  const appliedBasemapRef = useRef<BasemapId>(DEFAULT_BASEMAP_ID)
   const [bearing, setBearing] = useState(DEFAULT_BEARING)
   const [error, setError] = useState<string | null>(null)
 
@@ -62,46 +75,24 @@ export function useMapInstance(containerRef: RefObject<HTMLDivElement | null>) {
     const container = containerRef.current
     if (!container) return
 
-    const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-    if (!token) {
-      setError(
-        'The map cannot load: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is not set.'
-      )
-      return
-    }
-    mapboxgl.accessToken = token
-
     const view = readSavedView()
     setBearing(Math.round(normalizeHeading(view.bearing)))
 
-    let map: mapboxgl.Map
+    let stored: BasemapId = DEFAULT_BASEMAP_ID
     try {
-      map = new mapboxgl.Map({
+      stored = readStoredBasemapId(localStorage)
+    } catch {
+      // Storage can be unavailable (private mode); use the default basemap.
+    }
+    appliedBasemapRef.current = stored
+    setBasemapIdState(stored)
+
+    let map: MapLibreMap
+    try {
+      configureMapLibreWorker()
+      map = new MapLibreMap({
         container,
-        style: {
-          version: 8,
-          glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
-          sources: {
-            'esri-satellite': {
-              type: 'raster',
-              tiles: [
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-              ],
-              tileSize: 256,
-              attribution:
-                '© Esri, Maxar, Earthstar Geographics, and the GIS User Community'
-            }
-          },
-          layers: [
-            {
-              id: 'esri-satellite-layer',
-              type: 'raster',
-              source: 'esri-satellite',
-              minzoom: 0,
-              maxzoom: 22
-            }
-          ]
-        },
+        style: buildMapStyle(getBasemap(stored)),
         center: view.center,
         zoom: view.zoom,
         bearing: view.bearing,
@@ -114,7 +105,7 @@ export function useMapInstance(containerRef: RefObject<HTMLDivElement | null>) {
       return
     }
 
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+    map.addControl(new NavigationControl(), 'top-right')
     map.on('load', () => setLoaded(true))
     map.on('rotate', () =>
       setBearing(Math.round(normalizeHeading(map.getBearing())))
@@ -130,6 +121,23 @@ export function useMapInstance(containerRef: RefObject<HTMLDivElement | null>) {
       setLoaded(false)
     }
   }, [containerRef])
+
+  // A new choice swaps only the raster basemap, so area layers, Draw and markers stay.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loaded || appliedBasemapRef.current === basemapId) return
+    appliedBasemapRef.current = basemapId
+    swapBasemap(map, getBasemap(basemapId))
+  }, [loaded, basemapId])
+
+  const setBasemapId = useCallback((id: BasemapId) => {
+    setBasemapIdState(id)
+    try {
+      localStorage.setItem(BASEMAP_STORAGE_KEY, id)
+    } catch {
+      // Not persisted; the choice still applies for this session.
+    }
+  }, [])
 
   /** Remember the current centre, zoom and bearing as this browser's default view. */
   const saveDefaultView = useCallback((): boolean => {
@@ -147,5 +155,13 @@ export function useMapInstance(containerRef: RefObject<HTMLDivElement | null>) {
     }
   }, [])
 
-  return { mapRef, loaded, bearing, error, saveDefaultView }
+  return {
+    mapRef,
+    loaded,
+    bearing,
+    error,
+    saveDefaultView,
+    basemapId,
+    setBasemapId
+  }
 }

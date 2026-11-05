@@ -77,7 +77,7 @@ describe('icon sizing', () => {
     expect(feetPerPixel(46.9, 18)).toBeCloseTo(z17 / 2, 6)
   })
 
-  it('matches the Mapbox ground resolution at the equator, zoom 0', () => {
+  it('matches the MapLibre ground resolution at the equator, zoom 0', () => {
     expect(feetPerPixel(0, 0)).toBeCloseTo(78_271.517 * 3.28084, 3)
   })
 

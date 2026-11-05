@@ -22,14 +22,21 @@ export type ParkedPlane = PlanePose & {
   typeDisplay: string
 }
 
+// Area colours on the map and in the area list. Light blue is reserved for the shape being
+// drawn or edited (DRAW_EDIT_COLOR in components/parking/draw-styles.ts).
+export const RAMP_COLOR = '#a78bfa'
+export const HANGAR_COLOR = '#fb923c'
+export const TIE_DOWN_COLOR = '#a3e635'
+export const OTHER_COLOR = '#f472b6'
+
 export const KIND_META: Record<
   ParkingAreaKind,
   { label: string; color: string }
 > = {
-  ramp: { label: 'Ramp', color: '#22d3ee' },
-  hangar: { label: 'Hangar', color: '#fb923c' },
-  tie_down: { label: 'Tie-down', color: '#a3e635' },
-  other: { label: 'Other', color: '#c084fc' }
+  ramp: { label: 'Ramp', color: RAMP_COLOR },
+  hangar: { label: 'Hangar', color: HANGAR_COLOR },
+  tie_down: { label: 'Tie-down', color: TIE_DOWN_COLOR },
+  other: { label: 'Other', color: OTHER_COLOR }
 }
 
 export const AREA_KINDS = Object.keys(KIND_META) as ParkingAreaKind[]
@@ -47,7 +54,7 @@ const FEET_PER_METER = 3.28084
  */
 export const ICON_SCALE = 0.5
 
-/** Ground resolution of a Mapbox GL map (512px world tile) in feet per CSS pixel. */
+/** Ground resolution of a MapLibre GL map (512px world tile) in feet per CSS pixel. */
 export function feetPerPixel(lat: number, zoom: number): number {
   const metersPerPixel =
     (78_271.517 * Math.cos((lat * Math.PI) / 180)) / 2 ** zoom
@@ -249,7 +256,7 @@ export type AreaFeatureCollection = {
 
 /**
  * GeoJSON for the area layers. Areas without a drawable polygon are skipped, as is
- * `hiddenId` (the area whose shape MapboxDraw is currently editing).
+ * `hiddenId` (the area whose shape Draw is currently editing).
  */
 export function areaFeatureCollection(
   areas: readonly ParkingAreaRow[],

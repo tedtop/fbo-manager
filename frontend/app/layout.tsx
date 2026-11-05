@@ -6,7 +6,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono, Source_Serif_4 } from 'next/font/google'
 
 import '@/styles/globals.css'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import 'maplibre-gl/dist/maplibre-gl.css'
 
 const geist = Geist({
   subsets: ['latin'],

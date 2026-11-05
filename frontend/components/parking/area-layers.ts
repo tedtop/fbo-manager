@@ -1,6 +1,6 @@
 import { areaFeatureCollection } from '@/lib/parking-map'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
-import type mapboxgl from 'mapbox-gl'
+import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 
 const SOURCE_ID = 'parking-areas'
 
@@ -10,15 +10,13 @@ const SOURCE_ID = 'parking-areas'
  * area while MapboxDraw is showing its editable copy.
  */
 export function syncAreaLayers(
-  map: mapboxgl.Map,
+  map: MapLibreMap,
   areas: readonly ParkingAreaRow[],
   selectedId: number | null,
   hiddenId: number | null
 ): void {
   const data = areaFeatureCollection(areas, selectedId, hiddenId)
-  const existing = map.getSource(SOURCE_ID) as
-    | mapboxgl.GeoJSONSource
-    | undefined
+  const existing = map.getSource(SOURCE_ID) as GeoJSONSource | undefined
   if (existing) {
     existing.setData(data)
     return

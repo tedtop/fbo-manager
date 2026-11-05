@@ -34,3 +34,30 @@ export function resolveAreaClick({
   if (selectedId === null || onDrawShape) return { kind: 'keep' }
   return { kind: 'deselect' }
 }
+
+/** How long after a shape is finished a map click still belongs to that gesture. */
+export const CLICK_SETTLE_MS = 400
+
+/**
+ * True when a map click must not change the area selection:
+ * - while a polygon is being drawn (`drawing`): clicks place corners;
+ * - for a short settle window after drawing finished. MapboxDraw finishes a shape on the
+ *   mouseup of the closing click, so the DOM `click` that follows reaches the map click
+ *   handler a moment later, while the new shape is not saved yet. It would read as a click
+ *   on empty map and deselect the area that was just drawn.
+ */
+export function isMapClickSuppressed({
+  drawing,
+  finishedAt,
+  now,
+  settleMs = CLICK_SETTLE_MS
+}: {
+  drawing: boolean
+  /** Timestamp (ms) when the last drawing finished, or null if none did. */
+  finishedAt: number | null
+  now: number
+  settleMs?: number
+}): boolean {
+  if (drawing) return true
+  return finishedAt !== null && now - finishedAt < settleMs
+}

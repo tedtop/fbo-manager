@@ -16,6 +16,7 @@ import { useParking } from '@/hooks/use-parking'
 import { useToast } from '@/hooks/use-toast'
 import { getAircraftDefinition } from '@/lib/aircraft-types'
 import { resolveAreaClick } from '@/lib/area-selection'
+import { BASEMAPS } from '@/lib/basemaps'
 import { polygonBounds, ringOf } from '@/lib/parking-geometry'
 import {
   areaOfPlane,
@@ -25,7 +26,7 @@ import {
 } from '@/lib/parking-map'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react'
-import type mapboxgl from 'mapbox-gl'
+import type { MapMouseEvent } from 'maplibre-gl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AddAircraftSheet } from './add-aircraft-sheet'
 import { AircraftSheet } from './aircraft-sheet'
@@ -60,7 +61,9 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     loaded,
     bearing,
     error: mapError,
-    saveDefaultView
+    saveDefaultView,
+    basemapId,
+    setBasemapId
   } = useMapInstance(containerRef)
   const parking = useParking()
   const { toast } = useToast()
@@ -126,7 +129,7 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     const map = mapRef.current
     if (!map || !loaded) return
     const highlighted = editing ? selectedAreaId : null
-    // The editable MapboxDraw copy stands in for the saved polygon while it exists.
+    // The editable Draw copy stands in for the saved polygon while it exists.
     syncAreaLayers(
       map,
       parking.areas,
@@ -341,30 +344,36 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
 
   const live = useRef({
     editing,
-    drawMode: drawing.mode,
     areas: parking.areas,
-    selectedId: selectedAreaId
+    selectedId: selectedAreaId,
+    clickSuppressed: drawing.isClickSuppressed
   })
   live.current = {
     editing,
-    drawMode: drawing.mode,
     areas: parking.areas,
-    selectedId: selectedAreaId
+    selectedId: selectedAreaId,
+    clickSuppressed: drawing.isClickSuppressed
   }
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !loaded) return
 
-    const onClick = (e: mapboxgl.MapMouseEvent) => {
+    const onClick = (e: MapMouseEvent) => {
       setContextMenu(null)
       const target = e.originalEvent.target as HTMLElement | null
       if (target?.closest('.parking-plane')) return
-      if (target?.closest('.mapboxgl-ctrl')) return
-      const { editing: isEditing, drawMode, areas, selectedId } = live.current
+      if (target?.closest('.maplibregl-ctrl')) return
+      const {
+        editing: isEditing,
+        areas,
+        selectedId,
+        clickSuppressed
+      } = live.current
       if (isEditing) {
-        // While drawing, clicks place corners.
-        if (drawMode === 'drawing') return
+        // Clicks that place corners, or that close a shape just drawn, never change the
+        // selection (the closing click would otherwise read as a click on empty map).
+        if (clickSuppressed()) return
         const action = resolveAreaClick({
           point: [e.lngLat.lng, e.lngLat.lat],
           areas,
@@ -380,7 +389,7 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
         setPlaneSheetOpen(false)
       }
     }
-    const onContextMenu = (e: mapboxgl.MapMouseEvent) => {
+    const onContextMenu = (e: MapMouseEvent) => {
       e.preventDefault()
       setContextMenu({ x: e.point.x, y: e.point.y })
     }
@@ -434,7 +443,7 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="relative min-h-0 flex-1">
-          {/* mapbox-gl.css forces .mapboxgl-map to position:relative, so the absolute
+          {/* maplibre-gl.css forces .maplibregl-map to position:relative, so the absolute
               positioning lives on a wrapper and the map div just fills it */}
           <div className="absolute inset-0">
             <div ref={containerRef} className="h-full w-full" />
@@ -447,6 +456,22 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
             >
               {mapError}
             </div>
+          )}
+
+          {/* Under the map's zoom / compass buttons (top-right); needs a choice to make */}
+          {BASEMAPS.length > 1 && (
+            <select
+              aria-label="Basemap"
+              value={basemapId}
+              onChange={(e) => setBasemapId(e.target.value)}
+              className="absolute top-[106px] right-[10px] z-10 h-7 max-w-[11rem] rounded-md border border-border bg-background/95 px-1.5 text-xs shadow-md"
+            >
+              {BASEMAPS.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
           )}
 
           {markers.pending > 0 && (

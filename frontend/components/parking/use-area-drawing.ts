@@ -1,5 +1,6 @@
 'use client'
 
+import { isMapClickSuppressed } from '@/lib/area-selection'
 import {
   type GeoJsonPolygon,
   type Ring,
@@ -9,14 +10,15 @@ import {
   toGeoJsonPolygon
 } from '@/lib/parking-geometry'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
-// @ts-ignore -- @mapbox/mapbox-gl-draw ships no type declarations
-import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
-import type mapboxgl from 'mapbox-gl'
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
+import './draw-cursors.css'
 import {
+  type DrawEventSource,
   type Notice,
   createBoundarySaveQueue,
+  createDrawControl,
   escapeBelongsToOthers
 } from './draw-support'
 
@@ -32,7 +34,7 @@ export { DRAW_FINISH_HINT, EDIT_HINT, type Notice } from './draw-support'
 export type DrawMode = 'idle' | 'drawing' | 'editing'
 
 type Options = {
-  mapRef: RefObject<mapboxgl.Map | null>
+  mapRef: RefObject<MapLibreMap | null>
   loaded: boolean
   /** Drawing is only available to admins in config mode. */
   enabled: boolean
@@ -65,7 +67,7 @@ export function useAreaDrawing({
   onNotice,
   onDeselect
 }: Options) {
-  const drawRef = useRef<MapboxDraw | null>(null)
+  const drawRef = useRef<ReturnType<typeof createDrawControl> | null>(null)
   const [drawReady, setDrawReady] = useState(false)
   const [mode, setModeState] = useState<DrawMode>('idle')
   const modeRef = useRef<DrawMode>('idle')
@@ -76,6 +78,8 @@ export function useAreaDrawing({
   // True from `draw.create` until the finished shape has been handed over: draw_polygon
   // changes mode right after create, which must not look like a cancelled drawing.
   const finishingRef = useRef(false)
+  // When the last drawing finished (see isClickSuppressed).
+  const finishedAtRef = useRef<number | null>(null)
   const areaRef = useRef(area)
   const onSaveRef = useRef(onSave)
   const onNoticeRef = useRef(onNotice)
@@ -153,10 +157,7 @@ export function useAreaDrawing({
     const map = mapRef.current
     if (!map || !loaded || !enabled) return
 
-    const draw = new MapboxDraw({
-      displayControlsDefault: false,
-      defaultMode: 'simple_select'
-    })
+    const draw = createDrawControl()
     map.addControl(draw)
     drawRef.current = draw
     setDrawReady(true)
@@ -186,6 +187,7 @@ export function useAreaDrawing({
 
     const handleCreate = async (e: DrawEvent) => {
       finishingRef.current = true
+      finishedAtRef.current = Date.now()
       // draw.create fires inside draw_polygon's stop(), before the mode switch completes.
       await Promise.resolve()
       try {
@@ -228,14 +230,15 @@ export function useAreaDrawing({
       }
     }
 
-    map.on('draw.create', handleCreate)
-    map.on('draw.update', handleUpdate)
-    map.on('draw.modechange', handleModeChange)
+    const drawEvents = map as unknown as DrawEventSource
+    drawEvents.on('draw.create', handleCreate)
+    drawEvents.on('draw.update', handleUpdate)
+    drawEvents.on('draw.modechange', handleModeChange)
 
     return () => {
-      map.off('draw.create', handleCreate)
-      map.off('draw.update', handleUpdate)
-      map.off('draw.modechange', handleModeChange)
+      drawEvents.off('draw.create', handleCreate)
+      drawEvents.off('draw.update', handleUpdate)
+      drawEvents.off('draw.modechange', handleModeChange)
       // Changes still waiting for the debounce are written now.
       void scheduler.flush()
       // The map may already be gone when the whole page unmounts.
@@ -331,6 +334,24 @@ export function useAreaDrawing({
     [scheduler, showShape]
   )
 
+  /**
+   * True while a map click must be ignored by the selection logic: Draw is collecting
+   * corners, or a shape was finished a moment ago and the click that closed it is still on
+   * its way. Reads refs, so it is correct inside a map event handler before React re-renders.
+   */
+  const isClickSuppressed = useCallback(
+    () =>
+      isMapClickSuppressed({
+        drawing:
+          modeRef.current === 'drawing' ||
+          finishingRef.current ||
+          drawRef.current?.getMode() === 'draw_polygon',
+        finishedAt: finishedAtRef.current,
+        now: Date.now()
+      }),
+    []
+  )
+
   /** Writes any change still waiting for the debounce. */
   const flushPending = useCallback(() => scheduler.flush(), [scheduler])
 
@@ -346,5 +367,12 @@ export function useAreaDrawing({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [drawReady, cancelDraw])
 
-  return { mode, startDraw, cancelDraw, snapToGrid, flushPending }
+  return {
+    mode,
+    startDraw,
+    cancelDraw,
+    snapToGrid,
+    flushPending,
+    isClickSuppressed
+  }
 }
