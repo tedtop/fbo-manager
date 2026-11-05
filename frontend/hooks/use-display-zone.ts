@@ -1,6 +1,7 @@
 'use client'
 
 import { useAppSettings } from '@/hooks/use-app-settings'
+import { isValidTimeZone } from '@/lib/local-date'
 import {
   ZULU_STORAGE_KEY,
   parseStoredZulu,
@@ -8,7 +9,7 @@ import {
   zoneBannerText,
   zoneSuffix
 } from '@/lib/display-zone'
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
 // The Zulu toggle is a per-user view preference (this browser), not a shared setting. A tiny external
 // store keeps every component using the hook in step, and other tabs via the storage event.
@@ -45,6 +46,27 @@ function writeZulu(value: boolean) {
   for (const l of listeners) l()
 }
 
+// The last FBO zone this browser saw, so a reload paints in the right zone before the settings query
+// answers (otherwise a non-Denver FBO would flash Denver times). Per browser, validated, optional.
+const FBO_ZONE_CACHE_KEY = 'fbo.fboZone'
+
+function readCachedFboZone(): string | null {
+  try {
+    const v = window.localStorage.getItem(FBO_ZONE_CACHE_KEY)
+    return v && isValidTimeZone(v) ? v : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedFboZone(zone: string) {
+  try {
+    window.localStorage.setItem(FBO_ZONE_CACHE_KEY, zone)
+  } catch {
+    // storage blocked: the next load just uses the default until settings arrive
+  }
+}
+
 export interface DisplayZone {
   /** IANA zone the board shows and filters in: 'UTC' in Zulu mode, else the FBO time zone setting. */
   zone: string
@@ -61,8 +83,20 @@ export interface DisplayZone {
 }
 
 export function useDisplayZone(): DisplayZone {
-  const { settings } = useAppSettings()
-  const fboZone = settings.timeZone
+  const { settings, loading } = useAppSettings()
+  const cachedZone = useSyncExternalStore(
+    subscribe,
+    readCachedFboZone,
+    () => null
+  )
+  // While settings load, trust the cached zone; once loaded the setting always wins.
+  const fboZone = loading
+    ? (cachedZone ?? settings.timeZone)
+    : settings.timeZone
+  useEffect(() => {
+    if (!loading && settings.timeZone !== cachedZone)
+      writeCachedFboZone(settings.timeZone)
+  }, [loading, settings.timeZone, cachedZone])
   const isZulu = useSyncExternalStore(subscribe, readZulu, () => false)
   const zone = resolveDisplayZone(fboZone, isZulu)
   const suffixAt = useCallback(
