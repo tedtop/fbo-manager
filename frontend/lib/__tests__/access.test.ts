@@ -238,3 +238,20 @@ describe('isRouteOrChild', () => {
     expect(isRouteOrChild('/login%2F..%2Fusers', '/login')).toBe(false)
   })
 })
+
+describe('evaluateGate docs (D11)', () => {
+  it('lets every user with a module read /docs and its children', () => {
+    for (const state of [admin, line]) {
+      expect(evaluateGate('/docs', state)).toEqual({ kind: 'allow' })
+      expect(evaluateGate('/docs/flight-operations', state)).toEqual({ kind: 'allow' })
+    }
+  })
+
+  it('still holds pending and disabled users, and does not open look-alikes', () => {
+    expect(evaluateGate('/docs', noRole).kind).toBe('redirect')
+    expect(evaluateGate('/docs', customer).kind).toBe('redirect')
+    expect(evaluateGate('/docs', disabled).kind).toBe('redirect')
+    expect(evaluateGate('/docs-x', line).kind).toBe('redirect')
+    expect(evaluateGate('/%64ocs/../users', line).kind).toBe('redirect')
+  })
+})

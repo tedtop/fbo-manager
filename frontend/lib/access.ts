@@ -38,6 +38,9 @@ const EXTRA_PATH_MODULES: [prefix: string, module: ModuleKey][] = [
 /** Signed-in, active users may always open these, even before they hold a role. */
 const OPEN_PATHS = ['/pending', '/profile', '/change-password', '/delete-account']
 
+/** Documentation (D11): readable by every user who holds at least one module, but not by pending users. */
+const DOCS_PATH = '/docs'
+
 /**
  * Canonical form used for every gate decision: percent-decoded, duplicate slashes collapsed, trailing
  * slash dropped, dot-segments resolved. Without this `/%75sers` or `//users` would reach the Users page while the gate sees an
@@ -114,6 +117,7 @@ export function evaluateGate(rawPathname: string, state: AccessState | null): Ga
 
   if (pathname === '/pending') return { kind: 'redirect', to: firstAccessibleHref(state.access) }
   if (OPEN_PATHS.some((p) => matchesPrefix(pathname, p))) return { kind: 'allow' }
+  if (matchesPrefix(pathname, DOCS_PATH)) return { kind: 'allow' }
 
   // Default deny: a page with no module mapped above is not opened to anyone by accident.
   const module = moduleForPath(pathname)
