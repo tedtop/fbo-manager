@@ -300,9 +300,10 @@ export function FlightCard({
       <Card
         className={cn(
           'bg-card border-border hover:border-primary/20 transition-all relative',
-          // Airline (QT) flights: sky tint and left rule, so they read apart from GA. Before the link color,
-          // which keeps the border when the airline flight is a linked pair.
-          isQt && 'border-sky-500/50 border-l-4 border-l-sky-500 bg-sky-500/10',
+          // Airline (QT) flights: a calm slate wash and left rule, so they read apart from GA without
+          // competing with the link colors. Before the link color, which keeps the border when the airline
+          // flight is a linked pair.
+          isQt && 'border-slate-400/40 border-l-4 border-l-slate-500/70 bg-slate-500/[0.07] dark:bg-slate-400/10',
           isLinked && linkColor && `border-l-4 ${linkColor.border}`,
           // Hover ring: a linked flight uses its link color on both cards so the pair reads as one.
           isHovered &&
