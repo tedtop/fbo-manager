@@ -59,6 +59,9 @@ export interface FlightFilters {
   status?: string
   // B43b: also return hidden flights (off by default).
   includeHidden?: boolean
+  // IANA zone whose midnights bound startDate / endDate / today (the board's display zone). Omitted =
+  // the browser's zone.
+  zone?: string
 }
 
 export async function findAllFlights(
@@ -80,12 +83,12 @@ export async function findAllFlights(
   let rangeStart: string | undefined
   let rangeEnd: string | undefined
   if (filters?.today) {
-    const today = formatLocalDate(new Date())
-    rangeStart = localDayStartIso(today)
-    rangeEnd = localNextDayStartIso(today)
+    const today = formatLocalDate(new Date(), filters.zone)
+    rangeStart = localDayStartIso(today, filters.zone)
+    rangeEnd = localNextDayStartIso(today, filters.zone)
   } else {
-    if (filters?.startDate) rangeStart = localDayStartIso(filters.startDate)
-    if (filters?.endDate) rangeEnd = localNextDayStartIso(filters.endDate)
+    if (filters?.startDate) rangeStart = localDayStartIso(filters.startDate, filters.zone)
+    if (filters?.endDate) rangeEnd = localNextDayStartIso(filters.endDate, filters.zone)
   }
   if (rangeStart || rangeEnd) {
     const ARR = 'scheduled_arrival_time'
@@ -157,14 +160,15 @@ export function hiddenAtForStatusChange(
   current: Pick<FlightRow, 'flight_status' | 'hidden_at' | 'actual_departure_time'>,
   nextStatus: FlightRow['flight_status'],
   nextActualDeparture: string | null | undefined,
-  now: Date = new Date()
+  now: Date = new Date(),
+  zone?: string
 ): string | null | undefined {
   if (current.flight_status === nextStatus) return undefined
   if (nextStatus === 'departed') {
     if (current.hidden_at) return undefined
     // undefined = the save does not touch the actual departure; null = it clears it (then today counts)
     const departure = nextActualDeparture === undefined ? current.actual_departure_time : nextActualDeparture
-    return localNextDayStartIso(formatLocalDate(departure ? new Date(departure) : now))
+    return localNextDayStartIso(formatLocalDate(departure ? new Date(departure) : now, zone), zone)
   }
   return current.flight_status === 'departed' ? null : undefined
 }

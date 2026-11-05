@@ -1,6 +1,7 @@
 'use client'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDisplayZone } from '@/hooks/use-display-zone'
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
@@ -94,9 +95,10 @@ export function FlightBoard({
     setDeletePhase(id)
   }
 
+  const { zone } = useDisplayZone()
   const filteredFlights = useMemo(
-    () => filterFlights(flights, filters),
-    [filters, flights]
+    () => filterFlights(flights, filters, new Date(), zone),
+    [filters, flights, zone]
   )
 
   const { arrivals, departures } = partitionFlights(filteredFlights)
@@ -104,8 +106,11 @@ export function FlightBoard({
   // Empty states: with only the date range applied, would the list hold flights? If so the filters
   // emptied it and the message names them; if not, the day/week itself is empty.
   const base = useMemo(
-    () => partitionFlights(filterFlights(flights, clearActiveFilters(filters))),
-    [filters, flights]
+    () =>
+      partitionFlights(
+        filterFlights(flights, clearActiveFilters(filters), new Date(), zone)
+      ),
+    [filters, flights, zone]
   )
   const clearFilters = onFiltersChange
     ? () => onFiltersChange(clearActiveFilters(filters))

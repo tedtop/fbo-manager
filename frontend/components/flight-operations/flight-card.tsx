@@ -30,6 +30,8 @@ import {
 import type { AirportLabel } from '@/hooks/use-airports'
 import { cn } from '@/lib/utils'
 import { isFlightHidden, type LinkColor } from './board-logic'
+import { useDisplayZone } from '@/hooks/use-display-zone'
+import { formatBoardTimestamp } from '@/lib/display-zone'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
 import { useSyncedDraft } from '@/hooks/use-synced-draft'
 import { useToast } from '@/hooks/use-toast'
@@ -152,6 +154,7 @@ export function FlightCard({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isEditingServices, setIsEditingServices] = useState(false)
   const { toast } = useToast()
+  const { zone, suffixAt } = useDisplayZone()
   // Local edits (inline services and passenger count) are optimistic drafts over the props: a draft
   // is dropped as soon as the flight's own value changes (saved from the edit sheet, another user,
   // a refetch), so the card never keeps showing stale data.
@@ -250,16 +253,14 @@ export function FlightCard({
     setIsEditingServices(false)
   }
 
-  // Format timestamp for display
-  const formatTimestamp = (timestamp?: string) => {
-    if (!timestamp) return ''
-    const d = new Date(timestamp)
-    const month = (d.getMonth() + 1).toString().padStart(2, '0')
-    const day = d.getDate().toString().padStart(2, '0')
-    const hours = d.getHours().toString().padStart(2, '0')
-    const minutes = d.getMinutes().toString().padStart(2, '0')
-    return `${month}/${day} ${hours}:${minutes}`
-  }
+  // "MM/DD HH:mm" in the display zone (FBO zone, or Zulu); the zone suffix is rendered next to it.
+  const formatTimestamp = (timestamp?: string) => formatBoardTimestamp(timestamp, zone)
+  const zoneTag = (timestamp?: string) =>
+    timestamp ? (
+      <span data-testid="flight-time-zone" className="text-[10px] font-semibold text-muted-foreground">
+        {suffixAt(timestamp)}
+      </span>
+    ) : null
 
   return (
     <>
@@ -440,7 +441,7 @@ export function FlightCard({
                   Fueled
                   {fuelStatus.fueledAt && (
                     <span className="text-muted-foreground">
-                      at {new Date(fuelStatus.fueledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      at {new Date(fuelStatus.fueledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: zone })}
                     </span>
                   )}
                 </div>
@@ -568,6 +569,7 @@ export function FlightCard({
                   isArrival ? flight.arrivalTime : flight.departureTime
                 )}
               </span>
+              {zoneTag(isArrival ? flight.arrivalTime : flight.departureTime)}
               {(isArrival
                 ? flight.actualArrivalTime
                 : flight.actualDepartureTime) && (
@@ -579,7 +581,12 @@ export function FlightCard({
                         ? flight.actualArrivalTime
                         : flight.actualDepartureTime
                     )}
-                  </span>
+                  </span>{' '}
+                  {zoneTag(
+                    isArrival
+                      ? flight.actualArrivalTime
+                      : flight.actualDepartureTime
+                  )}
                 </span>
               )}
               {countdown.text && (

@@ -28,6 +28,7 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { useRef } from 'react'
 import { FLIGHTS_POLL_MS, useFlightsRealtime } from '@/hooks/use-flights-realtime'
 
@@ -83,16 +84,22 @@ export function useFlights(params?: {
   startDate?: string
   endDate?: string
   includeHidden?: boolean
+  // IANA zone whose midnights bound the date params (the board's display zone). Part of the query key.
+  zone?: string
 }) {
   const qc = useQueryClient()
   const db = createClient()
+  // "The day after departure" for hiding a Departed flight is the FBO's day, never the Zulu day.
+  const { settings } = useAppSettings()
+  const fboZone = settings.timeZone
 
   const filters: FlightFilters | undefined = params
     ? {
         today: params.today,
         startDate: params.startDate,
         endDate: params.endDate,
-        includeHidden: params.includeHidden
+        includeHidden: params.includeHidden,
+        zone: params.zone
       }
     : undefined
 
@@ -224,7 +231,9 @@ export function useFlights(params?: {
             actual_departure_time: previous.actualDepartureTime ?? null
           },
           dbUpdates.flight_status,
-          'actual_departure_time' in dbUpdates ? dbUpdates.actual_departure_time : undefined
+          'actual_departure_time' in dbUpdates ? dbUpdates.actual_departure_time : undefined,
+          new Date(),
+          fboZone
         )
         if (hiddenAt !== undefined) dbUpdates.hidden_at = hiddenAt
       }

@@ -2,7 +2,7 @@
 title: Arrivals and Departures usage guide
 module: flight-operations
 order: 1
-anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide]
+anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone]
 ---
 
 ## Overview
@@ -40,7 +40,7 @@ Each side has two times. The upper one is the **scheduled** time (the plan, used
 
 - Fill in the scheduled times when you add the flight.
 - Fill in the actual arrival or departure when it happens. Leave them blank until then.
-- All times are entered and shown in the board's local time, 24-hour.
+- All times are entered and shown in the board's time zone (the FBO's local time, or Zulu if you switched), 24-hour. See "Time zone and Zulu" below.
 - When both scheduled times are set, the form shows the ground time between them.
 
 ### Arrival-only and departure-only entries (hangar pull) {#hangar-pull}
@@ -83,6 +83,15 @@ Use **Delete** at the bottom of the card. A confirmation names the tail ("Delete
 - **Date Range** choices: Today, **Today + Future** (the default), Tomorrow, This Week, All Dates. Days are local days. A flight is included when its stay overlaps the range; with only one scheduled time, that time (or an actual time) decides.
 - The view buttons switch between Split, Calendar, Arrivals Only and Departures Only.
 - Clearing the filters returns to Today + Future with nothing else selected.
+
+### Time zone and Zulu {#time-zone}
+
+The board shows and filters times in the **FBO time zone** (America/Denver unless an administrator changed it in Settings > Time zone), not in whatever zone the computer or phone is set to. Cards show a suffix next to each time: `MST` or `MDT` (it follows daylight saving), or `Z` in Zulu. Today, Tomorrow and This Week, and the calendar's days and week, all follow the same zone.
+
+When Zulu comes up in conversation, press the **Z** button in the toolbar. The board then shows every time in Zulu (UTC) with a `Z` suffix, and the badge beside the button reads **Times in Zulu (UTC)** in amber so Zulu is never mistaken for local. The button now says **Local**: press it to go back. The badge always names the zone in use (for example **Times in MST**).
+
+- Zulu is your own view setting for this browser: it survives reloads and does not change what other people see.
+- Switching only changes how times are displayed and which day a flight falls on. Every flight stores the exact moment, so nothing moves.
 
 ### Choosing an airport {#airports}
 

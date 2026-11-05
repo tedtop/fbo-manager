@@ -135,3 +135,28 @@ describe('equipment types', () => {
     ).toEqual(DEFAULT_EQUIPMENT_TYPES)
   })
 })
+
+describe('time zone setting (key timezone)', () => {
+  it('defaults to America/Denver', () => {
+    expect(DEFAULT_APP_SETTINGS.timeZone).toBe('America/Denver')
+    expect(settingsFromRows([]).timeZone).toBe('America/Denver')
+  })
+
+  it('reads a stored IANA zone', () => {
+    expect(
+      settingsFromRows([{ key: 'timezone', value: 'America/Phoenix' }]).timeZone
+    ).toBe('America/Phoenix')
+    expect(
+      settingsFromRows([{ key: 'timezone', value: 'UTC' }]).timeZone
+    ).toBe('UTC')
+  })
+
+  it('falls back to the default for an unknown zone or a mistyped value', () => {
+    expect(
+      settingsFromRows([{ key: 'timezone', value: 'Mars/Olympus' }]).timeZone
+    ).toBe('America/Denver')
+    expect(
+      settingsFromRows([{ key: 'timezone', value: 7 }]).timeZone
+    ).toBe('America/Denver')
+  })
+})

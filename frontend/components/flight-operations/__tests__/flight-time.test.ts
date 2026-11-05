@@ -207,3 +207,33 @@ describe('toDateInput / toTimeInput split a stored instant with LOCAL getters', 
     }
   )
 })
+
+describe('zone-aware buildTimestamp / toDateInput / toTimeInput (Denver 2026)', () => {
+  it('buildTimestamp reads date and time in the zone, whatever the browser zone', () => {
+    withTz('Asia/Tokyo', () => {
+      expect(buildTimestamp('2026-01-15', '23:30', undefined, 'America/Denver')).toBe('2026-01-16T06:30:00.000Z')
+      expect(buildTimestamp('2026-07-15', '12:00', undefined, 'America/Denver')).toBe('2026-07-15T18:00:00.000Z')
+      expect(buildTimestamp('2026-07-15', '12:00', undefined, 'UTC')).toBe('2026-07-15T12:00:00.000Z')
+    })
+  })
+  it('a QT departure past midnight rolls to the next zone day across both DST changes', () => {
+    // Nov 1 2026 (25 h day): 23:30 arrival, 00:30 departure is Nov 2 MST
+    expect(buildTimestamp('2026-11-01', '00:30', '23:30', 'America/Denver')).toBe('2026-11-02T07:30:00.000Z')
+    // Mar 7 -> Mar 8 spring forward: 23:30 arrival, 00:30 departure is Mar 8 MST (07:30Z)
+    expect(buildTimestamp('2026-03-07', '00:30', '23:30', 'America/Denver')).toBe('2026-03-08T07:30:00.000Z')
+  })
+  it('toDateInput / toTimeInput invert it in the zone', () => {
+    withTz('Asia/Tokyo', () => {
+      expect(toDateInput('2026-01-16T06:30:00Z', 'America/Denver')).toBe('2026-01-15')
+      expect(toTimeInput('2026-01-16T06:30:00Z', 'America/Denver')).toBe('23:30')
+      expect(toDateInput('2026-01-16T06:30:00Z', 'UTC')).toBe('2026-01-16')
+      expect(toTimeInput('2026-01-16T06:30:00Z', 'UTC')).toBe('06:30')
+    })
+  })
+  it('no zone keeps the browser-local behavior', () => {
+    withTz('America/Phoenix', () => {
+      expect(buildTimestamp('2026-01-15', '23:30')).toBe('2026-01-16T06:30:00.000Z')
+      expect(toTimeInput('2026-01-16T06:30:00Z')).toBe('23:30')
+    })
+  })
+})

@@ -2,10 +2,13 @@
 // keys exist, their built-in defaults and how a value is cleaned and validated; the repository and the
 // Settings page both go through it.
 
+import { DEFAULT_TIME_ZONE, isValidTimeZone } from '@/lib/local-date'
+
 export const TAIL_NUMBER_PREFIX_KEY = 'tail_number_prefix'
 export const EQUIPMENT_TYPES_KEY = 'equipment_types'
 export const HOME_AIRPORT_KEY = 'home_airport'
 export const AIRPORT_DISPLAY_KEY = 'airport_display'
+export const TIME_ZONE_KEY = 'timezone'
 
 /** One kind of equipment. `value` is what equipment.equipment_type stores and never changes; label and icon are display. */
 export type EquipmentTypeDef = { value: string; label: string; icon: string }
@@ -48,6 +51,8 @@ export type AppSettings = {
   homeAirport: string
   /** Which airport code the app shows on screen; the ICAO is always what is stored. */
   airportDisplay: AirportDisplay
+  /** IANA zone (e.g. America/Denver) the arrivals/departures board follows instead of the browser's zone. */
+  timeZone: string
   /** Text pre-filled into the tail number field of the Add Flight form, e.g. "N" or "C-". "" = no prefill. */
   tailNumberPrefix: string
   /** The equipment types offered on the Equipment page and form, in display order. */
@@ -57,6 +62,7 @@ export type AppSettings = {
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   homeAirport: 'KMSO',
   airportDisplay: 'faa',
+  timeZone: DEFAULT_TIME_ZONE,
   tailNumberPrefix: 'N',
   equipmentTypes: DEFAULT_EQUIPMENT_TYPES
 }
@@ -197,6 +203,9 @@ export function settingsFromRows(
       AIRPORT_DISPLAY_OPTIONS.some((o) => o.value === row.value)
     ) {
       settings.airportDisplay = row.value as AirportDisplay
+    }
+    if (row.key === TIME_ZONE_KEY && isValidTimeZone(row.value)) {
+      settings.timeZone = row.value.trim()
     }
     if (row.key === EQUIPMENT_TYPES_KEY) {
       settings.equipmentTypes =

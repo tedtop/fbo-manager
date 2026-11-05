@@ -10,7 +10,14 @@ import {
   PlaneTakeoff,
   Plus
 } from 'lucide-react'
-import { parseLocalDate } from '@/lib/local-date'
+import { useDisplayZone } from '@/hooks/use-display-zone'
+import {
+  addLocalDays,
+  formatLocalDate,
+  formatLocalTime,
+  parseLocalDate,
+  zonedTimeToInstant
+} from '@/lib/local-date'
 import { weekRange } from './board-logic'
 import { FlightFormDialog } from './flight-form-dialog'
 import type { FlightFilters as FilterType, Flight } from './types'
@@ -42,23 +49,29 @@ interface CalendarWeekViewProps {
 
 // --- Helpers ---
 
-function getDateStr(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+// Date and time of an instant in the display zone (FBO zone, or UTC in Zulu mode).
+function getDateStr(date: Date, zone: string): string {
+  return formatLocalDate(date, zone)
 }
 
-function getTimeStr(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
+function getTimeStr(date: Date, zone: string): string {
+  return formatLocalTime(date, zone)
 }
 
-function parseLocalDateTime(day: string, time: string): Date {
+// Instant at which `zone`'s wall clock reads `day` ("YYYY-MM-DD") `time` ("HH:mm").
+function parseZonedDateTime(day: string, time: string, zone: string): Date {
   const [y, m, d] = day.split('-').map(Number)
   const [h, min] = time.split(':').map(Number)
-  return new Date(y, m - 1, d, h, min)
+  return zonedTimeToInstant(y, m, d, h, min, zone)
+}
+
+// Header label of a "YYYY-MM-DD" day (pure calendar date, so rendered in UTC to avoid any shift).
+function dayLabel(day: string, options?: Intl.DateTimeFormatOptions): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-US', {
+    ...options,
+    timeZone: 'UTC'
+  })
 }
 
 function parseLocalTimestamp(timestamp: string): Date {
@@ -80,6 +93,7 @@ export function CalendarWeekView({
   onWeekChange
 }: CalendarWeekViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const { zone, label: zoneLabel } = useDisplayZone()
 
   // Drag State
   const [isDragging, setIsDragging] = useState(false)
@@ -114,16 +128,10 @@ export function CalendarWeekView({
   // --- Date / Grid Calculation ---
 
   const weekDays = useMemo(() => {
-    const days = []
-    const { start: startOfWeek } = weekRange(new Date(), weekOffset)
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek)
-      date.setDate(startOfWeek.getDate() + i)
-      days.push(date)
-    }
-    return days
-  }, [weekOffset])
+    // The seven "YYYY-MM-DD" days of the Sunday-start week, in the display zone.
+    const startOfWeek = formatLocalDate(weekRange(new Date(), weekOffset, zone).start, zone)
+    return Array.from({ length: 7 }, (_, i) => addLocalDays(startOfWeek, i))
+  }, [weekOffset, zone])
 
   const timeSlots = useMemo(() => {
     const slots = []
@@ -184,10 +192,9 @@ export function CalendarWeekView({
       if (!intervalStart || !intervalEnd) return
 
       // Iterate Week Days to intersect
-      weekDays.forEach((dayDate) => {
-        const dayStart = new Date(dayDate) // 00:00
-        const dayEnd = new Date(dayDate)
-        dayEnd.setHours(23, 59, 59, 999)
+      weekDays.forEach((dayStr) => {
+        const dayStart = parseLocalDate(dayStr, zone) // 00:00 in the display zone
+        const dayEnd = new Date(parseLocalDate(addLocalDays(dayStr, 1), zone).getTime() - 1)
 
         // Check intersection
         // Flight Interval: [intervalStart, intervalEnd]
@@ -219,13 +226,13 @@ export function CalendarWeekView({
           }
 
           result.push({
-            id: `${flight.id}-${getDateStr(dayDate)}`,
+            id: `${flight.id}-${dayStr}`,
             flightId: flight.id,
             flight: flight,
             type,
             startTime: blockStart.toISOString(),
             endTime: blockEnd.toISOString(),
-            day: getDateStr(dayDate),
+            day: dayStr,
             isStart,
             isEnd
           })
@@ -234,7 +241,7 @@ export function CalendarWeekView({
     })
 
     return result
-  }, [flights, filters, weekDays])
+  }, [flights, filters, weekDays, zone])
 
   // --- Handlers ---
 
@@ -314,8 +321,8 @@ export function CalendarWeekView({
     setDragStartX(e.clientX)
 
     const start = new Date(block.startTime)
-    const dStr = getDateStr(start)
-    const tStr = getTimeStr(start)
+    const dStr = getDateStr(start, zone)
+    const tStr = getTimeStr(start, zone)
 
     setDragStartBlockDate(dStr)
     setDragStartBlockTime(tStr)
@@ -340,12 +347,7 @@ export function CalendarWeekView({
     const dayDelta = currentDayIdx - startDayIdx
 
     // Calc new date
-    const baseDate = parseLocalDate(dragStartBlockDate) // YYYY-MM-DD local (not UTC midnight)
-    // Add delta
-    // Use simple date math
-    const newDate = new Date(baseDate)
-    newDate.setDate(baseDate.getDate() + dayDelta)
-    const newDateStr = getDateStr(newDate)
+    const newDateStr = addLocalDays(dragStartBlockDate, dayDelta) // calendar arithmetic, DST-safe
 
     setTempDragTime(newTime)
     setTempDragDate(newDateStr)
@@ -373,14 +375,10 @@ export function CalendarWeekView({
     // 2. Apply that delta to the relevant flight fields.
 
     // OLD Start (Block)
-    const [oldY, oldM, oldD] = dragStartBlockDate.split('-').map(Number)
-    const [oldH, oldMin] = dragStartBlockTime.split(':').map(Number)
-    const oldStartObj = new Date(oldY, oldM - 1, oldD, oldH, oldMin)
+    const oldStartObj = parseZonedDateTime(dragStartBlockDate, dragStartBlockTime, zone)
 
     // NEW Start (Block)
-    const [newY, newM, newD] = tempDragDate.split('-').map(Number)
-    const [newH, newMin] = tempDragTime.split(':').map(Number)
-    const newStartObj = new Date(newY, newM - 1, newD, newH, newMin)
+    const newStartObj = parseZonedDateTime(tempDragDate, tempDragTime, zone)
 
     const deltaMs = newStartObj.getTime() - oldStartObj.getTime()
 
@@ -447,8 +445,8 @@ export function CalendarWeekView({
   }
 
   const handleCreate = (day: string, time: string, type: 'arrival' | 'departure') => {
-    // day/time are local; store real instants (UTC ISO), not offset-less strings
-    const baseDate = parseLocalDateTime(day, time)
+    // day/time are wall-clock in the display zone; store real instants (UTC ISO), not offset-less strings
+    const baseDate = parseZonedDateTime(day, time, zone)
     const ts = baseDate.toISOString()
 
     const newF: Partial<Flight> = {
@@ -495,7 +493,7 @@ export function CalendarWeekView({
           </Button>
           <div className="text-center font-bold text-lg">
             {weekDays[0] && weekDays[6] && (
-              `${weekDays[0].toLocaleDateString()} - ${weekDays[6].toLocaleDateString()}`
+              `${dayLabel(weekDays[0])} - ${dayLabel(weekDays[6])}`
             )}
           </div>
           <Button variant="ghost" onClick={() => onWeekChange(weekOffset + 1)}>
@@ -514,10 +512,16 @@ export function CalendarWeekView({
           <div className="min-w-[1000px] relative">
             {/* Header Row (Days) */}
             <div className="grid grid-cols-[80px_repeat(7,1fr)] sticky top-0 z-20 bg-inherit border-b">
-              <div className="p-4 border-r"></div>
+              <div
+                className="p-4 border-r text-center font-mono text-xs font-bold text-muted-foreground"
+                data-testid="calendar-zone-label"
+                title="Time zone of the calendar"
+              >
+                {zoneLabel}
+              </div>
               {weekDays.map(d => (
-                <div key={d.toString()} className="p-2 text-center border-r font-semibold">
-                  {d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
+                <div key={d} className="p-2 text-center border-r font-semibold">
+                  {dayLabel(d, { weekday: 'short', day: 'numeric' })}
                 </div>
               ))}
             </div>
@@ -534,8 +538,7 @@ export function CalendarWeekView({
               </div>
 
               {/* Days Cols */}
-              {weekDays.map((date, idx) => {
-                const dStr = getDateStr(date)
+              {weekDays.map((dStr) => {
                 // Find blocks for this day
                 const dayBlocks = blocks.filter(b => {
                   // Interactive drag override
@@ -567,7 +570,7 @@ export function CalendarWeekView({
                     {/* Blocks */}
                     {dayBlocks.map(block => {
                       const isDrag = draggedBlock?.id === block.id
-                      const time = isDrag ? tempDragTime : getTimeStr(new Date(block.startTime))
+                      const time = isDrag ? tempDragTime : getTimeStr(new Date(block.startTime), zone)
                       const top = getPositionFromTime(time)
 
                       // Calculate duration from start/end times

@@ -1,7 +1,7 @@
 // Pure time logic for the flight form (BACKLOG B09b, docs/PLAN.md D2/D6). Times are "HH:mm" strings
 // as held by <input type="time">; "" means blank.
 
-import { formatLocalDate, formatLocalTime } from '@/lib/local-date'
+import { addLocalDays, formatLocalDate, formatLocalTime, zonedTimeToInstant } from '@/lib/local-date'
 
 export const QUICK_TURN_MINUTES = 60
 
@@ -73,28 +73,31 @@ export function isQuickTurnSaved(state: ScheduledTimesState): boolean {
   return state.quickTurn && !!state.arrival && !!state.departure
 }
 
-// `date` is a local "YYYY-MM-DD", `time` a local "HH:mm". Returns the real instant as a UTC ISO string
+// `date` is a "YYYY-MM-DD", `time` an "HH:mm", both wall-clock in `zone` (the browser's zone when omitted;
+// pass the board's display zone, or 'UTC' in Zulu mode). Returns the real instant as a UTC ISO string
 // (Date.toISOString) so Postgres timestamptz stores exactly what the user meant. A time earlier than
-// `notBefore` ("HH:mm") is taken to be on the next local day, so a QT arrival at 23:30 gets a 00:30
-// departure on the following date. The next day is local calendar arithmetic (DST-safe), not +24 h.
+// `notBefore` ("HH:mm") is taken to be on the next day, so a QT arrival at 23:30 gets a 00:30
+// departure on the following date. The next day is calendar arithmetic (DST-safe), not +24 h.
 export function buildTimestamp(
   date: string,
   time: string,
-  notBefore?: string
+  notBefore?: string,
+  zone?: string
 ): string | undefined {
   if (!time) return undefined
-  const [y, mo, d] = date.split('-').map(Number)
-  const [h, mi] = time.split(':').map(Number)
   const dayShift = notBefore && time < notBefore ? 1 : 0
-  const instant = new Date(y, mo - 1, d + dayShift, h, mi)
+  const [y, mo, d] = addLocalDays(date, dayShift).split('-').map(Number)
+  const [h, mi] = time.split(':').map(Number)
+  const instant = zonedTimeToInstant(y, mo, d, h, mi, zone)
   return Number.isNaN(instant.getTime()) ? undefined : instant.toISOString()
 }
 
-// Splits a stored instant back into the local "YYYY-MM-DD" / "HH:mm" the form fields hold.
-export function toDateInput(timestamp?: string): string {
-  return timestamp ? formatLocalDate(new Date(timestamp)) : ''
+// Splits a stored instant back into the "YYYY-MM-DD" / "HH:mm" (in `zone`, browser-local when omitted)
+// the form fields hold.
+export function toDateInput(timestamp?: string, zone?: string): string {
+  return timestamp ? formatLocalDate(new Date(timestamp), zone) : ''
 }
 
-export function toTimeInput(timestamp?: string): string {
-  return timestamp ? formatLocalTime(new Date(timestamp)) : ''
+export function toTimeInput(timestamp?: string, zone?: string): string {
+  return timestamp ? formatLocalTime(new Date(timestamp), zone) : ''
 }

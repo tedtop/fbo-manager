@@ -1,28 +1,35 @@
-import { addLocalDays, formatLocalDate, parseLocalDate, toInstantIso } from '@/lib/local-date'
+import {
+  addLocalDays,
+  formatLocalDate,
+  parseLocalDate,
+  toInstantIso,
+  weekdayOfDate
+} from '@/lib/local-date'
 import type { Flight, FlightFilters } from './types'
 
 // Pure board logic, extracted verbatim from flight-board.tsx and app/page.tsx (no behavior change).
 
-// Local-day [start, end) of the toolbar date range, or null for 'all'. today/tomorrow are local calendar
-// days; week is the Sunday-start local week containing `now` (same as weekRange). today_future starts at
-// local midnight today and has no end (end: null).
+// Day [start, end) of the toolbar date range in `zone` (the display zone; browser-local when omitted), or
+// null for 'all'. today/tomorrow are calendar days; week is the Sunday-start week containing `now` (same
+// as weekRange). today_future starts at midnight today and has no end (end: null).
 export function dateRangeBounds(
   dateRange: FlightFilters['dateRange'],
-  now: Date
+  now: Date,
+  zone?: string
 ): { start: Date; end: Date | null } | null {
-  const today = formatLocalDate(now)
+  const today = formatLocalDate(now, zone)
   switch (dateRange) {
     case 'today':
-      return { start: parseLocalDate(today), end: parseLocalDate(addLocalDays(today, 1)) }
+      return { start: parseLocalDate(today, zone), end: parseLocalDate(addLocalDays(today, 1), zone) }
     case 'today_future':
-      return { start: parseLocalDate(today), end: null }
+      return { start: parseLocalDate(today, zone), end: null }
     case 'tomorrow':
       return {
-        start: parseLocalDate(addLocalDays(today, 1)),
-        end: parseLocalDate(addLocalDays(today, 2))
+        start: parseLocalDate(addLocalDays(today, 1), zone),
+        end: parseLocalDate(addLocalDays(today, 2), zone)
       }
     case 'week':
-      return weekRange(now, 0)
+      return weekRange(now, 0, zone)
     default:
       return null
   }
@@ -57,15 +64,16 @@ export function isFlightHidden(flight: Pick<Flight, 'hiddenAt'>, now: Date): boo
   return !!flight.hiddenAt && new Date(flight.hiddenAt).getTime() <= now.getTime()
 }
 
-// Default list fetch window: local yesterday .. today+14, widened so the current week (used by the
-// 'week' filter) is always inside it. Dates are local "YYYY-MM-DD", both inclusive. For Today + Future
+// Default list fetch window: yesterday .. today+14, widened so the current week (used by the
+// 'week' filter) is always inside it. Dates are "YYYY-MM-DD" in `zone`, both inclusive. For Today + Future
 // there is no end date (the fetch is unbounded above, matching the filter), so endDate is omitted.
 export function listFetchWindow(
   now: Date,
-  dateRange?: FlightFilters['dateRange']
+  dateRange?: FlightFilters['dateRange'],
+  zone?: string
 ): { startDate: string; endDate?: string } {
-  const today = formatLocalDate(now)
-  const week = weekDateParams(now, 0)
+  const today = formatLocalDate(now, zone)
+  const week = weekDateParams(now, 0, zone)
   const yesterday = addLocalDays(today, -1)
   const plus14 = addLocalDays(today, 14)
   const startDate = week.startDate < yesterday ? week.startDate : yesterday
@@ -76,9 +84,10 @@ export function listFetchWindow(
 export function filterFlights(
   flights: Flight[],
   filters: FlightFilters,
-  now: Date = new Date()
+  now: Date = new Date(),
+  zone?: string
 ): Flight[] {
-  const bounds = dateRangeBounds(filters.dateRange, now)
+  const bounds = dateRangeBounds(filters.dateRange, now, zone)
   return flights.filter((flight) => {
     if (bounds && !flightInRange(flight, bounds.start, bounds.end)) return false
     if (!filters.showHidden && isFlightHidden(flight, now)) return false
@@ -167,30 +176,30 @@ export function assignLinkColors(ids: Set<string>): Map<string, LinkColor> {
   return colors
 }
 
-// Sunday-start local-time week containing `date`, shifted by weekOffset weeks. end is exclusive.
+// Sunday-start week containing `date` in `zone` (browser-local when omitted), shifted by weekOffset weeks.
+// start/end are the instants of midnight in that zone; end is exclusive. Calendar arithmetic on date
+// strings, so a DST week (167 or 169 h) is still exactly 7 days.
 export function weekRange(
   date: Date,
-  weekOffset: number
+  weekOffset: number,
+  zone?: string
 ): { start: Date; end: Date } {
-  // Local-time getDay/setDate/setHours: calendar arithmetic in the runtime zone, so DST-safe.
-  const currentDay = date.getDay() // 0 = Sunday
-  const start = new Date(date)
-  start.setDate(date.getDate() - currentDay + weekOffset * 7)
-  start.setHours(0, 0, 0, 0)
-
-  const end = new Date(start)
-  end.setDate(start.getDate() + 7)
-
-  return { start, end }
+  const today = formatLocalDate(date, zone)
+  const startStr = addLocalDays(today, -weekdayOfDate(today) + weekOffset * 7)
+  return {
+    start: parseLocalDate(startStr, zone),
+    end: parseLocalDate(addLocalDays(startStr, 7), zone)
+  }
 }
 
-// Query params for the week shown by weekRange(date, weekOffset): local "YYYY-MM-DD" first and last
-// (inclusive) day. The repo converts these to UTC instants at local day boundaries.
+// Query params for the week shown by weekRange(date, weekOffset, zone): "YYYY-MM-DD" first and last
+// (inclusive) day in `zone`. The repo converts these to UTC instants at that zone's day boundaries.
 export function weekDateParams(
   date: Date,
-  weekOffset: number
+  weekOffset: number,
+  zone?: string
 ): { startDate: string; endDate: string } {
-  const startDate = formatLocalDate(weekRange(date, weekOffset).start)
+  const startDate = formatLocalDate(weekRange(date, weekOffset, zone).start, zone)
   return { startDate, endDate: addLocalDays(startDate, 6) }
 }
 

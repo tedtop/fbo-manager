@@ -13,6 +13,7 @@ import type {
 } from '@/components/flight-operations/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTheme } from '@/components/navigation-wrapper'
+import { useDisplayZone } from '@/hooks/use-display-zone'
 import { useFlights } from '@/hooks/use-flights'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useToast } from '@/hooks/use-toast'
@@ -29,6 +30,8 @@ export default function FlightOperationsPage() {
     'split' | 'calendar' | 'arrivals' | 'departures'
   >('split')
   const [weekOffset, setWeekOffset] = useState(0)
+  // The board follows the FBO time zone (or Zulu): day and week boundaries are that zone's midnights.
+  const { zone } = useDisplayZone()
 
   const [filters, setFilters] = useState<FlightFilters>({
     search: '',
@@ -45,11 +48,12 @@ export default function FlightOperationsPage() {
   // flights only when asked.
   const dateParams = {
     ...(view === 'calendar'
-      ? weekDateParams(new Date(), weekOffset)
+      ? weekDateParams(new Date(), weekOffset, zone)
       : filters.dateRange === 'all'
         ? undefined
-        : listFetchWindow(new Date(), filters.dateRange)),
-    includeHidden: filters.showHidden
+        : listFetchWindow(new Date(), filters.dateRange, zone)),
+    includeHidden: filters.showHidden,
+    zone
   }
 
   const {

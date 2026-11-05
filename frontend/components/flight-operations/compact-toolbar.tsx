@@ -29,6 +29,7 @@ import {
   X
 } from 'lucide-react'
 import { useServices } from '@/hooks/use-services'
+import { ZoneToggle } from './zone-toggle'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import type { FlightFilters } from './types'
@@ -295,6 +296,8 @@ export function CompactToolbar({
           </PopoverContent>
         </Popover>
       </div>
+
+      <ZoneToggle />
 
       <div className="relative">
         {/* Absolutely placed so it never shifts the toolbar. It fades in after 300ms, so quick refetches

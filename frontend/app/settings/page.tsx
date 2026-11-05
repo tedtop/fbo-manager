@@ -2,6 +2,7 @@
 
 import { AirportSettings } from '@/components/settings/airport-settings'
 import { EquipmentTypesEditor } from '@/components/settings/equipment-types-editor'
+import { TimeZoneSettings } from '@/components/settings/timezone-settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -163,6 +164,8 @@ export default function SettingsPage() {
       </form>
 
       <AirportSettings />
+
+      <TimeZoneSettings />
 
       <EquipmentTypesEditor />
     </div>
