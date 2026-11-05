@@ -1397,7 +1397,7 @@ export type Database = {
       scanned_documents: {
         Row: {
           id: number
-          doc_type: 'truck_sheet' | 'invoice_slip'
+          doc_type: 'truck_sheet' | 'invoice_slip' | 'schedule_sheet'
           storage_bucket: string
           storage_path: string
           original_filename: string
@@ -1410,10 +1410,17 @@ export type Database = {
           notes: string | null
           created_at: string
           updated_at: string
+          rotation_degrees: number
+          content_sha256: string | null
+          original_path: string | null
+          original_page: number | null
+          original_content_type: string | null
+          fuel_truck_id: number | null
+          scan_date: string | null
         }
         Insert: {
           id?: number
-          doc_type: 'truck_sheet' | 'invoice_slip'
+          doc_type: 'truck_sheet' | 'invoice_slip' | 'schedule_sheet'
           storage_bucket?: string
           storage_path: string
           original_filename: string
@@ -1424,6 +1431,13 @@ export type Database = {
           invoice_id?: number | null
           uploaded_by?: string | null
           notes?: string | null
+          rotation_degrees?: number
+          content_sha256?: string | null
+          original_path?: string | null
+          original_page?: number | null
+          original_content_type?: string | null
+          fuel_truck_id?: number | null
+          scan_date?: string | null
         }
         Update: Partial<Database['public']['Tables']['scanned_documents']['Insert']>
         Relationships: [
@@ -1439,6 +1453,13 @@ export type Database = {
             columns: ['invoice_id']
             isOneToOne: false
             referencedRelation: 'invoices'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'scanned_documents_fuel_truck_id_fkey'
+            columns: ['fuel_truck_id']
+            isOneToOne: false
+            referencedRelation: 'equipment'
             referencedColumns: ['id']
           },
         ]

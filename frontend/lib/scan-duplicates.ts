@@ -4,6 +4,8 @@ export interface ExistingSheetInfo {
   id: number
   pageCount: number
   maxPageNumber: number
+  /** equipment.id of the sheet's truck (needed to link pages added to an existing sheet). */
+  fuelTruckId?: number
 }
 
 export type SheetMode = 'new' | 'needs_choice' | 'attach'

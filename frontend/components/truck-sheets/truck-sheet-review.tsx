@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, Trash2, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCcw, RotateCw, Trash2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -8,7 +8,14 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { toNumber, type ReviewReading, type ReviewSheet } from '@/hooks/use-truck-sheet-import'
+import {
+  rotateReviewPage,
+  sheetProblem,
+  toNumber,
+  type ReviewReading,
+  type ReviewSheet,
+  type SheetCheck,
+} from '@/hooks/use-truck-sheet-import'
 import { validateReadings, type ReadingIssue } from './reading-validation'
 
 export const READING_TYPE_LABELS: Record<ReviewReading['reading_type'], string> = {
@@ -22,6 +29,8 @@ export const READING_TYPE_LABELS: Record<ReviewReading['reading_type'], string> 
 interface TruckSheetReviewProps {
   sheet: ReviewSheet
   knownTruckNumbers: Set<string>
+  /** Duplicate checks for this sheet (undefined while loading or while truck/date are missing). */
+  check?: SheetCheck
   onChange: (sheet: ReviewSheet) => void
   onRemove: () => void
 }
@@ -97,9 +106,17 @@ function IssueIcon({ issues }: { issues: ReadingIssue[] | undefined }) {
 export function TruckSheetReview({
   sheet,
   knownTruckNumbers,
+  check,
   onChange,
   onRemove,
 }: TruckSheetReviewProps) {
+  async function turnPage(pageId: string, deltaDeg: number) {
+    const page = sheet.pages.find((p) => p.id === pageId)
+    if (!page) return
+    const turned = await rotateReviewPage(page, deltaDeg)
+    onChange({ ...sheet, pages: sheet.pages.map((p) => (p.id === pageId ? turned : p)) })
+  }
+
   function patch(p: Partial<ReviewSheet>) {
     onChange({ ...sheet, ...p })
   }
@@ -234,6 +251,86 @@ export function TruckSheetReview({
             onChange={(e) => patch({ fueler_initials: e.target.value.toUpperCase() })}
             className="h-8 text-xs"
           />
+        </div>
+      </div>
+
+
+      {/* Problems that stop the import */}
+      {sheetProblem(sheet) && (
+        <div role="alert" data-testid="sheet-problem" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {sheetProblem(sheet)}
+        </div>
+      )}
+
+      {/* Same truck and day already stored */}
+      {check?.existing && (
+        <div data-testid="duplicate-banner" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm space-y-2">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <span>
+              A sheet for truck {sheet.truck_number} on {sheet.sheet_date} already exists ({check.existing.pageCount} page
+              {check.existing.pageCount === 1 ? '' : 's'} stored). It will not be created a second time.
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 pl-6">
+            <Button
+              size="sm"
+              variant={sheet.attach ? 'default' : 'outline'}
+              data-testid="attach-pages"
+              onClick={() => patch({ attach: !sheet.attach })}
+            >
+              {sheet.attach ? 'Adding pages only (no new readings)' : 'Add these pages to the existing sheet (no new readings)'}
+            </Button>
+            <Button size="sm" variant="ghost" data-testid="cancel-sheet" onClick={onRemove}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {check && !check.existing && check.decision.blocked && (
+        <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+          {check.decision.blocked}
+        </div>
+      )}
+
+      {/* Scanned pages, upright, in the order they will be stored */}
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">
+          {sheet.pages.length} page{sheet.pages.length === 1 ? '' : 's'}, shown upright as they will be stored
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {sheet.pages.map((page, i) => {
+            const dup = check?.decision.pages[i]?.duplicate
+            const number = check?.decision.nextPageNumbers[check.decision.pages.slice(0, i).filter((p) => !p.duplicate).length]
+            return (
+              <div key={page.id} data-testid={`scan-page-${i + 1}`} className="w-32 shrink-0 space-y-1">
+                {/* biome-ignore lint/performance/noImgElement: local blob preview */}
+                <img
+                  src={page.previewUrl}
+                  alt={`Page ${i + 1} of truck ${sheet.truck_number || '?'}, upright preview`}
+                  className={cn('h-40 w-32 rounded border border-border bg-muted object-contain', dup && 'opacity-40')}
+                />
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">Page {dup ? i + 1 : (number ?? i + 1)}</span>
+                  <span className="flex">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Rotate left" aria-label={`Rotate page ${i + 1} left`} onClick={() => turnPage(page.id, -90)}>
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Rotate right" aria-label={`Rotate page ${i + 1} right`} onClick={() => turnPage(page.id, 90)}>
+                      <RotateCw className="w-3.5 h-3.5" />
+                    </Button>
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {page.rotation !== 0 && <Badge variant="outline" className="text-[10px]">Turned {page.rotation}°</Badge>}
+                  {!page.rotationConfident && page.rotation === page.autoRotation && (
+                    <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400">Check the orientation</Badge>
+                  )}
+                  {dup && <Badge variant="secondary" className="text-[10px]">Already stored, skipped</Badge>}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 

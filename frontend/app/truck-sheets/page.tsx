@@ -155,9 +155,14 @@ export default function TruckSheetsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-lg" aria-hidden="true">⛽</span>
-                          <span className="font-mono font-semibold text-lg">
+                          <Link
+                            href={`/truck-sheets/trucks/${encodeURIComponent(sheet.truck_number)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-mono font-semibold text-lg underline-offset-2 hover:underline"
+                            title={`All sheets and scans for truck ${sheet.truck_number}`}
+                          >
                             {sheet.truck_number}
-                          </span>
+                          </Link>
                           <Badge variant={isJetA ? 'default' : 'secondary'}>
                             {isJetA ? 'Jet A' : 'Avgas'}
                           </Badge>

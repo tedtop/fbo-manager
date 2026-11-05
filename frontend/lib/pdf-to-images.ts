@@ -1,7 +1,7 @@
 // Client-only: turns a PDF (e.g. an iPhone Files > Scan Documents scan) into one JPEG per page, so the OCR routes, which
 // read photos only, can take it. pdfjs-dist is imported lazily so it never reaches the SSR bundle or any page that
 // does not pick a PDF. Pages are rendered one at a time and the canvas is released before the next one (iOS Safari
-// limits total canvas memory). No rotation: the OCR handles any orientation.
+// limits total canvas memory). Orientation is not touched here: the truck sheet reader reports the turn each page needs (rotation_degrees).
 
 export const MAX_PDF_PAGES = 12
 export const MAX_PAGE_SIDE_PX = 2600
@@ -48,6 +48,14 @@ export function pdfErrorMessage(err: unknown, fileName: string): string {
 
 export function pageCapMessage(fileName: string, total: number): string {
   return `${fileName} has ${total} pages; only the first ${MAX_PDF_PAGES} were read. Upload the rest separately.`
+}
+
+/** Page image File -> the PDF it was rendered from and its 1-based page there (set by expandPdfs). */
+const pageOrigins = new WeakMap<File, { original: File; page: number }>()
+
+/** The upload a page image came from: the PDF and page number for a rendered PDF page, else the file itself (page 1). */
+export function originOf(file: File): { original: File; page: number } {
+  return pageOrigins.get(file) ?? { original: file, page: 1 }
 }
 
 export interface PdfConversion {
@@ -120,6 +128,7 @@ export async function expandPdfs(
       continue
     }
     const c = await convert(f, onProgress)
+    c.files.forEach((page, i) => pageOrigins.set(page, { original: f, page: i + 1 }))
     out.push(...c.files)
     if (c.notice) notices.push(c.notice)
   }

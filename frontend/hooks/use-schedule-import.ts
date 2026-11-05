@@ -290,7 +290,7 @@ export function useScheduleImport() {
     if (done.added + done.updated > 0) {
       for (const file of files) {
         try {
-          await uploadScheduleSheetScan(db, file, file.name)
+          await uploadScheduleSheetScan(db, file, file.name, sheet?.sheet_date)
         } catch (err) {
           console.error(`Failed to persist original schedule sheet "${file.name}":`, err)
         }
@@ -309,7 +309,7 @@ export function useScheduleImport() {
     setPhase('done')
     return res
     // biome-ignore lint/correctness/useExhaustiveDependencies: db is a stable per-render client
-  }, [evaluations, items, files, qc, airportsPending, timeZone])
+  }, [evaluations, items, files, qc, airportsPending, timeZone, sheet])
 
   return {
     phase,

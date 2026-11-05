@@ -9,9 +9,14 @@ import { useSession } from '@/hooks/use-session'
 import { useFuelTrucks } from '@/hooks/use-truck-sheets'
 import {
   mergeExtractions,
+  prepareReviewPage,
+  sheetProblem,
+  useSheetChecks,
   useTruckSheetCommit,
   useTruckSheetExtract,
+  type CommitResult,
   type ExtractedTruckSheet,
+  type ReviewPage,
   type ReviewSheet,
 } from '@/hooks/use-truck-sheet-import'
 import {
@@ -21,10 +26,6 @@ import {
 import { TruckSheetReview } from '@/components/truck-sheets/truck-sheet-review'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
-
-function todayIso() {
-  return new Date().toISOString().split('T')[0]
-}
 
 export default function TruckSheetImportPage() {
   const { status } = useSession()
@@ -40,7 +41,8 @@ export default function TruckSheetImportPage() {
   const [sheets, setSheets] = useState<ReviewSheet[]>([])
   const [extractError, setExtractError] = useState<string | null>(null)
   const [commitError, setCommitError] = useState<string | null>(null)
-  const [importedCount, setImportedCount] = useState<number | null>(null)
+  const [summary, setSummary] = useState<CommitResult | null>(null)
+  const { checks, pending: checksPending } = useSheetChecks(sheets)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -49,15 +51,18 @@ export default function TruckSheetImportPage() {
   async function handleFiles(files: File[]) {
     setExtracting(true)
     setExtractError(null)
-    setImportedCount(null)
+    setSummary(null)
     setPages(files.map((f) => ({ name: f.name, status: 'queued' as const })))
 
-    const results: { file: File; extraction: ExtractedTruckSheet }[] = []
+    const results: { file: File; extraction: ExtractedTruckSheet; page: ReviewPage }[] = []
     for (let i = 0; i < files.length; i++) {
       setPages((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'extracting' } : p)))
       try {
         const extraction = await extract(files[i])
-        results.push({ file: files[i], extraction })
+        // The upright image that will be stored (turned as the reader asked) and its hash, made here so the review
+        // screen shows exactly what gets saved.
+        const page = await prepareReviewPage(files[i], extraction)
+        results.push({ file: files[i], extraction, page })
         setPages((prev) =>
           prev.map((p, idx) =>
             idx === i ? { ...p, status: 'done', truckNumber: extraction.truck_number } : p
@@ -72,11 +77,7 @@ export default function TruckSheetImportPage() {
       }
     }
 
-    const merged = mergeExtractions(results).map((sheet) => ({
-      ...sheet,
-      sheet_date: sheet.sheet_date || todayIso(),
-    }))
-    setSheets(merged)
+    setSheets(mergeExtractions(results))
     if (results.length === 0 && files.length > 0) {
       setExtractError('No sheets could be extracted — check the photos and try again.')
     }
@@ -86,10 +87,12 @@ export default function TruckSheetImportPage() {
   async function handleImport() {
     setCommitError(null)
     try {
-      const created = await commit(sheets)
-      setImportedCount(created.length)
-      setSheets([])
-      setPages([])
+      const result = await commit(sheets)
+      setSummary(result)
+      // Imported sheets leave the screen; failed ones stay, with the reason shown below
+      const failedIds = new Set(result.failed.map((f) => f.sheetId))
+      setSheets((prev) => prev.filter((s) => failedIds.has(s.id)))
+      if (result.failed.length === 0) setPages([])
     } catch (err) {
       setCommitError((err as Error).message)
     }
@@ -106,7 +109,11 @@ export default function TruckSheetImportPage() {
   const readyToImport =
     sheets.length > 0 &&
     !extracting &&
-    sheets.every((s) => s.truck_number && s.sheet_date && s.fuel_type)
+    !checksPending &&
+    sheets.every((s) => {
+      const check = checks.get(s.id)
+      return !sheetProblem(s) && check != null && !check.decision.blocked
+    })
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -119,22 +126,38 @@ export default function TruckSheetImportPage() {
         </Link>
         <h1 className="text-2xl font-bold mt-2">Import Truck Sheets</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Upload photos of tonight&apos;s truck sheets — every meter reading is extracted with AI,
-          checked against the registers, and filed under the right truck.
+          Upload photos or a PDF scan of tonight&apos;s truck sheets — every meter reading is read from
+          the page, checked against the registers, and filed under the right truck together with the
+          upright scan of each page.
         </p>
       </div>
 
-      {importedCount != null && (
+      {summary && (summary.created.length > 0 || summary.attached.length > 0) && (
         <SuccessMessage>
-          <span className="flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-2" data-testid="import-summary">
             <CheckCircle2 className="w-4 h-4" />
-            Imported {importedCount} truck sheet{importedCount === 1 ? '' : 's'}.{' '}
+            {summary.created.length > 0 && (
+              <>Imported {summary.created.length} truck sheet{summary.created.length === 1 ? '' : 's'}. </>
+            )}
+            {summary.attached.length > 0 && (
+              <>
+                Added pages to {summary.attached.length} existing sheet{summary.attached.length === 1 ? '' : 's'}.{' '}
+              </>
+            )}
             <Link href="/truck-sheets" className="underline">
               View the fuel truck logs
             </Link>
           </span>
         </SuccessMessage>
       )}
+      {summary?.skippedPages.map((m) => (
+        <div key={m} role="status" className="rounded-lg border border-border px-3 py-2 text-sm">{m}</div>
+      ))}
+      {summary?.failed.map((f) => (
+        <ErrorMessage key={f.sheetId}>
+          Truck {f.truck || '?'} {f.date}: not imported. {f.message}
+        </ErrorMessage>
+      ))}
 
       <TruckSheetUpload onFiles={handleFiles} pages={pages} busy={extracting} />
 
@@ -148,6 +171,7 @@ export default function TruckSheetImportPage() {
                 key={sheet.id}
                 sheet={sheet}
                 knownTruckNumbers={knownTruckNumbers}
+                check={checks.get(sheet.id)}
                 onChange={updateSheet}
                 onRemove={() => setSheets((prev) => prev.filter((s) => s.id !== sheet.id))}
               />

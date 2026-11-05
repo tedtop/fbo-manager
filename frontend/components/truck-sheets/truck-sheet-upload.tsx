@@ -140,7 +140,7 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
                 </span>
               )}
               {page.status === 'extracting' && (
-                <span className="text-xs text-muted-foreground">Reading with AI…</span>
+                <span className="text-xs text-muted-foreground">Reading the page…</span>
               )}
               {page.status === 'error' && (
                 <span className="text-xs text-destructive truncate max-w-[16rem]">{page.error}</span>
