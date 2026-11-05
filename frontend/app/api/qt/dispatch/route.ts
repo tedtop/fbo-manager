@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { denied, requireModule } from '@/lib/supabase/require-module'
 
 const QT_DISPATCH_URL = 'https://go.qttechnologies.com/Portal/Dispatch/GetDispatchDetail'
 
 export async function POST(request: NextRequest) {
+  const check = await requireModule('fuel_farm')
+  if (!check.ok) return denied(check)
+
   try {
     const { CompanyLocationID, UserID } = await request.json()
     const qtCookies = request.headers.get('QT-Cookies') || ''

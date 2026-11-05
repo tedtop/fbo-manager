@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type NextRequest, NextResponse } from 'next/server'
+import { denied, requireModule } from '@/lib/supabase/require-module'
 import { type ExtractDeps, extractScheduleSheet, type SheetExtraction } from '@/lib/schedule-import/extract-sheet'
 import {
   mergeScheduleSheets,
@@ -130,6 +131,9 @@ async function extractFromFile(
 // ExtractedScheduleSheet: with several files the rows are concatenated in upload order and each row's `page` is its
 // file number. PDFs are not read yet (no free rasterizer): photos only.
 export async function POST(req: NextRequest) {
+  const check = await requireModule('flight_operations')
+  if (!check.ok) return denied(check)
+
   let formData: FormData
   try {
     formData = await req.formData()

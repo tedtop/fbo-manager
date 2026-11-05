@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { denied, requireModule } from '@/lib/supabase/require-module'
 
 const client = new Anthropic() // reads ANTHROPIC_API_KEY from process.env
 
@@ -117,6 +118,9 @@ function str(v: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  const check = await requireModule('truck_sheets')
+  if (!check.ok) return denied(check)
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
   }

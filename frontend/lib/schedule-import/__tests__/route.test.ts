@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/ocr/schedule-sheet/route'
+
+// The auth gate has its own tests (lib/supabase/__tests__/require-module.test.ts); these cases are about validation.
+vi.mock('@/lib/supabase/require-module', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/supabase/require-module')>()),
+  requireModule: async () => ({ ok: true, user: { id: 'test-user' } })
+}))
 
 // Validation paths only: every request here is rejected before any OCR engine runs, so nothing touches the network.
 function post(form: FormData) {
