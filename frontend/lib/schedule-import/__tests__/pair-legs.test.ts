@@ -107,3 +107,22 @@ describe('sample sheet mapping (America/Denver)', () => {
     expect(drafts[3].notes).toContain('Fullsize Hertz - Status: Confirmed')
   })
 })
+
+describe('sample sheet mapping in other zones', () => {
+  const map = (timeZone: string) =>
+    pairSingleLegRows(SAMPLE_SHEET.rows).map((p) => mapExtractedRowToFlightDraft(p.row, { sheetDate: SAMPLE_SHEET.sheet_date, timeZone }))
+
+  it('America/New_York: the same printed 10:00 on 2026-11-04 is -05:00 and a different instant than Denver', () => {
+    const ny = map('America/New_York')
+    const den = map('America/Denver')
+    expect(ny[0].scheduledDepartureTime).toBe('2026-11-04T10:00:00-05:00')
+    expect(ny[1].scheduledArrivalTime).toBe('2026-11-04T11:00:00-05:00')
+    expect(new Date(ny[0].scheduledDepartureTime as string).getTime()).toBe(new Date(den[0].scheduledDepartureTime as string).getTime() - 2 * 3600_000)
+  })
+
+  it('America/Phoenix: -07:00 (same as Denver in November, where Denver is on standard time)', () => {
+    const px = map('America/Phoenix')
+    expect(px[0].scheduledDepartureTime).toBe('2026-11-04T10:00:00-07:00')
+    expect(px[3].scheduledArrivalTime).toBe('2026-11-21T12:14:00-07:00')
+  })
+})

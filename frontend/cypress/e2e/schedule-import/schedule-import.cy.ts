@@ -2,8 +2,8 @@
 // route and the registry lookup are STUBBED with cy.intercept (no Anthropic call, no adsbdb call). The fixture mirrors
 // docs/samples/schedule-sheet-2026-11-04.jpg: six printed rows, one leg each (Action column), that become four
 // flights. Dates are shifted to the coming days so the board ("Today + Future") shows them, and the tails are random
-// so repeated runs do not collide. Printed times are in the app's schedule zone (America/Denver), independent of the
-// browser zone the runner pins.
+// so repeated runs do not collide. Printed times are in the app's FBO time zone setting (the `timezone` app_setting, default
+// America/Denver, and the e2e database does not override it), independent of the browser zone the runner pins.
 import { normalizeScheduleSheet } from '../../../lib/schedule-import/normalize'
 import { zonedWallTimeToInstant } from '../../../lib/schedule-import/zoned-time'
 

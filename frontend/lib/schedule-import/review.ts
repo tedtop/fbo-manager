@@ -25,9 +25,6 @@ import type {
 } from './types'
 import { addDaysToDateString, zonedWallTimeToInstant } from './zoned-time'
 
-/** The FBO is in Missoula, Montana. The app has no configured zone yet (see PLAN B45 "Time zone"). */
-export const SCHEDULE_TIME_ZONE = 'America/Denver'
-
 export interface WallTime {
   date: string // "YYYY-MM-DD" or ''
   time: string // "HH:mm" or ''
@@ -170,7 +167,7 @@ function itemFrom(sourceRows: ExtractedScheduleRow[], row: ExtractedScheduleRow,
 /** Extracted sheet -> editable review items: single-leg rows are paired first, then every row is mapped. */
 export function buildReviewItems(
   sheet: ExtractedScheduleSheet,
-  { timeZone = SCHEDULE_TIME_ZONE }: { timeZone?: string } = {}
+  { timeZone }: { timeZone: string }
 ): ScheduleReviewItem[] {
   return pairSingleLegRows(sheet.rows).map(({ row, sourceRows }) => itemFrom(sourceRows, row, sheet.sheet_date, timeZone))
 }
@@ -179,7 +176,7 @@ export function buildReviewItems(
 export function unpairItem(
   item: ScheduleReviewItem,
   sheetDate: string | null,
-  { timeZone = SCHEDULE_TIME_ZONE }: { timeZone?: string } = {}
+  { timeZone }: { timeZone: string }
 ): ScheduleReviewItem[] {
   if (item.sourceRows.length < 2) return [item]
   return item.sourceRows.map((r) => itemFrom([r], r, sheetDate, timeZone))
@@ -271,17 +268,17 @@ export function evaluateReviewItems(
   items: readonly ScheduleReviewItem[],
   existing: readonly ReviewExistingFlight[],
   {
-    timeZone = SCHEDULE_TIME_ZONE,
+    timeZone,
     lookups = {},
     airports = [],
     homeCountry
   }: {
-    timeZone?: string
+    timeZone: string
     lookups?: Readonly<Record<string, TailTypeLookup>>
     /** The airport table rows for the printed codes (see airportCodeToLookUp). */
     airports?: readonly AirportLike[]
     homeCountry?: string
-  } = {}
+  }
 ): ReviewEvaluation[] {
   const pool: ReviewExistingFlight[] = [...existing]
   const out: ReviewEvaluation[] = []
@@ -422,7 +419,7 @@ function minutesBetween(a: string, b: string): number {
 export function planImport(
   items: readonly ScheduleReviewItem[],
   evals: readonly ReviewEvaluation[],
-  { timeZone = SCHEDULE_TIME_ZONE }: { timeZone?: string } = {}
+  { timeZone }: { timeZone: string }
 ): ImportOperation[] {
   const ops: ImportOperation[] = []
   items.forEach((item, i) => {

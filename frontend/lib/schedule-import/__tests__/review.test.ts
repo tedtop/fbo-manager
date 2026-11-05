@@ -205,3 +205,19 @@ describe('origin and destination', () => {
     expect(pair).toMatchObject({ originPrinted: 'SEA', destinationPrinted: 'MSO' })
   })
 })
+
+describe('the configured zone drives evaluation and the written ISO', () => {
+  for (const [zone, offset] of [['America/New_York', '-05:00'], ['America/Phoenix', '-07:00']] as const) {
+    it(`${zone}: printed wall times are written with ${offset}`, () => {
+      const opts = { timeZone: zone, lookups: RESOLVED }
+      const items = buildReviewItems(SAMPLE_SHEET, opts)
+      const ops = planImport(items, evaluateReviewItems(items, [], opts), opts)
+      expect(ops).toHaveLength(4)
+      const turn = ops[1]
+      expect(turn.kind === 'add' && turn.insert).toMatchObject({
+        scheduled_arrival_time: `2026-11-04T11:00:00${offset}`,
+        scheduled_departure_time: `2026-11-04T12:00:00${offset}`
+      })
+    })
+  }
+})

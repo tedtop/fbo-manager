@@ -39,6 +39,8 @@ import { flightKeys } from '@/hooks/use-flights'
 import { aircraftKeys } from '@/hooks/use-aircraft'
 import { aircraftLookupKeys, fetchLookup } from '@/hooks/use-aircraft-type-lookup'
 import { formatIcaoType, findIcaoType } from '@/lib/icao-aircraft-types'
+import { DEFAULT_TIME_ZONE, isValidTimeZone } from '@/lib/local-date'
+import { useAppSettings } from '@/hooks/use-app-settings'
 
 export type ScheduleImportPhase = 'idle' | 'extracting' | 'ready' | 'importing' | 'done'
 
@@ -188,6 +190,9 @@ export function useScheduleImport() {
   // Printed origin / destination codes are matched against the airport table (one query for all of them); the stored
   // code is the ICAO code, like the flight form. Place names and ambiguous codes are left to the airport combobox.
   const { homeCountry } = useAirportSettings()
+  // Printed times are wall clock at the FBO, so they follow the FBO time zone setting (not the per-user Zulu toggle).
+  const { settings } = useAppSettings()
+  const timeZone = isValidTimeZone(settings.timeZone) ? settings.timeZone : DEFAULT_TIME_ZONE
   const airportCodes = useMemo(
     () => [...new Set(items.flatMap((i) => [i.originPrinted, i.destinationPrinted]).map(airportCodeToLookUp).filter((c): c is string => !!c))].sort(),
     [items]
@@ -203,8 +208,8 @@ export function useScheduleImport() {
   const airportsPending = airportCodes.length > 0 && airportQuery.isFetching
 
   const evaluations: ReviewEvaluation[] = useMemo(
-    () => evaluateReviewItems(items, existing, { lookups, airports: airports ?? [], homeCountry }),
-    [items, existing, lookups, airports, homeCountry]
+    () => evaluateReviewItems(items, existing, { timeZone, lookups, airports: airports ?? [], homeCountry }),
+    [items, existing, timeZone, lookups, airports, homeCountry]
   )
   const summary = useMemo(() => summarizeReview(evaluations), [evaluations])
 
@@ -216,7 +221,7 @@ export function useScheduleImport() {
       setFiles(picked)
       try {
         const extracted = await requestScheduleExtraction(picked)
-        const built = buildReviewItems(extracted)
+        const built = buildReviewItems(extracted, { timeZone })
         // Flights already on the board over the sheet's span (hidden ones too), for the duplicate check.
         const range = existingFlightsRange(built)
         const rows = range ? await findAllFlights(db, { ...range, includeHidden: true }) : []
@@ -231,7 +236,7 @@ export function useScheduleImport() {
       }
     },
     // biome-ignore lint/correctness/useExhaustiveDependencies: db is a stable per-render client
-    []
+    [timeZone]
   )
 
   const updateItem = useCallback((id: string, patch: Partial<ScheduleReviewItem>) => {
@@ -240,9 +245,9 @@ export function useScheduleImport() {
 
   const unpair = useCallback(
     (id: string) => {
-      setItems((prev) => prev.flatMap((i) => (i.id === id ? unpairItem(i, sheet?.sheet_date ?? null) : [i])))
+      setItems((prev) => prev.flatMap((i) => (i.id === id ? unpairItem(i, sheet?.sheet_date ?? null, { timeZone }) : [i])))
     },
-    [sheet]
+    [sheet, timeZone]
   )
 
   const reset = useCallback(() => {
@@ -259,7 +264,7 @@ export function useScheduleImport() {
     if (!canImport(evaluations) || airportsPending) return null
     setPhase('importing')
     setError(null)
-    const ops = planImport(items, evaluations)
+    const ops = planImport(items, evaluations, { timeZone })
     const tails = new Map(items.map((i) => [i.id, i.tail]))
     const done = await executeImportOperations(ops, (id) => tails.get(id) ?? '', {
       aircraftExists: async (tail) => (await findAircraftByTailNumber(db, tail)) !== null,
@@ -304,7 +309,7 @@ export function useScheduleImport() {
     setPhase('done')
     return res
     // biome-ignore lint/correctness/useExhaustiveDependencies: db is a stable per-render client
-  }, [evaluations, items, files, qc, airportsPending])
+  }, [evaluations, items, files, qc, airportsPending, timeZone])
 
   return {
     phase,
