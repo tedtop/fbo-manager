@@ -34,20 +34,26 @@ const SHEET = {
   source_software_hint: 'Minuteman Aviation Inc - Scheduled Arrivals and Requests',
   rows: [
     { ...common, tail_number: T.dep, aircraft_type: 'G-IVSP', customer: 'Cash/Check Customer', departure_date: D1, departure_time: '10:00', notes: 'Service Duration - Short Stay; Confirmed 11/04/2026', raw_row_text: 'D1 | 10:00 AM | Depart | G-IVSP' },
-    { ...common, tail_number: T.turn, aircraft_type: 'CJ2', customer: 'Buybacks-Contract Fuel', arrival_date: D1, arrival_time: '11:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D1 | 11:00 AM | Arrive | CJ2' },
-    { ...common, tail_number: T.turn, aircraft_type: 'CJ2', customer: 'Buybacks-Contract Fuel', departure_date: D1, departure_time: '12:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D1 | 12:00 PM | Depart | CJ2' },
-    { ...common, tail_number: T.far, aircraft_type: 'ENCORE', customer: 'Cash/Check Customer', departure_date: D3, departure_time: '12:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D3 | 12:00 PM | Depart | ENCORE' },
+    { ...common, tail_number: T.turn, aircraft_type: 'CJ2', origin: 'SEA', customer: 'Buybacks-Contract Fuel', arrival_date: D1, arrival_time: '11:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D1 | 11:00 AM | Arrive | CJ2' },
+    { ...common, tail_number: T.turn, aircraft_type: 'CJ2', destination: 'MSO', customer: 'Buybacks-Contract Fuel', departure_date: D1, departure_time: '12:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D1 | 12:00 PM | Depart | CJ2' },
+    { ...common, tail_number: T.far, aircraft_type: 'ENCORE', destination: 'BOISE', customer: 'Cash/Check Customer', departure_date: D3, departure_time: '12:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D3 | 12:00 PM | Depart | ENCORE' },
     { ...common, tail_number: T.stay, aircraft_type: 'BRAVO', customer: 'Cash/Check Customer', arrival_date: D6, arrival_time: '12:14', services: 'Rental Car - Passenger: Sadler, Fullsize Hertz - Status: Confirmed', notes: 'Service Duration - Short Stay', raw_row_text: 'D6 | 12:14 PM | Arrive | BRAVO' },
     { ...common, tail_number: T.stay, aircraft_type: 'BRAVO', customer: 'Cash/Check Customer', departure_date: D9, departure_time: '16:00', notes: 'Service Duration - Short Stay', raw_row_text: 'D9 | 4:00 PM | Depart | BRAVO' },
   ],
 }
 
-// Registry lookup stub: three tails resolve, the fourth is unknown (the printed "BRAVO" must NOT become its type).
+// Registry lookup stub: two tails resolve (registry ICAO wins over the printed text). The other two are unknown:
+// the printed "ENCORE" names exactly one ICAO type and fills in; the printed "BRAVO" is ambiguous and stays unresolved.
 const REGISTRY: Record<string, { typeIcao: string; typeDescription: string }> = {
   [T.dep]: { typeIcao: 'GLF4', typeDescription: 'Gulfstream IV' },
   [T.turn]: { typeIcao: 'C25A', typeDescription: 'Citation CJ2' },
-  [T.far]: { typeIcao: 'BE40', typeDescription: 'Beechjet 400' },
 }
+
+// Airport table stub (the review matches printed origin/destination codes against it): SEA and MSO are unambiguous.
+const AIRPORTS = [
+  { id: 9001, ident: 'KSEA', icao: 'KSEA', iata: 'SEA', faa: 'SEA', name: 'Seattle Tacoma International Airport', city: 'Seattle', region: 'US-WA', country: 'US', type: 'large_airport', scheduled_service: true },
+  { id: 9002, ident: 'KMSO', icao: 'KMSO', iata: 'MSO', faa: 'MSO', name: 'Missoula Montana Airport', city: 'Missoula', region: 'US-MT', country: 'US', type: 'medium_airport', scheduled_service: true },
+]
 
 function stubNetwork(opts: { ocrStatus?: number } = {}) {
   cy.intercept('POST', '/api/ocr/schedule-sheet', (req) => {
@@ -58,6 +64,7 @@ function stubNetwork(opts: { ocrStatus?: number } = {}) {
     // The real route returns the normalized sheet (normalizeScheduleSheet), so the stub does the same.
     req.reply({ statusCode: 200, body: normalizeScheduleSheet(SHEET) })
   }).as('ocr')
+  cy.intercept({ method: 'GET', pathname: '/rest/v1/airport' }, { statusCode: 200, body: AIRPORTS }).as('airports')
   cy.intercept({ method: 'GET', pathname: '/api/aircraft/lookup' }, (req) => {
     const tail = new URL(req.url).searchParams.get('tail') ?? ''
     const hit = REGISTRY[tail]
@@ -112,11 +119,26 @@ describe('schedule sheet import', () => {
       cy.get('[data-testid="arrival-time"]').should('have.value', '11:00')
       cy.get('[data-testid="departure-time"]').should('have.value', '12:00')
       cy.get('[data-testid="type-status"]').should('contain.text', 'Registry: ')
+      cy.get('[data-testid="type-field"]').should('have.attr', 'data-type-source', 'registry').and('have.attr', 'data-type-icao', 'C25A')
+      // Printed SEA / MSO match one airport each and are stored as ICAO codes
+      cy.get('[data-testid="origin-field"]').should('have.attr', 'data-airport-code', 'KSEA')
+      cy.get('[data-testid="destination-field"]').should('have.attr', 'data-airport-code', 'KMSO')
+    })
+    // Printed ENCORE names one ICAO type; the registry has nothing for this tail
+    card(T.far).within(() => {
+      cy.get('[data-testid="type-field"]').should('have.attr', 'data-type-source', 'printed').and('have.attr', 'data-type-icao', 'C560')
+      cy.get('[data-testid="pick-type-hint"]').should('not.exist')
+      // "BOISE" is not a code: the combobox waits for a pick, nothing is written meanwhile
+      cy.get('[data-testid="destination-field"]').should('have.attr', 'data-airport-state', 'unmatched')
+      cy.get('[data-testid="destination-status"]').should('contain.text', 'pick one')
+      cy.get('[data-testid="origin-field"]').should('not.exist')
     })
     // 60 min gap = quick turn; the 5-day stay is not
     card(T.stay).within(() => {
       cy.contains('Quick turn').should('not.exist')
       cy.get('[data-testid="type-status"]').should('contain.text', 'No registry match')
+      cy.get('[data-testid="pick-type-hint"]').should('contain.text', 'Pick a type') // BRAVO is ambiguous
+      cy.get('[data-testid="airport-fields"]').should('not.exist') // blank stays blank
       cy.get('[data-testid="service-chip"]').should('have.length', 1) // rental_car
     })
 
@@ -156,12 +178,16 @@ describe('schedule sheet import', () => {
       expect(new Date(by[T.stay].scheduled_arrival_time as string).toISOString()).to.eq(instant(D6, '12:14'))
       expect(new Date(by[T.stay].scheduled_departure_time as string).toISOString()).to.eq(instant(D9, '16:00'))
       expect(by[T.stay].is_quick_turn).to.eq(false)
+      expect(by[T.turn]).to.include({ origin: 'KSEA', destination: 'KMSO' })
+      expect(by[T.far].destination).to.eq('') // unresolved airport is not guessed
+      expect(by[T.stay]).to.include({ origin: '', destination: '' })
 
-      // Aircraft: type from the registry lookup, never the printed text; unknown tail -> UNKN / Unknown
+      // Aircraft: registry type first, then an unambiguous printed type (ENCORE), else UNKN / Unknown (ambiguous BRAVO)
       cy.task('getAircraftRows', tails).then((aircraft) => {
         const ac = Object.fromEntries((aircraft as AircraftRow[]).map((a) => [a.tail_number, a]))
         expect(ac[T.dep]).to.include({ aircraft_type_icao: 'GLF4' })
         expect(ac[T.turn]).to.include({ aircraft_type_icao: 'C25A' })
+        expect(ac[T.far]).to.include({ aircraft_type_icao: 'C560' }) // from the printed ENCORE
         expect(ac[T.stay]).to.include({ aircraft_type_icao: 'UNKN', aircraft_type_display: 'Unknown' })
       })
 
