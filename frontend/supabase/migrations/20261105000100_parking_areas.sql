@@ -25,15 +25,15 @@ create table if not exists parking_area (
   display_order integer not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  modified_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   constraint parking_area_polygon_is_polygon
     check (polygon is null or polygon->>'type' = 'Polygon')
 );
 
-drop trigger if exists trg_parking_area_set_modified_at on parking_area;
-create trigger trg_parking_area_set_modified_at
+drop trigger if exists trg_parking_area_set_updated_at on parking_area;
+create trigger trg_parking_area_set_updated_at
   before update on parking_area
-  for each row execute function set_modified_at();
+  for each row execute function set_updated_at();
 
 alter table parking_area enable row level security;
 

@@ -74,12 +74,12 @@ describe('parking-area.repo', () => {
     expect((await findParkingAreaById(db, area.id))?.is_active).toBe(false)
   })
 
-  it('updates an area and bumps modified_at via the trigger', async () => {
+  it('updates an area and bumps updated_at via the trigger', async () => {
     const area = await createParkingArea(db, { code: 'H1', name: 'Hangar 1', kind: 'hangar' })
     const updated = await updateParkingArea(db, area.id, { name: 'Hangar One' })
     expect(updated.name).toBe('Hangar One')
-    expect(new Date(updated.modified_at).getTime()).toBeGreaterThanOrEqual(
-      new Date(area.modified_at).getTime()
+    expect(new Date(updated.updated_at).getTime()).toBeGreaterThanOrEqual(
+      new Date(area.updated_at).getTime()
     )
   })
 

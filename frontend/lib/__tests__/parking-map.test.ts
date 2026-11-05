@@ -34,7 +34,7 @@ function area(
     display_order: 0,
     is_active: true,
     created_at: '',
-    modified_at: ''
+    updated_at: ''
   }
 }
 
@@ -163,7 +163,7 @@ describe('aircraft rows', () => {
     airline_icao: '',
     fleet_id: '',
     created_at: '',
-    modified_at: '',
+    updated_at: '',
     assigned_fueler_id: null,
     available_at: null,
     parked_lat: null,

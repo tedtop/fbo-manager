@@ -110,7 +110,7 @@ export type Database = {
           display_order: number
           is_active: boolean
           created_at: string
-          modified_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
