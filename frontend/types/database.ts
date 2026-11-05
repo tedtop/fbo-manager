@@ -1435,6 +1435,15 @@ export type Database = {
     // below) when a repo actually queries it.
     Views: Record<string, never>
     Functions: {
+      /** Status, role names and per-module access of the signed-in user (migration 20261104001400). */
+      get_my_access: {
+        Args: Record<string, never>
+        Returns: {
+          status: 'active' | 'disabled' | 'none'
+          roles: string[]
+          access: Record<string, 'view' | 'manage'>
+        }
+      }
       set_flight_services: {
         Args: {
           p_flight_id: number
