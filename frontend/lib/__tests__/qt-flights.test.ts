@@ -47,11 +47,10 @@ describe('qtDispatchToFlight', () => {
     expect(status('Completed')).toBe('departed')
   })
 
-  it('treats a turn of an hour or less as a quick turn and a longer stay as an overnight', () => {
-    expect(qtDispatchToFlight(dispatch(), ZONE).type).toBe('overnight') // 87 min
-    const quick = qtDispatchToFlight(dispatch({ DepartureDate: '2026-11-04 14:00' }), ZONE)
-    expect(quick.type).toBe('quick_turn')
-    expect(quick.isQuickTurn).toBe(true)
+  it('never flags an airline turn as a quick turn (that chip is also labelled QT)', () => {
+    const quick = qtDispatchToFlight(dispatch({ DepartureDate: '2026-11-04 13:40' }), ZONE)
+    expect(quick.isQuickTurn).toBe(false)
+    expect(quick.type).toBe('overnight') // both times set: listed in both columns
   })
 
   it("drops QT's unset dates and keeps the flight in one column", () => {
@@ -74,6 +73,16 @@ describe('qtDispatchToFlight', () => {
       ZONE
     )
     expect(flights).toHaveLength(1)
+  })
+})
+
+describe('search', () => {
+  it('finds an airline flight by its flight number as well as its tail', () => {
+    const filters: FlightFilters = { search: 'ua1436', status: 'all', dateRange: 'all', services: [], showHidden: false }
+    const flight = qtDispatchToFlight(dispatch(), ZONE)
+    expect(filterFlights([flight], filters)).toHaveLength(1)
+    expect(filterFlights([flight], { ...filters, search: 'n37420' })).toHaveLength(1)
+    expect(filterFlights([flight], { ...filters, search: 'zz9' })).toHaveLength(0)
   })
 })
 

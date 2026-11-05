@@ -98,6 +98,7 @@ export function filterFlights(
       const searchLower = filters.search.toLowerCase()
       const matchesSearch =
         flight.tailNumber.toLowerCase().includes(searchLower) ||
+        flight.callSign?.toLowerCase().includes(searchLower) ||
         flight.aircraftType.toLowerCase().includes(searchLower) ||
         flight.origin?.toLowerCase().includes(searchLower) ||
         flight.destination?.toLowerCase().includes(searchLower) ||

@@ -333,11 +333,30 @@ export function FlightCard({
                   isArrival ? 'text-green-500' : 'text-blue-500'
                 )}
               />
-              {flight.tailNumber && (
-                <TailNumberLink
-                  tail={flight.tailNumber}
-                  className="text-lg font-bold font-mono text-foreground hover:text-primary hover:underline underline-offset-2"
-                />
+              {isQt && flight.callSign ? (
+                // Airlines are known by flight number, with the tail alongside: UA1026 (N345NN)
+                <>
+                  <span data-testid="qt-callsign" className="text-lg font-bold font-mono text-foreground">
+                    {flight.callSign}
+                  </span>
+                  {flight.tailNumber && (
+                    <span className="font-mono text-sm text-muted-foreground">
+                      (
+                      <TailNumberLink
+                        tail={flight.tailNumber}
+                        className="hover:text-primary hover:underline underline-offset-2"
+                      />
+                      )
+                    </span>
+                  )}
+                </>
+              ) : (
+                flight.tailNumber && (
+                  <TailNumberLink
+                    tail={flight.tailNumber}
+                    className="text-lg font-bold font-mono text-foreground hover:text-primary hover:underline underline-offset-2"
+                  />
+                )
               )}
               {isLinked && (
                 <TooltipProvider>

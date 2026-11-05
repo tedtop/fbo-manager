@@ -45,7 +45,6 @@ export function qtDispatchToFlight(dispatch: QTDispatch, fboZone: string): Fligh
     arrivalTime && departureTime
       ? Math.floor((new Date(departureTime).getTime() - new Date(arrivalTime).getTime()) / 60000)
       : null
-  const isQuickTurn = stayMinutes !== null && stayMinutes <= 60
 
   const gate = known(dispatch.Gate)
   const terminal = known(dispatch.TerminalNumber)
@@ -62,9 +61,9 @@ export function qtDispatchToFlight(dispatch: QTDispatch, fboZone: string): Fligh
     callSign: dispatch.FlightNumber,
     arrivalTime,
     departureTime,
-    isQuickTurn: isQuickTurn && !!arrivalTime && !!departureTime,
-    type:
-      arrivalTime && departureTime ? (isQuickTurn ? 'quick_turn' : 'overnight') : arrivalTime ? 'arrival' : 'departure',
+    // Never a quick turn: that flag is the GA +1 hour rule and its "QT" chip would read as the QT source.
+    isQuickTurn: false,
+    type: arrivalTime && departureTime ? 'overnight' : arrivalTime ? 'arrival' : 'departure',
     status: boardStatus(dispatch.FlightStatus),
     origin: known(dispatch.Origin),
     destination: known(dispatch.Destination),
