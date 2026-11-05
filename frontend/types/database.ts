@@ -137,6 +137,50 @@ export type Database = {
           }
         ]
       }
+      tank_level_min: {
+        Row: {
+          tank_id: string
+          level: string
+          recorded_at: string
+        }
+        Insert: {
+          tank_id: string
+          level: number | string
+          recorded_at: string
+        }
+        Update: Partial<Database['public']['Tables']['tank_level_min']['Insert']>
+        Relationships: []
+      }
+      fuel_gravity_readings: {
+        Row: {
+          id: number
+          observed_temp_f: string
+          observed_api_gravity: string
+          computed_api_gravity_60: string
+          wheel_api_gravity_60: string
+          driver_api_gravity: string
+          driver_specific_gravity: string | null
+          gallons_delivered: string
+          acceptable: boolean
+          recorded_at: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          observed_temp_f: number | string
+          observed_api_gravity: number | string
+          computed_api_gravity_60: number | string
+          wheel_api_gravity_60: number | string
+          driver_api_gravity: number | string
+          driver_specific_gravity?: number | string | null
+          gallons_delivered: number | string
+          acceptable: boolean
+          recorded_at?: string
+          created_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['fuel_gravity_readings']['Insert']>
+        Relationships: []
+      }
       parking_location: {
         Row: {
           id: number
@@ -1435,6 +1479,11 @@ export type Database = {
     // below) when a repo actually queries it.
     Views: Record<string, never>
     Functions: {
+      /** Guarded upsert of a tank's lowest-ever level (shared with the Minuteman dashboard). */
+      update_tank_level_min: {
+        Args: { p_tank_id: string; p_level: number; p_recorded_at: string }
+        Returns: undefined
+      }
       /** Status, role names and per-module access of the signed-in user (migration 20261104001400). */
       get_my_access: {
         Args: Record<string, never>

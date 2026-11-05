@@ -13,6 +13,8 @@ export type TankUpdate = TablesUpdate<'fuel_tank'>
 
 export type TankWithLatestReading = TankRow & {
   latest_reading: { level: string; recorded_at: string } | null
+  /** Lowest level ever recorded (inches); null until a reading exists. */
+  recorded_low: string | null
 }
 
 export async function findAllTanks(
@@ -24,6 +26,9 @@ export async function findAllTanks(
     .order('tank_id')
   if (error) throw error
 
+  const { data: mins } = await db.from('tank_level_min').select('tank_id, level')
+  const lowByTank = new Map((mins ?? []).map((m) => [m.tank_id, m.level]))
+
   // Fetch latest reading per tank
   const results: TankWithLatestReading[] = await Promise.all(
     tanks.map(async (tank) => {
@@ -34,7 +39,11 @@ export async function findAllTanks(
         .order('recorded_at', { ascending: false })
         .limit(1)
         .single()
-      return { ...tank, latest_reading: reading ?? null }
+      return {
+        ...tank,
+        latest_reading: reading ?? null,
+        recorded_low: lowByTank.get(tank.tank_id) ?? null
+      }
     })
   )
 

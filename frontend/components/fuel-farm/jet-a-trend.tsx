@@ -1,138 +1,172 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { useJetAHistory } from '@/hooks/use-jet-a-history'
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+  type FarmTank,
+  jetATotalGallons,
+  jetATotalUllage,
+  jetATotalUsable
+} from '@/lib/fuel-farm'
+import { useMemo, useState } from 'react'
 
 const RANGES = [
   { label: '7D', days: 7 },
   { label: '30D', days: 30 },
   { label: '90D', days: 90 },
   { label: '120D', days: 120 },
-  { label: '6M', days: 180 },
+  { label: '6M', days: 182 },
   { label: '1Y', days: 365 },
-  { label: 'All', days: 0 },
+  { label: 'All', days: 0 }
 ]
 
-function fmtDate(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+const WIDTH = 400
+const HEIGHT = 150
+const PAD = 4
+
+interface Point {
+  time: number
+  total: number
 }
 
-function fmtDateWithYear(iso: string) {
-  return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+interface JetATrendProps {
+  tanks: FarmTank[]
 }
 
-export function JetATrend() {
-  const [days, setDays] = useState(30)
-  const { data, loading } = useJetAHistory(days)
+export function JetATrend({ tanks }: JetATrendProps) {
+  const [days, setDays] = useState(90)
+  const [hover, setHover] = useState<Point | null>(null)
+  const { history, loading } = useJetAHistory(days)
 
-  const current = data.length > 0 ? data[data.length - 1].gallons : null
-  const min = data.length > 0 ? Math.min(...data.map((d) => d.gallons)) : null
-  const max = data.length > 0 ? Math.max(...data.map((d) => d.gallons)) : null
+  const liveLevels = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const t of tanks) out[t.tankId] = t.level
+    return out
+  }, [tanks])
 
-  // ~7 ticks regardless of data density
-  const tickInterval = Math.max(0, Math.floor(data.length / 7) - 1)
+  const currentTotal = jetATotalGallons(liveLevels)
+  const totalUsable = jetATotalUsable(tanks)
+  const totalUllage = Math.round(jetATotalUllage(tanks))
+
+  // Walk the baseline + readings into a running total, then append the live
+  // "now" total as the final point.
+  const points = useMemo<Point[]>(() => {
+    if (!history) return []
+    const levels = { ...history.baseline }
+    const out: Point[] = []
+    if (history.since !== null) {
+      out.push({ time: new Date(history.since).getTime(), total: jetATotalGallons(levels) })
+    }
+    for (const r of history.readings) {
+      levels[r.tankId] = r.level
+      out.push({ time: new Date(r.recordedAt).getTime(), total: jetATotalGallons(levels) })
+    }
+    out.push({ time: Date.now(), total: currentTotal })
+    return out
+  }, [history, currentTotal])
+
+  const hasHistory =
+    !!history && (history.readings.length > 0 || Object.keys(history.baseline).length > 0)
+
+  const scale = useMemo(() => {
+    const times = points.map((p) => p.time)
+    const totals = points.map((p) => p.total)
+    return {
+      minTime: Math.min(...times),
+      maxTime: Math.max(...times),
+      minTotal: Math.min(...totals),
+      maxTotal: Math.max(...totals)
+    }
+  }, [points])
+
+  const x = (t: number) =>
+    PAD + ((t - scale.minTime) / (scale.maxTime - scale.minTime || 1)) * (WIDTH - PAD * 2)
+  const y = (v: number) =>
+    HEIGHT - PAD - ((v - scale.minTotal) / (scale.maxTotal - scale.minTotal || 1)) * (HEIGHT - PAD * 2)
+
+  const linePoints = points.map((p) => `${x(p.time).toFixed(1)},${y(p.total).toFixed(1)}`).join(' ')
+  const areaPoints = `${PAD},${HEIGHT - PAD} ${linePoints} ${WIDTH - PAD},${HEIGHT - PAD}`
+
+  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (points.length === 0) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const relX = ((e.clientX - rect.left) / rect.width) * WIDTH
+    let nearest = points[0]
+    let best = Math.abs(relX - x(nearest.time))
+    for (const p of points) {
+      const d = Math.abs(relX - x(p.time))
+      if (d < best) {
+        nearest = p
+        best = d
+      }
+    }
+    setHover(nearest)
+  }
+
+  const low = points.length ? Math.round(scale.minTotal).toLocaleString() : ''
+  const high = points.length ? Math.round(scale.maxTotal).toLocaleString() : ''
 
   return (
-    <Card className="bg-card border-border p-5">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Jet A Trend (T2–T7)</h2>
-          {current !== null && (
-            <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-400 mt-0.5">
-              {current.toLocaleString()} gal
-            </div>
-          )}
-          {min !== null && max !== null && (
-            <div className="text-xs text-muted-foreground mt-0.5">
-              Low {min.toLocaleString()} gal · High {max.toLocaleString()} gal
-            </div>
-          )}
-        </div>
-        <div className="flex gap-1 flex-wrap justify-end">
-          {RANGES.map((r) => (
-            <Button
-              key={r.label}
-              variant={days === r.days ? 'default' : 'ghost'}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setDays(r.days)}
-            >
-              {r.label}
-            </Button>
-          ))}
-        </div>
+    <div className="trend-widget" data-testid="jet-a-trend">
+      <div className="trend-header">
+        <span className="trend-title">Jet A Trend (T2-T7)</span>
+        <span className="trend-total">{Math.round(currentTotal).toLocaleString()} gal</span>
+      </div>
+      <div className="trend-minmax">{hasHistory ? `Low ${low} gal · High ${high} gal` : ''}</div>
+      <div className="trend-pills">
+        <span className="trend-usable">Usable: {totalUsable.toLocaleString()} gal</span>
+        <span className="trend-ullage">Ullage: {totalUllage.toLocaleString()} gal available</span>
       </div>
 
-      {loading ? (
-        <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">
-          Loading...
+      {hasHistory && (
+        <div className="trend-chart-wrap" onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
+          <svg className="trend-chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none">
+            <polyline className="trend-area" points={areaPoints} />
+            <polyline className="trend-line" points={linePoints} />
+            {hover && (
+              <>
+                <line className="trend-hover-line" x1={x(hover.time)} x2={x(hover.time)} y1={0} y2={HEIGHT} />
+                <circle className="trend-hover-dot" r={3} cx={x(hover.time)} cy={y(hover.total)} />
+              </>
+            )}
+          </svg>
+          {hover && (
+            <div className="trend-tooltip" style={{ left: `${(x(hover.time) / WIDTH) * 100}%` }}>
+              {new Date(hover.time).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+              : {Math.round(hover.total).toLocaleString()} gal
+            </div>
+          )}
+          {loading && (
+            <div className="trend-loading">
+              <div className="trend-spinner" />
+            </div>
+          )}
         </div>
-      ) : data.length === 0 ? (
-        <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">
-          No historical data
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={144}>
-          <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="jetAFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis
-              dataKey="date"
-              tickFormatter={fmtDate}
-              interval={tickInterval}
-              tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.45)' }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.45)' }}
-              axisLine={false}
-              tickLine={false}
-              width={54}
-              tickFormatter={(v: number) =>
-                v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
-              }
-            />
-            <Tooltip
-              labelFormatter={fmtDateWithYear}
-              contentStyle={{
-                backgroundColor: 'hsl(260 30% 12%)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}
-              itemStyle={{ color: '#22d3ee' }}
-              formatter={(value: number) => [value.toLocaleString() + ' gal', 'Total Jet A']}
-            />
-            <Area
-              type="monotone"
-              dataKey="gallons"
-              stroke="#22d3ee"
-              strokeWidth={2}
-              fill="url(#jetAFill)"
-              dot={false}
-              activeDot={{ r: 4, fill: '#22d3ee', strokeWidth: 0 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
       )}
-    </Card>
+      {!hasHistory && !loading && <div className="trend-empty">No history yet</div>}
+      {!hasHistory && loading && (
+        <div className="trend-chart-wrap" style={{ height: 140 }}>
+          <div className="trend-loading">
+            <div className="trend-spinner" />
+          </div>
+        </div>
+      )}
+
+      <div className="trend-zoom">
+        {RANGES.map((r) => (
+          <button
+            key={r.label}
+            type="button"
+            className={`trend-zoom-btn${days === r.days ? ' active' : ''}`}
+            onClick={() => setDays(r.days)}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

@@ -1,25 +1,23 @@
 'use client'
 
-import { TankFormDialog } from '@/components/fuel-farm/tank-form-dialog'
-import { TankVisualCard, HorizontalTankCard } from '@/components/fuel-farm/tank-visual-card'
+import '@/components/fuel-farm/fuel-farm.css'
+import { GravityPanel } from '@/components/fuel-farm/gravity-panel'
 import { JetATrend } from '@/components/fuel-farm/jet-a-trend'
+import { TankCard } from '@/components/fuel-farm/tank-card'
+import { TankFormDialog } from '@/components/fuel-farm/tank-form-dialog'
 import { useTanks } from '@/hooks/use-tanks'
-import type { TankInsert, TankWithLatestReading } from '@/repositories/tanks.repo'
-import { createTankReading } from '@/repositories/tank-readings.repo'
-import { inchesToGallons } from '@/lib/gallons-tables'
-import { createClient } from '@/lib/supabase/client'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { ErrorMessage } from '@/messages/error-message'
-import { SuccessMessage } from '@/messages/success-message'
-import { Fuel } from 'lucide-react'
+import { JET_A_TREND_TANKS, type FarmTank } from '@/lib/fuel-farm'
+import { createClient } from '@/lib/supabase/client'
+import { createTankReading } from '@/repositories/tank-readings.repo'
+import type { TankInsert, TankWithLatestReading } from '@/repositories/tanks.repo'
 import Link from 'next/link'
-import { useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 
 const TANK_ORDER = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'LF']
-const SPECIAL_TANKS = new Set(['T7', 'LF'])
+// Tanks outside the main containment area get a divider before them.
+const OUTSIDE_CONTAINMENT = new Set(['T7', 'LF'])
+const REFRESH_SECONDS = 30
 
 function sortTanks(tanks: TankWithLatestReading[]) {
   return [...tanks].sort((a, b) => {
@@ -38,6 +36,10 @@ export default function FuelFarmPage() {
   const [editingTank, setEditingTank] = useState<TankWithLatestReading | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [countdown, setCountdown] = useState(REFRESH_SECONDS)
+  const [refreshing, setRefreshing] = useState(false)
+  const refetchRef = useRef(refetch)
+  refetchRef.current = refetch
 
   const showSuccess = (msg: string) => {
     setSuccessMessage(msg)
@@ -45,8 +47,40 @@ export default function FuelFarmPage() {
   }
   const showError = (msg: string) => {
     setErrorMessage(msg)
-    setTimeout(() => setErrorMessage(''), 3000)
+    setTimeout(() => setErrorMessage(''), 5000)
   }
+
+  const refreshNow = async () => {
+    setRefreshing(true)
+    setCountdown(REFRESH_SECONDS)
+    try {
+      await refetchRef.current()
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // 30s refresh countdown, like the Minuteman page. Pauses while a tab is hidden.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      setCountdown((c) => {
+        if (c <= 1) {
+          void refetchRef.current()
+          return REFRESH_SECONDS
+        }
+        return c - 1
+      })
+    }, 1000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshNow()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
 
   const handleUpdateLevel = async (tankId: string, level: number) => {
     try {
@@ -105,76 +139,82 @@ export default function FuelFarmPage() {
     }
   }
 
-  const handleDeleteTank = async (tankId: string) => {
-    if (!confirm('Are you sure you want to delete this tank?')) return
-    try {
-      await deleteTank(tankId)
-      showSuccess('Tank deleted successfully')
-    } catch (err) {
-      showError('Failed to delete tank')
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-muted-foreground">Loading fuel farm...</div>
-      </div>
-    )
-  }
-
   const sorted = sortTanks(tanks)
-  const standardTanks = sorted.filter((t) => !SPECIAL_TANKS.has(t.tank_id))
-  const specialTanks = sorted.filter((t) => SPECIAL_TANKS.has(t.tank_id))
 
-  const totalJetAGallons = tanks
-    .filter((t) => t.fuel_type === 'jet_a' && t.tank_id !== 'LF')
-    .reduce((sum, tank) => {
-      const level = tank.latest_reading ? Number.parseFloat(tank.latest_reading.level) : 0
-      return sum + inchesToGallons(tank.tank_id, level)
-    }, 0)
+  const farmTanks: FarmTank[] = sorted
+    .filter((t) => JET_A_TREND_TANKS.includes(t.tank_id))
+    .map((t) => ({
+      tankId: t.tank_id,
+      level: t.latest_reading ? Number(t.latest_reading.level) : 0,
+      usableMax: Number(t.usable_max_inches),
+      recordedLow: t.recorded_low != null ? Number(t.recorded_low) : null
+    }))
+  const farmCapacity = sorted
+    .filter((t) => JET_A_TREND_TANKS.includes(t.tank_id))
+    .reduce((sum, t) => sum + Number(t.capacity_gallons), 0)
+
+  let status: { cls: string; text: string; title?: string }
+  if (loading || refreshing) status = { cls: 'connecting', text: '🟡 Loading...' }
+  else if (error) status = { cls: 'disconnected', text: '🔴 Database Offline', title: 'Click to retry connection' }
+  else status = { cls: 'connected', text: `🟢 Next refresh in ${countdown}s`, title: 'Click to refresh now' }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <Fuel className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Fuel Farm Levels</h1>
+    <>
+      <div className="ff" data-testid="fuel-farm">
+        <div className="header">
+          <div className="header-left">
+            <JetATrend tanks={farmTanks} />
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">Real-time tank level monitoring</p>
+          <div className="header-main">
+            <h1>⛽ Fuel Farm Levels</h1>
+            <button
+              type="button"
+              className={`status ${status.cls}`}
+              title={status.title}
+              onClick={refreshNow}
+              style={{ cursor: status.cls === 'connecting' ? 'default' : 'pointer', fontFamily: 'inherit' }}
+            >
+              {status.text}
+            </button>
+            <div className="nav-buttons">
+              <Link href="/fuel-dispatch">✈️ Fuel Dispatch</Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTank(null)
+                  setDialogOpen(true)
+                }}
+              >
+                ➕ New Tank
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/fuel-dispatch">Fuel Dispatch</Link>
-          </Button>
-          <Button onClick={() => { setEditingTank(null); setDialogOpen(true) }}>
-            New Tank
-          </Button>
+
+        {errorMessage && <div className="error">{errorMessage}</div>}
+        {successMessage && <div className="success">{successMessage}</div>}
+        {error && <div className="error">Failed to load fuel tank data</div>}
+
+        <div className="tanks-container">
+          {sorted.map((tank) => (
+            <Fragment key={tank.tank_id}>
+              {OUTSIDE_CONTAINMENT.has(tank.tank_id) && <div className="containment-divider" />}
+              <TankCard
+                tank={tank}
+                onUpdateLevel={handleUpdateLevel}
+                onError={showError}
+                onEdit={handleEditTank}
+              />
+            </Fragment>
+          ))}
         </div>
+
+        {!loading && sorted.length === 0 && !error && (
+          <div className="empty-farm">No tanks found. Create a tank to get started.</div>
+        )}
       </div>
 
-      {totalJetAGallons > 0 && (
-        <Card className="bg-card border-border px-5 py-3">
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Jet A (T2–T7)</div>
-              <div className="text-2xl font-bold text-cyan-700 dark:text-cyan-400">
-                {totalJetAGallons.toLocaleString()} gal
-              </div>
-            </div>
-            <Badge className="bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-700">Jet A</Badge>
-          </div>
-        </Card>
-      )}
-
-      {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
-      {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
-      {error && (
-        <Card className="bg-destructive/10 border-destructive/20 p-4">
-          <p className="text-sm text-destructive">Failed to load fuel tank data</p>
-        </Card>
-      )}
+      <GravityPanel farmCapacityGallons={farmCapacity} onError={showError} />
 
       <TankFormDialog
         open={dialogOpen}
@@ -182,41 +222,6 @@ export default function FuelFarmPage() {
         tank={editingTank}
         onSubmit={editingTank ? handleUpdateTank : handleCreateTank}
       />
-
-      {/* Main containment tanks — grid fits without horizontal scroll */}
-      {standardTanks.length > 0 && (
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {standardTanks.map((tank) => (
-            <TankVisualCard key={tank.tank_id} tank={tank} onUpdateLevel={handleUpdateLevel} />
-          ))}
-        </div>
-      )}
-
-      {/* Outside-containment tanks — horizontal cylinder layout */}
-      {specialTanks.length > 0 && (
-        <div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-warning/60 to-transparent" />
-            <span className="text-xs text-muted-foreground uppercase tracking-widest px-2">
-              Outside Containment
-            </span>
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-warning/60 to-transparent" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {specialTanks.map((tank) => (
-              <HorizontalTankCard key={tank.tank_id} tank={tank} onUpdateLevel={handleUpdateLevel} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tanks.length === 0 && !error && (
-        <Card className="p-8 text-center bg-card border-border">
-          <div className="text-muted-foreground">No tanks found. Create a tank to get started.</div>
-        </Card>
-      )}
-
-      <JetATrend />
-    </div>
+    </>
   )
 }
