@@ -590,8 +590,32 @@ Duplicates (pure decision in `lib/scan-duplicates.ts`):
 - A page whose upright hash is already stored (anywhere) is marked "already stored" in the card, skipped on import and listed in the result message. A new sheet whose pages are all already stored is blocked the same way.
 - Limit: the hash is of the re-encoded upright JPEG, so it catches re-importing the same file or PDF page, not a fresh photo of the same paper.
 
-Viewing: `/truck-sheets/trucks/[truckNo]` lists that truck's sheets by day (newest first) with the pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. The lists show the stored thumbnails; the dialog loads the upright page.
+Viewing (changed by B70): the truck's page is now the equipment detail page `/equipment/[id]` (see "Equipment detail page" below). Inside each day's sheet card it shows the stored pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. The lists show the stored thumbnails; the dialog loads the upright page. The old `/truck-sheets/trucks/[truckNo]` route only redirects to the equipment page.
 
 Not done: live migration (needs Ted), schedule-sheet and invoice-slip rows, deleting/replacing a stored page, server-side thumbnails (thumbnails are made in the browser).
 
 Built 2026-11-05 (B69). Differences from the plan above: the review screen also shows "Check the orientation" under a page when the reader was not sure; the hash lookup is global (any sheet); schedule-sheet originals now use `schedule_sheet/<date>/...` (the date comes from the extracted sheet, scan day when missing). Tests: vitest `lib/__tests__/scan-storage.test.ts`, `scan-duplicates.test.ts`, `lib/truck-sheet/__tests__/rotation.test.ts` and the rotation cases in `parse-jet-a.test.ts`, repository test `repositories/__tests__/truck-sheet-scans.repo.test.ts` (local Supabase), Cypress `cypress/e2e/truck-sheets/truck-sheet-scans.cy.ts` (OCR route stubbed; imports a 2-page PDF with page 1 reported rotated 90, checks the stored rows and paths, the truck page, the re-import message and adding pages to an existing sheet). The migration is applied to the local stack only; it must be applied to live (with Ted's approval) before the new import is used there, because the new columns and the storage policies do not exist on live.
+
+## Equipment detail page (maintenance items, meter readings, scans)
+
+Built 2026-11-05 (B70). Ted's decision: a truck's page belongs under equipment, not under truck sheets. `/equipment/[id]` (id = `equipment.id`) is reached from the equipment name on the `/equipment` cards and from the truck number on `/truck-sheets` and `/truck-sheets/[id]` (plain text when the user lacks the equipment module). Gating follows the module: `/equipment` prefix maps to the `equipment` module in `lib/access.ts`. The old `/truck-sheets/trucks/[truckNo]` page redirects (truck number matched case-insensitively to `equipment.equipment_id`; unknown number goes to the list).
+
+Layout (cards, no wide tables, checked at 390 px): header card (name, equipment id, type, status badge that can be changed as on the list, last/next maintenance, notes); Maintenance items; Meter readings and scans.
+
+### Maintenance items
+
+Table `equipment_maintenance_item` (migration 20261105000200, rollback in `supabase/rollbacks`): `id`, `equipment_id` (FK equipment, cascade), `title`, `description`, `status` open|resolved, `noted_at` timestamptz (WHEN it was found, user-editable, default now), `noted_by` (users.id, the current user, set by the app), `resolved_at`/`resolved_by`/`resolution_notes` (a check ties `resolved_at` to status resolved), `deleted_at` (soft delete like `flight`), `created_at`, `updated_at` (DB trigger `set_updated_at`, never modified_at). RLS: one "authenticated" policy like `scanned_documents`.
+
+- An open item does NOT change `equipment.status`; status stays a manual setting. The equipment list card shows a count badge ("2 open maintenance items", links to the page).
+- Order: open before resolved, newest `noted_at` first in each group (`sortMaintenanceItems`).
+- Time zone: the "Noted at" input is a wall-clock `datetime-local` read in the FBO zone (`useDisplayZone().fboZone`, via `toInstantIso` in `lib/local-date.ts`), stored as the UTC instant, shown back in the FBO zone with its MST/MDT suffix. Not the browser zone, not Zulu.
+- Actions: add, edit, resolve (time defaults to now, optional notes), reopen, soft delete.
+- Layers: `repositories/equipment-maintenance.repo.ts` (Supabase only), `hooks/use-equipment-maintenance.ts` (react-query), `components/equipment/maintenance-items.tsx`, pure helpers in `lib/equipment-maintenance.ts`.
+
+### Meter readings and scans
+
+Truck sheets belong to equipment through `truck_sheets.fuel_truck_id -> equipment.id`. The import sets it by matching the sheet's truck number to `equipment.equipment_id` (creating a fuel_truck equipment row when none exists), so the detail page queries by that FK (`findTruckSheetsForEquipment`) and does no text matching. Scans hang off the sheet (`scanned_documents.truck_sheet_id`), so `useTruckSheetScans(sheetIds)` is reused unchanged and each day's card shows readings and pages together.
+
+Per sheet (newest `sheet_date` first, 30 at first, "Show more" adds 30): fuel type, front/rear meter start (sheet header) to end (last reading with that meter), gallons pumped (fueling lines), starting and remaining gallons (last line with one), initials, link to `/truck-sheets/[id]` (`lib/truck-sheet-summary.ts`). The section renders nothing when the equipment has no sheets, or when the user has no `truck_sheets` access (hidden by `useModuleAccess`, and a failing query also leaves it empty), so non-trucks and restricted roles never see an error.
+
+Not done: who noted/resolved an item is stored (`noted_by`, `resolved_by`) but not yet shown; no per-item attachments or photos; applying the migration to live needs Ted's go.
