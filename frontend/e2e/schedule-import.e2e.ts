@@ -178,7 +178,7 @@ test.describe('schedule sheet import', () => {
 
     // Services go through set_flight_services: the stay has the rental car
     const { data: fs } = await db.from('flight_service').select('flight_id, service:service_id(key)').eq('flight_id', by[T.stay].id)
-    expect((fs ?? []).map((r) => (r.service as unknown as { key: string }).key)).toEqual(['rental_car'])
+    expect(((fs ?? []) as unknown as { service: { key: string } }[]).map((r) => r.service.key)).toEqual(['rental_car'])
 
     // They show on the board
     await page.goto('/')
