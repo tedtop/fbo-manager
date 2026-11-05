@@ -5,6 +5,7 @@ import { findAllEquipment } from '@/repositories/equipment.repo'
 import {
   findAllTruckSheets,
   findTruckSheetById,
+  findTruckSheetsForEquipment,
   deleteTruckSheet,
 } from '@/repositories/truck-sheets.repo'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,6 +14,8 @@ export const truckSheetKeys = {
   all: ['truck-sheets'] as const,
   lists: () => [...truckSheetKeys.all, 'list'] as const,
   detail: (id: number) => [...truckSheetKeys.all, 'detail', id] as const,
+  forEquipment: (equipmentId: number, limit: number) =>
+    [...truckSheetKeys.all, 'equipment', equipmentId, limit] as const,
 }
 
 export function useFuelTrucks() {
@@ -32,6 +35,17 @@ export function useTruckSheets() {
   return useQuery({
     queryKey: truckSheetKeys.lists(),
     queryFn: () => findAllTruckSheets(db),
+  })
+}
+
+/** The newest `limit` sheets of one piece of equipment (fuel truck); a failed query (no truck_sheets access) is the caller's cue to hide the section. */
+export function useTruckSheetsForEquipment(equipmentId: number, limit: number, enabled = true) {
+  const db = createClient()
+  return useQuery({
+    queryKey: truckSheetKeys.forEquipment(equipmentId, limit),
+    queryFn: () => findTruckSheetsForEquipment(db, equipmentId, limit),
+    enabled: enabled && Number.isFinite(equipmentId),
+    placeholderData: (prev) => prev,
   })
 }
 

@@ -622,6 +622,48 @@ export type Database = {
         >
         Relationships: []
       }
+      equipment_maintenance_item: {
+        Row: {
+          id: number
+          equipment_id: number
+          title: string
+          description: string
+          status: 'open' | 'resolved'
+          noted_at: string
+          noted_by: number | null
+          resolved_at: string | null
+          resolved_by: number | null
+          resolution_notes: string
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          equipment_id: number
+          title: string
+          description?: string
+          status?: 'open' | 'resolved'
+          noted_at?: string
+          noted_by?: number | null
+          resolved_at?: string | null
+          resolved_by?: number | null
+          resolution_notes?: string
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['equipment_maintenance_item']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'equipment_maintenance_item_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipment'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       equipment: {
         Row: {
           id: number

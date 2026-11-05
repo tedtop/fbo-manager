@@ -28,6 +28,28 @@ export async function findAllTruckSheets(
   return data as TruckSheetWithReadings[]
 }
 
+/**
+ * Sheets of one piece of equipment (a fuel truck), newest sheet date first, at most `limit`.
+ * The link is truck_sheets.fuel_truck_id -> equipment.id (the import sets it by matching the sheet's
+ * truck number to equipment.equipment_id), so no text matching happens here.
+ */
+export async function findTruckSheetsForEquipment(
+  db: SupabaseClient<Database>,
+  equipmentId: number,
+  limit: number
+): Promise<TruckSheetWithReadings[]> {
+  const { data, error } = await db
+    .from('truck_sheets')
+    .select(SHEET_WITH_READINGS_SELECT)
+    .eq('fuel_truck_id', equipmentId)
+    .order('sheet_date', { ascending: false })
+    .order('id', { ascending: false })
+    .order('line_number', { referencedTable: 'truck_meter_readings' })
+    .limit(limit)
+  if (error) throw error
+  return data as TruckSheetWithReadings[]
+}
+
 export async function findTruckSheetById(
   db: SupabaseClient<Database>,
   id: number
