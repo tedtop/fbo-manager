@@ -88,7 +88,7 @@ Use **Delete** at the bottom of the card. A confirmation names the tail ("Delete
 
 ### Airline flights from QT {#airlines}
 
-Airline flights dispatched in QT (the airline fueling app) appear on the board automatically, next to the GA flights. They are marked with a **QT** source badge and a landing or takeoff plane icon instead of the plain plane GA flights use, so they stand out from GA, and they show the airline, gate, fuel quantity and any MEL warning. An airline card is headed by the flight number with the tail in brackets, for example **UA1026 (N345NN)**, and the search box finds either one. Airline flights that QT shows as departed are hidden from the board automatically to keep it short; turn on **Show hidden** in the filters to see them.
+Airline flights dispatched in QT (the airline fueling app) appear on the board automatically, next to the GA flights. They are marked with a **QT** source badge and the big plane icon (GA flights show a landing or takeoff plane), so they stand out from GA, and they show the airline, gate, fuel quantity and any MEL warning. An airline card is headed by the flight number with the tail in brackets, for example **UA1026 (N345NN)**, and the search box finds either one. Airline flights that QT shows as departed are hidden from the board automatically to keep it short; turn on **Show hidden** in the filters to see them.
 
 - They are **read-only** here. To change an airline flight, change it in QT; the board follows QT within about 30 seconds.
 - Use the **Airlines** checkbox in the toolbar to show or hide them. It is on by default.

@@ -192,7 +192,7 @@ export function FlightCard({
     flight.type === 'quick_turn' ||
     flight.type === 'overnight' ||
     flight.type === 'long_term'
-  const PlaneIcon = isQt ? (isArrival ? PlaneLanding : PlaneTakeoff) : Plane
+  const PlaneIcon = isQt ? Plane : isArrival ? PlaneLanding : PlaneTakeoff
 
 
   // Update countdown every minute
@@ -328,7 +328,7 @@ export function FlightCard({
           {/* Header with tail number, aircraft type, and status */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              {/* Airlines get the landing / takeoff glyphs, GA keeps the plain plane. */}
+              {/* Airlines get the big plane; GA gets the landing / takeoff glyphs. */}
               <PlaneIcon
                 data-testid={isQt ? 'airline-icon' : undefined}
                 className={cn(
