@@ -7,6 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { TimeInput } from '@/components/ui/time-input'
 import { cn } from '@/lib/utils'
+import { AircraftTypeCombobox } from '@/components/flight-operations/aircraft-type-combobox'
+import { AirportCombobox } from '@/components/flight-operations/airport-combobox'
+import type { AirportDisplayPreference } from '@/lib/airports'
+import type { AirportChoice } from '@/lib/schedule-import/resolve-airport'
 import { REVIEW_REASON_LABELS, type DuplicateSuggestion } from '@/lib/schedule-import/types'
 import type { ReviewEvaluation, ScheduleReviewItem, TailTypeLookup, WallTime } from '@/lib/schedule-import/review'
 
@@ -19,6 +23,9 @@ interface ScheduleReviewCardProps {
   item: ScheduleReviewItem
   evaluation: ReviewEvaluation
   lookup: TailTypeLookup | undefined
+  usageCounts: Record<string, number>
+  homeCountry: string
+  displayPreference: AirportDisplayPreference
   services: ServiceOption[]
   disabled?: boolean
   onChange: (patch: Partial<ScheduleReviewItem>) => void
@@ -56,7 +63,52 @@ function WhenEditor({ label, testId, value, onChange }: { label: string; testId:
   )
 }
 
-export function ScheduleReviewCard({ item, evaluation: ev, lookup, services, disabled, onChange, onUnpair }: ScheduleReviewCardProps) {
+function AirportPicker({
+  side,
+  label,
+  printed,
+  choice,
+  homeCountry,
+  displayPreference,
+  disabled,
+  onPick
+}: {
+  side: 'origin' | 'destination'
+  label: string
+  printed: string
+  choice: AirportChoice
+  homeCountry: string
+  displayPreference: AirportDisplayPreference
+  disabled?: boolean
+  onPick: (code: string) => void
+}) {
+  const state = choice.resolution.state
+  return (
+    <div className="space-y-1" data-testid={`${side}-field`} data-airport-state={choice.fromUser ? 'user' : state} data-airport-code={choice.code ?? ''}>
+      <div className={fieldLabel}>{label}</div>
+      <AirportCombobox
+        value={choice.code ?? ''}
+        onChange={onPick}
+        homeCountry={homeCountry}
+        displayPreference={displayPreference}
+        placeholder={`Select ${side}`}
+        disabled={disabled}
+      />
+      <div className="text-xs text-muted-foreground" data-testid={`${side}-status`}>
+        {choice.fromUser && <span>Your pick (printed “{printed}”)</span>}
+        {!choice.fromUser && state === 'resolved' && <span>Printed “{printed}”: {choice.code}</span>}
+        {!choice.fromUser && state === 'ambiguous' && (
+          <span className="font-medium text-amber-700 dark:text-amber-400">“{printed}” matches more than one airport: pick one</span>
+        )}
+        {!choice.fromUser && state === 'unmatched' && (
+          <span className="font-medium text-amber-700 dark:text-amber-400">No airport found for “{printed}”: pick one (left empty if not)</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function ScheduleReviewCard({ item, evaluation: ev, lookup, usageCounts, homeCountry, displayPreference, services, disabled, onChange, onUnpair }: ScheduleReviewCardProps) {
   const paired = item.sourceRows.length > 1
   const dup = ev.dup
   const hasMatch = dup.match !== null
@@ -112,18 +164,19 @@ export function ScheduleReviewCard({ item, evaluation: ev, lookup, services, dis
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
+        <div className="space-y-1" data-testid="type-field" data-type-source={ev.typeSource} data-type-icao={ev.typeIcao ?? ''}>
           <label className={fieldLabel} htmlFor={`${item.id}-type`}>
-            Aircraft type (from the tail number)
+            Aircraft type
           </label>
-          <Input
+          <AircraftTypeCombobox
             id={`${item.id}-type`}
-            data-testid="type-input"
-            value={item.typeOverride ?? ''}
+            value={ev.typeDisplay}
+            icao={ev.typeIcao ?? undefined}
+            usageCounts={usageCounts}
+            loading={lookingUp}
             disabled={disabled}
-            placeholder={ev.typeSource === 'registry' ? ev.typeDisplay : 'Type, e.g. GLF4 or Citation CJ2'}
-            className="h-10"
-            onChange={(e) => onChange({ typeOverride: e.target.value || null })}
+            initialQuery={item.typePrinted}
+            onSelect={(display, icao) => onChange({ typeOverride: icao === 'UNKN' ? display : icao })}
           />
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" data-testid="type-status">
             {lookingUp && (
@@ -132,18 +185,13 @@ export function ScheduleReviewCard({ item, evaluation: ev, lookup, services, dis
               </span>
             )}
             {!lookingUp && ev.typeSource === 'registry' && <span>Registry: {ev.typeDisplay}</span>}
-            {!lookingUp && ev.typeSource === 'override' && <span>Using your entry: {ev.typeDisplay}</span>}
-            {!lookingUp && ev.typeSource === 'none' && <span>No registry match: type left empty</span>}
-            {item.typePrinted && item.typeOverride !== item.typePrinted && (
-              <button
-                type="button"
-                className="underline underline-offset-2"
-                disabled={disabled}
-                data-testid="use-printed-type"
-                onClick={() => onChange({ typeOverride: item.typePrinted })}
-              >
-                Use “{item.typePrinted}” (as printed)
-              </button>
+            {!lookingUp && ev.typeSource === 'printed' && <span>Matched from the printed “{item.typePrinted}”: {ev.typeDisplay}</span>}
+            {!lookingUp && ev.typeSource === 'override' && <span>Using your pick: {ev.typeDisplay}</span>}
+            {!lookingUp && ev.typeSource === 'none' && <span>No registry match{item.typePrinted ? ` (printed “${item.typePrinted}”)` : ''}</span>}
+            {!lookingUp && ev.typeUnresolved && (
+              <span className="font-medium text-amber-700 dark:text-amber-400" data-testid="pick-type-hint">
+                Pick a type (imports as Unknown if left)
+              </span>
             )}
           </div>
         </div>
@@ -161,6 +209,17 @@ export function ScheduleReviewCard({ item, evaluation: ev, lookup, services, dis
           />
         </div>
       </div>
+
+      {(item.originPrinted || item.destinationPrinted) && (
+        <div className="grid gap-3 sm:grid-cols-2" data-testid="airport-fields">
+          {item.originPrinted && (
+            <AirportPicker side="origin" label="Origin" printed={item.originPrinted} choice={ev.origin} homeCountry={homeCountry} displayPreference={displayPreference} disabled={disabled} onPick={(code) => onChange({ originOverride: code })} />
+          )}
+          {item.destinationPrinted && (
+            <AirportPicker side="destination" label="Destination" printed={item.destinationPrinted} choice={ev.destination} homeCountry={homeCountry} displayPreference={displayPreference} disabled={disabled} onPick={(code) => onChange({ destinationOverride: code })} />
+          )}
+        </div>
+      )}
 
       <div className="space-y-1">
         <div className={fieldLabel}>Services</div>

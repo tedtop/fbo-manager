@@ -4,7 +4,7 @@
 // The rules live in lib/schedule-import (pure, tested); this file is the glue: network, board lookup and the writes.
 
 import { useCallback, useMemo, useState } from 'react'
-import { useQueries, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { describeError } from '@/lib/error-message'
 import {
@@ -23,6 +23,9 @@ import {
 } from '@/lib/schedule-import/review'
 import type { ExtractedScheduleSheet } from '@/lib/schedule-import/types'
 import { findAircraftByTailNumber, createAircraft } from '@/repositories/aircraft.repo'
+import { findAirportsByCodes } from '@/repositories/airports.repo'
+import { airportKeys, useAirportSettings } from '@/hooks/use-airports'
+import { airportCodeToLookUp } from '@/lib/schedule-import/resolve-airport'
 import {
   createFlight,
   findAllFlights,
@@ -182,7 +185,27 @@ export function useScheduleImport() {
     // biome-ignore lint/correctness/useExhaustiveDependencies: lookupQueries changes identity every render
   }, [tails, lookupQueries.map((q) => `${q.status}${q.fetchStatus}`).join()])
 
-  const evaluations: ReviewEvaluation[] = useMemo(() => evaluateReviewItems(items, existing, { lookups }), [items, existing, lookups])
+  // Printed origin / destination codes are matched against the airport table (one query for all of them); the stored
+  // code is the ICAO code, like the flight form. Place names and ambiguous codes are left to the airport combobox.
+  const { homeCountry } = useAirportSettings()
+  const airportCodes = useMemo(
+    () => [...new Set(items.flatMap((i) => [i.originPrinted, i.destinationPrinted]).map(airportCodeToLookUp).filter((c): c is string => !!c))].sort(),
+    [items]
+  )
+  const airportQuery = useQuery({
+    queryKey: airportKeys.labels(airportCodes),
+    queryFn: () => findAirportsByCodes(db, airportCodes),
+    enabled: airportCodes.length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 60 * 60 * 1000
+  })
+  const airports = airportQuery.data
+  const airportsPending = airportCodes.length > 0 && airportQuery.isFetching
+
+  const evaluations: ReviewEvaluation[] = useMemo(
+    () => evaluateReviewItems(items, existing, { lookups, airports: airports ?? [], homeCountry }),
+    [items, existing, lookups, airports, homeCountry]
+  )
   const summary = useMemo(() => summarizeReview(evaluations), [evaluations])
 
   const upload = useCallback(
@@ -233,7 +256,7 @@ export function useScheduleImport() {
   }, [])
 
   const importAll = useCallback(async (): Promise<ImportResult | null> => {
-    if (!canImport(evaluations)) return null
+    if (!canImport(evaluations) || airportsPending) return null
     setPhase('importing')
     setError(null)
     const ops = planImport(items, evaluations)
@@ -281,7 +304,7 @@ export function useScheduleImport() {
     setPhase('done')
     return res
     // biome-ignore lint/correctness/useExhaustiveDependencies: db is a stable per-render client
-  }, [evaluations, items, files, qc])
+  }, [evaluations, items, files, qc, airportsPending])
 
   return {
     phase,
@@ -293,7 +316,8 @@ export function useScheduleImport() {
     lookups,
     summary,
     result,
-    canImport: canImport(evaluations),
+    airportsPending,
+    canImport: canImport(evaluations) && !airportsPending,
     upload,
     updateItem,
     unpair,

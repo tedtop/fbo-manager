@@ -1,8 +1,11 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Loader2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useServices } from '@/hooks/use-services'
+import { useAircraft } from '@/hooks/use-aircraft'
+import { useAirportSettings } from '@/hooks/use-airports'
 import type { ReviewEvaluation, ScheduleReviewItem, TailTypeLookup } from '@/lib/schedule-import/review'
 import type { ImportSummary } from '@/lib/schedule-import/review'
 import { ScheduleReviewCard } from './schedule-review-card'
@@ -23,6 +26,17 @@ interface ScheduleReviewProps {
 export function ScheduleReview({ items, evaluations, lookups, summary, canImport, importing, onChange, onUnpair, onImport, onCancel }: ScheduleReviewProps) {
   const { services } = useServices()
   const options = services.map((s) => ({ key: s.key, label: s.label }))
+  const { aircraft } = useAircraft()
+  const { homeCountry, displayPreference } = useAirportSettings()
+  // How often each type is already used on the board: the type picker lists those first.
+  const usageCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const a of aircraft) {
+      const code = a.aircraft_type_icao?.toUpperCase()
+      if (code && code !== 'UNKN') counts[code] = (counts[code] ?? 0) + 1
+    }
+    return counts
+  }, [aircraft])
 
   return (
     <div className="space-y-4">
@@ -33,6 +47,9 @@ export function ScheduleReview({ items, evaluations, lookups, summary, canImport
             item={item}
             evaluation={evaluations[i]}
             lookup={lookups[item.tail.trim().toUpperCase()]}
+            usageCounts={usageCounts}
+            homeCountry={homeCountry}
+            displayPreference={displayPreference}
             services={options}
             disabled={importing}
             onChange={(patch) => onChange(item.id, patch)}

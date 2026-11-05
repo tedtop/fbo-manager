@@ -34,6 +34,8 @@ interface AircraftTypeComboboxProps {
   disabled?: boolean
   /** Shows a spinner and disables the field while a type lookup is running. */
   loading?: boolean
+  /** Text the search box starts with each time the list opens (e.g. the type as printed on a schedule sheet). */
+  initialQuery?: string
 }
 
 const MAX_ROWS = 60
@@ -45,7 +47,8 @@ export function AircraftTypeCombobox({
   usageCounts,
   onSelect,
   disabled,
-  loading = false
+  loading = false,
+  initialQuery = ''
 }: AircraftTypeComboboxProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -76,7 +79,7 @@ export function AircraftTypeCombobox({
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (!next) setQuery('')
+        setQuery(next ? initialQuery : '')
       }}
     >
       <PopoverTrigger asChild>

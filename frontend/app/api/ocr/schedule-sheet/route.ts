@@ -42,6 +42,8 @@ FOR EACH ROW
 - tail_number: uppercase, no spaces/dashes/dots ("N 116 FE" -> "N116FE", "C-GABC" -> "CGABC"). "" if absent or unreadable. Never invent or "fix" digits.
 - aircraft_type: exactly as printed, uppercase (an ICAO code like "C525" or "GLF4", or a name like "CITATION CJ3"). "" if absent.
 - customer: the owner/operator/customer/contact text as printed, "" if none.
+- origin: where the aircraft is coming from, only when the sheet has a column for it (From, Coming From, Origin, Last Stop), exactly as printed, uppercase (an airport code like "SEA" or "KBZN", or a place name). "" if there is no such column or it is blank. Do not guess it from the tail or the customer.
+- destination: where the aircraft goes next, only when the sheet has a column for it (To, Next Stop, Destination), exactly as printed, uppercase. "" if there is no such column or it is blank.
 - arrival_date / departure_date: ONLY when a date is printed in that row itself (YYYY-MM-DD; infer the year from the sheet date or heading when the row shows only month/day, month before day for US sheets). Otherwise "". Do not copy the day heading into these fields; that is group_date.
 - arrival_time / departure_time: 24-hour "HH:mm" ("0545" -> "05:45", "5:45 PM" -> "17:45"). If a time is printed with a Z/UTC marker or the clock convention is unclear, copy it exactly as printed instead of converting. "" if blank, "TBD" or a dash. If a time has no AM/PM marker and the sheet is not clearly 24-hour, copy it verbatim and set needs_review.
 - services: the services/requests text as printed (comma separated), "" if none.
@@ -62,6 +64,8 @@ Return ONLY a valid JSON object, no prose before or after, in exactly this forma
       "tail_number": "",
       "aircraft_type": "",
       "customer": "",
+      "origin": "",
+      "destination": "",
       "group_date": "",
       "arrival_date": "",
       "arrival_time": "",
