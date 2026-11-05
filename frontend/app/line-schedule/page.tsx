@@ -185,7 +185,7 @@ export default function LineSchedulePage() {
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="h-8"
               onClick={() => setAnchor(new Date())}

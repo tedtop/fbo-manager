@@ -29,9 +29,11 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
   const { access, loading: accessLoading } = useMyPermissions()
   // Show only the pages this user's roles open. While permissions load, show none rather than
   // flashing links that would bounce them; the middleware is what actually enforces access.
-  const navigation = accessLoading
+  const allowedItems = accessLoading
     ? []
     : NAV_ITEMS.filter((item) => accessAtLeast(access, item.module, 'view'))
+  const navigation = allowedItems.filter((item) => !item.inAccountMenu)
+  const accountMenuItems = allowedItems.filter((item) => item.inAccountMenu)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -130,6 +132,11 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 <DropdownMenuItem asChild>
                   <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
+                {accountMenuItems.map((item) => (
+                  <DropdownMenuItem key={item.href} asChild>
+                    <Link href={item.href}>{item.name}</Link>
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   Sign out

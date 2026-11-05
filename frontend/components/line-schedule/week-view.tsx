@@ -4,6 +4,8 @@ import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAppSettings } from '@/hooks/use-app-settings'
+import { formatPersonName } from '@/lib/app-settings'
 import { Badge } from '@/components/ui/badge'
 import { ShiftChip } from './shift-chip'
 import { CoverageStrip } from './coverage-strip'
@@ -51,6 +53,7 @@ export function WeekView({
   onEditShift,
 }: WeekViewProps) {
   const today = format(new Date(), 'yyyy-MM-dd')
+  const { settings: { nameDisplay } } = useAppSettings()
   const currentUserId = permission.currentUser?.id
 
   const weekHours = useMemo(
@@ -179,7 +182,7 @@ export function WeekView({
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-sm font-medium">
                       {member.user
-                        ? `${member.user.first_name} ${member.user.last_name}`
+                        ? formatPersonName(member.user.first_name, member.user.last_name, nameDisplay)
                         : `User #${member.user_id}`}
                     </span>
                     {isSelf && (

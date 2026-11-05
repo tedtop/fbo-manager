@@ -71,5 +71,5 @@ Google can be tried locally: export `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` an
 `frontend/supabase/config.toml`, restart the stack. Tests do not use Google; they create users through the admin API
 (`frontend/cypress/e2e/users/users-access.cy.ts`).
 
-The Quick Dev Login buttons are still on the login page (B37). `admin@minutemanfbo.local` and `user@fbo.local` need a role
+The Quick Dev Login buttons are still on the login page (B37). `admin@minutemanfbo.local` and `user@minutemanfbo.local` need a role
 like anyone else or they land on `/pending`; the e2e seed gives them Administrator and Line Department.

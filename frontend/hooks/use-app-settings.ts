@@ -7,6 +7,8 @@ import {
   EQUIPMENT_TYPES_KEY,
   type EquipmentTypeDef,
   HOME_AIRPORT_KEY,
+  NAME_DISPLAY_KEY,
+  type NameDisplay,
   TAIL_NUMBER_PREFIX_KEY,
   TIME_ZONE_KEY,
   normalizeTailPrefix,
@@ -64,6 +66,12 @@ export function useAppSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
   })
 
+  const saveNameDisplay = useMutation({
+    mutationFn: (display: NameDisplay) =>
+      upsertAppSetting(db, NAME_DISPLAY_KEY, display),
+    onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
+  })
+
   const saveTimeZone = useMutation({
     mutationFn: (zone: string) => upsertAppSetting(db, TIME_ZONE_KEY, zone),
     onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
@@ -77,6 +85,7 @@ export function useAppSettings() {
     saveEquipmentTypes,
     saveHomeAirport,
     saveAirportDisplay,
+    saveNameDisplay,
     saveTimeZone
   }
 }

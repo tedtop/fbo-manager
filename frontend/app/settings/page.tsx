@@ -1,6 +1,7 @@
 'use client'
 
 import { AirportSettings } from '@/components/settings/airport-settings'
+import { NameDisplaySettings } from '@/components/settings/name-display-settings'
 import { EquipmentTypesEditor } from '@/components/settings/equipment-types-editor'
 import { TimeZoneSettings } from '@/components/settings/timezone-settings'
 import { Button } from '@/components/ui/button'
@@ -166,6 +167,8 @@ export default function SettingsPage() {
       <AirportSettings />
 
       <TimeZoneSettings />
+
+      <NameDisplaySettings />
 
       <EquipmentTypesEditor />
     </div>

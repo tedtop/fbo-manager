@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import { cn } from '@/lib/utils'
 
 function segmentColor(count: number): string {
@@ -15,17 +17,32 @@ interface CoverageStripProps {
   className?: string
 }
 
-/** 24-segment heatmap of on-duty headcount for one day (midnight → midnight). */
+const pad = (h: number) => String(h).padStart(2, '0')
+
+/** 24-segment heatmap of on-duty headcount for one day (midnight → midnight). Hover shows the hour and headcount. */
 export function CoverageStrip({ coverage, className }: CoverageStripProps) {
+  const [hovered, setHovered] = useState<number | null>(null)
+  const count = hovered === null ? 0 : (coverage[hovered] ?? 0)
+
   return (
-    <div className={cn('flex h-1.5 w-full gap-px overflow-hidden rounded-full', className)}>
-      {coverage.map((count, hour) => (
+    <div className={cn('relative w-full py-1', className)} onMouseLeave={() => setHovered(null)}>
+      <div className="flex h-1.5 w-full gap-px overflow-hidden rounded-full">
+        {coverage.map((n, hour) => (
+          <div
+            key={hour}
+            className={cn('min-w-0 flex-1 transition-opacity', segmentColor(n), hovered !== null && hovered !== hour && 'opacity-50')}
+            onMouseEnter={() => setHovered(hour)}
+          />
+        ))}
+      </div>
+      {hovered !== null && (
         <div
-          key={hour}
-          className={cn('min-w-0 flex-1', segmentColor(count))}
-          title={`${String(hour).padStart(2, '0')}:00 — ${count} on duty`}
-        />
-      ))}
+          className="pointer-events-none absolute bottom-full z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[11px] font-medium text-popover-foreground shadow-md"
+          style={{ left: `${((hovered + 0.5) / coverage.length) * 100}%` }}
+        >
+          {pad(hovered)}:00–{pad((hovered + 1) % 24)}:00 · {count} on duty
+        </div>
+      )}
     </div>
   )
 }

@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAppSettings } from '@/hooks/use-app-settings'
+import { formatPersonName } from '@/lib/app-settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -68,6 +70,7 @@ export function ShiftDialog({
   onUpdate,
   onDelete,
 }: ShiftDialogProps) {
+  const { settings: { nameDisplay } } = useAppSettings()
   const currentUserId = permission.currentUser?.id
   const wholeDept = canEditWholeDepartment(permission)
 
@@ -184,7 +187,7 @@ export function ShiftDialog({
               <SelectContent>
                 {eligibleMembers.map((m) => (
                   <SelectItem key={m.user_id} value={String(m.user_id)}>
-                    {m.user ? `${m.user.first_name} ${m.user.last_name}` : `User #${m.user_id}`}
+                    {m.user ? formatPersonName(m.user.first_name, m.user.last_name, nameDisplay) : `User #${m.user_id}`}
                     {m.user_id === currentUserId ? ' (you)' : ''}
                   </SelectItem>
                 ))}

@@ -14,7 +14,7 @@ export interface AccessState {
 }
 
 /** Top-level navigation, in display order. `module` is the permission that gates the page. */
-export const NAV_ITEMS: { name: string; href: string; module: ModuleKey }[] = [
+export const NAV_ITEMS: { name: string; href: string; module: ModuleKey; inAccountMenu?: boolean }[] = [
   { name: 'Flight Ops', href: '/', module: 'flight_operations' },
   { name: 'Parking', href: '/parking', module: 'parking' },
   { name: 'Fuel Dispatch', href: '/fuel-dispatch', module: 'fuel_farm' },
@@ -24,7 +24,8 @@ export const NAV_ITEMS: { name: string; href: string; module: ModuleKey }[] = [
   { name: 'Equipment', href: '/equipment', module: 'equipment' },
   { name: 'Line Schedule', href: '/line-schedule', module: 'line_schedule' },
   { name: 'Training', href: '/training', module: 'training' },
-  { name: 'Users', href: '/users', module: 'users' }
+  // Lives in the account menu (under Settings) instead of the top bar.
+  { name: 'Manage Users', href: '/users', module: 'users', inAccountMenu: true }
 ]
 
 /** Pages that need a module on top of the nav items (same module as their parent area). */

@@ -9,6 +9,7 @@ export const EQUIPMENT_TYPES_KEY = 'equipment_types'
 export const HOME_AIRPORT_KEY = 'home_airport'
 export const AIRPORT_DISPLAY_KEY = 'airport_display'
 export const TIME_ZONE_KEY = 'timezone'
+export const NAME_DISPLAY_KEY = 'name_display'
 
 /** One kind of equipment. `value` is what equipment.equipment_type stores and never changes; label and icon are display. */
 export type EquipmentTypeDef = { value: string; label: string; icon: string }
@@ -46,11 +47,35 @@ export const AIRPORT_DISPLAY_OPTIONS: {
   { value: 'icao', label: 'ICAO code (KMSO)' }
 ]
 
+export type NameDisplay = 'first' | 'first_last' | 'first_last_initial'
+
+export const NAME_DISPLAY_OPTIONS: { value: NameDisplay; label: string; example: string }[] = [
+  { value: 'first', label: 'First name only', example: 'Keith' },
+  { value: 'first_last', label: 'First and last name', example: 'Keith Leathers' },
+  { value: 'first_last_initial', label: 'First name and last initial', example: 'Keith L' }
+]
+
+/** How a person's name is shown on screen, per the name_display setting. Stored names are never changed. */
+export function formatPersonName(
+  firstName: string,
+  lastName: string,
+  display: NameDisplay
+): string {
+  const first = firstName.trim()
+  const last = lastName.trim()
+  if (display === 'first' || !last) return first || last
+  if (display === 'first_last') return `${first} ${last}`.trim()
+  // Seeded names may carry a trailing period ("Dennis F."): the initial is always a bare letter.
+  return `${first} ${last[0].toUpperCase()}`.trim()
+}
+
 export type AppSettings = {
   /** Stored code (ICAO) of the home airport: pre-fills Origin on new flights and ranks its country first. */
   homeAirport: string
   /** Which airport code the app shows on screen; the ICAO is always what is stored. */
   airportDisplay: AirportDisplay
+  /** How people's names are shown on screen (Line Schedule). */
+  nameDisplay: NameDisplay
   /** IANA zone (e.g. America/Denver) the arrivals/departures board follows instead of the browser's zone. */
   timeZone: string
   /** Text pre-filled into the tail number field of the Add Flight form, e.g. "N" or "C-". "" = no prefill. */
@@ -62,6 +87,7 @@ export type AppSettings = {
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   homeAirport: 'KMSO',
   airportDisplay: 'faa',
+  nameDisplay: 'first_last_initial',
   timeZone: DEFAULT_TIME_ZONE,
   tailNumberPrefix: 'N',
   equipmentTypes: DEFAULT_EQUIPMENT_TYPES
@@ -203,6 +229,12 @@ export function settingsFromRows(
       AIRPORT_DISPLAY_OPTIONS.some((o) => o.value === row.value)
     ) {
       settings.airportDisplay = row.value as AirportDisplay
+    }
+    if (
+      row.key === NAME_DISPLAY_KEY &&
+      NAME_DISPLAY_OPTIONS.some((o) => o.value === row.value)
+    ) {
+      settings.nameDisplay = row.value as NameDisplay
     }
     if (row.key === TIME_ZONE_KEY && isValidTimeZone(row.value)) {
       settings.timeZone = row.value.trim()
