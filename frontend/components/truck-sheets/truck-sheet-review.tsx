@@ -121,6 +121,14 @@ export function TruckSheetReview({
     }))
   )
 
+  // Doubts raised by the free OCR reader (failed arithmetic, corrected digits, odd initials) show next to the row's math checks.
+  sheet.readings.forEach((r, idx) => {
+    if (!r.review_notes) return
+    const list = issues.get(idx) ?? []
+    list.push({ level: 'warn', message: `Check this row: ${r.review_notes}` })
+    issues.set(idx, list)
+  })
+
   const isJetA = sheet.fuel_type === 'jet_a'
   const truckKnown = knownTruckNumbers.has(sheet.truck_number)
   const included = sheet.readings.filter((r) => r.include).length

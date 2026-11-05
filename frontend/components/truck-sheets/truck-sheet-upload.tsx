@@ -19,7 +19,7 @@ interface TruckSheetUploadProps {
   busy: boolean
 }
 
-const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'] // photos only: the free reader has no PDF rasterizer
 
 export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -60,7 +60,7 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
           ref={inputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,application/pdf"
+          accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={(e) => {
             handleFiles(e.target.files)

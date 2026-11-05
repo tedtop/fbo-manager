@@ -1,47 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { denied, requireModule } from '@/lib/supabase/require-module'
+import { visionConfigured, VisionError, visionWords } from '@/lib/truck-sheet/ocr-vision'
+import { parseJetA } from '@/lib/truck-sheet/parse-jet-a'
+import type { ExtractedReadingType, ExtractedTruckSheet } from '@/lib/truck-sheet/types'
 
-const client = new Anthropic() // reads ANTHROPIC_API_KEY from process.env
+export type { ExtractedReading, ExtractedReadingType, ExtractedTruckSheet } from '@/lib/truck-sheet/types'
 
-export type ExtractedReadingType =
-  | 'fueling'
-  | 'tank_fill'
-  | 'transfer_in'
-  | 'transfer_out'
-  | 'other'
-
-export interface ExtractedReading {
-  reading_type: ExtractedReadingType
-  customer: string
-  tail_number: string
-  aircraft_type: string
-  fuel_type_confirmed: boolean
-  meter: 'front' | 'rear' | ''
-  meter_start: string
-  meter_end: string
-  gallons_pumped: string
-  gallons_remaining: string
-  prist: 'yes' | 'no' | ''
-  req_gals_or_lbs: string
-  line_tech_initials: string
-  invoice_number: string
-  service_time: string
-  notes: string
-}
-
-export interface ExtractedTruckSheet {
-  sheet_date: string | null // "YYYY-MM-DD" if visible
-  truck_number: string // e.g. "5282"
-  fuel_type: 'jet_a' | 'avgas' | ''
-  gallons_down: string
-  starting_gallons: string
-  front_meter_start: string
-  rear_meter_start: string
-  fueler_initials: string
-  readings: ExtractedReading[]
-  raw_text?: string // for debugging
-}
+// Engines (docs/PLAN.md "Truck sheet OCR (Vision)"): Google Cloud Vision words + the geometry parser by default
+// (free tier, no Anthropic credit). The Claude vision path below stays only as an opt-in: SCHEDULE_OCR_ALLOW_CLAUDE=1
+// plus ANTHROPIC_API_KEY, used when no Vision key is configured. Ted does not pay API credit for this project.
 
 const EXTRACT_PROMPT = `This is a photo of a handwritten FBO fuel truck sheet (daily meter reading log for a refueling truck). The photo may be rotated in any direction, including fully upside down — mentally reorient it before reading.
 
@@ -117,12 +85,18 @@ function str(v: unknown): string {
   return v == null ? '' : String(v).trim()
 }
 
+const claudeAllowed = () => process.env.SCHEDULE_OCR_ALLOW_CLAUDE === '1' && !!process.env.ANTHROPIC_API_KEY
+
 export async function POST(req: NextRequest) {
   const check = await requireModule('truck_sheets')
   if (!check.ok) return denied(check)
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
+  const useVision = visionConfigured()
+  if (!useVision && !claudeAllowed()) {
+    return NextResponse.json(
+      { error: 'Truck sheet scanning is not configured: set GOOGLE_VISION_API_KEY (Google Cloud Vision, free tier)' },
+      { status: 503 }
+    )
   }
 
   let formData: FormData
@@ -133,19 +107,41 @@ export async function POST(req: NextRequest) {
   }
 
   const file = formData.get('file') as File | null
-  if (!file) {
+  if (!file || typeof file === 'string') {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
 
   const isPdf = file.type === 'application/pdf'
   const isImage = file.type.startsWith('image/')
   if (!isPdf && !isImage) {
+    return NextResponse.json({ error: 'File must be an image (JPEG, PNG)' }, { status: 400 })
+  }
+  if (isPdf && useVision) {
     return NextResponse.json(
-      { error: 'File must be an image (JPEG, PNG) or PDF' },
+      { error: 'PDF is not supported yet: please upload photos (JPEG or PNG) of the sheet' },
       { status: 400 }
     )
   }
 
+  if (useVision) {
+    try {
+      const page = await visionWords(Buffer.from(await file.arrayBuffer()))
+      return NextResponse.json(parseJetA(page))
+    } catch (err) {
+      if (err instanceof VisionError) {
+        console.error('[OCR truck-sheet] Vision:', err.message) // VisionError messages never contain the key
+        return NextResponse.json({ error: err.message }, { status: err.status })
+      }
+      console.error('[OCR truck-sheet] unexpected error while reading the sheet')
+      return NextResponse.json({ error: 'Could not read the sheet' }, { status: 500 })
+    }
+  }
+
+  return extractWithClaude(file, isPdf)
+}
+
+async function extractWithClaude(file: File, isPdf: boolean): Promise<NextResponse> {
+  const client = new Anthropic() // reads ANTHROPIC_API_KEY from process.env
   const bytes = await file.arrayBuffer()
   const base64 = Buffer.from(bytes).toString('base64')
 
