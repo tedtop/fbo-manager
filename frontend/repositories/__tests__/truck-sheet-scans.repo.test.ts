@@ -41,7 +41,7 @@ const jpeg = (n: number) => new Blob([new Uint8Array([0xff, 0xd8, n, 0xff, 0xd9]
 const pdf = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], 'Truck Sheets.pdf', { type: 'application/pdf' })
 
 function page(n: number, over: Partial<PreparedPage> = {}): PreparedPage {
-  return { blob: jpeg(n), rotation: 0, hash: `hash-${n}`.padEnd(64, '0'), pageNumber: n, originalIndex: 0, originalPage: n, ...over }
+  return { blob: jpeg(n), thumb: jpeg(n + 100), rotation: 0, hash: `ab${n}`.padEnd(64, "0"), pageNumber: n, originalIndex: 0, originalPage: n, ...over }
 }
 
 async function makeSheet(truckNumber = '5282') {
@@ -65,8 +65,10 @@ describe('truck sheet page scans', () => {
     const scans = await findScansForTruckSheet(db, sheet.id)
     expect(scans.map((s) => s.page_number)).toEqual([1, 2])
     expect(scans.map((s) => s.rotation_degrees)).toEqual([90, 0])
-    expect(scans[0].storage_path).toBe(`truck_sheet/2026/07/${DATE}/truck-5282/${DATE}_truck-5282_p1.jpg`)
-    expect(scans[0].original_path).toMatch(/\/original\/2026-07-14_truck-5282_[0-9a-f]{8}\.pdf$/)
+    const h8 = (scans[0].content_sha256 as string).slice(0, 8)
+    expect(scans[0].storage_path).toBe(`truck_sheet/2026/07/${DATE}/truck-5282/pages/${DATE}_truck-5282_p1_${h8}.jpg`)
+    expect(scans[0].thumb_path).toMatch(/\/thumbs\/2026-07-14_truck-5282_p1_[0-9a-f]{8}\.jpg$/)
+    expect(scans[0].original_path).toMatch(/\/original\/2026-07-14_truck-5282_scan-[0-9a-f]{8}\.pdf$/)
     expect(scans[1].original_path).toBe(scans[0].original_path)
     expect(scans[0].fuel_truck_id).toBe(truck.id)
     expect(scans[0].scan_date).toBe(DATE)
@@ -79,20 +81,27 @@ describe('truck sheet page scans', () => {
     expect([...(await findStoredHashes(db, [scans[0].content_sha256 as string, 'nope']))]).toEqual([scans[0].content_sha256])
   })
 
-  it('never overwrites: a taken page path gets a suffix instead', async () => {
+  it('names files by their bytes: identical bytes reuse the object, different bytes get a new name', async () => {
     await makeSheet()
     const first = await uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5282', originals: [pdf], pages: [page(1)] })
-    const second = await uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5282', originals: [pdf], pages: [page(1)] })
-    expect(second.drafts[0].storage_path).not.toBe(first.drafts[0].storage_path)
-    expect(second.drafts[0].storage_path).toMatch(/_p1-[0-9a-f]{8}\.jpg$/)
-    await removeScanObjects(db, [...first.paths, ...second.paths])
+    const same = await uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5282', originals: [pdf], pages: [page(1)] })
+    expect(same.drafts[0].storage_path).toBe(first.drafts[0].storage_path)
+    expect(same.paths).toEqual([]) // nothing new was created
+    const other = await uploadTruckSheetPages(db, {
+      sheetDate: DATE,
+      truckNumber: '5282',
+      originals: [pdf],
+      pages: [page(1, { blob: jpeg(77), hash: 'f'.repeat(64) })],
+    })
+    expect(other.drafts[0].storage_path).not.toBe(first.drafts[0].storage_path)
+    await removeScanObjects(db, [...first.paths, ...other.paths])
   })
 
   it('rejects a second page 2 or the same page twice on one sheet (unique indexes)', async () => {
     const { truck, sheet } = await makeSheet()
     const up = await uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5282', originals: [pdf], pages: [page(1), page(2)] })
     await insertTruckSheetScanRows(db, { truckSheetId: sheet.id, fuelTruckId: truck.id, drafts: up.drafts })
-    const again = await uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5282', originals: [pdf], pages: [page(2, { hash: 'z'.padEnd(64, 'z') })] })
+    const again = await uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5282', originals: [pdf], pages: [page(2, { hash: "cd".repeat(32) })] })
     await expect(insertTruckSheetScanRows(db, { truckSheetId: sheet.id, fuelTruckId: truck.id, drafts: again.drafts })).rejects.toThrow()
     await removeScanObjects(db, again.paths)
   })
@@ -103,9 +112,9 @@ describe('truck sheet page scans', () => {
     await expect(
       uploadTruckSheetPages(db, { sheetDate: DATE, truckNumber: '5299', originals: [pdf], pages: [page(1), bad] })
     ).rejects.toBeTruthy()
-    const { data } = await db.storage.from('scans').list(`truck_sheet/2026/07/${DATE}/truck-5299`)
-    expect((data ?? []).filter((o) => o.id !== null)).toHaveLength(0)
-    const { data: orig } = await db.storage.from('scans').list(`truck_sheet/2026/07/${DATE}/truck-5299/original`)
-    expect(orig ?? []).toHaveLength(0)
+    for (const f of ['pages', 'thumbs', 'original']) {
+      const { data } = await db.storage.from('scans').list(`truck_sheet/2026/07/${DATE}/truck-5299/${f}`)
+      expect(data ?? []).toHaveLength(0)
+    }
   })
 })

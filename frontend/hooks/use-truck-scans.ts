@@ -16,6 +16,8 @@ export const scanKeys = {
 export interface PageScan extends ScannedDocumentRow {
   /** Signed URL of the upright page image (null if signing failed). */
   url: string | null
+  /** Signed URL of the 400 px thumbnail (falls back to the page image for rows without one). */
+  thumbUrl: string | null
   /** Signed URL of the original upload as received, when there is one. */
   originalUrl: string | null
 }
@@ -28,7 +30,7 @@ export function useTruckSheetScans(sheetIds: number[]) {
     queryFn: async () => {
       const db = createClient()
       const rows = await findScansForTruckSheets(db, sheetIds)
-      const paths = [...new Set(rows.flatMap((r) => [r.storage_path, r.original_path].filter((p): p is string => !!p)))]
+      const paths = [...new Set(rows.flatMap((r) => [r.storage_path, r.thumb_path, r.original_path].filter((p): p is string => !!p)))]
       const urls = await getScanSignedUrls(db, paths)
       const bySheet = new Map<number, PageScan[]>()
       for (const row of rows) {
@@ -37,6 +39,7 @@ export function useTruckSheetScans(sheetIds: number[]) {
         list.push({
           ...row,
           url: urls.get(row.storage_path) ?? null,
+          thumbUrl: (row.thumb_path ? urls.get(row.thumb_path) : null) ?? urls.get(row.storage_path) ?? null,
           originalUrl: row.original_path ? (urls.get(row.original_path) ?? null) : null,
         })
         bySheet.set(row.truck_sheet_id, list)

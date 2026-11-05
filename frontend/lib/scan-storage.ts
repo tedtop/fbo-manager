@@ -19,11 +19,6 @@ export function sanitizeTruckNo(value: string | null | undefined): string | null
   return s || null
 }
 
-/** 8 hex chars from the platform random source. */
-export function shortId(): string {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 8)
-}
-
 /** Lower-case extension from a content type or file name, whitelisted; anything else is 'bin'. */
 export function extensionFor(contentType: string, fileName = ''): string {
   const byType: Record<string, string> = {
@@ -43,53 +38,71 @@ function dayDir(kind: string, date: string): string {
   return `${kind}/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}`
 }
 
-export interface TruckPageRef {
-  date: string | null
-  truckNo: string | null
-  /** 1-based page number on that truck/day. */
-  page: number
-  /** Only to avoid a collision with an object that already exists. */
-  suffix?: string
-  /** Day the scan was made (YYYY-MM-DD), used by the unassigned holding folder. */
-  scanDay?: string
+const today = () => new Date().toISOString().slice(0, 10)
+
+/** First 8 hex chars of a sha-256 (lower case); anything else is rejected so paths stay clean. */
+export function hash8(sha256: string): string {
+  const h = sha256.toLowerCase()
+  if (!/^[0-9a-f]{8,}$/.test(h)) throw new Error('hash8 needs a hex sha-256')
+  return h.slice(0, 8)
 }
 
-/** Upright page image. Falls back to truck_sheet/unassigned/<scan-day>/ when date or truck is not valid. */
-export function buildTruckSheetPagePath(ref: TruckPageRef): string {
-  const date = validDate(ref.date)
-  const truck = sanitizeTruckNo(ref.truckNo)
-  const page = Math.max(1, Math.floor(ref.page))
-  const tail = ref.suffix ? `-${ref.suffix.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}` : ''
-  if (date && truck) {
-    return `${dayDir('truck_sheet', date)}/truck-${truck}/${date}_truck-${truck}_p${page}${tail}.jpg`
-  }
-  const day = validDate(ref.scanDay) ?? new Date().toISOString().slice(0, 10)
-  return `truck_sheet/unassigned/${day}/${day}_${ref.suffix || shortId()}_p${page}.jpg`
+export type ScanFolder = 'original' | 'pages' | 'thumbs'
+
+function cleanExt(ext: string): string {
+  return ext.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 5) || 'bin'
 }
 
-/** Original upload (PDF or photo, as received), stored once per upload. */
-export function buildTruckSheetOriginalPath(ref: {
+/**
+ * Truck sheet files: truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<N>/<folder>/<name>. Names carry the first 8 hex of the
+ * sha-256 of the file's own bytes, so identical bytes map to the same name (nothing is overwritten, a re-scan with
+ * different bytes gets a new name). No database ids. Invalid date or truck: truck_sheet/unassigned/<scan-day>/<folder>/.
+ *   original: <date>_truck-<n>_scan-<hash8>.<ext>   pages / thumbs: <date>_truck-<n>_p<N>_<hash8>.jpg
+ */
+export function buildTruckSheetPath(ref: {
+  folder: ScanFolder
   date: string | null
   truckNo: string | null
-  shortId: string
-  ext: string
+  /** sha-256 hex of this file's bytes */
+  sha256: string
+  /** pages and thumbs only */
+  page?: number
+  /** originals only: extension of the file as received */
+  ext?: string
   scanDay?: string
 }): string {
   const date = validDate(ref.date)
   const truck = sanitizeTruckNo(ref.truckNo)
-  const id = ref.shortId.replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || shortId()
-  const ext = ref.ext.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 5) || 'bin'
+  const h = hash8(ref.sha256)
+  const page = Math.max(1, Math.floor(ref.page ?? 1))
+  const file = (prefix: string) =>
+    ref.folder === 'original' ? `${prefix}scan-${h}.${cleanExt(ref.ext ?? 'bin')}` : `${prefix}p${page}_${h}.jpg`
   if (date && truck) {
-    return `${dayDir('truck_sheet', date)}/truck-${truck}/original/${date}_truck-${truck}_${id}.${ext}`
+    return `${dayDir('truck_sheet', date)}/truck-${truck}/${ref.folder}/${file(`${date}_truck-${truck}_`)}`
   }
-  const day = validDate(ref.scanDay) ?? new Date().toISOString().slice(0, 10)
-  return `truck_sheet/unassigned/${day}/original/${day}_${id}.${ext}`
+  const day = validDate(ref.scanDay) ?? today()
+  return `truck_sheet/unassigned/${day}/${ref.folder}/${file(`${day}_`)}`
 }
 
-/** Front-desk schedule sheet original, by the sheet's date (scan day when the date is not known). */
-export function buildScheduleSheetPath(ref: { date: string | null; shortId: string; ext: string; scanDay?: string }): string {
-  const date = validDate(ref.date) ?? validDate(ref.scanDay) ?? new Date().toISOString().slice(0, 10)
-  const id = ref.shortId.replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || shortId()
-  const ext = ref.ext.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 5) || 'bin'
-  return `${dayDir('schedule_sheet', date)}/${date}_schedule_${id}.${ext}`
+/** Schedule sheets: schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/<folder>/<date>_schedule_... (same hash8 naming). */
+export function buildScheduleSheetPath(ref: {
+  folder: ScanFolder
+  date: string | null
+  sha256: string
+  page?: number
+  ext?: string
+  scanDay?: string
+}): string {
+  const date = validDate(ref.date) ?? validDate(ref.scanDay) ?? today()
+  const h = hash8(ref.sha256)
+  const page = Math.max(1, Math.floor(ref.page ?? 1))
+  const name =
+    ref.folder === 'original' ? `${date}_schedule_scan-${h}.${cleanExt(ref.ext ?? 'bin')}` : `${date}_schedule_p${page}_${h}.jpg`
+  return `${dayDir('schedule_sheet', date)}/${ref.folder}/${name}`
+}
+
+/** Lower-case hex SHA-256 of the blob's bytes (browser). */
+export async function sha256Hex(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }

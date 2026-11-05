@@ -14,6 +14,7 @@ alter table scanned_documents
 alter table scanned_documents
   drop column rotation_degrees,
   drop column content_sha256,
+  drop column thumb_path,
   drop column original_path,
   drop column original_page,
   drop column original_content_type,

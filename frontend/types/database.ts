@@ -1412,6 +1412,7 @@ export type Database = {
           updated_at: string
           rotation_degrees: number
           content_sha256: string | null
+          thumb_path: string | null
           original_path: string | null
           original_page: number | null
           original_content_type: string | null
@@ -1433,6 +1434,7 @@ export type Database = {
           notes?: string | null
           rotation_degrees?: number
           content_sha256?: string | null
+          thumb_path?: string | null
           original_path?: string | null
           original_page?: number | null
           original_content_type?: string | null

@@ -25,9 +25,9 @@ export function ScanPages({ pages, label }: { pages: PageScan[]; label: string }
               className="block w-full rounded border border-border bg-muted focus-visible:outline-2"
               aria-label={`Open page ${page.page_number} of ${label}`}
             >
-              {page.url ? (
-                // biome-ignore lint/performance/noImgElement: signed storage URL, scaled by CSS
-                <img src={page.url} alt={`${label}, page ${page.page_number}`} loading="lazy" className="h-36 w-full object-contain" />
+              {page.thumbUrl ? (
+                // biome-ignore lint/performance/noImgElement: signed storage URL of the stored thumbnail
+                <img src={page.thumbUrl} alt={`${label}, page ${page.page_number}`} loading="lazy" className="h-36 w-full object-contain" />
               ) : (
                 <span className="flex h-36 items-center justify-center text-xs text-muted-foreground">Unavailable</span>
               )}

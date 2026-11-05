@@ -51,6 +51,7 @@ export interface ReviewPage {
   /** Clockwise turn currently applied to `file` to get `upright` (changed by the rotate buttons). */
   rotation: Rotation
   upright: Blob
+  thumb: Blob
   previewUrl: string
   hash: string
 }
@@ -94,7 +95,7 @@ export async function prepareReviewPage(
 ): Promise<ReviewPage> {
   const auto = (extraction.rotation_degrees ?? 0) as Rotation
   const turn = rotation ?? auto
-  const { blob } = await renderUpright(file, turn)
+  const { blob, thumb } = await renderUpright(file, turn)
   const origin = originOf(file)
   return {
     id: nextId('page'),
@@ -105,6 +106,7 @@ export async function prepareReviewPage(
     rotationConfident: extraction.rotation_confident ?? false,
     rotation: turn,
     upright: blob,
+    thumb,
     previewUrl: URL.createObjectURL(blob),
     hash: await sha256Hex(blob),
   }
@@ -113,9 +115,9 @@ export async function prepareReviewPage(
 /** Manual fix: turn an already prepared page by a further quarter turn (negative = counter-clockwise). */
 export async function rotateReviewPage(page: ReviewPage, deltaDeg: number): Promise<ReviewPage> {
   const rotation = addRotation(page.rotation, deltaDeg)
-  const { blob } = await renderUpright(page.file, rotation)
+  const { blob, thumb } = await renderUpright(page.file, rotation)
   URL.revokeObjectURL(page.previewUrl)
-  return { ...page, rotation, upright: blob, previewUrl: URL.createObjectURL(blob), hash: await sha256Hex(blob) }
+  return { ...page, rotation, upright: blob, thumb, previewUrl: URL.createObjectURL(blob), hash: await sha256Hex(blob) }
 }
 
 /**
@@ -320,6 +322,7 @@ export function useTruckSheetCommit() {
             if (originalIndex < 0) originalIndex = originals.push(p.original) - 1
             return {
               blob: p.upright,
+              thumb: p.thumb,
               rotation: p.rotation,
               hash: p.hash,
               pageNumber: decision.nextPageNumbers[i],

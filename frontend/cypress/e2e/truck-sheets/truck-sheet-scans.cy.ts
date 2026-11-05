@@ -80,9 +80,13 @@ describe('truck sheet page scans', () => {
       expect(sheets[0].page_count).to.eq(2)
       expect(scans.map((s) => s.page_number)).to.deep.eq([1, 2])
       expect(scans.map((s) => s.rotation_degrees)).to.deep.eq([90, 0])
-      expect(scans[0].storage_path).to.eq(`truck_sheet/2026/07/${DATE}/truck-${TRUCK}/${DATE}_truck-${TRUCK}_p1.jpg`)
-      expect(scans[1].storage_path).to.eq(`truck_sheet/2026/07/${DATE}/truck-${TRUCK}/${DATE}_truck-${TRUCK}_p2.jpg`)
-      expect(scans[0].original_path).to.match(new RegExp(`/original/${DATE}_truck-${TRUCK}_[0-9a-f]{8}\\.pdf$`))
+      const dir = `truck_sheet/2026/07/${DATE}/truck-${TRUCK}`
+      scans.forEach((s, i) => {
+        const h8 = String(s.content_sha256).slice(0, 8)
+        expect(s.storage_path).to.eq(`${dir}/pages/${DATE}_truck-${TRUCK}_p${i + 1}_${h8}.jpg`)
+        expect(s.thumb_path).to.match(new RegExp(`^${dir}/thumbs/${DATE}_truck-${TRUCK}_p${i + 1}_[0-9a-f]{8}\\.jpg$`))
+      })
+      expect(scans[0].original_path).to.match(new RegExp(`^${dir}/original/${DATE}_truck-${TRUCK}_scan-[0-9a-f]{8}\\.pdf$`))
       expect(scans[1].original_path).to.eq(scans[0].original_path) // the PDF is stored once
       expect(scans.map((s) => s.original_page)).to.deep.eq([1, 2])
       expect(String(scans[0].content_sha256)).to.match(/^[0-9a-f]{64}$/)
@@ -99,6 +103,8 @@ describe('truck sheet page scans', () => {
       cy.get('[data-testid="scan-thumb-1"] img').should(($img) => {
         const img = $img[0] as HTMLImageElement
         expect(img.naturalWidth).to.be.greaterThan(img.naturalHeight) // stored upright (landscape page)
+        expect(img.src).to.include('/thumbs/') // the list shows the stored thumbnail
+        expect(img.naturalWidth).to.be.at.most(400)
       })
       cy.get('[data-testid="scan-thumb-2"]').click()
     })

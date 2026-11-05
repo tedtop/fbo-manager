@@ -549,23 +549,25 @@ Written 2026-11-05 before building (B69). Ted's requirements: every page is stor
 
 ### Decisions
 
-Storage layout (bucket `scans`, everything built by `frontend/lib/scan-storage.ts` from validated values only):
+Storage layout (bucket `scans`, everything built by `frontend/lib/scan-storage.ts` from validated values only). Revised 2026-11-05 on Ted's decision (format and naming):
 
 ```
-truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<TRUCK>/<YYYY-MM-DD>_truck-<TRUCK>_p<N>.jpg            upright page image
-truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<TRUCK>/original/<YYYY-MM-DD>_truck-<TRUCK>_<shortid>.<ext>   original upload as received (PDF or photo), once per upload
-truck_sheet/unassigned/<scan-day>/<scan-day>_<shortid>_p<N>.jpg                                     holding folder, builder only
-schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/<YYYY-MM-DD>_schedule_<shortid>.<ext>                       same idea (implemented for the upload)
-invoice_slip/<YYYY>/<MM>/<YYYY-MM-DD>/<YYYY-MM-DD>_invoice_<serial|shortid>.<ext>                    convention only, not built
+truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<N>/original/<date>_truck-<N>_scan-<hash8>.<ext>   the upload exactly as received (PDF or photo), the untouched master, once per uploaded file
+truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<N>/pages/<date>_truck-<N>_p<page>_<hash8>.jpg      upright page, JPEG q0.92, longest side max 3000 px
+truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<N>/thumbs/<date>_truck-<N>_p<page>_<hash8>.jpg     400 px wide JPEG q0.8, made in the same canvas pass
+truck_sheet/unassigned/<scan-day>/{original,pages,thumbs}/...                                    holding folder, builder only
+schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/{original,pages,thumbs}/<date>_schedule_...             same convention (only the original upload is implemented)
+invoice_slip/<YYYY>/<MM>/<YYYY-MM-DD>/...                                                       convention only, not built
 ```
 
+- `hash8` is the first 8 hex chars of the sha-256 of that file's own bytes (original: the uploaded file; page and thumb: their own JPEG bytes). Identical bytes give the same name, so an object that already exists is reused (free duplicate detection); different bytes (a re-scan) give a different name and nothing is overwritten. No database ids appear in paths, so they survive a DB rebuild. The prefix stays `truck_sheet/` (like the DB `doc_type`); the DB `storage_path`, `thumb_path` and `original_path` columns are the source of truth for where a file is. Old-layout files (`truck_sheet/<yyyy>/<mm>/<uuid>-<name>`, from the first import hook) may exist on live; none exist on the local stack. They are not moved.
 - Date and truck number are validated (`YYYY-MM-DD` real calendar date; truck number reduced to `A-Z0-9`, upper case, max 12 chars, must not end empty). The review screen refuses to import a sheet without a valid date and truck number (no more "today" default and no file name as truck number), so `unassigned/` is only the builder's fallback for a caller that has no valid values; the hook never uses it.
-- Never overwrite: uploads use `upsert: false`. Page numbers on a truck/day only grow (append = max + 1), so a page path is never reused; if an object already exists at a path (orphan from a failed run) the upload retries once with a `-<shortid>` suffix. Re-scans therefore never replace anything; replacing or removing pages is a deliberate manual action (not built).
-- A multi-page PDF is stored once under `original/`; every page row of it points at that path (`original_path`, `original_page`). A photo is its own original. All page images are re-encoded upright JPEGs (quality 0.85, longest side capped at 3000 px, no upscaling), so the stored page is always upright whatever the phone did; the original keeps whatever orientation it came in.
+- Never overwrite: uploads use `upsert: false`; an existing object under the same name has the same bytes and is reused. Page numbers on a truck/day only grow (append = max + 1). Cleanup after a failed import removes only objects that call created. Replacing or removing pages is a deliberate manual action (not built).
+- A multi-page PDF is stored once under `original/`; every page row of it points at that path (`original_path`, `original_page`). A photo is its own original. All page images are re-encoded upright JPEGs (quality 0.92, longest side capped at 3000 px, no upscaling, no PNG), so the stored page is always upright whatever the phone did; the original keeps whatever orientation it came in. Each page also gets a 400 px wide thumbnail (JPEG q0.8) stored under `thumbs/` and recorded in `thumb_path`.
 
 Database (migration `20261105000100_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
 
-- `scanned_documents` gains `rotation_degrees smallint` (0/90/180/270, clockwise turn applied to make the page upright; default 0), `content_sha256 text` (hash of the upright page bytes), `original_path text`, `original_page smallint`, `original_content_type text`, `fuel_truck_id` (equipment.id, on delete set null), `scan_date date` (the sheet date).
+- `scanned_documents` gains `thumb_path`, `rotation_degrees smallint` (0/90/180/270, clockwise turn applied to make the page upright; default 0), `content_sha256 text` (hash of the upright page bytes), `original_path text`, `original_page smallint`, `original_content_type text`, `fuel_truck_id` (equipment.id, on delete set null), `scan_date date` (the sheet date).
 - `doc_type` check widened to add `schedule_sheet` (rows for schedule sheets are not written yet; the object layout is).
 - Unique index `(truck_sheet_id, page_number)` and `(truck_sheet_id, content_sha256)` (partial, where not null) so the same sheet can neither get two page 2s nor the same page twice. Index on `content_sha256` for the "already stored anywhere" lookup.
 - RLS enabled on `scanned_documents` with the same policy as `truck_sheets` (all for authenticated), and `storage.objects` policies for bucket `scans` (select, insert, delete for authenticated). Guarded like the existing bucket creation (storage schema may be missing).
@@ -588,8 +590,8 @@ Duplicates (pure decision in `lib/scan-duplicates.ts`):
 - A page whose upright hash is already stored (anywhere) is marked "already stored" in the card, skipped on import and listed in the result message. A new sheet whose pages are all already stored is blocked the same way.
 - Limit: the hash is of the re-encoded upright JPEG, so it catches re-importing the same file or PDF page, not a fresh photo of the same paper.
 
-Viewing: `/truck-sheets/trucks/[truckNo]` lists that truck's sheets by day (newest first) with the pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. Thumbnails are the page image scaled by CSS (the local stack has no image transformer).
+Viewing: `/truck-sheets/trucks/[truckNo]` lists that truck's sheets by day (newest first) with the pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. The lists show the stored thumbnails; the dialog loads the upright page.
 
-Not done: live migration (needs Ted), schedule-sheet and invoice-slip rows, deleting/replacing a stored page, server-side thumbnails.
+Not done: live migration (needs Ted), schedule-sheet and invoice-slip rows, deleting/replacing a stored page, server-side thumbnails (thumbnails are made in the browser).
 
 Built 2026-11-05 (B69). Differences from the plan above: the review screen also shows "Check the orientation" under a page when the reader was not sure; the hash lookup is global (any sheet); schedule-sheet originals now use `schedule_sheet/<date>/...` (the date comes from the extracted sheet, scan day when missing). Tests: vitest `lib/__tests__/scan-storage.test.ts`, `scan-duplicates.test.ts`, `lib/truck-sheet/__tests__/rotation.test.ts` and the rotation cases in `parse-jet-a.test.ts`, repository test `repositories/__tests__/truck-sheet-scans.repo.test.ts` (local Supabase), Cypress `cypress/e2e/truck-sheets/truck-sheet-scans.cy.ts` (OCR route stubbed; imports a 2-page PDF with page 1 reported rotated 90, checks the stored rows and paths, the truck page, the re-import message and adding pages to an existing sheet). The migration is applied to the local stack only; it must be applied to live (with Ted's approval) before the new import is used there, because the new columns and the storage policies do not exist on live.

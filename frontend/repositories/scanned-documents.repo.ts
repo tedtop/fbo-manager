@@ -1,13 +1,7 @@
 import type { Database, Tables, TablesInsert } from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ExistingSheetInfo } from '@/lib/scan-duplicates'
-import {
-  buildScheduleSheetPath,
-  buildTruckSheetOriginalPath,
-  buildTruckSheetPagePath,
-  extensionFor,
-  shortId
-} from '@/lib/scan-storage'
+import { buildScheduleSheetPath, buildTruckSheetPath, extensionFor, sha256Hex } from '@/lib/scan-storage'
 
 /**
  * Original scans of the two paper document types (see
@@ -98,7 +92,7 @@ export async function uploadScannedDocument(
 
 /**
  * B45b: keeps the original photo/PDF of a front-desk schedule sheet in the private bucket, laid out by the sheet's
- * date: schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/<date>_schedule_<shortid>.<ext> (scan day when the date is unknown).
+ * date: schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/original/<date>_schedule_scan-<hash8>.<ext> (scan day when the date is unknown).
  * Object only, no scanned_documents row yet. Returns the storage path.
  */
 export async function uploadScheduleSheetScan(
@@ -108,15 +102,16 @@ export async function uploadScheduleSheetScan(
   sheetDate?: string | null
 ): Promise<string> {
   const path = buildScheduleSheetPath({
+    folder: 'original',
     date: sheetDate ?? null,
-    shortId: shortId(),
+    sha256: await sha256Hex(file),
     ext: extensionFor(file.type, file.name),
     scanDay: new Date().toISOString().slice(0, 10)
   })
   const { error } = await db.storage
     .from(SCANS_BUCKET)
     .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false })
-  if (error) throw error
+  if (error && !alreadyExists(error)) throw error // same name = same bytes: already stored
   return path
 }
 
@@ -234,6 +229,8 @@ export type ScanRowDraft = Omit<TablesInsert<'scanned_documents'>, 'truck_sheet_
 export interface PreparedPage {
   /** Upright JPEG. */
   blob: Blob
+  /** 400 px wide JPEG thumbnail of the same page. */
+  thumb: Blob
   /** Clockwise turn applied to the received image to get `blob`. */
   rotation: number
   /** SHA-256 hex of `blob`. */
@@ -250,65 +247,52 @@ function alreadyExists(err: { message?: string; statusCode?: string | number } |
   return !!err && (String(err.statusCode) === '409' || /already exists|duplicate/i.test(err.message ?? ''))
 }
 
-async function uploadObject(
-  db: SupabaseClient<Database>,
-  path: string,
-  body: Blob,
-  contentType: string
-): Promise<void> {
-  const { error } = await db.storage.from(SCANS_BUCKET).upload(path, body, { contentType, upsert: false })
-  if (error) throw error
-}
-
 /**
- * Uploads the originals (each once) and the upright page images of one truck sheet; never overwrites (an existing
- * object makes the page retry once under a short-id suffix). Writes no rows. If anything fails, the objects already
- * uploaded by this call are removed and the error is thrown. Returns the row drafts and the object paths (for cleanup
- * if the caller's later step fails).
+ * Uploads the originals (each once), the upright page images and their thumbnails of one truck sheet. File names carry
+ * the first 8 hex of the sha-256 of the file's own bytes: an object that already exists under that name has identical
+ * bytes and is reused, different bytes get a different name, so nothing is overwritten. Writes no rows. If anything
+ * fails, the objects newly created by this call are removed (reused ones are left) and the error is thrown. Returns the
+ * row drafts and the newly created paths (for cleanup if the caller's later step fails).
  */
 export async function uploadTruckSheetPages(
   db: SupabaseClient<Database>,
   args: { sheetDate: string; truckNumber: string; originals: File[]; pages: PreparedPage[] }
 ): Promise<{ drafts: ScanRowDraft[]; paths: string[] }> {
-  const uploaded: string[] = []
-  const fail = async (err: unknown): Promise<never> => {
-    if (uploaded.length > 0) await db.storage.from(SCANS_BUCKET).remove(uploaded)
-    throw err
+  const created: string[] = []
+  const put = async (path: string, body: Blob, contentType: string) => {
+    const { error } = await db.storage.from(SCANS_BUCKET).upload(path, body, { contentType, upsert: false })
+    if (error && !alreadyExists(error)) throw error
+    if (!error) created.push(path)
   }
   try {
     const originalPaths = new Map<number, string>()
     for (const page of args.pages) {
       if (originalPaths.has(page.originalIndex)) continue
       const file = args.originals[page.originalIndex]
-      const path = buildTruckSheetOriginalPath({
+      const path = buildTruckSheetPath({
+        folder: 'original',
         date: args.sheetDate,
         truckNo: args.truckNumber,
-        shortId: shortId(),
+        sha256: await sha256Hex(file),
         ext: extensionFor(file.type, file.name)
       })
-      await uploadObject(db, path, file, file.type || 'application/octet-stream')
-      uploaded.push(path)
+      await put(path, file, file.type || 'application/octet-stream')
       originalPaths.set(page.originalIndex, path)
     }
 
     const drafts: ScanRowDraft[] = []
     for (const page of args.pages) {
-      const ref = { date: args.sheetDate, truckNo: args.truckNumber, page: page.pageNumber }
-      let path = buildTruckSheetPagePath(ref)
-      let { error } = await db.storage
-        .from(SCANS_BUCKET)
-        .upload(path, page.blob, { contentType: 'image/jpeg', upsert: false })
-      if (alreadyExists(error)) {
-        path = buildTruckSheetPagePath({ ...ref, suffix: shortId() })
-        ;({ error } = await db.storage.from(SCANS_BUCKET).upload(path, page.blob, { contentType: 'image/jpeg', upsert: false }))
-      }
-      if (error) throw error
-      uploaded.push(path)
+      const base = { date: args.sheetDate, truckNo: args.truckNumber, page: page.pageNumber }
+      const path = buildTruckSheetPath({ ...base, folder: 'pages', sha256: page.hash })
+      await put(path, page.blob, 'image/jpeg')
+      const thumbPath = buildTruckSheetPath({ ...base, folder: 'thumbs', sha256: await sha256Hex(page.thumb) })
+      await put(thumbPath, page.thumb, 'image/jpeg')
       const original = args.originals[page.originalIndex]
       drafts.push({
         doc_type: 'truck_sheet',
         storage_bucket: SCANS_BUCKET,
         storage_path: path,
+        thumb_path: thumbPath,
         original_filename: original.name,
         content_type: 'image/jpeg',
         byte_size: page.blob.size,
@@ -321,9 +305,10 @@ export async function uploadTruckSheetPages(
         scan_date: args.sheetDate
       })
     }
-    return { drafts, paths: uploaded }
+    return { drafts, paths: created }
   } catch (err) {
-    return fail(err)
+    if (created.length > 0) await db.storage.from(SCANS_BUCKET).remove(created)
+    throw err
   }
 }
 

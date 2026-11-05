@@ -2,11 +2,13 @@
 -- with the rotation applied, a content hash (exact duplicate re-scans), and a reference to the original upload (a PDF
 -- is stored once and referenced by each of its pages). Also: RLS on scanned_documents (it had none) and storage
 -- policies for the private 'scans' bucket (it had none, so browser sessions could neither upload nor sign URLs).
+-- Files: upright page (storage_path), 400 px thumbnail (thumb_path), original upload (original_path).
 -- Layout of the object paths: docs/PLAN.md "Truck sheet scan storage and page attachment".
 
 alter table scanned_documents
   add column rotation_degrees smallint not null default 0 check (rotation_degrees in (0, 90, 180, 270)),
   add column content_sha256 text,
+  add column thumb_path text,
   add column original_path text,
   add column original_page smallint,
   add column original_content_type text,
