@@ -31,7 +31,7 @@ export default function FlightOperationsPage() {
   >('split')
   const [weekOffset, setWeekOffset] = useState(0)
   // The board follows the FBO time zone (or Zulu): day and week boundaries are that zone's midnights.
-  const { zone } = useDisplayZone()
+  const { zone, ready: zoneReady } = useDisplayZone()
 
   const [filters, setFilters] = useState<FlightFilters>({
     search: '',
@@ -53,7 +53,9 @@ export default function FlightOperationsPage() {
         ? undefined
         : listFetchWindow(new Date(), filters.dateRange, zone)),
     includeHidden: filters.showHidden,
-    zone
+    zone,
+    // First visit: wait for the FBO zone instead of fetching in a guessed zone and refetching.
+    enabled: zoneReady
   }
 
   const {
@@ -219,7 +221,8 @@ export default function FlightOperationsPage() {
   const loadFailed = !!error
   const showBoard = !(loadFailed && flights.length === 0)
   // Placeholder data from the previous window must not read as an empty day while the new one loads.
-  const boardLoading = loading || (isPlaceholder && flights.length === 0)
+  const boardLoading =
+    loading || !zoneReady || (isPlaceholder && flights.length === 0)
 
   return (
     <div className="space-y-4">

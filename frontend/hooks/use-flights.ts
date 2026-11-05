@@ -86,6 +86,8 @@ export function useFlights(params?: {
   includeHidden?: boolean
   // IANA zone whose midnights bound the date params (the board's display zone). Part of the query key.
   zone?: string
+  // Hold the fetch until the zone is known (first visit before the settings load); default on.
+  enabled?: boolean
 }) {
   const qc = useQueryClient()
   const db = createClient()
@@ -110,6 +112,7 @@ export function useFlights(params?: {
     // Keep showing the previous window's flights while a new window/filter key loads, so changing the
     // week or date range does not blank the board (B18). `loading` stays true only for a first load.
     placeholderData: keepPreviousData,
+    enabled: params?.enabled ?? true,
     // Polling fallback: only while the realtime channel is not SUBSCRIBED.
     refetchInterval: realtimeLive ? false : FLIGHTS_POLL_MS,
     queryFn: async () => {

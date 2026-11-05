@@ -80,6 +80,8 @@ export interface DisplayZone {
   suffixAt: (timestamp?: string) => string
   /** "Times in MST" / "Times in Zulu (UTC)". */
   banner: string
+  /** False only on a browser's very first visit until the settings arrive: the FBO zone is not known yet, so callers wait instead of guessing. */
+  ready: boolean
 }
 
 export function useDisplayZone(): DisplayZone {
@@ -111,6 +113,7 @@ export function useDisplayZone(): DisplayZone {
     setZulu: writeZulu,
     label: suffixAt(),
     suffixAt,
-    banner: zoneBannerText(fboZone, isZulu)
+    banner: zoneBannerText(fboZone, isZulu),
+    ready: !loading || cachedZone !== null
   }
 }

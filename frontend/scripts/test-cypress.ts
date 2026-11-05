@@ -68,9 +68,10 @@ async function main(): Promise<number> {
   await waitForServer()
   const cypress = spawn('pnpm', ['exec', 'cypress', 'run', ...process.argv.slice(2)], {
     stdio: 'inherit',
-    // Browser zone pinned to America/Phoenix (UTC-7, no DST) so instant/date assertions are deterministic;
+    // Browser zone pinned to America/Denver, the app's default FBO zone, so the browser and the board agree
+    // in every season (Phoenix has no DST and would disagree from March to November);
     // set TZ yourself to try another zone.
-    env: { ...process.env, CYPRESS_BASE_URL: baseUrl, TZ: process.env.TZ ?? 'America/Phoenix' },
+    env: { ...process.env, CYPRESS_BASE_URL: baseUrl, TZ: process.env.TZ ?? 'America/Denver' },
   })
   return new Promise((resolve) => {
     cypress.on('exit', (code) => resolve(code ?? 1))

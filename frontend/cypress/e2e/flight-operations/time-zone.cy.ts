@@ -4,6 +4,9 @@ import { taskUntil } from '../../support/task-poll'
 // and a per-user Zulu toggle (localStorage fbo.displayZulu) shows UTC. The runner pins the browser zone to
 // America/Phoenix, so a Denver label in summer (MDT) proves the board is not using the browser zone. Expected
 // labels are computed here with Intl, independently of the app's own helpers.
+// The Filters popover throws a benign ResizeObserver error that Cypress would count as a failure.
+Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop'))
+
 const KEY = 'timezone'
 const stamp = Date.now().toString(36).toUpperCase()
 const tailFixed = `CZF${stamp}` // fixed instants: 03:30Z..04:30Z ten days ahead
