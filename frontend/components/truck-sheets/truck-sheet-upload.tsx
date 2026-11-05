@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react'
 import { Upload, FileImage, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { expandPdfs, isPdfFile } from '@/lib/pdf-to-images'
+import { describeError } from '@/lib/error-message'
 
 export type PageStatus = 'queued' | 'extracting' | 'done' | 'error'
 
@@ -19,29 +21,46 @@ interface TruckSheetUploadProps {
   busy: boolean
 }
 
-const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'] // photos only: the free reader has no PDF rasterizer
+const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'] // PDFs are turned into page JPEGs in the browser before upload
 
 export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
-  function handleFiles(list: FileList | null) {
+  const [preparing, setPreparing] = useState<string | null>(null)
+  const [prepError, setPrepError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  async function handleFiles(list: FileList | null) {
     if (!list) return
-    const files = Array.from(list).filter((f) => ACCEPTED.includes(f.type))
-    if (files.length > 0) onFiles(files)
+    const files = Array.from(list).filter((f) => ACCEPTED.includes(f.type) || isPdfFile(f))
+    if (files.length === 0) return
+    setPrepError(null)
+    setNotice(null)
+    try {
+      const out = await expandPdfs(files, (p) => setPreparing(`Preparing page ${p.page} of ${p.total}…`))
+      setPreparing(null)
+      if (out.notices.length > 0) setNotice(out.notices.join(' '))
+      onFiles(out.files)
+    } catch (err) {
+      setPreparing(null)
+      setPrepError(describeError(err))
+    }
   }
+
+  const locked = busy || preparing !== null
 
   return (
     <div className="space-y-3">
       <div
         role="button"
         tabIndex={0}
-        onClick={() => !busy && inputRef.current?.click()}
-        onKeyDown={(e) => e.key === 'Enter' && !busy && inputRef.current?.click()}
+        onClick={() => !locked && inputRef.current?.click()}
+        onKeyDown={(e) => e.key === 'Enter' && !locked && inputRef.current?.click()}
         onDrop={(e) => {
           e.preventDefault()
           setDragOver(false)
-          if (!busy) handleFiles(e.dataTransfer.files)
+          if (!locked) handleFiles(e.dataTransfer.files)
         }}
         onDragOver={(e) => {
           e.preventDefault()
@@ -50,7 +69,7 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
         onDragLeave={() => setDragOver(false)}
         className={cn(
           'border-2 border-dashed rounded-xl p-10 flex flex-col items-center gap-3 transition-colors',
-          busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+          locked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
           dragOver
             ? 'border-primary bg-primary/5'
             : 'border-border hover:border-primary/50 hover:bg-muted/30',
@@ -60,7 +79,8 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
           ref={inputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/*,application/pdf"
+          data-testid="truck-sheet-file-input"
           className="hidden"
           onChange={(e) => {
             handleFiles(e.target.files)
@@ -73,13 +93,29 @@ export function TruckSheetUpload({ onFiles, pages, busy }: TruckSheetUploadProps
         </div>
         <div className="text-center">
           <div className="font-semibold text-foreground">
-            Drop tonight&apos;s truck sheet photos here or click to browse
+            Drop tonight&apos;s truck sheet photos or PDF here or click to browse
           </div>
           <div className="text-sm text-muted-foreground mt-1">
             Select all pages at once — multi-page trucks are merged automatically
           </div>
         </div>
       </div>
+
+      {preparing && (
+        <output className="flex items-center gap-2 rounded-lg border border-border px-3 py-3 text-sm" aria-live="polite" data-testid="pdf-preparing">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" /> {preparing}
+        </output>
+      )}
+      {notice && (
+        <div role="status" className="rounded-lg border border-border px-3 py-3 text-sm" data-testid="pdf-notice">
+          {notice}
+        </div>
+      )}
+      {prepError && (
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> <span>{prepError}</span>
+        </div>
+      )}
 
       {pages.length > 0 && (
         <ul className="rounded-lg border border-border divide-y divide-border text-sm">

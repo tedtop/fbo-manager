@@ -133,7 +133,7 @@ async function extractFromFile(
 
 // POST multipart/form-data with one or more `file` entries (photos; one entry per photo). Always answers with a single
 // ExtractedScheduleSheet: with several files the rows are concatenated in upload order and each row's `page` is its
-// file number. PDFs are not read yet (no free rasterizer): photos only.
+// file number. Photos only: the app rasterizes PDFs in the browser (lib/pdf-to-images.ts).
 export async function POST(req: NextRequest) {
   const check = await requireModule('flight_operations')
   if (!check.ok) return denied(check)
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
   for (const file of files) {
     if (file.type === 'application/pdf') {
       return NextResponse.json(
-        { error: 'PDF is not supported yet: please upload photos (JPEG or PNG) of the sheet' },
+        { error: 'PDF is not supported here: upload photos (JPEG or PNG) of the sheet. The app converts PDFs to photos in the browser' },
         { status: 400 }
       )
     }

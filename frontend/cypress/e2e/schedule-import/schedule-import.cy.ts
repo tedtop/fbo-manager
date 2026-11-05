@@ -6,6 +6,7 @@
 // America/Denver, and the e2e database does not override it), independent of the browser zone the runner pins.
 import { normalizeScheduleSheet } from '../../../lib/schedule-import/normalize'
 import { zonedWallTimeToInstant } from '../../../lib/schedule-import/zoned-time'
+import { makePdf, multipartFiles } from '../../support/pdf'
 
 const ZONE = 'America/Denver'
 const rand = (n: number) => Math.floor(Math.random() * n)
@@ -234,5 +235,49 @@ describe('mobile layout (390px)', () => {
       const tops = $els.toArray().map((el) => el.getBoundingClientRect().top)
       expect([...tops].sort((a, b) => a - b)).to.deep.eq(tops) // one column
     })
+  })
+})
+
+describe('PDF scans (iPhone Files > Scan Documents)', () => {
+  beforeEach(() => {
+    cy.login('admin')
+    stubNetwork()
+  })
+
+  const pickPdf = (pages: number) =>
+    cy.get('[data-testid="schedule-file-input"]').selectFile(
+      { contents: Cypress.Buffer.from(makePdf(pages)), fileName: 'Scan 2026-11-05.pdf', mimeType: 'application/pdf' },
+      { force: true }
+    )
+
+  it('turns the PDF into one JPEG per page in the browser; the route never sees the PDF', () => {
+    cy.visit('/flight-operations/import')
+    pickPdf(3)
+    cy.wait('@ocr').then(({ request }) => {
+      const files = multipartFiles(request.body)
+      expect(files.map((f) => f.name)).to.deep.eq(['Scan 2026-11-05-p1.jpg', 'Scan 2026-11-05-p2.jpg', 'Scan 2026-11-05-p3.jpg'])
+      expect(files.every((f) => f.type === 'image/jpeg')).to.eq(true)
+    })
+    cards().should('have.length', 4)
+  })
+
+  it('shows a clear error for a PDF that cannot be read and sends nothing', () => {
+    cy.visit('/flight-operations/import')
+    cy.get('[data-testid="schedule-file-input"]').selectFile(
+      { contents: Cypress.Buffer.from('this is not a pdf'), fileName: 'broken.pdf', mimeType: 'application/pdf' },
+      { force: true }
+    )
+    cy.contains('[role="alert"]', /broken\.pdf/).should('be.visible')
+    cy.get('@ocr.all').should('have.length', 0)
+  })
+
+  it('works at phone width (390px)', () => {
+    cy.viewport(390, 844)
+    cy.visit('/flight-operations/import')
+    pickPdf(2)
+    cy.wait('@ocr').then(({ request }) => {
+      expect(multipartFiles(request.body).map((f) => f.name)).to.deep.eq(['Scan 2026-11-05-p1.jpg', 'Scan 2026-11-05-p2.jpg'])
+    })
+    cards().should('have.length', 4)
   })
 })

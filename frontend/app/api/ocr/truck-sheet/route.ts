@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
   }
   if (isPdf && useVision) {
     return NextResponse.json(
-      { error: 'PDF is not supported yet: please upload photos (JPEG or PNG) of the sheet' },
+      { error: 'PDF is not supported here: upload photos (JPEG or PNG) of the sheet. The app converts PDFs to photos in the browser' },
       { status: 400 }
     )
   }

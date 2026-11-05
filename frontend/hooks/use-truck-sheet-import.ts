@@ -113,6 +113,8 @@ export function useTruckSheetExtract() {
       const res = await fetch('/api/ocr/truck-sheet', { method: 'POST', body: form })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
+        if (res.status === 429) throw new Error('Too many pages read in the last minute. Wait a minute, then upload the rest.')
+        if (res.status === 502) throw new Error(`${err.error ?? 'The reader failed on this page.'} Try this page again in a minute.`)
         throw new Error(err.error ?? 'Extraction failed')
       }
       return res.json()
