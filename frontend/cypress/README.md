@@ -116,6 +116,12 @@ Assertions that flip when the fix lands (`grep -rn "KNOWN BUG\|NOT YET" cypress/
 - F9 creator attribution (B17): `repositories/__tests__/flights.repo.test.ts`; the form never sends `created_by_id`, so the DB default (user 1) is used.
 - Card staleness (B44, no finding id): `flight-operations/flight-edit.cy.ts`. The card seeds notes/services from props once.
 
+Known flaky (kept strict on purpose, not hidden behind retries): `settings/tail-prefix.cy.ts` "an empty prefix means no
+prefill" fails about one run in five. The tail field stays `N` although the saved prefix is empty, so a late-arriving
+prefix is not swapped into an Add Flight sheet that opened while settings were still loading (see the swap effect in
+`components/flight-operations/flight-form-dialog.tsx`). The spec waits for the `app_setting` response before opening the
+sheet, which narrows but does not remove it. Treat a failure as a likely real race, not noise.
+
 Fixed and now asserted as correct behavior: F1 (QT / classification), F2 and F5 (timezone, calendar window), F3 (fuel
 order notes, no en-route status), F4 (date range filter, bounded fetch), F6 and F7 (error toasts, delete confirmation, no
 console noise), and soft-delete semantics. F10 (realtime, B16), F11, F12, F13 and F15 remain open.
