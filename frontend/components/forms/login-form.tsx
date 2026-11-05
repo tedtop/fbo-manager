@@ -167,7 +167,7 @@ export function LoginForm() {
                 disabled={devLoading !== null}
                 onClick={async () => {
                   setDevLoading('admin')
-                  const ok = await signIn('admin@fbo.local', 'devadmin')
+                  const ok = await signIn('admin@minutemanfbo.local', 'devadmin')
                   if (!ok) setDevLoading(null)
                 }}
               >
@@ -184,7 +184,7 @@ export function LoginForm() {
                 disabled={devLoading !== null}
                 onClick={async () => {
                   setDevLoading('user')
-                  const ok = await signIn('user@fbo.local', 'devuser')
+                  const ok = await signIn('user@minutemanfbo.local', 'devuser')
                   if (!ok) setDevLoading(null)
                 }}
               >
