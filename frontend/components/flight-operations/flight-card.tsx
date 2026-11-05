@@ -239,6 +239,37 @@ export function FlightCard({
     })
   }
 
+  // Fuel Request: one tap adds the fuel service through the same onEdit save as the inline service
+  // pills, with the compare-and-swap guard of status changes. Optimistic: the Fuel pill shows at once
+  // and is reverted if the save fails (the page handler toasts non-conflict failures).
+  const hasFuel = localServices.includes('fuel')
+  const canRequestFuel = ['scheduled', 'delayed', 'arrived'].includes(flight.status)
+  const [fuelPending, setFuelPending] = useState(false)
+  const requestFuel = () => {
+    if (hasFuel || fuelPending) return
+    setFuelPending(true)
+    setLocalServices([...localServices, 'fuel'])
+    void Promise.resolve(
+      onEdit(
+        { ...flight, services: [...localServices, 'fuel'], serviceQuantities: localQuantities },
+        flight.updatedAt
+      )
+    )
+      .then(() => toast({ title: `Fuel requested for ${flight.tailNumber}` }))
+      .catch((err) => {
+        resetLocalServices()
+        if (err instanceof ConcurrencyConflictError) {
+          toast({
+            title: 'Flight was changed by someone else',
+            description:
+              'Fuel was not requested. Check the latest details and try again.',
+            variant: 'destructive'
+          })
+        }
+      })
+      .finally(() => setFuelPending(false))
+  }
+
   const saveChanges = () => {
     // Failures are toasted by the page handler; swallow the rethrow so it isn't unhandled.
     void Promise.resolve(
@@ -642,40 +673,65 @@ export function FlightCard({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}
           <div className="flex gap-1 pt-1.5 border-t border-border">
             <Button
               variant="ghost"
               size="sm"
+              data-testid="card-edit"
               onClick={() => setIsEditDialogOpen(true)}
-              className="h-6 text-xs flex-1"
+              className="h-7 min-w-0 flex-1 basis-0 px-1 text-xs"
             >
-              <Pencil className="w-3 h-3 mr-1" />
+              <Pencil className="w-3 h-3 mr-1 shrink-0" />
               Edit
             </Button>
             {(isHidden ? onUnhide : onHide) && (
               <Button
                 variant="ghost"
                 size="sm"
+                data-testid="card-hide"
                 onClick={toggleHidden}
-                className="h-6 text-xs"
+                className="h-7 min-w-0 flex-1 basis-0 px-1 text-xs"
               >
                 {isHidden ? (
-                  <Eye className="w-3 h-3 mr-1" />
+                  <Eye className="w-3 h-3 mr-1 shrink-0" />
                 ) : (
-                  <EyeOff className="w-3 h-3 mr-1" />
+                  <EyeOff className="w-3 h-3 mr-1 shrink-0" />
                 )}
                 {isHidden ? 'Unhide' : 'Hide'}
+              </Button>
+            )}
+            {canRequestFuel && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="card-fuel-request"
+                disabled={hasFuel || fuelPending}
+                aria-label={hasFuel ? 'Fuel requested' : 'Fuel Request'}
+                onClick={requestFuel}
+                className="h-7 min-w-0 flex-1 basis-0 px-1 text-xs disabled:opacity-100"
+              >
+                {hasFuel ? (
+                  <Check className="w-3 h-3 mr-1 shrink-0 text-green-600" />
+                ) : (
+                  <FuelIcon className="w-3 h-3 mr-1 shrink-0" />
+                )}
+                <span className="sm:hidden">Fuel</span>
+                <span className="hidden sm:inline">
+                  {hasFuel ? 'Fuel requested' : 'Fuel Request'}
+                </span>
               </Button>
             )}
             <Button
               variant="ghost"
               size="sm"
+              data-testid="card-delete"
+              aria-label="Delete"
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="h-6 text-xs text-destructive hover:bg-destructive/10"
+              className="h-7 w-8 shrink-0 px-0 text-xs text-destructive hover:bg-destructive/10"
             >
-              <Trash2 className="w-3 h-3 mr-1" />
-              Delete
+              <Trash2 className="w-3 h-3" />
+              <span className="sr-only">Delete</span>
             </Button>
           </div>
         </div>

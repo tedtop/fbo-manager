@@ -60,6 +60,8 @@ Services are shown as coloured pills in the form and on the card. Click a pill t
 
 Some services carry a quantity. **TKS Fluid** is sold per gallon: when you select it, a small number field appears next to the pill for the **gallons** (a whole number, at least 1), and the card shows it as, for example, "TKS Fluid · 12 gal". Unselecting the pill clears the quantity.
 
+**Fuel Request** on the card's button row adds the Fuel service to the flight in one tap (shown for scheduled, delayed and arrived flights, not departed or cancelled ones). It saves like any other service change and confirms with "Fuel requested for" and the tail number; once the flight has fuel, the button reads "Fuel requested" and is disabled.
+
 You can also edit services and notes directly on the card without opening the form. The list of available services is managed centrally, so the pills you see can change over time.
 
 ### Change a flight's status {#status}
