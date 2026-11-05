@@ -13,13 +13,15 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { email, firstName, lastName, phoneNumber, employeeId, roleIds } =
+  const { email, firstName, lastName, phoneNumber, employeeId, badgeId, hireDate, roleIds } =
     body as {
       email?: string
       firstName?: string
       lastName?: string
       phoneNumber?: string
       employeeId?: string
+      badgeId?: string
+      hireDate?: string
       roleIds?: number[]
     }
 
@@ -54,7 +56,9 @@ export async function POST(request: NextRequest) {
       first_name: firstName ?? '',
       last_name: lastName ?? '',
       phone_number: phoneNumber ?? '',
-      employee_id: employeeId ?? null,
+      employee_id: employeeId || null,
+      badge_id: badgeId || null,
+      hire_date: hireDate || null,
       created_by: authResult.caller.user.id,
       updated_by: authResult.caller.user.id
     })

@@ -29,6 +29,8 @@ function user(
     last_name: '',
     phone_number: '',
     employee_id: null,
+    badge_id: null,
+    hire_date: null,
     status,
     created_at: '',
     updated_at: '',

@@ -9,6 +9,8 @@ export interface InviteUserInput {
   lastName: string
   phoneNumber: string
   employeeId: string
+  badgeId: string
+  hireDate: string
   roleIds: number[]
 }
 
@@ -38,6 +40,8 @@ export interface UpdateUserInput {
   lastName: string
   phoneNumber: string
   employeeId: string
+  badgeId: string
+  hireDate: string
   roleIds: number[]
 }
 
@@ -53,6 +57,8 @@ export async function updateUserWithRoles(
     last_name: input.lastName,
     phone_number: input.phoneNumber,
     employee_id: input.employeeId || null,
+    badge_id: input.badgeId || null,
+    hire_date: input.hireDate || null,
     updated_by: updatedBy
   })
   await setUserRoles(db, userId, input.roleIds, updatedBy)
