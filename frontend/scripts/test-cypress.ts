@@ -4,7 +4,7 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import path from 'node:path'
-import { E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_URL, assertSafeE2ETarget } from '../e2e/support/env'
+import { E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_URL, assertSafeE2ETarget } from '../cypress/tasks/env'
 
 const baseUrl = process.env.CYPRESS_BASE_URL ?? 'http://localhost:4210'
 const port = new URL(baseUrl).port
@@ -68,7 +68,9 @@ async function main(): Promise<number> {
   await waitForServer()
   const cypress = spawn('pnpm', ['exec', 'cypress', 'run', ...process.argv.slice(2)], {
     stdio: 'inherit',
-    env: { ...process.env, CYPRESS_BASE_URL: baseUrl },
+    // Browser zone pinned to America/Phoenix (UTC-7, no DST) so instant/date assertions are deterministic;
+    // set TZ yourself to try another zone.
+    env: { ...process.env, CYPRESS_BASE_URL: baseUrl, TZ: process.env.TZ ?? 'America/Phoenix' },
   })
   return new Promise((resolve) => {
     cypress.on('exit', (code) => resolve(code ?? 1))

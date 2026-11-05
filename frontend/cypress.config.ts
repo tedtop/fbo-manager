@@ -1,11 +1,15 @@
 import { defineConfig } from 'cypress'
-import { createE2EDbClient } from './e2e/support/db'
-import { seedDevUsers } from './e2e/support/seed'
+import { createE2EDbClient } from './cypress/tasks/db'
+import { seedDevUsers } from './cypress/tasks/seed'
+import { equipmentTasks } from './cypress/tasks/equipment.tasks'
+import { invoicingTasks } from './cypress/tasks/invoicing.tasks'
+import { scheduleImportTasks } from './cypress/tasks/schedule-import.tasks'
+import { settingsTasks } from './cypress/tasks/settings.tasks'
+import { usersTasks } from './cypress/tasks/users.tasks'
 
-// Cypress suite for the arrivals/departures module (docs/PLAN.md D9). Playwright stays the
-// repo default for the other modules; this reuses its Supabase helpers (e2e/support/*) so the
-// local-stack safety guard (assertSafeE2ETarget) applies here too.
-// Own port (4210) so it never collides with Playwright (4100) or the dev server (4000).
+// Cypress is the repo's only browser-test tool (docs/PLAN.md D14; vitest covers unit and repository tests).
+// The Node-side Supabase helpers live in cypress/tasks/*; the local-stack safety guard
+// (assertSafeE2ETarget) applies to every task. Own port (4210) so it never collides with the dev server (4000).
 export const CYPRESS_BASE_URL = process.env.CYPRESS_BASE_URL ?? 'http://localhost:4210'
 
 type SeedFlightOptions = {
@@ -30,6 +34,12 @@ export default defineConfig({
     defaultCommandTimeout: 10_000,
     setupNodeEvents(on) {
       on('task', {
+        ...equipmentTasks,
+        ...invoicingTasks,
+        ...scheduleImportTasks,
+        ...settingsTasks,
+        ...usersTasks,
+
         /** Latest flight row for an aircraft tail (null if none). Used to verify what the UI really persisted. */
         async getFlightByTail(tail: string) {
           const db = createE2EDbClient()
@@ -64,7 +74,7 @@ export default defineConfig({
           return null
         },
 
-        /** Idempotently creates the two Quick Dev Login accounts (same as Playwright global-setup). */
+        /** Idempotently creates the two Quick Dev Login accounts (the two dev accounts the login form's Quick Dev Login buttons use). */
         async seedDevUsers() {
           await seedDevUsers()
           return null
