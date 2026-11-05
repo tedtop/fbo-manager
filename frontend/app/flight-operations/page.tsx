@@ -21,7 +21,7 @@ export default function FlightOperationsDayView() {
           day in a compact format.
         </p>
         <p className="text-sm text-gray-500">
-          See TODO.md for development roadmap
+          See BACKLOG.md for the roadmap
         </p>
       </div>
     </div>
