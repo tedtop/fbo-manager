@@ -21,6 +21,16 @@ WHAT TO LOOK FOR
 - Day headings: rows may be grouped under a date heading such as "Thursday, November 5, 2026" or "11/05". For every row, set group_date to the date of the heading it sits under (YYYY-MM-DD); use "" if the sheet has no day headings. Keep applying the last heading to following rows, including on the next page, until a new heading appears.
 - Columns vary by software and are not fixed. Typical ones: tail / registration / N-number, aircraft type, customer / owner / operator / company / contact, arrival (ETA) date and time, departure (ETD) date and time, services / requests (fuel, GPU, lav, catering, hangar, car...), remarks / notes / comments. Map whatever columns exist; a column that does not exist stays "". A single "Time" column under an "Arrivals" or "Departures" section means that section's time; the same aircraft may then appear once in each section as separate rows: output them as separate rows exactly as printed and do not merge them.
 
+SHEETS WITH AN ACTION COLUMN (one leg per printed row)
+Some reports (for example "Scheduled Arrivals and Requests") print ONE date and ONE time per row plus an Action column (Arrive / Arrival / Depart / Departure). Each such row is a single leg, not a whole visit:
+- Action Arrive: put the row's date in arrival_date and its time in arrival_time; departure_date and departure_time stay "".
+- Action Depart: put the row's date in departure_date and its time in departure_time; arrival_date and arrival_time stay "".
+- The date is printed IN the row, so it goes in arrival_date / departure_date (not only group_date). Do not merge an aircraft's Arrive row and Depart row: output them as two separate rows exactly as printed (a later step pairs them).
+- Small sub-lines under a row (for example "Service Duration - Short Stay") go to notes, verbatim. Lines under "Services Required:" (for example "Rental Car - Passenger: Sadler", "Fullsize Hertz - Status: Confirmed") go to services, one entry per line, comma separated. If "Services Required:" has nothing under it, services is "".
+- A "Confirmed" column holds a date that matters little: do not put it in any date or time field; append it to notes as "Confirmed <date as printed>" (after any other notes, separated by "; ").
+- The aircraft type column is free text (for example "CJ2", "ENCORE", "BRAVO", "G-IVSP"): copy it exactly as printed in aircraft_type, do not convert it to an ICAO code.
+- Ignore the "Run:" print timestamp and the page number. The "For The Period: A Through: B" line gives date_range_start and date_range_end.
+
 FOR EACH ROW
 - tail_number: uppercase, no spaces/dashes/dots ("N 116 FE" -> "N116FE", "C-GABC" -> "CGABC"). "" if absent or unreadable. Never invent or "fix" digits.
 - aircraft_type: exactly as printed, uppercase (an ICAO code like "C525" or "GLF4", or a name like "CITATION CJ3"). "" if absent.
