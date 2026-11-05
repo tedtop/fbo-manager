@@ -23,6 +23,18 @@ const AIRCRAFT_TYPE_SIZES: Record<string, AircraftSizeCategory> = {
   PA46: 'small',
   SR20: 'small',
   SR22: 'small',
+  S22T: 'small', // Cirrus SR22T
+  C152: 'small',
+  C82R: 'small', // Cessna R182 Skylane RG
+  C82S: 'small', // Cessna T182 Turbo Skylane
+  C82T: 'small', // Cessna TR182 Turbo Skylane RG
+  T206: 'small', // Cessna T206 Stationair
+  PA12: 'small', // Piper Super Cruiser
+  PA18: 'small', // Piper Super Cub
+  S108: 'small', // Stinson 108 Voyager
+  HUSK: 'small', // Aviat Husky
+  CH7B: 'small', // Bellanca / American Champion Citabria
+  H500: 'small', // Hughes 500 helicopter (treated as a light aircraft footprint)
 
   // Medium Twin-Engine / Light Jets
   C340: 'medium',
