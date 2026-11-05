@@ -109,7 +109,8 @@ in this repo — you're pulling each from its own source below.
 | Variable | Where to get the value |
 |---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → **Settings → API** → "Project API keys" → `service_role` key. **Secret** — bypasses Row Level Security, treat like a root DB password. |
-| `ANTHROPIC_API_KEY` | [Anthropic Console](https://console.anthropic.com/) → API Keys. Used for Claude Vision OCR of truck sheets (`app/api/ocr/truck-sheet/route.ts`). |
+| `GOOGLE_VISION_API_KEY` | Google Cloud Console → APIs & Services → Credentials, an API key restricted to the Cloud Vision API (free tier 1,000 units a month; set a quota and a billing alert). Reads truck sheets (`app/api/ocr/truck-sheet/route.ts`) and is the fallback for schedule sheets. Without it truck-sheet scanning answers 503. **Secret.** |
+| `ANTHROPIC_API_KEY` | Optional and normally unset. Used only when `SCHEDULE_OCR_ALLOW_CLAUDE=1` and no Vision key is set (paid Claude vision path; off by default). |
 | `QT_USERNAME` | QT Technologies fuel-dispatch vendor account username |
 | `QT_PASSWORD` | QT Technologies fuel-dispatch vendor account password |
 | `QT_COMPANY_LOCATION_ID` | QT Technologies vendor portal — your company/location ID |
