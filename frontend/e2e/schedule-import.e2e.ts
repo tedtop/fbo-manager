@@ -151,7 +151,7 @@ test.describe('schedule sheet import', () => {
       return data && data.length === 4 ? data : null
     })
     const by = Object.fromEntries(rows.map((r) => [r.tail_number, r]))
-    expect(new Date(by[T.dep].scheduled_departure_time).toISOString()).toBe(instant(D1, '10:00'))
+    expect(new Date(by[T.dep].scheduled_departure_time as string).toISOString()).toBe(instant(D1, '10:00'))
     expect(by[T.dep]).toMatchObject({
       scheduled_arrival_time: null,
       contact_name: 'Cash/Check Customer',
@@ -163,10 +163,10 @@ test.describe('schedule sheet import', () => {
       contact_name: 'Buybacks-Contract Fuel',
       notes: 'Service Duration - Short Stay'
     })
-    expect(new Date(by[T.turn].scheduled_arrival_time).toISOString()).toBe(instant(D1, '11:00'))
-    expect(new Date(by[T.turn].scheduled_departure_time).toISOString()).toBe(instant(D1, '12:00'))
-    expect(new Date(by[T.stay].scheduled_arrival_time).toISOString()).toBe(instant(D6, '12:14'))
-    expect(new Date(by[T.stay].scheduled_departure_time).toISOString()).toBe(instant(D9, '16:00'))
+    expect(new Date(by[T.turn].scheduled_arrival_time as string).toISOString()).toBe(instant(D1, '11:00'))
+    expect(new Date(by[T.turn].scheduled_departure_time as string).toISOString()).toBe(instant(D1, '12:00'))
+    expect(new Date(by[T.stay].scheduled_arrival_time as string).toISOString()).toBe(instant(D6, '12:14'))
+    expect(new Date(by[T.stay].scheduled_departure_time as string).toISOString()).toBe(instant(D9, '16:00'))
     expect(by[T.stay].is_quick_turn).toBe(false)
 
     // Aircraft: type from the registry lookup, never the printed text; unknown tail -> UNKN / Unknown
