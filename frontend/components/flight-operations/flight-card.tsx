@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { TailNumberLink } from '@/components/aircraft/tail-number-link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -28,7 +29,7 @@ import {
 } from '@/components/ui/tooltip'
 import type { AirportLabel } from '@/hooks/use-airports'
 import { cn } from '@/lib/utils'
-import { flightradarUrl, isFlightHidden, type LinkColor } from './board-logic'
+import { isFlightHidden, type LinkColor } from './board-logic'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
 import { useSyncedDraft } from '@/hooks/use-synced-draft'
 import { useToast } from '@/hooks/use-toast'
@@ -296,16 +297,10 @@ export function FlightCard({
                 )}
               />
               {flight.tailNumber && (
-                <a
-                  href={flightradarUrl(flight.tailNumber)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  title={`Track ${flight.tailNumber} on Flightradar24`}
+                <TailNumberLink
+                  tail={flight.tailNumber}
                   className="text-lg font-bold font-mono text-foreground hover:text-primary hover:underline underline-offset-2"
-                >
-                  {flight.tailNumber}
-                </a>
+                />
               )}
               {isLinked && (
                 <TooltipProvider>

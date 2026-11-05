@@ -10,7 +10,10 @@ const HIT = {
       mode_s: 'ABECC3',
       registration: 'N868CB',
       registered_owner: 'Secret Holdings LLC',
-      registered_owner_country_iso_name: 'US'
+      registered_owner_country_iso_name: 'US',
+      registered_owner_country_name: 'United States',
+      url_photo: 'https://image.airport-data.com/aircraft/N868CB.jpg',
+      url_photo_thumbnail: 'https://image.airport-data.com/aircraft/thumbnails/N868CB.jpg'
     }
   }
 }
@@ -41,6 +44,10 @@ describe('lookupAircraftType', () => {
       typeIcao: 'C25A',
       typeDescription: 'Citation CJ2',
       manufacturer: 'Cessna',
+      owner: 'Secret Holdings LLC',
+      ownerCountry: 'United States',
+      photoUrl: 'https://image.airport-data.com/aircraft/N868CB.jpg',
+      photoThumbUrl: 'https://image.airport-data.com/aircraft/thumbnails/N868CB.jpg',
       source: 'adsbdb'
     })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
@@ -49,9 +56,56 @@ describe('lookupAircraftType', () => {
     )
   })
 
-  it('never leaks the owner', async () => {
+  it('returns the owner and country', async () => {
     const result = await lookupAircraftType('N868CB', jsonFetch(HIT))
-    expect(JSON.stringify(result)).not.toMatch(/Secret|owner/i)
+    expect(result?.owner).toBe('Secret Holdings LLC')
+    expect(result?.ownerCountry).toBe('United States')
+  })
+
+  it('returns the photo URLs when present', async () => {
+    const result = await lookupAircraftType('N868CB', jsonFetch(HIT))
+    expect(result?.photoUrl).toBe('https://image.airport-data.com/aircraft/N868CB.jpg')
+    expect(result?.photoThumbUrl).toBe(
+      'https://image.airport-data.com/aircraft/thumbnails/N868CB.jpg'
+    )
+  })
+
+  it('returns null photos when the photo fields are null', async () => {
+    const body = {
+      response: {
+        aircraft: { ...HIT.response.aircraft, url_photo: null, url_photo_thumbnail: null }
+      }
+    }
+    const result = await lookupAircraftType('N868CB', jsonFetch(body))
+    expect(result?.photoUrl).toBeNull()
+    expect(result?.photoThumbUrl).toBeNull()
+  })
+
+  it('drops non-https photo URLs', async () => {
+    const body = {
+      response: {
+        aircraft: {
+          ...HIT.response.aircraft,
+          url_photo: 'http://image.airport-data.com/a.jpg',
+          url_photo_thumbnail: 'javascript:alert(1)'
+        }
+      }
+    }
+    const result = await lookupAircraftType('N868CB', jsonFetch(body))
+    expect(result?.photoUrl).toBeNull()
+    expect(result?.photoThumbUrl).toBeNull()
+  })
+
+  it('returns null owner fields when the owner is absent', async () => {
+    const { registered_owner, registered_owner_country_name, ...rest } =
+      HIT.response.aircraft
+    const result = await lookupAircraftType(
+      'N868CB',
+      jsonFetch({ response: { aircraft: rest } })
+    )
+    expect(result?.typeIcao).toBe('C25A')
+    expect(result?.owner).toBeNull()
+    expect(result?.ownerCountry).toBeNull()
   })
 
   it('normalises the tail before requesting', async () => {

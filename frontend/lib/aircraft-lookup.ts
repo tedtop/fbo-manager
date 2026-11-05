@@ -4,6 +4,12 @@ export interface AircraftLookupResult {
   typeIcao: string
   typeDescription: string
   manufacturer: string | null
+  /** Registered owner, for display only. Never log it or persist it to the database. */
+  owner: string | null
+  ownerCountry: string | null
+  /** https image URL from airport-data.com, null when there is no photo. */
+  photoUrl: string | null
+  photoThumbUrl: string | null
   source: 'adsbdb'
 }
 
@@ -27,11 +33,16 @@ function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+function httpsUrl(value: unknown): string | null {
+  const url = text(value)
+  return url?.startsWith('https://') ? url : null
+}
+
 /**
  * Looks the aircraft type up from the registration via adsbdb. Returns null for
  * unknown tails, empty tails, non-200 responses, network errors and timeouts.
- * Only type fields are read from the response: the registered owner is never
- * returned or logged.
+ * The registered owner and photo are returned for display only: the owner must
+ * not be logged or persisted to the database.
  */
 export async function lookupAircraftType(
   tail: string,
@@ -66,6 +77,10 @@ export async function lookupAircraftType(
           typeIcao,
           typeDescription: text(aircraft.type) ?? typeIcao,
           manufacturer: text(aircraft.manufacturer),
+          owner: text(aircraft.registered_owner),
+          ownerCountry: text(aircraft.registered_owner_country_name),
+          photoUrl: httpsUrl(aircraft.url_photo),
+          photoThumbUrl: httpsUrl(aircraft.url_photo_thumbnail),
           source: 'adsbdb'
         }
       }
