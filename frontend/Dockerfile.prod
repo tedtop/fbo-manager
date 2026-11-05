@@ -19,7 +19,6 @@
 #   docker build -f frontend/Dockerfile.prod \
 #     --build-arg NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co \
 #     --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ... \
-#     --build-arg NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.xxx \
 #     --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY=xxx \
 #     -t fbo-manager-frontend frontend
 #
@@ -36,6 +35,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# package.json's postinstall copies MapLibre's worker script into public/
+COPY scripts/copy-maplibre-worker.mjs ./scripts/copy-maplibre-worker.mjs
 RUN pnpm install --frozen-lockfile
 
 # ---- builder: compile the production build ----
@@ -51,11 +52,9 @@ COPY . .
 # and will silently end up `undefined` in the client bundle.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-    NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=$NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN \
     NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 RUN pnpm build

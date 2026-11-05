@@ -23,28 +23,3 @@ export function pointInPolygon(
 
   return inside
 }
-
-/**
- * Find which parking location polygon contains a given point
- * @param point [longitude, latitude]
- * @param parkingLocations Array of parking locations with polygons
- * @returns The parking location that contains the point, or null
- */
-export function findParkingLocationAtPoint(
-  point: [number, number],
-  parkingLocations: Array<{
-    id: number
-    location_code: string
-    polygon: number[][] | null
-  }>
-): { id: number; location_code: string } | null {
-  for (const location of parkingLocations) {
-    if (location.polygon && pointInPolygon(point, location.polygon)) {
-      return {
-        id: location.id,
-        location_code: location.location_code,
-      }
-    }
-  }
-  return null
-}

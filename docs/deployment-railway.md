@@ -100,7 +100,6 @@ in this repo — you're pulling each from its own source below.
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → your project → **Settings → API** → "Project URL" |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → **Settings → API** → "Project API keys" → `anon` `public` key |
-| `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` | [Mapbox account](https://account.mapbox.com/access-tokens/) → a public token (used by the parking map) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | The public half of a VAPID keypair, if push notifications are wired up (see note below — this may not be needed yet) |
 | `NEXT_PUBLIC_SITE_URL` | This app's own public URL, e.g. `https://<your-service>.up.railway.app`, or your custom domain once set (step 6). Used to build the redirect link in user-invite emails (`app/api/users/invite/route.ts`). You won't know this until after step 5's first deploy — set it once Railway assigns a domain, then redeploy. |
 

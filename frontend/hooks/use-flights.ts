@@ -43,6 +43,7 @@ function rowToFlight(row: any): Flight {
     id: row.id,
     aircraft: row.tail_number,
     aircraft_type_display: row.aircraft?.aircraft_type_display,
+    parking_area: row.aircraft?.parked_area ?? null,
     call_sign: row.call_sign,
     scheduled_arrival_time: row.scheduled_arrival_time,
     scheduled_departure_time: row.scheduled_departure_time,

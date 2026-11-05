@@ -71,6 +71,11 @@ export type Database = {
           updated_at: string
           assigned_fueler_id: number | null
           available_at: string | null
+          parked_lat: string | null
+          parked_lng: string | null
+          parked_heading: number | null
+          parked_area_id: number | null
+          parked_at: string | null
         }
         Insert: {
           tail_number: string
@@ -78,8 +83,46 @@ export type Database = {
           aircraft_type_display?: string
           airline_icao?: string
           fleet_id?: string
+          parked_lat?: number | string | null
+          parked_lng?: number | string | null
+          parked_heading?: number | null
+          parked_area_id?: number | null
+          parked_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['aircraft']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'aircraft_parked_area_id_fkey'
+            columns: ['parked_area_id']
+            referencedRelation: 'parking_area'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      parking_area: {
+        Row: {
+          id: number
+          code: string
+          name: string
+          kind: 'ramp' | 'hangar' | 'tie_down' | 'other'
+          polygon: unknown | null
+          airport: string
+          display_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          code: string
+          name: string
+          kind?: 'ramp' | 'hangar' | 'tie_down' | 'other'
+          polygon?: unknown | null
+          airport?: string
+          display_order?: number
+          is_active?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['parking_area']['Insert']>
         Relationships: []
       }
       fuel_tank: {
