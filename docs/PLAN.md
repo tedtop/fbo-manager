@@ -533,3 +533,61 @@ Arithmetic (`repair.ts`), the main accuracy lever: end - start = gallons pumped;
 Tests: `lib/truck-sheet/__tests__/` (synthetic Vision words built by `synthetic.ts`, no customer data, no network, no key): column/row assignment, rotation 90/180/270/tilt, tenths, glued words, front/rear, transfers, repair rules, header-only page, Vision client errors and key hygiene, route validation. Opt-in `real-vision.test.ts` (`RUN_VISION_TRUCK_TEST=1`, reads the July PDFs from the Desktop, caches the raw Vision JSON in `VISION_CACHE_DIR` so a page is billed once, compares with hand-read ground truth in `VISION_TRUTH_DIR`, report appended to `<cache>/report.txt`); the scans, their Vision JSON and the ground truth are never committed.
 
 Measured accuracy (2 real Jet pages, ground truth read by eye, 3 Vision calls in total): 08-19 page 1 (truck 5282, 10 rows, upright after rotation) 111 of 128 fields exact; 08-23 page 1 (truck 5197, front and rear meters, a transfer, a tank fill, 7 rows) 83 of 97. Meter start/end, gallons pumped and remaining, invoice and time were all exact on the first page; the second lost a scribbled rear header number, one row with a smudged gallons/remaining cell and a time. Weak fields: line tech initials (5 of 10 and 4 of 7: handwriting such as KG reads as "14"/"K4"/"TH"), customer and tail letters (O/0, U/Y/J), aircraft type, the request column (`T/O` struck through, `85/5`). The arithmetic repair fixed one dropped digit and one pair of misplaced digits on page 1 and one wrong remaining on page 2, and flagged the rest. Open: the shaded starting-gallons box read "3304" on a header-only page where the sheet says "330" with an arrow ("<-- empty").
+
+## Truck sheet scan storage and page attachment
+
+Written 2026-11-05 before building (B69). Ted's requirements: every page is stored UPRIGHT, the original scan stays attached to the truck for that day (1 to 3 pages per truck and day, one sheet record, pages in order), the truck page shows the scans per day, and the file layout is fixed before many sheets exist.
+
+### What exists today (investigated)
+
+- `scanned_documents` (migration 20260704000100): one row per stored file, `doc_type` check allows only `truck_sheet` and `invoice_slip`, `storage_path` unique, nullable `truck_sheet_id` and `invoice_id` (on delete set null), `page_number`, no hash, no rotation, no original-file reference, no truck id. It has NO RLS (just `grant all`). The local table is empty.
+- Bucket `scans` is private and created by migrations (time card and invoicing). There are NO `storage.objects` policies for it (only `training-certificates` has some). Service role bypasses that, which is how the repo tests pass, but a browser session (role authenticated) cannot upload to or sign URLs in `scans`. The old import hook swallowed upload errors ("best effort"), so a missing policy would have gone unnoticed. The new migration adds them.
+- Link scan to sheet today: `scanned_documents.truck_sheet_id` only (set by `uploadScannedDocument`). The import hook stores the JPEG as received (for a PDF: the rendered page JPEG, the PDF itself is never kept, rotation is ignored), path `truck_sheet/<yyyy>/<mm>/<uuid>-<filename>` from the upload day, not the sheet date.
+- `truck_sheets` has `fuel_truck_id` (equipment.id), `truck_number`, `sheet_date`, `page_count`; no unique constraint on (truck, date). Nothing reads the scans back: there is no viewer anywhere (`getScanSignedUrl` exists, unused by any page).
+- Pages: `/truck-sheets` (list by date), `/truck-sheets/[id]` (one sheet), `/truck-sheets/new` (import). There is NO truck detail page and `/equipment` is a flat list, so a minimal one is added: `/truck-sheets/trucks/[truckNo]`, reached from the truck number on the list and on the sheet page. Same gating as the module (`truck_sheets` in `lib/access.ts`, middleware, RLS "authenticated" on the tables).
+- Rotation: `parse-jet-a.ts` already computes the page angle from Vision word geometry (`pageAngleDegrees`, direction of corner 0 to 1, image coordinates so positive = clockwise) and reads the page upright internally, but never reported it. `mergeExtractions` groups pages by `truck_number || file.name` (an unreadable truck number became the file name) and orders by front meter start, then upload order.
+
+### Decisions
+
+Storage layout (bucket `scans`, everything built by `frontend/lib/scan-storage.ts` from validated values only):
+
+```
+truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<TRUCK>/<YYYY-MM-DD>_truck-<TRUCK>_p<N>.jpg            upright page image
+truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<TRUCK>/original/<YYYY-MM-DD>_truck-<TRUCK>_<shortid>.<ext>   original upload as received (PDF or photo), once per upload
+truck_sheet/unassigned/<scan-day>/<scan-day>_<shortid>_p<N>.jpg                                     holding folder, builder only
+schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/<YYYY-MM-DD>_schedule_<shortid>.<ext>                       same idea (implemented for the upload)
+invoice_slip/<YYYY>/<MM>/<YYYY-MM-DD>/<YYYY-MM-DD>_invoice_<serial|shortid>.<ext>                    convention only, not built
+```
+
+- Date and truck number are validated (`YYYY-MM-DD` real calendar date; truck number reduced to `A-Z0-9`, upper case, max 12 chars, must not end empty). The review screen refuses to import a sheet without a valid date and truck number (no more "today" default and no file name as truck number), so `unassigned/` is only the builder's fallback for a caller that has no valid values; the hook never uses it.
+- Never overwrite: uploads use `upsert: false`. Page numbers on a truck/day only grow (append = max + 1), so a page path is never reused; if an object already exists at a path (orphan from a failed run) the upload retries once with a `-<shortid>` suffix. Re-scans therefore never replace anything; replacing or removing pages is a deliberate manual action (not built).
+- A multi-page PDF is stored once under `original/`; every page row of it points at that path (`original_path`, `original_page`). A photo is its own original. All page images are re-encoded upright JPEGs (quality 0.85, longest side capped at 3000 px, no upscaling), so the stored page is always upright whatever the phone did; the original keeps whatever orientation it came in.
+
+Database (migration `20261105000100_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
+
+- `scanned_documents` gains `rotation_degrees smallint` (0/90/180/270, clockwise turn applied to make the page upright; default 0), `content_sha256 text` (hash of the upright page bytes), `original_path text`, `original_page smallint`, `original_content_type text`, `fuel_truck_id` (equipment.id, on delete set null), `scan_date date` (the sheet date).
+- `doc_type` check widened to add `schedule_sheet` (rows for schedule sheets are not written yet; the object layout is).
+- Unique index `(truck_sheet_id, page_number)` and `(truck_sheet_id, content_sha256)` (partial, where not null) so the same sheet can neither get two page 2s nor the same page twice. Index on `content_sha256` for the "already stored anywhere" lookup.
+- RLS enabled on `scanned_documents` with the same policy as `truck_sheets` (all for authenticated), and `storage.objects` policies for bucket `scans` (select, insert, delete for authenticated). Guarded like the existing bucket creation (storage schema may be missing).
+
+Rotation:
+
+- `parseJetA` returns `rotation_degrees` (0/90/180/270) as an additive field on `ExtractedTruckSheet`, plus `rotation_confident` (false when the sheet has fewer than 10 words, no header or table label was found, or the text direction is more than 25 degrees off a right angle). Not confident means 0 is reported and the review screen says "check the orientation".
+- Maths: text running at angle a (clockwise, degrees) needs a turn of `-a` rounded to a quarter: text reading downwards (a = 90) needs 270, upside down (180) needs 180, text running upwards (-90) needs 90. Pure functions in `lib/truck-sheet/rotation.ts` (`rotationFromAngle`, `addRotation`, `rotatedSize`), unit tested.
+- The client (`lib/scan-image.ts`) draws the page on a canvas rotated by that amount, honoring EXIF the same way the server does (both see the EXIF-corrected image, so the angle matches), shows it as the review thumbnail and uploads exactly that image. Rotate left/right buttons per page re-render the page from the source and change `rotation_degrees` (stored as the turn applied to the received image, so a manual fix is recorded the same way).
+
+Import (per sheet, in `hooks/use-truck-sheet-import.ts` + `repositories/scanned-documents.repo.ts`):
+
+1. Page order: existing grouping and front-meter-start sort, falling back to upload order; `page_number` = position in that order (1..n), or max existing + 1.. when adding to an existing sheet.
+2. Upload objects first (original once, then the upright pages). A failed upload aborts that sheet before any row is written and removes the objects already uploaded for it.
+3. Create the sheet and readings (new sheets), then insert one `scanned_documents` row per page. If the rows fail, the new sheet is deleted again (readings cascade) and the uploaded objects removed, and the error is reported with the sheet's truck and date. Sheets of the same batch that already completed stay and are listed in the result; failed sheets stay on the screen. A truck sheet without scans can therefore only exist if the cleanup itself fails, which is reported.
+
+Duplicates (pure decision in `lib/scan-duplicates.ts`):
+
+- Same truck + date already has a sheet: the review card shows "A sheet for truck X on DATE already exists (N pages)". Two choices: "Add these pages to the existing sheet (no new readings)" or "Cancel" (discards the card). Import stays disabled until chosen, so a second sheet is never created silently.
+- A page whose upright hash is already stored (anywhere) is marked "already stored" in the card, skipped on import and listed in the result message. A new sheet whose pages are all already stored is blocked the same way.
+- Limit: the hash is of the re-encoded upright JPEG, so it catches re-importing the same file or PDF page, not a fresh photo of the same paper.
+
+Viewing: `/truck-sheets/trucks/[truckNo]` lists that truck's sheets by day (newest first) with the pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. Thumbnails are the page image scaled by CSS (the local stack has no image transformer).
+
+Not done: live migration (needs Ted), schedule-sheet and invoice-slip rows, deleting/replacing a stored page, server-side thumbnails.
