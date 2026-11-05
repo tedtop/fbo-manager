@@ -10,6 +10,7 @@
 // 4. Each remaining word is assigned to a (row, column) cell; words glued across a column boundary ("1480715") are split
 //    by character position. Cells become fields, then repair.ts checks the arithmetic.
 import { repairArithmetic } from './repair'
+import { type Rotation, isNearQuarterTurn, rotationFromAngle } from './rotation'
 import type { ExtractedReading, ExtractedReadingType, ExtractedTruckSheet, OcrPage, OcrWord } from './types'
 
 interface UWord {
@@ -340,7 +341,7 @@ function inferAddedFuel(sheet: ExtractedTruckSheet): void {
 
 // ---------- main ----------
 
-export function parseJetA(page: OcrPage): ExtractedTruckSheet {
+function parseJetAUpright(page: OcrPage): ExtractedTruckSheet {
   const empty: ExtractedTruckSheet = {
     sheet_date: null,
     truck_number: '',
@@ -500,4 +501,21 @@ export function parseJetA(page: OcrPage): ExtractedTruckSheet {
   inferAddedFuel(sheet)
   repairArithmetic(sheet)
   return sheet
+}
+
+/**
+ * Quarter turn (clockwise) that makes the page upright, from the same word geometry the parser uses. Reported as 0 with
+ * confident=false when the page cannot be judged: too few words, no printed form label found, or the text direction is
+ * more than 25 degrees away from a right angle.
+ */
+export function pageOrientation(page: OcrPage): { rotation_degrees: Rotation; rotation_confident: boolean } {
+  if (page.words.length < 10) return { rotation_degrees: 0, rotation_confident: false }
+  const angle = pageAngleDegrees(page.words)
+  const hasLabel = page.words.some((w) => /^(circle|customer|truck|meter|gallons|invoice)$/i.test(w.text))
+  if (!hasLabel || !isNearQuarterTurn(angle)) return { rotation_degrees: 0, rotation_confident: false }
+  return { rotation_degrees: rotationFromAngle(angle), rotation_confident: true }
+}
+
+export function parseJetA(page: OcrPage): ExtractedTruckSheet {
+  return { ...parseJetAUpright(page), ...pageOrientation(page) }
 }

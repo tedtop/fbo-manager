@@ -55,4 +55,8 @@ export interface ExtractedTruckSheet {
   fueler_initials: string
   readings: ExtractedReading[]
   raw_text?: string // for debugging
+  /** Clockwise quarter turn that makes the page upright (0 when the reader could not tell, see rotation_confident). */
+  rotation_degrees?: 0 | 90 | 180 | 270
+  /** False when rotation_degrees is only a default 0 because the page orientation could not be judged. */
+  rotation_confident?: boolean
 }

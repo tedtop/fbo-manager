@@ -41,7 +41,28 @@ describe('parseJetA', () => {
   it.each([90, 180, 270, -90, 7, -4])('reads a page rotated %i degrees the same as an upright one', (deg) => {
     const upright = parseJetA(page(sheetBoxes(GOOD), 0))
     const rotated = parseJetA(page(sheetBoxes(GOOD), deg))
-    expect(rotated).toEqual(upright)
+    expect({ ...rotated, rotation_degrees: 0, rotation_confident: true }).toEqual(upright)
+  })
+
+  // Text running at +90 (reads downwards) needs 270 clockwise; +180 needs 180; -90 (reads upwards) needs 90.
+  it.each([
+    [0, 0],
+    [90, 270],
+    [180, 180],
+    [270, 90],
+    [-90, 90],
+    [7, 0],
+    [-4, 0]
+  ])('reports the turn that makes a page rotated %i degrees upright: %i', (deg, turn) => {
+    const s = parseJetA(page(sheetBoxes(GOOD), deg))
+    expect(s.rotation_degrees).toBe(turn)
+    expect(s.rotation_confident).toBe(true)
+  })
+
+  it('does not guess when the page has no recognisable form labels or too few words', () => {
+    const noLabels = page(Array.from({ length: 30 }, (_, i) => ({ text: `word${i}`, cx: 100 + i * 40, cy: 300 })), 90)
+    expect(parseJetA(noLabels)).toMatchObject({ rotation_degrees: 0, rotation_confident: false })
+    expect(parseJetA(page([{ text: 'Circle', cx: 5, cy: 5 }], 180))).toMatchObject({ rotation_degrees: 0, rotation_confident: false })
   })
 
   it('detects the page angle from word corners', () => {
