@@ -287,7 +287,7 @@ export function TruckSheetReview({
           </div>
         </div>
       )}
-      {check && !check.existing && check.decision.blocked && (
+      {check?.decision.blocked && check.decision.mode !== 'needs_choice' && (
         <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
           {check.decision.blocked}
         </div>

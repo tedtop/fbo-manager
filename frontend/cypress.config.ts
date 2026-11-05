@@ -5,6 +5,7 @@ import { equipmentTasks } from './cypress/tasks/equipment.tasks'
 import { invoicingTasks } from './cypress/tasks/invoicing.tasks'
 import { scheduleImportTasks } from './cypress/tasks/schedule-import.tasks'
 import { settingsTasks } from './cypress/tasks/settings.tasks'
+import { truckSheetTasks } from './cypress/tasks/truck-sheets.tasks'
 import { usersTasks } from './cypress/tasks/users.tasks'
 
 // Cypress is the repo's only browser-test tool (docs/PLAN.md D14; vitest covers unit and repository tests).
@@ -44,6 +45,7 @@ export default defineConfig({
         ...invoicingTasks,
         ...scheduleImportTasks,
         ...settingsTasks,
+        ...truckSheetTasks,
         ...usersTasks,
 
         /** Latest flight row for an aircraft tail (null if none). Used to verify what the UI really persisted. */
