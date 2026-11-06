@@ -676,6 +676,7 @@ export type Database = {
           status: 'available' | 'in_use' | 'maintenance' | 'out_of_service'
           location: string
           notes: string
+          dpi_reading: string
           last_maintenance_date: string | null
           next_maintenance_date: string | null
           sort_order: number | null
@@ -693,6 +694,7 @@ export type Database = {
           status?: 'available' | 'in_use' | 'maintenance' | 'out_of_service'
           location?: string
           notes?: string
+          dpi_reading?: string
           last_maintenance_date?: string | null
           next_maintenance_date?: string | null
           sort_order?: number | null
