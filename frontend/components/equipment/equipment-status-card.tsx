@@ -3,6 +3,8 @@
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { equipmentTypeIcon, equipmentTypeLabel } from '@/lib/app-settings'
 import Link from 'next/link'
+import { useDisplayZone } from '@/hooks/use-display-zone'
+import { formatLocalDate, formatLocalTime } from '@/lib/local-date'
 import { cn } from '@/lib/utils'
 import { StatusBadge, type EquipmentStatus } from './status-badge'
 import type { EquipmentDomain } from '@/types/domain/equipment'
@@ -19,10 +21,6 @@ function formatDate(dateStr: string | null): string | null {
   return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
-}
-
 interface EquipmentStatusCardProps {
   equipment: EquipmentDomain
   onStatusChange: (id: number, status: EquipmentStatus) => void
@@ -36,7 +34,8 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit, ope
   const icon = equipmentTypeIcon(settings.equipmentTypes, eq.equipment_type)
   const borderColor = STATUS_BORDER[eq.status] ?? 'border-l-border'
   const maintenanceDate = formatDate(eq.next_maintenance_date)
-  const lastSeen = daysSince(eq.updated_at)
+  const { fboZone, suffixAt } = useDisplayZone()
+  const updated = new Date(eq.updated_at)
 
   const isMaintenanceWarning =
     eq.maintenanceStatus === 'due_soon' || eq.maintenanceStatus === 'overdue'
@@ -88,6 +87,12 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit, ope
 
       {/* Info rows */}
       <div className="space-y-1 text-sm">
+        {eq.dpi_reading && (
+          <div className="flex items-center justify-between gap-2" data-testid="dpi-reading">
+            <span className="text-muted-foreground">DPI</span>
+            <span className="font-medium">{eq.dpi_reading}</span>
+          </div>
+        )}
         {maintenanceDate && (
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">Maintenance due</span>
@@ -116,8 +121,7 @@ export function EquipmentStatusCard({ equipment: eq, onStatusChange, onEdit, ope
 
       {/* Footer */}
       <p className="text-xs text-muted-foreground border-t border-border pt-2 mt-auto">
-        Last seen{' '}
-        {lastSeen === 0 ? 'today' : lastSeen === 1 ? 'yesterday' : `${lastSeen} days ago`}
+        Last updated at {formatLocalDate(updated, fboZone)} {formatLocalTime(updated, fboZone)} {suffixAt(eq.updated_at)}
       </p>
     </div>
   )

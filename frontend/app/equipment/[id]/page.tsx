@@ -71,6 +71,12 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
                 <dt className="text-[10px] uppercase text-muted-foreground">Next maintenance</dt>
                 <dd>{formatDate(item.next_maintenance_date)}</dd>
               </div>
+              {item.dpi_reading && (
+                <div>
+                  <dt className="text-[10px] uppercase text-muted-foreground">DPI</dt>
+                  <dd data-testid="dpi-reading">{item.dpi_reading}</dd>
+                </div>
+              )}
             </dl>
             {item.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{item.notes}</p>}
           </Card>
