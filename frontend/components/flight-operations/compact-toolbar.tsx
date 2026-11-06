@@ -109,7 +109,7 @@ export function CompactToolbar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
-      <div className="flex items-center gap-1">
+      <div className="order-1 flex items-center gap-1 md:order-none">
         <Button
           variant={view === 'split' ? 'default' : 'ghost'}
           size="sm"
@@ -156,7 +156,7 @@ export function CompactToolbar({
         </Button>
       </div>
 
-      <div className="order-last flex w-full items-center gap-2 md:order-none md:w-auto md:flex-1 md:max-w-2xl">
+      <div className="order-4 flex w-full items-center gap-2 md:order-none md:w-auto md:flex-1 md:max-w-2xl">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -297,9 +297,9 @@ export function CompactToolbar({
         </Popover>
       </div>
 
-      <ZoneToggle />
+      <ZoneToggle className="order-2 md:order-none" />
 
-      <div className="relative">
+      <div className="relative order-3 flex w-full items-center gap-2 md:order-none md:block md:w-auto">
         {/* Absolutely placed so it never shifts the toolbar. It fades in after 300ms, so quick refetches
             (realtime, polling) do not flicker it. */}
         {fetching && (
@@ -311,13 +311,13 @@ export function CompactToolbar({
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </output>
         )}
-        <Button asChild variant="outline" size="sm" className="mr-2 h-9 bg-transparent text-foreground">
+        <Button asChild variant="outline" size="sm" className="h-9 bg-transparent text-foreground md:mr-2">
           <Link href="/flight-operations/import" title="Import schedule" aria-label="Import schedule">
             <ScanLine className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Import schedule</span>
           </Link>
         </Button>
-        <Button onClick={onAddFlight} size="sm" className="h-9">
+        <Button onClick={onAddFlight} size="sm" className="h-9 flex-1 md:flex-none">
           <Plus className="w-4 h-4 mr-2" />
           Add Flight
         </Button>
