@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react'
 
 import { EquipmentFormDialog } from '@/components/equipment/equipment-form-dialog'
 import { EquipmentStatusCard } from '@/components/equipment/equipment-status-card'
-import type { EquipmentStatus } from '@/components/equipment/status-badge'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -17,7 +16,9 @@ import {
 } from '@/components/ui/select'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { useEquipment } from '@/hooks/use-equipment'
-import { useOpenMaintenanceCounts } from '@/hooks/use-equipment-maintenance'
+import { useOpenMaintenanceItems } from '@/hooks/use-equipment-maintenance'
+import { useLatestFilterChanges, useLatestReadings } from '@/hooks/use-equipment-log'
+import { useStatusChange } from '@/components/equipment/use-status-change'
 import { useEquipmentRealtime } from '@/hooks/use-equipment-realtime'
 import type { EquipmentInsert } from '@/repositories/equipment.repo'
 import type { EquipmentDomain } from '@/types/domain/equipment'
@@ -38,7 +39,9 @@ export default function EquipmentPage() {
   } = useEquipment()
   useEquipmentRealtime()
   const { settings } = useAppSettings()
-  const { data: openCounts } = useOpenMaintenanceCounts()
+  const { data: openItems } = useOpenMaintenanceItems()
+  const { data: latestReadings } = useLatestReadings()
+  const { data: latestFilters } = useLatestFilterChanges()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] =
@@ -53,9 +56,7 @@ export default function EquipmentPage() {
     if (status === 'authenticated') refetch()
   }, [status, refetch])
 
-  function handleStatusChange(id: number, newStatus: EquipmentStatus) {
-    updateEquipment(id, { status: newStatus })
-  }
+  const { requestStatus, dialog: statusDialog } = useStatusChange((id, status) => updateEquipment(id, { status }))
 
   function handleEdit(item: EquipmentDomain) {
     setEditingEquipment(item)
@@ -207,13 +208,17 @@ export default function EquipmentPage() {
             <EquipmentStatusCard
               key={item.id}
               equipment={item}
-              onStatusChange={handleStatusChange}
+              onStatusChange={(_id, status) => requestStatus(item, status)}
               onEdit={handleEdit}
-              openItems={openCounts?.get(item.id) ?? 0}
+              openItemList={openItems?.get(item.id) ?? []}
+              latestReading={latestReadings?.get(item.id) ?? null}
+              lastFilterChangeAt={latestFilters?.get(item.id)?.changed_at ?? null}
             />
           ))}
         </div>
       )}
+
+      {statusDialog}
 
       {/* Form dialog */}
       <EquipmentFormDialog

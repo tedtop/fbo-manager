@@ -98,3 +98,19 @@ export async function deleteMaintenanceItem(
     .eq('id', id)
   if (error) throw error
 }
+
+/** Open (live) items grouped per equipment id, oldest noted first (the first one is why a down truck is down). */
+export async function findOpenMaintenanceItemsByEquipment(
+  db: SupabaseClient<Database>
+): Promise<Map<number, MaintenanceItemRow[]>> {
+  const { data, error } = await db
+    .from('equipment_maintenance_item')
+    .select('*')
+    .eq('status', 'open')
+    .is('deleted_at', null)
+    .order('noted_at', { ascending: true })
+  if (error) throw error
+  const byEquipment = new Map<number, MaintenanceItemRow[]>()
+  for (const row of data) byEquipment.set(row.equipment_id, [...(byEquipment.get(row.equipment_id) ?? []), row])
+  return byEquipment
+}

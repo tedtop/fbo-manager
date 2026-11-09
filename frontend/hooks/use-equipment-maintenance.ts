@@ -7,6 +7,7 @@ import {
   countOpenMaintenanceItems,
   createMaintenanceItem,
   deleteMaintenanceItem,
+  findOpenMaintenanceItemsByEquipment,
   findMaintenanceItems,
   reopenMaintenanceItem,
   resolveMaintenanceItem,
@@ -17,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 export const maintenanceKeys = {
   all: ['equipment-maintenance'] as const,
   forEquipment: (equipmentId: number) => [...maintenanceKeys.all, 'equipment', equipmentId] as const,
+  openByEquipment: () => [...maintenanceKeys.all, 'open-by-equipment'] as const,
   openCounts: () => [...maintenanceKeys.all, 'open-counts'] as const,
 }
 
@@ -26,6 +28,15 @@ export function useOpenMaintenanceCounts() {
   return useQuery({
     queryKey: maintenanceKeys.openCounts(),
     queryFn: () => countOpenMaintenanceItems(db),
+  })
+}
+
+/** Open items per equipment id (why a down truck is down). */
+export function useOpenMaintenanceItems() {
+  const db = createClient()
+  return useQuery({
+    queryKey: maintenanceKeys.openByEquipment(),
+    queryFn: () => findOpenMaintenanceItemsByEquipment(db),
   })
 }
 
