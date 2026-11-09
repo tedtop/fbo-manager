@@ -225,20 +225,35 @@
   background: var(--ff-marker-major);
 }
 
-/* Unusable fuel: gray stripes from the bottom up to the lowest level ever
-   recorded, with the fuel's own colour showing in every other stripe. */
+/* Unusable fuel: hatched band from the bottom up to the lowest level ever
+   recorded. Colours are Minuteman's, tuned per fuel: red over orange stays
+   vivid for Avgas, while red over teal muddies to brown, so Jet A gets
+   translucent white, which just lightens the teal in place. */
 .ff .unusable-zone {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   cursor: help;
+}
+
+.ff .unusable-zone.avgas {
   background: repeating-linear-gradient(
     135deg,
-    rgba(108, 117, 125, 0.85),
-    rgba(108, 117, 125, 0.85) 6px,
-    transparent 6px,
-    transparent 12px
+    rgba(192, 57, 43, 0.45),
+    rgba(192, 57, 43, 0.45) 6px,
+    rgba(120, 30, 20, 0.5) 6px,
+    rgba(120, 30, 20, 0.5) 12px
+  );
+}
+
+.ff .unusable-zone.jet-a {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0.35) 6px,
+    rgba(255, 255, 255, 0.55) 6px,
+    rgba(255, 255, 255, 0.55) 12px
   );
 }
 

@@ -114,7 +114,7 @@ export function TankCard({ tank, outside, onUpdateLevel, onError, onEdit }: Tank
             style={{ height: `${m.fillPercent}%` }}
           />
           {m.hasRecordedLow && (
-            <div className="unusable-zone" style={{ height: `${m.unusableZonePercent}%` }} />
+            <div className={cn('unusable-zone', fuelClass)} style={{ height: `${m.unusableZonePercent}%` }} />
           )}
           <div className="level-markers">
             {markerPositions(usableMax).map((mk) => (
