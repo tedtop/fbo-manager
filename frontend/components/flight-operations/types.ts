@@ -64,6 +64,7 @@ export interface Flight {
   tailNumber: string // tail_number (FK to aircraft.tail_number)
   aircraftType: string // derived from aircraft table
   callSign?: string // call_sign
+  fuelLbs?: number // QT airline flights only: fuel requested in QT, lbs (not stored)
 
   // Timing (direct from database - no derived fields)
   arrivalTime?: string // scheduled_arrival_time (ISO timestamp; unset for a departure-only / hangar-pull flight)

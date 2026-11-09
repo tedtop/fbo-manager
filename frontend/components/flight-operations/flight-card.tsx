@@ -59,6 +59,7 @@ import { useEffect, useState } from 'react'
 import { ServicePill, ServicePillPicker } from './service-pill-picker'
 import { FlightCardSkeletonBody } from './flight-card-skeleton'
 import { FlightFormDialog } from './flight-form-dialog'
+import { WingLoadingPanel } from '@/components/fuel-dispatch/wing-loading-panel'
 import type { Flight } from './types'
 
 // Calculate time remaining until a timestamp
@@ -701,6 +702,10 @@ export function FlightCard({
               </Badge>
             </div>
           </div>
+
+          {isQt && flight.fuelLbs ? (
+            <WingLoadingPanel aircraftType={flight.aircraftType} requestLbs={flight.fuelLbs} />
+          ) : null}
 
           {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}
           {isQt ? (
