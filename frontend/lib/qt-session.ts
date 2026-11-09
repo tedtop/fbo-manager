@@ -137,7 +137,9 @@ async function callGetDispatchDetail(
 export class QtError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /** Which step failed; Fuel Dispatch words its banner from this (Minuteman's diagnostics.stage). */
+    readonly stage?: 'login_failed' | 'retry_after_login_failed'
   ) {
     super(message)
   }
@@ -182,7 +184,8 @@ async function fetchQtDispatchDetailUncached(): Promise<Record<string, unknown>>
     } catch (err) {
       throw new QtError(
         `QT session expired and re-login failed: ${err instanceof Error ? err.message : err}`,
-        502
+        502,
+        'login_failed'
       )
     }
     result = await callGetDispatchDetail(QT_COMPANY_LOCATION_ID, QT_USER_ID, cookie)
@@ -190,7 +193,8 @@ async function fetchQtDispatchDetailUncached(): Promise<Record<string, unknown>>
       cachedCookie = null
       throw new QtError(
         'QT rejected the request even after re-login - check QT_USERNAME/QT_PASSWORD or contact QT support',
-        502
+        502,
+        'retry_after_login_failed'
       )
     }
   }

@@ -22,11 +22,3 @@ export interface QTDispatch {
   MELMessage?: string
   ChangeFlags?: number
 }
-
-export interface QTDispatchChange {
-  type: 'new_flight' | 'dispatch_update' | 'fuel_request' | 'status_change'
-  flight: QTDispatch
-  message: string
-  oldChangeFlags?: number
-  newChangeFlags?: number
-}
