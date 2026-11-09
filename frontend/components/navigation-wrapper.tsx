@@ -4,6 +4,8 @@ import { usePathname } from 'next/navigation'
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Navigation } from './navigation'
 
+const FULL_WIDTH_ROUTES = ['/fuel-farm']
+
 const ThemeContext = createContext<{
   theme: 'dark' | 'light'
   setTheme: (theme: 'dark' | 'light') => void
@@ -61,6 +63,9 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     pathname?.startsWith('/forgot-password') ||
     pathname?.startsWith('/pending')
 
+  // Wall-display modules use the full width of the line office screen instead of the 7xl column
+  const isFullWidth = FULL_WIDTH_ROUTES.some((route) => pathname?.startsWith(route))
+
   return (
     <ThemeContext.Provider value={{ theme, setTheme: handleThemeChange }}>
       <main style={{ visibility: mounted ? 'visible' : 'hidden' }}>
@@ -70,7 +75,11 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
           )}
           <div
             className={
-              isAuthPage ? '' : 'mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8'
+              isAuthPage
+                ? ''
+                : isFullWidth
+                  ? 'px-4 py-4 sm:px-6 lg:px-8'
+                  : 'mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8'
             }
           >
             {children}

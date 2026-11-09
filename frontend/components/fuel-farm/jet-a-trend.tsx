@@ -7,6 +7,8 @@ import {
   jetATotalUllage,
   jetATotalUsable
 } from '@/lib/fuel-farm'
+import { cn } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 const RANGES = [
@@ -19,8 +21,9 @@ const RANGES = [
   { label: 'All', days: 0 }
 ]
 
-const WIDTH = 400
-const HEIGHT = 150
+// SVG user units; the chart stretches to its box (preserveAspectRatio="none")
+const WIDTH = 1000
+const HEIGHT = 200
 const PAD = 4
 
 interface Point {
@@ -30,9 +33,10 @@ interface Point {
 
 interface JetATrendProps {
   tanks: FarmTank[]
+  className?: string
 }
 
-export function JetATrend({ tanks }: JetATrendProps) {
+export function JetATrend({ tanks, className }: JetATrendProps) {
   const [days, setDays] = useState(90)
   const [hover, setHover] = useState<Point | null>(null)
   const { history, loading } = useJetAHistory(days)
@@ -102,35 +106,84 @@ export function JetATrend({ tanks }: JetATrendProps) {
     setHover(nearest)
   }
 
-  const low = points.length ? Math.round(scale.minTotal).toLocaleString() : ''
-  const high = points.length ? Math.round(scale.maxTotal).toLocaleString() : ''
+  const hoverLeft = hover ? (x(hover.time) / WIDTH) * 100 : 0
+  const hoverTop = hover ? (y(hover.total) / HEIGHT) * 100 : 0
 
   return (
-    <div className="trend-widget" data-testid="jet-a-trend">
-      <div className="trend-header">
-        <span className="trend-title">Jet A Trend (T2-T7)</span>
-        <span className="trend-total">{Math.round(currentTotal).toLocaleString()} gal</span>
-      </div>
-      <div className="trend-minmax">{hasHistory ? `Low ${low} gal · High ${high} gal` : ''}</div>
-      <div className="trend-pills">
-        <span className="trend-usable">Usable: {totalUsable.toLocaleString()} gal</span>
-        <span className="trend-ullage">Ullage: {totalUllage.toLocaleString()} gal available</span>
+    <div
+      className={cn('flex flex-col rounded-xl border border-border bg-card p-4 shadow-sm', className)}
+      data-testid="jet-a-trend"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Jet A on hand (T2–T7)
+          </div>
+          <div className="text-3xl font-bold tabular-nums text-foreground">
+            {Math.round(currentTotal).toLocaleString()} <span className="text-lg font-semibold">gal</span>
+          </div>
+          <div className="mt-0.5 h-4 text-xs text-muted-foreground tabular-nums">
+            {hasHistory &&
+              `Low ${Math.round(scale.minTotal).toLocaleString()} gal · High ${Math.round(scale.maxTotal).toLocaleString()} gal`}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <span className="trend-usable">Usable: {totalUsable.toLocaleString()} gal</span>
+            <span className="trend-ullage">Ullage: {totalUllage.toLocaleString()} gal available</span>
+          </div>
+          <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+            {RANGES.map((r) => (
+              <button
+                key={r.label}
+                type="button"
+                onClick={() => setDays(r.days)}
+                className={cn(
+                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                  days === r.days
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {hasHistory && (
-        <div className="trend-chart-wrap" onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
-          <svg className="trend-chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none">
+      <div
+        className="relative mt-3 min-h-36 flex-1"
+        onMouseMove={handleMove}
+        onMouseLeave={() => setHover(null)}
+      >
+        {hasHistory ? (
+          <svg className="trend-chart absolute inset-0" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none">
+            <title>Total Jet A in T2–T7 over the selected range</title>
             <polyline className="trend-area" points={areaPoints} />
             <polyline className="trend-line" points={linePoints} />
             {hover && (
-              <>
-                <line className="trend-hover-line" x1={x(hover.time)} x2={x(hover.time)} y1={0} y2={HEIGHT} />
-                <circle className="trend-hover-dot" r={3} cx={x(hover.time)} cy={y(hover.total)} />
-              </>
+              <line className="trend-hover-line" x1={x(hover.time)} x2={x(hover.time)} y1={0} y2={HEIGHT} />
             )}
           </svg>
-          {hover && (
-            <div className="trend-tooltip" style={{ left: `${(x(hover.time) / WIDTH) * 100}%` }}>
+        ) : (
+          !loading && (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+              No history yet
+            </div>
+          )
+        )}
+        {hover && (
+          <>
+            {/* HTML dot so it stays round while the SVG stretches */}
+            <div
+              className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary ring-2 ring-card"
+              style={{ left: `${hoverLeft}%`, top: `${hoverTop}%` }}
+            />
+            <div
+              className="pointer-events-none absolute top-1 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs font-semibold text-popover-foreground shadow-md ring-1 ring-border"
+              style={{ left: `${Math.min(92, Math.max(8, hoverLeft))}%` }}
+            >
               {new Date(hover.time).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -138,34 +191,13 @@ export function JetATrend({ tanks }: JetATrendProps) {
               })}
               : {Math.round(hover.total).toLocaleString()} gal
             </div>
-          )}
-          {loading && (
-            <div className="trend-loading">
-              <div className="trend-spinner" />
-            </div>
-          )}
-        </div>
-      )}
-      {!hasHistory && !loading && <div className="trend-empty">No history yet</div>}
-      {!hasHistory && loading && (
-        <div className="trend-chart-wrap" style={{ height: 140 }}>
-          <div className="trend-loading">
-            <div className="trend-spinner" />
+          </>
+        )}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-card/60">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
-        </div>
-      )}
-
-      <div className="trend-zoom">
-        {RANGES.map((r) => (
-          <button
-            key={r.label}
-            type="button"
-            className={`trend-zoom-btn${days === r.days ? ' active' : ''}`}
-            onClick={() => setDays(r.days)}
-          >
-            {r.label}
-          </button>
-        ))}
+        )}
       </div>
     </div>
   )
