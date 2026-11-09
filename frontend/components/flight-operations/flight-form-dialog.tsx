@@ -321,18 +321,22 @@ export function FlightFormDialog({
     tailNumber: string,
     aircraftType?: string
   ) => {
-    if (aircraftType) {
-      setAircraftTypeIcao(
-        aircraft.find(
+    const picked = aircraftType
+      ? aircraft.find(
           (a) => a.tail_number.toLowerCase() === tailNumber.toLowerCase()
-        )?.aircraft_type_icao || undefined
-      )
-    }
+        )
+      : undefined
+    if (aircraftType) setAircraftTypeIcao(picked?.aircraft_type_icao || undefined)
     setTailError(null)
+    // An existing aircraft whose type is still Unknown gets the registry lookup retried
+    const pickedIcao = picked?.aircraft_type_icao?.toUpperCase()
+    const typeUnknown = !!picked && (!pickedIcao || pickedIcao === 'UNKN')
     setLookupTail((current) =>
-      current && current.toUpperCase() === tailNumber.trim().toUpperCase()
-        ? current
-        : null
+      typeUnknown
+        ? tailNumber.trim()
+        : current && current.toUpperCase() === tailNumber.trim().toUpperCase()
+          ? current
+          : null
     )
     setFormData({
       ...formData,
