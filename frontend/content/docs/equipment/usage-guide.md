@@ -2,7 +2,7 @@
 title: Equipment usage guide
 module: equipment
 order: 2
-anchors: [open-equipment, log-maintenance-item, resolve-maintenance-item, meter-readings, scans]
+anchors: [open-equipment, log-maintenance-item, resolve-maintenance-item, out-of-service, daily-readings, filter-changes, equipment-notes, meter-readings, scans]
 ---
 
 ## Overview
@@ -29,6 +29,22 @@ Open items are listed first, newest first, then resolved ones. **Edit** changes 
 ### Resolve a maintenance item {#resolve-maintenance-item}
 
 Press **Resolve** on the item, adjust the resolved time if it was fixed earlier, optionally add resolution notes, and press **Resolve**. The item moves to the resolved group. **Reopen** puts it back to open.
+
+### Take a truck out of service {#out-of-service}
+
+Choose **Out of Service** in the status menu (list or detail page). It asks for the reason, for example "Dead battery", and files it as an open maintenance item. While the truck is down its card shows "Down N days: <reason>". When you resolve the last open item the page offers to set the truck back to Available.
+
+### Daily readings (DPI and nozzle pressure) {#daily-readings}
+
+On a fuel truck's page press **Log readings** and enter the differential pressure across the filters (DPI, psi) and/or the nozzle pressure (psi), the time (starts at now) and an optional note. Do this once a day. The section shows the latest values, a small trend line for each, and, when DPI is climbing, how many days until it reaches the replacement limit (15 psi for now). The list card shows the latest DPI / nozzle values.
+
+### Filter changes {#filter-changes}
+
+Press **Log filter change** when the filters are replaced: when, which filters, and the DPI just before the change. The section and the list card show how many days ago the filters were changed; they are flagged "Due soon" in the last 30 days of the one-year life and "Replace now" after it. Replace sooner if the DPI trend says so.
+
+### Notes {#equipment-notes}
+
+**Add note** writes a general note about the equipment, for example "Noticed the battery was dead at 2am". The time starts at now and can be set earlier. Notes are listed newest first.
 
 ### Meter readings of a fuel truck {#meter-readings}
 

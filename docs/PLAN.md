@@ -619,3 +619,21 @@ Truck sheets belong to equipment through `truck_sheets.fuel_truck_id -> equipmen
 Per sheet (newest `sheet_date` first, 30 at first, "Show more" adds 30): fuel type, front/rear meter start (sheet header) to end (last reading with that meter), gallons pumped (fueling lines), starting and remaining gallons (last line with one), initials, link to `/truck-sheets/[id]` (`lib/truck-sheet-summary.ts`). The section renders nothing when the equipment has no sheets, or when the user has no `truck_sheets` access (hidden by `useModuleAccess`, and a failing query also leaves it empty), so non-trucks and restricted roles never see an error.
 
 Not done: who noted/resolved an item is stored (`noted_by`, `resolved_by`) but not yet shown; no per-item attachments or photos; applying the migration to live needs Ted's go.
+
+
+## Fuel truck daily log (B71)
+
+Built 2026-11-08, Ted's scoping: one truck = one Equipment page; Truck Sheets stay as the day-by-day module and just cross-link (`/truck-sheets/[id]` and the Truck Sheets list link to `/equipment/[id]`; the equipment page links each day to its sheet).
+
+Migration `20261108000100_truck_daily_log.sql` (rollback in `supabase/rollbacks`; applied to LIVE 2026-11-08), replaces the short-lived `equipment.dpi_reading` text column:
+- `equipment_reading`: `read_at`, `dpi_psi` (differential pressure across the filters), `nozzle_psi`, `notes`, `read_by`, `truck_sheet_id` (null for manual entries; reserved for B72). At least one pressure required.
+- `equipment_filter_change`: `changed_at`, `filter_description`, `dpi_at_change`, `notes`, `changed_by`.
+- `equipment_note`: `body`, `noted_at`, `noted_by`.
+- `equipment.status_changed_at` (trigger on status change) so a down truck shows how long it has been down.
+- All soft delete via `deleted_at`, RLS authenticated, `updated_at` via `set_updated_at`.
+
+Rules: filters live `FILTER_LIFE_DAYS` = 365 (due soon in the last 30 days, overdue after); `DPI_REPLACE_AT` = 15 psi is a PLACEHOLDER limit for the projected-days-to-replace line, Ted to confirm the real one. Trend = psi/day between the oldest and newest DPI reading (`lib/equipment-log.ts`, tested). Out of Service asks for a reason and files it as an open maintenance item (`components/equipment/use-status-change.tsx`); the list card shows "Down N days: reason" from the oldest open item; resolving the last open item on a down truck offers to set it Available.
+
+Layers: `repositories/equipment-log.repo.ts`, `hooks/use-equipment-log.ts`, components `daily-readings`, `filter-changes`, `equipment-notes`. Fuel trucks only for readings and filters; notes for all equipment.
+
+Deferred (Ted wants all of these): B72 enter DPI/PSI on the truck sheet entry/review as well (writes an `equipment_reading` with `truck_sheet_id`); B73 meter calibration and fuel quality checks (water/particulate, sample results); B74 preventive maintenance with due dates (oil, tires, brakes, inspections) replacing the single next-maintenance date; B75 photos on notes and maintenance items.
