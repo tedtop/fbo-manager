@@ -53,7 +53,6 @@ const emptyForm: EquipmentInsert = {
   status: 'available',
   location: '',
   notes: '',
-  dpi_reading: '',
   last_maintenance_date: null,
   next_maintenance_date: null
 }
@@ -93,7 +92,6 @@ export function EquipmentFormDialog({
         status: equipment.status,
         location: equipment.location,
         notes: equipment.notes,
-        dpi_reading: equipment.dpi_reading,
         last_maintenance_date: equipment.last_maintenance_date,
         next_maintenance_date: equipment.next_maintenance_date
       })
@@ -125,7 +123,6 @@ export function EquipmentFormDialog({
         status: freshRow.status,
         location: freshRow.location,
         notes: freshRow.notes,
-        dpi_reading: freshRow.dpi_reading,
         last_maintenance_date: freshRow.last_maintenance_date,
         next_maintenance_date: freshRow.next_maintenance_date
       })
@@ -277,18 +274,6 @@ export function EquipmentFormDialog({
                 onChange={(e) => updateField('location', e.target.value)}
               />
             </div>
-
-            {form.equipment_type === 'fuel_truck' && (
-              <div className="space-y-2">
-                <Label htmlFor="dpi_reading">DPI reading</Label>
-                <Input
-                  id="dpi_reading"
-                  value={(form.dpi_reading as string) ?? ''}
-                  onChange={(e) => updateField('dpi_reading', e.target.value)}
-                  placeholder="5/32"
-                />
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>

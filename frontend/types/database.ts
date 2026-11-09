@@ -707,6 +707,112 @@ export type Database = {
           },
         ]
       }
+      equipment_reading: {
+        Row: {
+          id: number
+          equipment_id: number
+          read_at: string
+          dpi_psi: number | null
+          nozzle_psi: number | null
+          notes: string
+          read_by: number | null
+          truck_sheet_id: number | null
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          equipment_id: number
+          read_at?: string
+          dpi_psi?: number | null
+          nozzle_psi?: number | null
+          notes?: string
+          read_by?: number | null
+          truck_sheet_id?: number | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['equipment_reading']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'equipment_reading_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipment'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      equipment_filter_change: {
+        Row: {
+          id: number
+          equipment_id: number
+          changed_at: string
+          filter_description: string
+          dpi_at_change: number | null
+          notes: string
+          changed_by: number | null
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          equipment_id: number
+          changed_at?: string
+          filter_description?: string
+          dpi_at_change?: number | null
+          notes?: string
+          changed_by?: number | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['equipment_filter_change']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'equipment_filter_change_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipment'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      equipment_note: {
+        Row: {
+          id: number
+          equipment_id: number
+          body: string
+          noted_at: string
+          noted_by: number | null
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          equipment_id: number
+          body: string
+          noted_at?: string
+          noted_by?: number | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['equipment_note']['Insert']>
+        Relationships: [
+          {
+            foreignKeyName: 'equipment_note_equipment_id_fkey'
+            columns: ['equipment_id']
+            isOneToOne: false
+            referencedRelation: 'equipment'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       equipment: {
         Row: {
           id: number
@@ -719,7 +825,7 @@ export type Database = {
           status: 'available' | 'in_use' | 'maintenance' | 'out_of_service'
           location: string
           notes: string
-          dpi_reading: string
+          status_changed_at: string
           last_maintenance_date: string | null
           next_maintenance_date: string | null
           sort_order: number | null
@@ -737,7 +843,6 @@ export type Database = {
           status?: 'available' | 'in_use' | 'maintenance' | 'out_of_service'
           location?: string
           notes?: string
-          dpi_reading?: string
           last_maintenance_date?: string | null
           next_maintenance_date?: string | null
           sort_order?: number | null
