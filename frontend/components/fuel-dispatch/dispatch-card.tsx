@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { QTDispatch } from '@/types/qt-dispatch'
 import { format } from 'date-fns'
+import { WingLoadingPanel } from './wing-loading-panel'
 
 interface DispatchCardProps {
   dispatch: QTDispatch
@@ -126,6 +127,12 @@ export function DispatchCard({ dispatch }: DispatchCardProps) {
           </div>
         </div>
       </div>
+
+      {dispatch.QuantityInWeight > 0 && (
+        <div className="mt-3">
+          <WingLoadingPanel aircraftType={dispatch.AircraftType} requestLbs={dispatch.QuantityInWeight} />
+        </div>
+      )}
 
       {dispatch.MEL && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-800 dark:text-yellow-300">

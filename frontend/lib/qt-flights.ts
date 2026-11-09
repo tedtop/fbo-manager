@@ -60,6 +60,7 @@ export function qtDispatchToFlight(dispatch: QTDispatch, fboZone: string): Fligh
     tailNumber: (dispatch.TailNumber ?? '').trim().toUpperCase(),
     aircraftType: dispatch.AircraftType ?? '',
     callSign: dispatch.FlightNumber,
+    fuelLbs: dispatch.QuantityInWeight > 0 ? dispatch.QuantityInWeight : undefined,
     arrivalTime,
     departureTime,
     // Never a quick turn: that flag is the GA +1 hour rule and its "QT" chip would read as the QT source.
