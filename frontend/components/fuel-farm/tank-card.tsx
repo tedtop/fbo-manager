@@ -169,7 +169,7 @@ export function TankCard({ tank, outside, onUpdateLevel, onError, onEdit }: Tank
           inputMode="decimal"
           className="h-9 text-center text-sm"
           data-testid={`level-input-${id}`}
-          placeholder={`Reading (in or 5'7")`}
+          placeholder="Level (inches)"
           aria-label={`New ${id} reading`}
           value={inputValue}
           disabled={updating}
