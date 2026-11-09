@@ -2,7 +2,7 @@
 title: Fuel Dispatch usage guide
 module: fuel-dispatch
 order: 1
-anchors: [status, cards, changes, countdowns, filter, density, weather, fuel-sheet]
+anchors: [status, cards, changes, countdowns, filter, density, weather, fuel-sheet, save-fueling, meter-gaps]
 ---
 
 ## Overview
@@ -50,7 +50,25 @@ On a wide screen the card at the top right shows the Missoula (KMSO) conditions:
 
 ### Work out the wing loading {#fuel-sheet}
 
-On a card with a fuel request, press **Fuel sheet** to open the worked fuel service form: type in what each tank holds on arrival and every line to write on the sheet is filled in. Nothing is stored.
+On a card with a fuel request, press **Fuel sheet** to open the worked fuel service form: type in what each tank holds on arrival and every line to write on the sheet is filled in. The planned gate fuel from QT is the total the aircraft should hold after fueling; the gallons to add are that, minus what is on board, divided by the density.
+
+### Save the fueling with the truck meters {#save-fueling}
+
+Under the calculated gallons, choose the **fuel truck** and type the **meter start and stop** for the front register (and the rear register if you used it). The gallons pumped are stop minus start and are compared with the calculated gallons: within 75 gallons either way shows **OK**, otherwise **out of tolerance**. Press **Save fueling**.
+
+- Saving records the whole fueling: truck, meter start and stop, gallons pumped, calculated gallons, density, planned fuel and the tank readings before and after (left, center where the type has one, right). It lands in the same place as the truck-sheet scans, on the truck's sheet for the day, so typed readings and scanned sheets are one record.
+- Open the sheet again later and it is filled back in; **Update** changes the saved fueling instead of adding a second one.
+- The truck you used last is chosen for you, and the front start is filled with where that truck's meter last ended. Check it against the meter.
+- If the meter rolled past its last digit during the fueling, the pumped gallons still come out right and the sheet says so.
+- A stop below the start (and not a roll-over) cannot be saved: check the numbers.
+
+### Meter gaps {#meter-gaps}
+
+Each reading on a truck's meter should start where the one before it ended. When the start you type is not where the truck's last reading ended, an amber note says how many gallons are not recorded in between (or how far below it you started). **You can still save**: a gap is never a reason to stop, the point is to mark it so it can be looked into.
+
+Gaps are listed on the truck's page in Equipment, under **Meter gaps**, whether they came from a typed fueling or a scanned sheet. Press **Add note** on a gap to say why: **Meter roll**, **Forgotten fueling**, **Typo** or **Other**, with a note, and **Save and resolve** once it is explained. Resolved gaps are hidden until you press **Show resolved**; **Reopen** brings one back. If a wrong number is corrected so the readings chain again, the gap disappears by itself.
+
+A meter that rolls over (for example 999,990 to 5) is recognised: the gallons missing across the roll are worked out, not shown as a huge backwards jump. The roll-over point is assumed to be 1,000,000; a truck whose meter rolls at another number shows each roll as a gap to note as **Meter roll**.
 
 ## Troubleshooting
 
