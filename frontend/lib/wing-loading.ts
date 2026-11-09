@@ -52,8 +52,8 @@ export interface WingLoadInput {
   capacity: TankCapacity
   /** Fuel already in each tank, lbs (zeros when unknown). */
   before?: Partial<TankLbs>
-  /** Uplift requested, lbs. */
-  requestLbs: number
+  /** Planned gate fuel: the total each aircraft should hold after fueling, lbs (the QT request / "Req" on the ticket). */
+  plannedLbs: number
   winter?: boolean
   /** Replaces the table's wing max (the airline's own figure on the sheet). */
   wingMaxLbs?: number
@@ -67,6 +67,9 @@ export interface WingLoadResult {
   /** What goes into each tank (after minus before). */
   add: TankLbs
   addGallons: TankLbs
+  beforeTotalLbs: number
+  plannedLbs: number
+  density: number
   totalAddLbs: number
   totalAddGallons: number
   totalAfterLbs: number
@@ -90,14 +93,14 @@ export function planWingLoad(input: WingLoadInput): WingLoadResult {
   const warnings: string[] = []
 
   const beforeTotal = before.left + before.center + before.right
-  const totalAfter = beforeTotal + Math.max(0, input.requestLbs)
+  const totalAfter = Math.max(input.plannedLbs, beforeTotal)
 
   // Wings take everything up to their max, evenly; the center tank only gets the rest.
   let center = hasCenter ? Math.max(before.center, totalAfter - 2 * wingMax) : 0
   let wing = (totalAfter - center) / 2
   if (wing > wingMax) {
     // No center tank (or none left to take it): the request does not fit.
-    warnings.push(`Request is ${round(2 * (wing - wingMax))} lbs more than the wings can hold`)
+    warnings.push(`Planned fuel is ${round(2 * (wing - wingMax))} lbs more than the wings can hold`)
     wing = wingMax
   }
   if (hasCenter && capacity.centerLbs !== undefined && center > capacity.centerLbs) {
@@ -122,10 +125,21 @@ export function planWingLoad(input: WingLoadInput): WingLoadResult {
     after,
     add,
     addGallons: { left: gal(add.left), center: gal(add.center), right: gal(add.right) },
+    beforeTotalLbs: beforeTotal,
+    plannedLbs: totalAfter,
+    density,
     totalAddLbs: totalAdd,
     totalAddGallons: gal(totalAdd),
     totalAfterLbs: after.left + after.center + after.right,
     hasCenter,
     warnings
   }
+}
+
+export const SHEET_TOLERANCE_GAL = 75
+
+/** The truck-meter check at the bottom of the United sheet: calculated gallons minus gallons actually added. */
+export function truckCheck(calculatedGallons: number, truckGallons: number, tolerance = SHEET_TOLERANCE_GAL) {
+  const difference = Math.round(calculatedGallons) - Math.round(truckGallons)
+  return { difference, withinTolerance: Math.abs(difference) <= tolerance, tolerance }
 }

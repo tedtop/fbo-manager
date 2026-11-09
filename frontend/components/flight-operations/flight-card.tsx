@@ -726,7 +726,7 @@ export function FlightCard({
           </div>
 
           {isQt && flight.fuelLbs ? (
-            <WingLoadingPanel aircraftType={flight.aircraftType} requestLbs={flight.fuelLbs} />
+            <WingLoadingPanel aircraftType={flight.aircraftType} plannedLbs={flight.fuelLbs} title={`${flight.callSign ?? ""} ${flight.tailNumber}`.trim()} />
           ) : null}
 
           {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}

@@ -130,7 +130,7 @@ export function DispatchCard({ dispatch }: DispatchCardProps) {
 
       {dispatch.QuantityInWeight > 0 && (
         <div className="mt-3">
-          <WingLoadingPanel aircraftType={dispatch.AircraftType} requestLbs={dispatch.QuantityInWeight} />
+          <WingLoadingPanel aircraftType={dispatch.AircraftType} plannedLbs={dispatch.QuantityInWeight} title={`${dispatch.FlightNumber} ${dispatch.TailNumber}`} />
         </div>
       )}
 
