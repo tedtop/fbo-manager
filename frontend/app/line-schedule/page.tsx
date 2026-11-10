@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { WeekView } from '@/components/line-schedule/week-view'
+import { RosterView } from '@/components/line-schedule/roster-view'
 import { MonthView } from '@/components/line-schedule/month-view'
 import { ShiftDialog } from '@/components/line-schedule/shift-dialog'
 import { CoverageLegend } from '@/components/line-schedule/coverage-strip'
@@ -45,7 +46,7 @@ import {
   type SchedulePermissionContext,
 } from '@/services/schedule.service'
 
-type ViewMode = 'week' | 'month'
+type ViewMode = 'week' | 'roster' | 'month'
 
 const CATEGORY_LEGEND = [
   { label: 'Morning', icon: Sunrise, className: 'text-amber-600 dark:text-amber-400' },
@@ -66,7 +67,7 @@ export default function LineSchedulePage() {
   // Visible range (+1 day back so overnight tails from the prior day render)
   const { rangeStart, rangeEnd, weekDays } = useMemo(() => {
     const weekStart = startOfWeek(anchor, { weekStartsOn: 1 })
-    if (view === 'week') {
+    if (view !== 'month') {
       return {
         rangeStart: format(addDays(weekStart, -1), 'yyyy-MM-dd'),
         rangeEnd: format(addDays(weekStart, 6), 'yyyy-MM-dd'),
@@ -115,11 +116,11 @@ export default function LineSchedulePage() {
   }
 
   function navigate(direction: -1 | 1) {
-    setAnchor((a) => (view === 'week' ? addDays(a, direction * 7) : addMonths(a, direction)))
+    setAnchor((a) => (view !== 'month' ? addDays(a, direction * 7) : addMonths(a, direction)))
   }
 
   const rangeLabel =
-    view === 'week'
+    view !== 'month'
       ? `${format(startOfWeek(anchor, { weekStartsOn: 1 }), 'MMM d')} – ${format(
           endOfWeek(anchor, { weekStartsOn: 1 }),
           'MMM d, yyyy'
@@ -199,6 +200,9 @@ export default function LineSchedulePage() {
               <TabsTrigger value="week" className="text-xs">
                 Week
               </TabsTrigger>
+ <TabsTrigger value="roster" className="text-xs">
+                Roster
+              </TabsTrigger>
               <TabsTrigger value="month" className="text-xs">
                 Month
               </TabsTrigger>
@@ -225,6 +229,14 @@ export default function LineSchedulePage() {
             members={members}
             permission={permission}
             onAddShift={(date, userId) => openAdd(date, userId)}
+            onEditShift={openEdit}
+          />
+        ) : view === 'roster' ? (
+          <RosterView
+            days={weekDays}
+            shifts={shifts}
+            members={members}
+            permission={permission}
             onEditShift={openEdit}
           />
         ) : (
