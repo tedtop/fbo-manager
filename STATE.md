@@ -1,27 +1,28 @@
 # STATE
 
-- **Phase:** 3 (build loop, continuous). Branch `feature/flight-board-cleanup`, local commits only, nothing pushed (ahead of origin).
-- **Last loop commits (2026-11-04):** B43b 8a16104 (Hide/Unhide, Show hidden, Today + Future; migration 20261104000700 applied to live), B43 69d6b58/1aecec5/5cbb213, B42 d20f69a/5e4a414, B44 08da286/52ec3f6, B39 ae67bb1/8a74d02/6769c0f, B45a a55bb69/c812de1/b2ca7d4, B18 fe27041/d260717/f50a83b, Tailwind exclusion of `.next-e2e` 28efa3e.
-- **Next:** nothing unblocked is left in the loop's lane; see "Waiting on Ted".
-- **Review link:** http://localhost:4000/ (`cd frontend && pnpm dev`).
+- **Phase:** 3, continuous build loop run by the **FBO Orchestrator** session (since 2026-11-09). Plan: `~/.claude/plans/how-should-we-go-stateless-toast.md`. Rules: `.claude/CLAUDE.md` "Orchestrator".
+- **Trunk:** `master` (auto-deploys prod, https://minuteman.up.railway.app). Main checkout stays on `master`; all code is written in child worktrees.
+- **Milestones:** M0 consolidate, M1 board + form, M2 logins + security, M3 fuel ops parity, M4 parking/equipment/docs (BACKLOG "Milestones to v1"; Linear projects of the same names).
+- **Heartbeat:** hourly cron at :17 in the orchestrator session (session-only, 7-day expiry; re-create on resume).
 
-## Lane rule
-Ted works the flight add/edit form in another chat. The loop must not touch `flight-form-dialog.tsx`, its tests, or the flight table schema and migrations, and stages only its own files by explicit path. Skipped for that reason: B17, B24, B26a-e, B40, B41, and B45b (writes through the flights repo while the form and schema change).
+## Sessions
+| Child | Branch | Items | State |
+|---|---|---|---|
+| (lane: schema/migrations) | `feature/b87-meter-gaps` (from `origin/feature/fuel-meter-readings` 973e4d9) | B87, B91, B46 | queued: start from the desktop app (cannot start over Remote Control) |
+| (lane: flight form) | `feature/b40-flight-form` | B26e form fix, B40, B41 | queued |
+| (lane: truck sheets) | `feature/b80-truck-sheet-dpi` | B80 | queued |
+
+Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the orchestrator. Still to archive from the sidebar (Remote Control/queued work blocked it): Fuel Dispatch module integration, Truck sheet scanner, Mobile viewport fixes, Parking areas, Line schedule update, Record fuel sheet meters. Google sign-in and user manager has not reported yet. Minuteman `feature/wing-loading` stays open (B92).
 
 ## Waiting on Ted
-- **B43b (review):** decided with Ted 2026-11-04 (D13). To check: Hide next to Edit, Show hidden in the Filters popover, Today + Future default, Departed hides the next day. Known: `flight-create.cy.ts` (7 tests) and one `mobile.cy.ts` test fail since B47 pre-fills the tail with "N"; the specs belong to the form chat.
-- **B45 (schedule sheet scan):** needs a sample printout saved under `docs/samples/`, the FBO's time zone, whether aircraft types are ICAO codes or free text, and the sheet's columns (PLAN section 6). B45c is blocked on the sample; B45b waits for the form and schema work to settle.
-- **Biome:** deferred by Ted (B48, P3); lint CI stays off.
-- **CI (Ted: after a clean full local run):** re-enable `test.yml` on pull requests and pushes to `master` after one clean full local run (Cypress on private ports). Deploy gate `typescript.ignoreBuildErrors` stays until a production build is checked with a private dist dir.
-- **B27a:** needs approval to add react-markdown, remark-gfm and rehype-slug.
-- **B59 (Google sign-in, review):** built and tested locally, not on live. To go live Ted must supply a Google OAuth client ID and secret (steps in `docs/google-signin.md`); then Supabase provider and Site URL, migration 20261104001400 on live, first admin via `bootstrap-admin-role.sql`, deploy. Needs B30 to make the database (not just the app) refuse role-less users. B37 buttons can go once real accounts exist.
-- **B29/B30/B38:** RLS live apply, RLS policies and the admin role need Ted's go-ahead (auth and live data).
-- **Not verified:** the full Cypress suites have not been run together since this session's changes (agents ran subsets). The local equipment repo tests fail (`equipment.sort_order` missing) because someone else's uncommitted equipment migration is not applied to the local DB.
+- **Look on prod (phone):** mobile toolbar + login (B19b); Fuel Farm (B84); `/parking` hard refresh, seeded plane positions, N509CQ shows airborne (B54/B55); tail lookup spinner + hover card (B60); QT airline cards + wing loading (B93); a real truck-sheet scan (B69).
+- **Answers:** TKS price per gallon and ramp fees per class (B51/B52); real DPI replace limit (15 psi placeholder) and whether 5282 "5/32" = DPI 5 / nozzle 32 (B71); 8338 dead-battery open item; N33PX type = C560; B27 docs design answers + react-markdown approval (B27a); Google emails for Chris Hart, Keith Leathers, Kelby Grussling, Dakota Mamuzich, Ted (B76).
+- **Go-aheads:** Minuteman wing-loading merge/deploy (B92); B26e column drop after the form fix; flight in the live realtime publication (B16); RLS + admin role live (B29/B30/B38); Google OAuth client for B59a; Google Map Tiles key (B58).
+- **Unmerged branches the app would not force-delete** (worktrees already removed; delete with `git branch -D` if wanted): feature/parking-areas, feature/parking (tag archive/parking-old), feature/invoicing, feature/playwright-testing (tag archive/playwright-testing), wip/parking-chip, chore/renumber-scan-migrations; remote feature/board-cleanup-no-auth, docs/b60-lookup-status. Open PRs: #39 (decide under M3), #35 (close; B48).
 
 ## Notes
-- Live `flight` table was emptied on 2026-11-04 at Ted's request (146 sample rows; backup in `docs/archive/flight-backup-2026-11-04.json`, untracked).
-- B37 parked: the Quick Dev Login buttons stay until a Google login and real accounts exist.
-- Test runs use private dist dirs (`NEXT_DIST_DIR=.next-e2e/<name>`) and ports so the owner's `next dev` on :4000 is never touched. `.next` and `.next-e2e` are excluded from Tailwind scanning in `styles/globals.css`.
+- Live `flight` table was emptied 2026-11-04 at Ted's request (backups in ~/backups/fbo-manager/).
+- Test runs use private dist dirs (`NEXT_DIST_DIR=.next-e2e/<name>`) and ports, never :4000.
 
 <!-- usage:start -->
 Usage (tokens, excl. cache reads): this session 1.07M | last 5h 12.59M | budget not set

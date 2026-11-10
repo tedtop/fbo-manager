@@ -83,31 +83,6 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 
 | B48 | Biome: clean up ~60 existing lint errors or drop the tool (decided 2026-11-04: later, low priority) | todo | P3 | M | Lint CI (`lint.yml`) stays off until this is done. Either `pnpm exec biome check` exits 0 on the whole frontend, or Biome config, dependency and `lint.yml` are removed with the reason recorded in PLAN |
 
-## Linear mapping
-
-Mirror of this backlog in Linear (workspace "FBO Manager", team FBO, https://linear.app/fbo-manager). This file stays authoritative; Linear is a mirror that is synced by hand. Identifier = `FBO-<number>`. Synced 2026-11-04. Sub-items are Linear sub-issues of their parent (B01, B26, B27, B43, B45).
-
-| Item | Linear | Item | Linear | Item | Linear | Item | Linear |
-|------|--------|------|--------|------|--------|------|--------|
-| B01 | FBO-49 | B01b | FBO-54 | B01c | FBO-55 | B02 | FBO-56 |
-| B03 | FBO-57 | B04 | FBO-58 | B05 | FBO-59 | B06 | FBO-60 |
-| B07 | FBO-61 | B08 | FBO-62 | B08b | FBO-63 | B08c | FBO-64 |
-| B08d | FBO-65 | B08e | FBO-66 | B09 | FBO-67 | B09b | FBO-68 |
-| B09c | FBO-69 | B10 | FBO-70 | B11 | FBO-71 | B12 | FBO-72 |
-| B13 | FBO-73 | B14 | FBO-74 | B15 | FBO-75 | B16 | FBO-76 |
-| B17 | FBO-77 | B18 | FBO-78 | B19 | FBO-79 | B20 | FBO-80 |
-| B21 | FBO-81 | B22 | FBO-82 | B23 | FBO-83 | B24 | FBO-84 |
-| B25 | FBO-85 | B26 | FBO-50 | B26a | FBO-86 | B26b | FBO-87 |
-| B26c | FBO-88 | B26d | FBO-89 | B26e | FBO-90 | B27 | FBO-51 |
-| B27a | FBO-91 | B27b | FBO-92 | B27c | FBO-93 | B27d | FBO-94 |
-| B28 | FBO-95 | B29 | FBO-96 | B30 | FBO-97 | B31 | FBO-98 |
-| B33 | FBO-99 | B34 | FBO-100 | B35 | FBO-101 | B36 | FBO-102 |
-| B37 | FBO-103 | B38 | FBO-104 | B39 | FBO-105 | B40 | FBO-106 |
-| B41 | FBO-107 | B42 | FBO-108 | B43 | FBO-52 | B43b | FBO-109 |
-| B44 | FBO-110 | B45 | FBO-53 | B45a | FBO-111 | B45b | FBO-112 |
-| B45c | FBO-113 | B46 | FBO-114 | B47 | FBO-115 | B48 | FBO-116 . Sample received 2026-11-05 (`docs/samples/schedule-sheet-2026-11-04.jpg`): prompt rules for Action-column sheets added, expected extraction JSON is an inline fixture in `lib/schedule-import/__tests__/sample-sheet.ts`. STILL BLOCKED on a funded Anthropic key: the real photo has not been run through the route, so the by-eye prompt tuning is not done |
-
-Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Done, parked and blocked = Backlog. Priority: P0 = Urgent, P1 = High, P2 = Medium, P3 = Low. Older Linear issues FBO-1 to FBO-48 are the pre-Supabase history; related ones: FBO-44 (calendar view, see B10/B15), FBO-43 (Flightradar24, see B35).
 | B49 | Airport lookup: IATA/ICAO data and a shared airport combobox (Ted, 2026-11-04) | todo | P1 | M | ICAO is the canonical stored code (KMSO), IATA is the 3-letter convention shown in the US (MSO). lib airport dataset (OurAirports, public domain; at least all airports with an IATA code) with `resolveAirport(input)` accepting IATA or ICAO, case-insensitive, returning {icao, iata, name, city, country}; naive 'K' + code is wrong for AK/HI/PR/Guam (PANC, PHNL, TJSJ) so it must be a lookup; combobox component like aircraft-type-combobox with free-text fallback for unknown strips; unit tests (MSO->KMSO, KMSO->KMSO, ANC->PANC, unknown stays as typed). Pure lib + component only; wiring it into the form belongs to the form chat. Needs Ted's OK to download the dataset |
 | B50 | Home airport setting and origin prefill (Ted, 2026-11-04) | todo | P1 | S | Settings page (B47) gets a 'Home airport' value (default MSO); new flights prefill Origin with it (departures and generally; arrival-only entries prefill Destination instead); saved normalized via B49 resolveAirport; board and cards show IATA when the airport has one, ICAO in the tooltip; existing free-text origin/destination values keep working. Form-file change: belongs to the form chat, after B49 |
 | B51 | Ramp fee schedule in Settings (Ted, 2026-11-04) | todo | P1 | M | Design first. The ramp fee is a flat per-visit fee that varies by aircraft type. Settings screen to add aircraft types/classes and set a ramp fee per type; prefill common types into classes such as Small GA, Mid-size GA, Light jet, Midsize jet, Heavy jet; the per-visit flat fee is resolved from the flight's aircraft type. `product` stays the billing catalog (Ramp Fee id 8 exists); no board pill. Needs Ted's fees per class. Editing needs the B38 admin role |
@@ -132,8 +107,8 @@ Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Don
 | B67 | Planning session: aircraft notes, customers, ownership and hangar leases (Ted, 2026-11-05) | todo | P3 | M | Run a planning session with Ted before any code. Known needs: (1) per-aircraft notes shown where staff need them (how to tow, strict turn limits, a specific tow bar, owner special requests such as tow pins); (2) customers associated with aircraft and vice versa (owner/operator, many-to-many?); (3) customers editable because they hold hangar lease accounts; (4) an aircraft on a hangar lease pays no hangar or ramp fees, so billing (product table, invoices, the ramp fee, services that are billable only) must read the lease status; (5) how this meets the board (note badge on the flight card, hover card), the Settings and the roles. Open questions: lease model (customer-level or aircraft-level, dates), fee exemption rules per fee, who may edit notes (front desk vs line), customer vs account vs contact. Output: a design in docs/PLAN.md and backlog items Ted's answers (2026-11-05, partial; he is unsure of the model): a lease is signed by the customer but sits on the airplane (so model it as a lease record linking customer and aircraft, with dates); a hangar-leased aircraft pays neither the daily hangar fee nor the ramp fee; ANYONE can edit aircraft/customer notes; customer, account and contact are 'all the same thing' to him (start with one customer record); certifications belong on USERS: Line Department staff need training and training-expiration dates recorded, a separate training module Ted will revisit in another session (not part of this planning session) |
 | B68 | Replace the fueler table with Line Department users; truck sheet initials identify who fueled (Ted, 2026-11-05) | todo | P2 | L | The fueler table is a relic of the databases-class project and is probably not needed. A fuel order has at least one assigned fueler, and every user in the Line Department role is a possible fueler. The truck sheet has the fueler's initials in the second-to-last box; the scanned initials must be parsed and linked to the user who did the fueling (Ted is TT, Troy Sheehan TS, Kelby Grussling KG...). Initials are unique today but were not historically (Tate Thomas and Ted both TT), so model initials as a field on the user (unique among ACTIVE users) with a way to keep old records unambiguous (store the resolved user id on the fueling at scan time; show unresolved or ambiguous initials in the scan preview for a human to pick). Work: add `initials` to users (unique among active) and a Settings/user-manager field; fuel-dispatch assignment picks from Line Department users; truck-sheet scan parser maps initials to users; migrate fueler and fueler_assignment and fueler_training/certifications references; then drop `fueler` (live table, 2 test rows; code and tests reference it widely: truck-sheets pages, fuel-dispatch, certifications, users repo) code-first, table last, through the B01c procedure and Ted's go. Coordinate with the truck-sheet scanner session |
 | B69 | Truck sheet scans: upright pages, originals attached to the truck and day, scan storage layout (Ted, 2026-11-05) | review | P1 | L | Design in docs/PLAN.md "Truck sheet scan storage and page attachment". Each page is rotated upright (reader returns `rotation_degrees` + `rotation_confident`; client canvas renders the upright JPEG q0.92 plus a 400 px thumbnail, review shows it with rotate-left/right buttons), one `scanned_documents` row per page (page_number, rotation, sha256, original path, truck, date) linked to ONE truck sheet per truck and day, original PDF/photo stored once under `original/`; layout `truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<N>/{original,pages,thumbs}/<date>_truck-<N>_..._<hash8>.<ext>` (hash8 = sha-256 of the file's bytes, idempotent names) built from validated values (`lib/scan-storage.ts`, schedule sheets use `schedule_sheet/<date>/{original,pages,thumbs}/...`); duplicates: same truck+day offers add-pages-only or cancel, identical page hash skipped; truck page `/truck-sheets/trucks/<N>` shows scans by day with a full-size viewer. Migration `20261105000400_truck_sheet_scan_pages.sql` (also RLS on scanned_documents and storage policies for the scans bucket, which had none) applied to LOCAL and to LIVE (Ted approved, 2026-11-09; renumbered to 20261105000400); GOOGLE_VISION_API_KEY set on Railway production. Not built: scan rows for schedule sheets and invoice slips, deleting or replacing a stored page |
-| B72 | Scan follow-ups (from the scan session, 2026-11-09) | todo | P2 | M | (1) Ted: test a real iPhone Files > Scan Documents truck sheet PDF on prod (pages upright, readings, pages on the truck's /equipment page; rotation and thumbnails unverified on real scans). (2) Fresh `supabase db reset` proof (no Docker on the scan session's machine); version 20261105000100 is still shared by profiles_badge_id and parking_areas (not mine). (3) Delete/replace a stored page; scan rows for schedule sheets and invoice slips. (4) Role-gating test for the equipment page without truck_sheets. (5) Rate-limit delay for 12-page PDFs. (6) Avgas/unleaded sheet layouts. (7) B68 fueler initials to Line Department users. B70 row and equipment-detail docs are only on feature/flight-board-cleanup (commit 1ef9ea2), not yet on master |
-| B72 | Fuel Farm parity with Minuteman: LF tank, ullage, unusable fuel, gravity QC, Jet A trend, Minuteman gauge styling (Ted, 2026-11-08) | review | P1 | M | Built and live 2026-11-09 (master 837be19): LF tank, ullage and unusable-fuel hatching (red-brown over Avgas, white over Jet A), gravity QC in a right Sheet, Jet A on-hand trend with 7D-All ranges, full-width page with no side scroll at 1920 and 1366, light and dark, "Level (inches)" input hint, docs at /docs/fuel-farm. Ted to confirm on prod; no gravity load was saved on live (shared Minuteman table) |
+| B85 | Scan follow-ups (from the scan session, 2026-11-09) | todo | P2 | M | (1) Ted: test a real iPhone Files > Scan Documents truck sheet PDF on prod (pages upright, readings, pages on the truck's /equipment page; rotation and thumbnails unverified on real scans). (2) Fresh `supabase db reset` proof (no Docker on the scan session's machine); version 20261105000100 is still shared by profiles_badge_id and parking_areas (not mine). (3) Delete/replace a stored page; scan rows for schedule sheets and invoice slips. (4) Role-gating test for the equipment page without truck_sheets. (5) Rate-limit delay for 12-page PDFs. (6) Avgas/unleaded sheet layouts. (7) B68 fueler initials to Line Department users. B70 row and equipment-detail docs are only on feature/flight-board-cleanup (commit 1ef9ea2), not yet on master |
+| B84 | Fuel Farm parity with Minuteman: LF tank, ullage, unusable fuel, gravity QC, Jet A trend, Minuteman gauge styling (Ted, 2026-11-08) | review | P1 | M | Built and live 2026-11-09 (master 837be19): LF tank, ullage and unusable-fuel hatching (red-brown over Avgas, white over Jet A), gravity QC in a right Sheet, Jet A on-hand trend with 7D-All ranges, full-width page with no side scroll at 1920 and 1366, light and dark, "Level (inches)" input hint, docs at /docs/fuel-farm. Ted to confirm on prod; no gravity load was saved on live (shared Minuteman table) |
 | B76 | Staff logins on real Google emails + roles (Ted, 2026-11-05) | todo | P0 | S | Blocked on Ted: Google email for Chris Hart (Administrator), Keith Leathers (Administrator), Kelby Grussling (Administrator), Ted Toporkov (Administrator) and Dakota Mamuzich (Line Manager = Administrator; no separate role, Management was folded into Administrator by migration 20261104001400). Line crew accounts currently use placeholder `first.last@minutemanfbo.local` with the default seed password; `admin@minutemanfbo.local` is the only account holding a role on live. Switch each placeholder to the real email (keeps shifts), grant the role, give Chris and Dakota no shifts (Dakota as Line department manager). Do NOT grant Administrator to a default-password account |
 | B77 | Line Schedule weekly rollover off the Claude app (Ted, 2026-11-05) | todo | P2 | S | Today a Claude scheduled task `roll-line-schedule` (Wed 11 PM) runs `frontend/scripts/seed-line-schedule.mjs`, which only runs while the Claude app is open. Move to a server-side job (Railway cron or pg_cron). Note the pattern is hard-coded in the script's EMPLOYEES list; a posted-sheet change means editing it and running with `--force` for the affected weeks. Also check how Garrett's `1400-0000` shifts look (ends by midnight, shown as running into the next day) |
 | B78 | Link Google sign-in to existing staff accounts (Ted, 2026-11-05) | todo | P1 | M | Staff are created with placeholder emails; a first Google sign-in with the real email creates a separate auth user. Decide and build linking (switch the account email to the real one before first sign-in, or an admin tool in Manage Users) so shifts and roles stay on one account. Name display setting (`name_display`, Settings > Names) and Manage Users under Settings are done (shipped with the line schedule update, master bb76c5d) |
@@ -144,3 +119,58 @@ Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Don
 | B81 | Meter calibration and fuel quality checks per truck (Ted, 2026-11-08) | todo | P3 | M | Calibration dates, water/particulate checks, sample results; ask Ted what the real checks and limits are before building |
 | B82 | Preventive maintenance with due dates per equipment (Ted, 2026-11-08) | todo | P3 | M | Oil, tires, brakes, inspections; replaces the single next-maintenance date on the card |
 | B83 | Photos on notes and maintenance items (Ted, 2026-11-08) | todo | P3 | M | Attach a photo (gauge, damage); reuse the scan storage pattern from B69 |
+| B86 | Tail-number type lookup: FAA registry as second source (board session, 2026-11-09) | todo | P2 | S | adsbdb misses some tails (e.g. N33PX, a C560); when adsbdb returns nothing, fall back to the FAA aircraft registry; unit tests with both sources mocked; N33PX resolves |
+| B87 | Fuel sheet meter gap flagging (`feature/fuel-meter-readings`) | review | P1 | S | Built and pushed (973e4d9), NOT merged: its migration number clashes with `20261108000100_truck_daily_log` (already on live). Renumber to `20261108000200`, apply to live per B01c (Ted approved 2026-11-09), record it, merge, verify on prod |
+| B88 | Wing loading: verify 737 NG / MAX 9 and A319 / A320 tank capacities | todo | P2 | S | Capacities are marked unverified; confirm against real fuel sheets from Ted; update constants and tests |
+| B89 | Minuteman: meter-reading gap flagging like B87 / B71 | todo | P2 | M | Port per the Minuteman/FBO parity rule once B87 is on prod |
+| B90 | Fuel Dispatch parity: walk the gap list with Ted on prod | todo | P1 | S | The parity session's Fuel Dispatch vs Minuteman gap list was never reviewed on screen; each gap becomes a row or is dismissed |
+| B91 | Live migration history: record unrecorded versions, settle duplicate version numbers | todo | P1 | S | Ted approved 2026-11-09. Verify against live, then `migration repair --status applied` for 20261105000200 (hire_date), 20261105000300 (equipment DPI), 20261108000100 (truck daily log); check 20261102000500. Duplicates (20261105000100 x3, 000200 x2): renumber or document so a local `supabase db reset` applies cleanly. Metadata only, no SQL on live |
+| B92 | Minuteman: merge the wing-loading branch (`feature/wing-loading` 7a7f2fc) | todo | P1 | S | Pushed, not merged; waits for Ted's go-ahead to deploy Minuteman prod |
+| B93 | QT airline flights on the board + wing-loading fuel sheet | review | P1 | M | On master (QT airline cards, departed hidden, icons, wing-loading dialog c851dc7 / c9ac076); Ted checks on prod |
+
+## Milestones to v1 (orchestrator, 2026-11-09)
+
+- **M0 Consolidate:** B87, B91, B26e (form reload fix first), re-enable CI.
+- **M1 Board + form in daily use:** review pile B01-B23, B39, B42-B45d, B47, B60, B93; B17, B19c, B24, B40, B41, B46, B49, B50, B86.
+- **M2 Real logins + security:** B59, B59a, B76, B78, B38, B29, B30, B37, B31.
+- **M3 Fuel ops parity:** B69-B71, B84, B85, B87-B90, B92, B80, B68, B51, B52, B53, B77.
+- **M4 Parking, equipment, docs:** B54-B58, B70, B27-B28, B56, B59b, B35, B79, B63, B65, B66, B67.
+- **Post-v1:** B25, B48, B61, B62, B64, B81, B82, B83.
+
+## Linear mapping
+
+Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is primary; Linear is mirror + intake (see .claude/CLAUDE.md, Orchestrator). Synced 2026-11-09.
+
+| Item | Linear | Item | Linear | Item | Linear | Item | Linear |
+|---|---|---|---|---|---|---|---|
+| B01 | FBO-49 | B01b | FBO-54 | B01c | FBO-55 | B02 | FBO-56 |
+| B03 | FBO-57 | B04 | FBO-58 | B05 | FBO-59 | B06 | FBO-60 |
+| B07 | FBO-61 | B08 | FBO-62 | B08b | FBO-63 | B08c | FBO-64 |
+| B08d | FBO-65 | B08e | FBO-66 | B09 | FBO-67 | B09b | FBO-68 |
+| B09c | FBO-69 | B10 | FBO-70 | B11 | FBO-71 | B12 | FBO-72 |
+| B13 | FBO-73 | B14 | FBO-74 | B15 | FBO-75 | B16 | FBO-76 |
+| B17 | FBO-77 | B18 | FBO-78 | B19 | FBO-79 | B19b | FBO-117 |
+| B19c | FBO-118 | B20 | FBO-80 | B21 | FBO-81 | B22 | FBO-82 |
+| B23 | FBO-83 | B24 | FBO-84 | B25 | FBO-85 | B26 | FBO-50 |
+| B26a | FBO-86 | B26b | FBO-87 | B26c | FBO-88 | B26d | FBO-89 |
+| B26e | FBO-90 | B26f | FBO-119 | B27 | FBO-51 | B27a | FBO-91 |
+| B27b | FBO-92 | B27c | FBO-93 | B27d | FBO-94 | B28 | FBO-95 |
+| B29 | FBO-96 | B30 | FBO-97 | B31 | FBO-98 | B33 | FBO-99 |
+| B34 | FBO-100 | B35 | FBO-101 | B36 | FBO-102 | B37 | FBO-103 |
+| B38 | FBO-104 | B39 | FBO-105 | B40 | FBO-106 | B41 | FBO-107 |
+| B42 | FBO-108 | B43 | FBO-52 | B44 | FBO-110 | B43b | FBO-109 |
+| B45 | FBO-53 | B45a | FBO-111 | B45b | FBO-112 | B45c | FBO-113 |
+| B45d | FBO-120 | B46 | FBO-114 | B47 | FBO-115 | B48 | FBO-116 |
+| B49 | FBO-121 | B50 | FBO-122 | B51 | FBO-123 | B52 | FBO-124 |
+| B53 | FBO-125 | B54 | FBO-126 | B54a | FBO-132 | B55 | FBO-127 |
+| B56 | FBO-128 | B57 | FBO-129 | B58 | FBO-130 | B59 | FBO-131 |
+| B59a | FBO-133 | B59b | FBO-134 | B60 | FBO-135 | B61 | FBO-136 |
+| B62 | FBO-137 | B63 | FBO-138 | B64 | FBO-139 | B65 | FBO-140 |
+| B66 | FBO-141 | B67 | FBO-142 | B68 | FBO-143 | B69 | FBO-144 |
+| B85 | FBO-147 | B84 | FBO-148 | B76 | FBO-149 | B77 | FBO-150 |
+| B78 | FBO-151 | B79 | FBO-152 | B70 | FBO-145 | B71 | FBO-146 |
+| B80 | FBO-153 | B81 | FBO-154 | B82 | FBO-155 | B83 | FBO-156 |
+| B86 | FBO-157 | B87 | FBO-158 | B88 | FBO-159 | B89 | FBO-160 |
+| B90 | FBO-161 | B91 | FBO-162 | B92 | FBO-163 | B93 | FBO-164 |
+
+Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Done, parked and blocked = Backlog. Priority: P0 = Urgent, P1 = High, P2 = Medium, P3 = Low.
