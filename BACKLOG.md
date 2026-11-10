@@ -125,7 +125,7 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 | B89 | Minuteman: meter-reading gap flagging like B87 / B71 | canceled | P2 | M | Canceled by Ted 2026-11-10: do not port FBO meter-gap flagging to Minuteman. Port per the Minuteman/FBO parity rule once B87 is on prod |
 | B90 | Fuel Dispatch parity: walk the gap list with Ted on prod | todo | P1 | S | The parity session's Fuel Dispatch vs Minuteman gap list was never reviewed on screen; each gap becomes a row or is dismissed |
 | B91 | Live migration history: record unrecorded versions, settle duplicate version numbers | todo | P1 | S | Ted approved 2026-11-09. Verify against live, then `migration repair --status applied` for 20261105000200 (hire_date), 20261105000300 (equipment DPI), 20261108000100 (truck daily log); check 20261102000500. Duplicates (20261105000100 x3, 000200 x2): renumber or document so a local `supabase db reset` applies cleanly. Metadata only, no SQL on live |
-| B92 | Minuteman: merge the wing-loading branch (`feature/wing-loading` 7a7f2fc) | todo | P1 | S | Pushed, not merged; waits for Ted's go-ahead to deploy Minuteman prod |
+| B92 | Minuteman: merge the wing-loading branch (`feature/wing-loading` 7a7f2fc) | canceled | P1 | S | Canceled by Ted 2026-11-10: the ~/src/minuteman repo is read-only for this project; do not merge or deploy anything there. Pushed, not merged; waits for Ted's go-ahead to deploy Minuteman prod |
 | B93 | QT airline flights on the board + wing-loading fuel sheet | review | P1 | M | On master (QT airline cards, departed hidden, icons, wing-loading dialog c851dc7 / c9ac076); Ted checks on prod |
 
 ## Milestones to v1 (orchestrator, 2026-11-09)
@@ -133,7 +133,7 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 - **M0 Consolidate:** B87, B91, B26e (form reload fix first), re-enable CI.
 - **M1 Board + form in daily use:** review pile B01-B23, B39, B42-B45d, B47, B60, B93; B17, B19c, B24, B40, B41, B46, B49, B50, B86.
 - **M2 Real logins + security:** B59, B59a, B76, B78, B38, B29, B30, B37, B31.
-- **M3 Fuel ops parity:** B69-B71, B84, B85, B87, B88, B90, B92, B80, B68, B51, B52, B53, B77.
+- **M3 Fuel ops parity:** B69-B71, B84, B85, B87, B88, B90, B80, B68, B51, B52, B53, B77.
 - **M4 Parking, equipment, docs:** B54-B58, B70, B27-B28, B56, B59b, B35, B79, B63, B65, B66, B67.
 - **Post-v1:** B25, B48, B61, B62, B64, B81, B82, B83.
 
