@@ -1,5 +1,10 @@
 'use client'
 
+import {
+  isPlaceholderEmail,
+  StaffEmailDialog,
+  type StaffEmailDialogState
+} from '@/components/users/staff-email-dialog'
 import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
 import { useModuleAccess } from '@/hooks/use-permissions'
 import { useRoles } from '@/hooks/use-roles'
@@ -50,6 +55,10 @@ function formatJoined(user: { hire_date: string | null; created_at: string }): s
   return new Date(user.created_at).toLocaleDateString()
 }
 
+/** A role-less account on a real email: someone who signed in themselves, not a seeded staff account. */
+const isGoogleSignup = (u: ProfileWithRoles) =>
+  isAwaitingAccess(u) && !isPlaceholderEmail(u.email)
+
 export default function UsersPage() {
   const { allowed, loading: accessLoading } = useModuleAccess('users', 'manage')
   const {
@@ -61,6 +70,7 @@ export default function UsersPage() {
     setUserStatus,
     setUserRoles,
     deleteUser,
+    setStaffEmail,
     refetch
   } = useUsers()
   const { roles } = useRoles()
@@ -75,6 +85,7 @@ export default function UsersPage() {
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<ProfileWithRoles | null>(null)
+  const [emailDialog, setEmailDialog] = useState<StaffEmailDialogState | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -217,6 +228,26 @@ export default function UsersPage() {
       showError(err instanceof Error ? err.message : 'Failed to delete user')
     }
   }
+
+  const handleSetStaffEmail = async (
+    staffId: string,
+    email: string,
+    linkFromUserId?: string
+  ) => {
+    await setStaffEmail(staffId, email, linkFromUserId)
+    showSuccess(
+      linkFromUserId
+        ? 'Linked. They can now sign in with Google once more.'
+        : `Email set to ${email.trim().toLowerCase()}. They can now Continue with Google.`
+    )
+  }
+
+  // Staff accounts still on a placeholder email: the targets for "Link to staff account".
+  const staffCandidates = users.filter(
+    (u) =>
+      u.id !== currentUserId &&
+      isPlaceholderEmail(u.email)
+  )
 
   if (accessLoading || loading) {
     return (
@@ -467,6 +498,21 @@ export default function UsersPage() {
                           >
                             Edit
                           </DropdownMenuItem>
+                          {user.id !== currentUserId && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setEmailDialog(
+                                  isGoogleSignup(user)
+                                    ? { mode: 'link', signup: user }
+                                    : { mode: 'set', staff: user }
+                                )
+                              }
+                            >
+                              {isGoogleSignup(user)
+                                ? 'Link to staff account'
+                                : 'Set real email'}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             onClick={() => handleToggleStatus(user)}
                           >
@@ -490,6 +536,13 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      <StaffEmailDialog
+        state={emailDialog}
+        staffCandidates={staffCandidates}
+        onClose={() => setEmailDialog(null)}
+        onSet={handleSetStaffEmail}
+      />
 
       <UserSheet
         open={sheetOpen}

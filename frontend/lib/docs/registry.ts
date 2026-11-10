@@ -47,6 +47,13 @@ export const DOC_MODULES: readonly DocModule[] = [
     helpAnchors: ['reading', 'gauge', 'ullage', 'unusable', 'trend', 'gravity', 'edit-tank']
   },
   {
+    id: 'users',
+    title: 'Users and sign-in',
+    route: '/users',
+    docs: ['usage-guide'],
+    helpAnchors: ['sign-in', 'promote', 'set-real-email', 'link-signup', 'invite']
+  },
+  {
     id: 'fuel-dispatch',
     title: 'Fuel Dispatch',
     route: '/fuel-dispatch',

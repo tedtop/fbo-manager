@@ -9,6 +9,7 @@ import {
   type UpdateUserInput,
   deleteUser,
   inviteUser,
+  setStaffEmail,
   setUserActiveStatus,
   updateUserWithRoles
 } from '@/services/user-management.service'
@@ -64,6 +65,16 @@ export function useUsers() {
     onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
   })
 
+  const setEmailMutation = useMutation({
+    mutationFn: ({
+      userId,
+      email,
+      linkFromUserId
+    }: { userId: string; email: string; linkFromUserId?: string }) =>
+      setStaffEmail(userId, email, linkFromUserId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
+  })
+
   return {
     users: query.data ?? [],
     loading: query.isLoading,
@@ -77,6 +88,9 @@ export function useUsers() {
     setUserStatus: (userId: string, status: 'active' | 'disabled') =>
       setStatusMutation.mutateAsync({ userId, status }),
     deleteUser: (userId: string) => deleteMutation.mutateAsync(userId),
+    /** B78: real email on a staff account; linkFromUserId removes the Awaiting-access Google sign-up first. */
+    setStaffEmail: (userId: string, email: string, linkFromUserId?: string) =>
+      setEmailMutation.mutateAsync({ userId, email, linkFromUserId }),
     refetch: query.refetch
   }
 }

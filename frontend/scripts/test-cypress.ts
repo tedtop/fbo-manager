@@ -4,7 +4,7 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import path from 'node:path'
-import { E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_URL, assertSafeE2ETarget } from '../cypress/tasks/env'
+import { E2E_SUPABASE_ANON_KEY, E2E_SUPABASE_SERVICE_ROLE_KEY, E2E_SUPABASE_URL, assertSafeE2ETarget } from '../cypress/tasks/env'
 
 const baseUrl = process.env.CYPRESS_BASE_URL ?? 'http://localhost:4210'
 const port = new URL(baseUrl).port
@@ -24,6 +24,8 @@ const server: ChildProcess = spawn('pnpm', ['exec', 'next', 'dev', '-p', port], 
     NEXT_PUBLIC_SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
     SUPABASE_URL: E2E_SUPABASE_URL,
     SUPABASE_ANON_KEY: E2E_SUPABASE_ANON_KEY,
+    // Server-only admin routes (app/api/users/*) need the service role; this is the local stack's demo key.
+    SUPABASE_SERVICE_ROLE_KEY: E2E_SUPABASE_SERVICE_ROLE_KEY,
     NEXT_TELEMETRY_DISABLED: '1',
   },
 })

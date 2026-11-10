@@ -35,6 +35,23 @@ export async function deleteUser(id: string): Promise<void> {
   }
 }
 
+/** B78: set a staff account's real email (optionally absorbing an Awaiting-access Google sign-up). */
+export async function setStaffEmail(
+  id: string,
+  email: string,
+  linkFromUserId?: string
+): Promise<void> {
+  const res = await fetch(`/api/users/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, linkFromUserId })
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? 'Failed to set email')
+  }
+}
+
 export interface UpdateUserInput {
   firstName: string
   lastName: string
