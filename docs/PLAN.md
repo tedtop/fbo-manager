@@ -654,4 +654,4 @@ Not built there. Minuteman would need the same: the equivalent of `truck_meter_r
 
 ### Migration
 
-`20261108000100_fuel_meter_gaps.sql`: `meter_gap_annotation`, `truck_meter_readings.source`. Local only until Ted approves live (`db query --linked -f`, never `db push`). `fuel_tank_readings` is not touched.
+`20261108000200_fuel_meter_gaps.sql`: `meter_gap_annotation`, `truck_meter_readings.source`. Local only until Ted approves live (`db query --linked -f`, never `db push`). `fuel_tank_readings` is not touched.
