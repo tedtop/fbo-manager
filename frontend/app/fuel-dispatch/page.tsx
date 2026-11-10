@@ -1,5 +1,11 @@
 'use client'
 
+import '@/components/fuel-dispatch/fuel-dispatch.css'
+import { DensityBox } from '@/components/fuel-dispatch/density-box'
+import { WeatherWidget } from '@/components/fuel-dispatch/weather-widget'
+import { useWeather } from '@/hooks/use-weather'
+import { changeKey, normalizeTail } from '@/lib/dispatch-display'
+import Link from 'next/link'
 import { FuelOrderCard } from '@/components/fuel-dispatch/fuel-order-card'
 import { FuelerAssignDialog } from '@/components/fuel-dispatch/fueler-assign-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
@@ -18,7 +24,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Fuel, RefreshCw } from 'lucide-react'
+import { Fuel } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 
@@ -32,12 +38,19 @@ export default function FuelDispatchMonitorPage() {
   const {
     dispatches,
     loading: qtLoading,
+    refreshing,
     error: qtError,
+    errorStage,
     lastUpdated,
     refreshCountdown,
     refetch: qtRefetch,
-    changes: qtChanges
+    changes: qtChanges,
+    flightTrack,
+    now
   } = useQTDispatch()
+  const weather = useWeather()
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
 
   const [filterMode, setFilterMode] = useState<FilterMode>('airlines')
   const [hideDeparted, setHideDeparted] = useState(true)
@@ -48,6 +61,7 @@ export default function FuelDispatchMonitorPage() {
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTx, setAssignTx] = useState<TransactionWithRelations | null>(null)
 
+  // Minuteman keeps QT's own order and only drops flights that have left (status "In Flight").
   const filteredDispatches = hideDeparted
     ? dispatches.filter((d) => d.FlightStatus !== 'In Flight')
     : dispatches
@@ -128,120 +142,91 @@ export default function FuelDispatchMonitorPage() {
     setAssignOpen(true)
   }
 
-  const hasNew = qtChanges && qtChanges.length > 0
+  const renderCard = (dispatch: (typeof dispatches)[number]) => {
+    const key = changeKey(dispatch)
+    return (
+      <DispatchCard
+        key={dispatch.TransactionID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`}
+        dispatch={dispatch}
+        track={flightTrack.get(normalizeTail(dispatch.TailNumber))}
+        changes={key ? qtChanges.get(key) : undefined}
+        now={now}
+      />
+    )
+  }
+
+  // Status pill, as Minuteman's: green countdown, yellow while loading/refreshing, red while failing.
+  const pill = qtError
+    ? { kind: 'disconnected', text: `🔴 Dispatch error - retrying in ${refreshCountdown}s`, clickable: false }
+    : refreshing
+      ? { kind: 'connecting', text: '🟡 Refreshing...', clickable: false }
+      : qtLoading && !lastUpdated
+        ? { kind: 'connecting', text: '🟡 Connecting...', clickable: false }
+        : { kind: 'connected', text: `🟢 Next refresh in ${refreshCountdown}s`, clickable: true }
+
+  const banner = qtError ? (
+    errorStage ? (
+      <ErrorMessage>
+        QT login is being rejected – QT may have forced a password reset. Check/reset at{' '}
+        <a className="underline" href="https://go.qttechnologies.com" target="_blank" rel="noopener noreferrer">
+          https://go.qttechnologies.com
+        </a>
+        , then update QT_PASSWORD in Railway.
+      </ErrorMessage>
+    ) : (
+      <ErrorMessage>{qtError}</ErrorMessage>
+    )
+  ) : localError ? (
+    <ErrorMessage>{localError}</ErrorMessage>
+  ) : null
+
+  const emptyText = (
+    <div className="text-center py-10 text-muted-foreground">
+      {dispatches.length > 0 && hideDeparted
+        ? 'No upcoming flights (all flights have departed)'
+        : 'No dispatches available'}
+    </div>
+  )
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-foreground">Fuel Dispatch</h1>
-
-          {/* Filter radio */}
-          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-            <button
-              onClick={() => setFilterMode('airlines')}
-              className={cn(
-                'px-3 py-1 text-xs font-medium rounded-md transition-colors',
-                filterMode === 'airlines'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Airlines
-            </button>
-            <button
-              onClick={() => setFilterMode('all')}
-              className={cn(
-                'px-3 py-1 text-xs font-medium rounded-md transition-colors',
-                filterMode === 'all'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              All
-            </button>
+    <div className="fd space-y-5">
+      {/* Header: title, status pill and nav centred; KMSO weather card on the right (desktop) */}
+      <div className="fd-header">
+        <div className="fd-header-left" />
+        <div>
+          <h1>✈️ Fuel Dispatch Monitor</h1>
+          <div
+            className={cn('fd-status', pill.kind, pill.clickable && 'clickable')}
+            data-testid="dispatch-status"
+            title={pill.clickable ? 'Click to refresh now' : undefined}
+            onClick={pill.clickable ? () => void qtRefetch() : undefined}
+          >
+            {pill.text}
           </div>
-
-          {/* Hide departed toggle */}
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-            <span>Hide departed</span>
-            <div className="relative inline-block w-9 h-5">
-              <input
-                type="checkbox"
-                checked={hideDeparted}
-                onChange={(e) => setHideDeparted(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:bg-primary transition-colors cursor-pointer" />
-              <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-background rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
-            </div>
-          </label>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* QT refresh */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {qtLoading ? (
-              <div className="flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Loading...
-              </div>
-            ) : (
-              <>
-                {lastUpdated && (
-                  <span>Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
-                )}
-                <span className={cn(
-                  'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                  refreshCountdown <= 5 ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' : 'bg-muted text-muted-foreground'
-                )}>
-                  {refreshCountdown}s
-                </span>
-              </>
-            )}
-            {hasNew && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-700 dark:text-green-400 animate-pulse">
-                New
-              </span>
-            )}
+          <div className="fd-nav">
+            <Link href="/fuel-farm">⛽ Fuel Farm</Link>
+            <Link href="/docs/fuel-dispatch">❓ Help</Link>
           </div>
-
-          {filterMode === 'all' && (
-            <Button size="sm" onClick={openCreate}>
-              <Fuel className="w-3.5 h-3.5 mr-1.5" />
-              New Fuel Order
-            </Button>
-          )}
         </div>
+        <WeatherWidget weather={weather} />
       </div>
 
-      {/* Error */}
-      {qtError && <ErrorMessage>{qtError}</ErrorMessage>}
+      {banner}
 
-      {/* Cards Grid */}
+      {/* Cards */}
       {filterMode === 'airlines' ? (
         qtLoading && dispatches.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-lg text-muted-foreground">Loading dispatches...</div>
           </div>
         ) : filteredDispatches.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {dispatches.length > 0
-              ? 'No upcoming flights (all flights have departed)'
-              : 'No dispatches available'}
-          </div>
+          emptyText
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredDispatches.map((dispatch) => (
-              <DispatchCard key={dispatch.TransactionID ??`${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
-            ))}
-          </div>
+          <div className="fd-grid">{filteredDispatches.map(renderCard)}</div>
         )
       ) : (
         /* "All" mode: QT cards + fuel order cards */
         <div className="space-y-6">
-          {/* QT Dispatches Section */}
           {dispatches.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
@@ -252,20 +237,21 @@ export default function FuelDispatchMonitorPage() {
                   All flights have departed
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredDispatches.map((dispatch) => (
-              <DispatchCard key={dispatch.TransactionID ??`${dispatch.FlightNumber}-${dispatch.TailNumber}`} dispatch={dispatch} />
-                  ))}
-                </div>
+                <div className="fd-grid">{filteredDispatches.map(renderCard)}</div>
               )}
             </div>
           )}
 
-          {/* Fuel Orders Section */}
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-              Fuel Orders ({fuelOrders.length})
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Fuel Orders ({fuelOrders.length})
+              </h2>
+              <Button size="sm" onClick={openCreate}>
+                <Fuel className="w-3.5 h-3.5 mr-1.5" />
+                New Fuel Order
+              </Button>
+            </div>
             {txLoading ? (
               <div className="text-sm text-muted-foreground">Loading orders...</div>
             ) : fuelOrders.length === 0 ? (
@@ -287,6 +273,62 @@ export default function FuelDispatchMonitorPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      <DensityBox weather={weather.current} onError={setLocalError} />
+
+      {/* Filters: Minuteman's "Hide departed flights" switch, plus this app's Airlines / All view */}
+      <div className="fd-box fd-filter" data-testid="dispatch-filters">
+        <label className="fd-filter-label" htmlFor="hideDepartedToggle">
+          Hide departed flights
+        </label>
+        <label className="fd-toggle">
+          <input
+            type="checkbox"
+            id="hideDepartedToggle"
+            checked={hideDeparted}
+            onChange={(e) => setHideDeparted(e.target.checked)}
+          />
+          <span className="fd-toggle-slider" />
+        </label>
+        <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 ml-4">
+          {(['airlines', 'all'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setFilterMode(mode)}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded-md transition-colors',
+                filterMode === mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {mode === 'airlines' ? 'Airlines' : 'All'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="fd-last-updated">{lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : ''}</div>
+
+      {/* Troubleshooting help */}
+      <button type="button" className="fd-fab help" onClick={() => setHelpOpen(!helpOpen)} aria-label="Troubleshooting">
+        ?
+      </button>
+      {helpOpen && (
+        <div className="fd-panel" data-testid="help-panel">
+          <h4>Troubleshooting</h4>
+          <p>
+            If dispatch data stops loading: call QT Technologies Client Support at <a href="tel:8667883241">866-788-3241</a>{' '}
+            or email <a href="mailto:QTHelpDesk@QTTechnologies.com">QTHelpDesk@QTTechnologies.com</a>, identify as Ted, and
+            ask for a password reset and/or unlock on the TTMSO account. This re-enables the existing Company Location ID /
+            User ID UUIDs without needing to change them.
+          </p>
+          <p>
+            If the Company Location ID or User ID ever need to change: these are Railway environment variables
+            (<code>QT_COMPANY_LOCATION_ID</code>, <code>QT_USER_ID</code>, and <code>QT_PASSWORD</code> for the login) and
+            need a redeploy. This cannot be done from within this app.
+          </p>
         </div>
       )}
 

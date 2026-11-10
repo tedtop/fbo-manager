@@ -82,6 +82,16 @@ export default defineConfig({
           return null
         },
 
+        /** Inserts an aircraft whose type is still Unknown (as created before the registry lookup existed). */
+        async seedUnknownAircraft(tail: string) {
+          const db = createE2EDbClient()
+          const { error } = await db
+            .from('aircraft')
+            .insert({ tail_number: tail, aircraft_type_icao: 'UNKN', aircraft_type_display: 'Unknown' })
+          if (error) throw new Error(`seedUnknownAircraft: ${error.message}`)
+          return null
+        },
+
         /** Idempotently creates the two Quick Dev Login accounts (the two dev accounts the login form's Quick Dev Login buttons use). */
         async seedDevUsers() {
           await seedDevUsers()

@@ -31,6 +31,20 @@ export const DOC_MODULES: readonly DocModule[] = [
       'conflicts',
       'hide'
     ]
+  },
+  {
+    id: 'fuel-farm',
+    title: 'Fuel Farm',
+    route: '/fuel-farm',
+    docs: ['usage-guide'],
+    helpAnchors: ['reading', 'gauge', 'ullage', 'unusable', 'trend', 'gravity', 'edit-tank']
+  },
+  {
+    id: 'fuel-dispatch',
+    title: 'Fuel Dispatch',
+    route: '/fuel-dispatch',
+    docs: ['usage-guide'],
+    helpAnchors: ['status', 'cards', 'changes', 'countdowns', 'filter', 'density', 'weather', 'fuel-sheet']
   }
 ]
 

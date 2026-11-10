@@ -74,6 +74,7 @@ export interface Flight {
   aircraftType: string // derived from aircraft table
   parkingArea?: ParkingArea | null // aircraft.parked_area_id (read-only, never sent to the API)
   callSign?: string // call_sign
+  fuelLbs?: number // QT airline flights only: planned gate fuel from QT, lbs (not stored)
 
   // Timing (direct from database - no derived fields)
   arrivalTime?: string // scheduled_arrival_time (ISO timestamp; unset for a departure-only / hangar-pull flight)
