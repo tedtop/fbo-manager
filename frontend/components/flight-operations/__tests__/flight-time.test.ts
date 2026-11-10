@@ -5,7 +5,9 @@ import {
   applyDepartureChange,
   applyQuickTurnChange,
   buildTimestamp,
+  applyPreset,
   convertFormZone,
+  presetOf,
   displayDates,
   formFromInstants,
   formatGroundTime,
@@ -354,5 +356,29 @@ describe('formatGroundTime', () => {
     expect(formatGroundTime('2026-11-10T16:00:00Z', '2026-11-10T16:45:00Z')).toBe('45m')
     expect(formatGroundTime('2026-11-10T16:00:00Z', '2026-11-10T18:05:00Z')).toBe('2h 5m')
     expect(formatGroundTime('2026-11-10T16:00:00Z', undefined)).toBe('N/A')
+  })
+})
+
+describe('entry presets (B41)', () => {
+  it('Return clears the computed departure and QT', () => {
+    expect(applyPreset({ arrival: '10:00', departure: '11:00', quickTurn: true }, 'return')).toEqual({
+      arrival: '10:00', departure: '', quickTurn: false
+    })
+  })
+  it('Hangar pull clears the arrival, keeps the departure, QT off', () => {
+    expect(applyPreset({ arrival: '10:00', departure: '14:00', quickTurn: false }, 'hangar_pull')).toEqual({
+      arrival: '', departure: '14:00', quickTurn: false
+    })
+  })
+  it('Transient restores QT with departure = arrival + 1 h', () => {
+    expect(applyPreset({ arrival: '10:00', departure: '', quickTurn: false }, 'transient')).toEqual({
+      arrival: '10:00', departure: '11:00', quickTurn: true
+    })
+  })
+  it('derives the active preset from the times', () => {
+    expect(presetOf({ arrival: '', departure: '', quickTurn: true })).toBe('transient')
+    expect(presetOf({ arrival: '10:00', departure: '', quickTurn: false })).toBe('return')
+    expect(presetOf({ arrival: '', departure: '10:00', quickTurn: false })).toBe('hangar_pull')
+    expect(presetOf({ arrival: '10:00', departure: '11:00', quickTurn: true })).toBe('transient')
   })
 })

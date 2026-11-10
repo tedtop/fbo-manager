@@ -45,6 +45,11 @@ import { ServicePillPicker } from './service-pill-picker'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import {
   applyArrivalChange,
+  applyPreset,
+  FLIGHT_PRESETS,
+  presetOf,
+  scheduledForPreset,
+  type FlightPreset,
   applyDepartureChange,
   applyQuickTurnChange,
   buildTimestamp,
@@ -99,6 +104,8 @@ export function FlightFormDialog({
     source: 'line-department',
     tailNumber: tailPrefix
   })
+  // A calendar slot opens the form prefilled but without an id: that is a NEW flight, not an edit.
+  const isEditing = !!initialData?.id
   const [date, setDate] = useState(formatLocalDate(new Date(), zone)) // Separate date state (local calendar date)
   const [arrivalTime, setArrivalTime] = useState('')
   const [departureTime, setDepartureTime] = useState('')
@@ -122,6 +129,14 @@ export function FlightFormDialog({
     actualDepartureDate
   }
   const shownDates = displayDates(formTimes, zone)
+  const activePreset = presetOf(scheduledForPreset(arrivalTime, departureTime, quickTurn))
+  const handlePreset = (preset: FlightPreset) => {
+    const next = applyPreset({ arrival: arrivalTime, departure: departureTime, quickTurn }, preset)
+    setScheduled(next)
+    if (preset !== 'transient') setDepartureDate('')
+    if (preset === 'hangar_pull') setActualArrivalTime('')
+    if (preset === 'return') setActualDepartureTime('')
+  }
   const scheduledInstants = formTimestamps(formTimes, zone)
   const groundTimeLabel = formatGroundTime(
     scheduledInstants.arrival,
@@ -230,7 +245,7 @@ export function FlightFormDialog({
   // but only while the user has not typed anything beyond the prefix.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when the prefix itself changes
   useEffect(() => {
-    if (initialData) return
+    if (isEditing) return
     setFormData((current) =>
       isBlankTail(current.tailNumber, appliedPrefix.current)
         ? { ...current, tailNumber: tailPrefix }
@@ -243,7 +258,7 @@ export function FlightFormDialog({
   // hangar pull -> Origin), recomputed as the times change but only while that field is still untouched.
   // biome-ignore lint/correctness/useExhaustiveDependencies: open re-runs it after the reset effect above
   useEffect(() => {
-    if (initialData) return
+    if (isEditing) return
     const prefill = prefillAirports({
       arrival: arrivalTime,
       departure: departureTime,
@@ -288,7 +303,7 @@ export function FlightFormDialog({
     table: 'flight',
     recordId: initialData?.id ?? null,
     updatedAt: initialData?.updatedAt ?? null,
-    enabled: open && !!initialData,
+    enabled: open && isEditing,
     select: FLIGHT_SELECT,
     onReload: (freshRow) => {
       // FLIGHT_SELECT embeds flight_service, so services and quantities come from the junction (B26e)
@@ -486,7 +501,7 @@ export function FlightFormDialog({
     // The page handler shows the error toast and rethrows; keep the sheet open with the input intact.
     setSaving(true)
     try {
-      if (initialData) {
+      if (isEditing) {
         const outcome = await editSession.save(async (expectedUpdatedAt) => {
           await onSubmit(flight, expectedUpdatedAt)
         })
@@ -516,16 +531,16 @@ export function FlightFormDialog({
       >
         <SheetHeader className="border-b border-border p-4">
           <SheetTitle>
-            {initialData ? 'Edit Flight' : 'Add New Flight'}
+            {isEditing ? 'Edit Flight' : 'Add New Flight'}
           </SheetTitle>
           <SheetDescription>
-            {initialData
+            {isEditing
               ? 'Update this flight’s details.'
               : 'Log a new arrival, departure, or quick turn.'}
           </SheetDescription>
         </SheetHeader>
 
-        {initialData && (
+        {isEditing && (
           <div className="px-4 pt-4">
             <EditSessionStatus
               editSession={editSession}
@@ -653,6 +668,26 @@ export function FlightFormDialog({
               >
                 {isZulu ? banner : `Times in ${zoneLabel}`}
               </p>
+              <div
+                role="group"
+                aria-label="Flight type"
+                className="flex gap-2"
+              >
+                {FLIGHT_PRESETS.map((p) => (
+                  <Button
+                    key={p.value}
+                    type="button"
+                    size="sm"
+                    variant={activePreset === p.value ? 'default' : 'outline'}
+                    aria-pressed={activePreset === p.value}
+                    data-testid={`preset-${p.value}`}
+                    title={p.hint}
+                    onClick={() => handlePreset(p.value)}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
               <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
                   <div className="space-y-2">

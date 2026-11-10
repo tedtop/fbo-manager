@@ -28,6 +28,10 @@ Press **Add Flight** in the board toolbar. The form is a panel on the right.
 
 New flights have **QT** ticked, so you normally only enter the arrival time. If the aircraft is new, it is created together with the flight.
 
+### Transient, Hangar pull and Return {#presets}
+
+Three buttons above the times set the kind of flight in one click. **Transient** (the default) is an arrival with QT, or a longer stay. **Hangar pull** is departure only: it clears the arrival, unticks QT and leaves you to type the departure. **Return** is arrival only: it clears the computed departure and unticks QT. The highlighted button follows the times you have entered. A flight created by clicking a slot in the calendar now opens as **Add New Flight** (it used to open as Edit Flight).
+
 ### Multi-day stays and times after midnight {#multi-day}
 
 Each time you enter gets its own small date field under it (Departure, and both Actual times). By default it is the same day as **Date**, or the next day when a time is earlier than the one before it (a 23:30 arrival with a 00:30 departure). To enter a stay of several days, change the departure's date, for example to three days later. An actual arrival after midnight works the same way: set its date to the next day. Next to the times, **Ground time** shows the full stay including days (for example `3d 5h 0m`). When you edit a flight, every date loads back as it was saved. Ticking QT, or changing the arrival while QT is on, puts the departure back on the automatic day.

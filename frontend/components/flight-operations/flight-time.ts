@@ -58,6 +58,37 @@ export function applyQuickTurnChange(
   return { ...state, quickTurn }
 }
 
+// B41: explicit entry presets. Transient = QT or a longer stay (both times), Hangar pull = departure only,
+// Return = arrival only (D6). The active preset is derived from the times, never stored.
+export type FlightPreset = 'transient' | 'hangar_pull' | 'return'
+
+export const FLIGHT_PRESETS: { value: FlightPreset; label: string; hint: string }[] = [
+  { value: 'transient', label: 'Transient', hint: 'Arrival with a quick turn (departure +1 h) or a longer stay' },
+  { value: 'hangar_pull', label: 'Hangar pull', hint: 'Departure only: the aircraft leaves the hangar' },
+  { value: 'return', label: 'Return', hint: 'Arrival only: the aircraft comes back, no departure planned' }
+]
+
+export function scheduledForPreset(arrival: string, departure: string, quickTurn: boolean): ScheduledTimesState {
+  return { arrival, departure, quickTurn }
+}
+
+export function presetOf(state: ScheduledTimesState): FlightPreset {
+  if (state.arrival && !state.departure) return 'return'
+  if (!state.arrival && state.departure) return 'hangar_pull'
+  return 'transient'
+}
+
+export function applyPreset(state: ScheduledTimesState, preset: FlightPreset): ScheduledTimesState {
+  switch (preset) {
+    case 'transient':
+      return { arrival: state.arrival, departure: quickTurnDeparture(state.arrival), quickTurn: true }
+    case 'hangar_pull':
+      return { arrival: '', departure: state.departure, quickTurn: false }
+    case 'return':
+      return { arrival: state.arrival, departure: '', quickTurn: false }
+  }
+}
+
 // Real validation (replaces the old dead alert): at least one scheduled time, per D6 and the DB CHECK.
 export function validateScheduledTimes(
   arrival: string,
