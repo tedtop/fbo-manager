@@ -565,7 +565,7 @@ invoice_slip/<YYYY>/<MM>/<YYYY-MM-DD>/...                                       
 - Never overwrite: uploads use `upsert: false`; an existing object under the same name has the same bytes and is reused. Page numbers on a truck/day only grow (append = max + 1). Cleanup after a failed import removes only objects that call created. Replacing or removing pages is a deliberate manual action (not built).
 - A multi-page PDF is stored once under `original/`; every page row of it points at that path (`original_path`, `original_page`). A photo is its own original. All page images are re-encoded upright JPEGs (quality 0.92, longest side capped at 3000 px, no upscaling, no PNG), so the stored page is always upright whatever the phone did; the original keeps whatever orientation it came in. Each page also gets a 400 px wide thumbnail (JPEG q0.8) stored under `thumbs/` and recorded in `thumb_path`.
 
-Database (migration `20261105000100_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
+Database (migration `20261105000400_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
 
 - `scanned_documents` gains `thumb_path`, `rotation_degrees smallint` (0/90/180/270, clockwise turn applied to make the page upright; default 0), `content_sha256 text` (hash of the upright page bytes), `original_path text`, `original_page smallint`, `original_content_type text`, `fuel_truck_id` (equipment.id, on delete set null), `scan_date date` (the sheet date).
 - `doc_type` check widened to add `schedule_sheet` (rows for schedule sheets are not written yet; the object layout is).
