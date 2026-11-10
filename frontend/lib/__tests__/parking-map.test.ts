@@ -164,8 +164,6 @@ describe('aircraft rows', () => {
     fleet_id: '',
     created_at: '',
     updated_at: '',
-    assigned_fueler_id: null,
-    available_at: null,
     parked_lat: null,
     parked_lng: null,
     parked_heading: null,
