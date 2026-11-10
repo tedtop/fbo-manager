@@ -49,7 +49,7 @@ export function serviceQuantitiesFromRow(
   return out
 }
 
-const FLIGHT_SELECT = `
+export const FLIGHT_SELECT = `
   *,
   aircraft:tail_number ( tail_number, aircraft_type_icao, aircraft_type_display, parked_area:parked_area_id ( id, code, name, kind ) ),
   location:location_id ( location_code, description, latitude, longitude ),

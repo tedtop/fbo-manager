@@ -38,7 +38,7 @@ export const flightKeys = {
   list: (filters?: FlightFilters) => [...flightKeys.lists(), filters] as const
 }
 
-function rowToFlight(row: any): Flight {
+export function rowToFlight(row: any): Flight {
   return apiFlightToComponentFlight({
     id: row.id,
     aircraft: row.tail_number,
