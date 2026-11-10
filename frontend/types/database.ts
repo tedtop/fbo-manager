@@ -1183,6 +1183,38 @@ export type Database = {
           },
         ]
       }
+      meter_gap_annotation: {
+        Row: {
+          id: number
+          fuel_truck_id: number
+          meter: 'front' | 'rear'
+          to_reading_id: number | null
+          to_sheet_id: number | null
+          expected_start: number | null
+          actual_start: number | null
+          reason: 'meter_roll' | 'forgotten_fueling' | 'typo' | 'other' | null
+          note: string | null
+          resolved: boolean
+          resolved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          fuel_truck_id: number
+          meter: 'front' | 'rear'
+          to_reading_id?: number | null
+          to_sheet_id?: number | null
+          expected_start?: number | string | null
+          actual_start?: number | string | null
+          reason?: 'meter_roll' | 'forgotten_fueling' | 'typo' | 'other' | null
+          note?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['meter_gap_annotation']['Insert']>
+        Relationships: []
+      }
       truck_meter_readings: {
         Row: {
           id: number
@@ -1206,6 +1238,7 @@ export type Database = {
           flight_id: number | null
           fuel_transaction_id: number | null
           notes: string | null
+          source: 'scan' | 'typed'
           created_at: string
           updated_at: string
         }
@@ -1231,6 +1264,7 @@ export type Database = {
           flight_id?: number | null
           fuel_transaction_id?: number | null
           notes?: string | null
+          source?: 'scan' | 'typed'
         }
         Update: Partial<Database['public']['Tables']['truck_meter_readings']['Insert']>
         Relationships: [

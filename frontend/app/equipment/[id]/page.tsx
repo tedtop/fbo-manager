@@ -4,6 +4,7 @@ import { use, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { MeterGaps } from '@/components/equipment/meter-gaps'
 import { DailyReadings } from '@/components/equipment/daily-readings'
 import { EquipmentNotes } from '@/components/equipment/equipment-notes'
 import { FilterChanges } from '@/components/equipment/filter-changes'
@@ -96,6 +97,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
             </>
           )}
           <EquipmentNotes equipmentId={item.id} />
+          {canSeeTruckSheets && <MeterGaps equipmentId={item.id} />}
           {canSeeTruckSheets && <TruckReadings equipmentId={item.id} truckNumber={item.equipment_id} />}
         </>
       )}

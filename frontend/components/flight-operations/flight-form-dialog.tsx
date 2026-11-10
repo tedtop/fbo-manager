@@ -35,7 +35,8 @@ import { useToast } from '@/hooks/use-toast'
 import { describeError } from '@/lib/error-message'
 import { findIcaoType, formatIcaoType } from '@/lib/icao-aircraft-types'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
-import type { FlightRow } from '@/repositories/flights.repo'
+import { FLIGHT_SELECT, type FlightWithRelations } from '@/repositories/flights.repo'
+import { rowToFlight } from '@/hooks/use-flights'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AircraftTypeCombobox } from './aircraft-type-combobox'
 import { AirportCombobox } from './airport-combobox'
@@ -53,7 +54,7 @@ import {
   toTimeInput,
   validateScheduledTimes
 } from './flight-time'
-import { type Flight, apiFlightToComponentFlight } from './types'
+import type { Flight } from './types'
 
 // Local "HH:mm" of an ISO timestamp, '' when absent.
 function calculateGroundTime(
@@ -279,37 +280,16 @@ export function FlightFormDialog({
     setActualDepartureTime(next.actualDeparture)
   }, [zone])
 
-  const editSession = useRecordEditSession<FlightRow>({
+  const editSession = useRecordEditSession<FlightWithRelations>({
     table: 'flight',
     recordId: initialData?.id ?? null,
     updatedAt: initialData?.updatedAt ?? null,
     enabled: open && !!initialData,
+    select: FLIGHT_SELECT,
     onReload: (freshRow) => {
-      const reloaded = apiFlightToComponentFlight({
-        id: freshRow.id,
-        aircraft: freshRow.tail_number,
-        call_sign: freshRow.call_sign,
-        scheduled_arrival_time: freshRow.scheduled_arrival_time,
-        scheduled_departure_time: freshRow.scheduled_departure_time,
-        actual_arrival_time: freshRow.actual_arrival_time,
-        actual_departure_time: freshRow.actual_departure_time,
-        is_quick_turn: freshRow.is_quick_turn,
-        flight_status: freshRow.flight_status,
-        origin: freshRow.origin,
-        destination: freshRow.destination,
-        contact_name: freshRow.contact_name,
-        contact_notes: freshRow.contact_notes,
-        services: freshRow.services,
-        fuel_order_notes: freshRow.fuel_order_notes,
-        location_id: freshRow.location_id,
-        passenger_count: freshRow.passenger_count,
-        notes: freshRow.notes,
-        created_by_source: freshRow.created_by_source,
-        created_at: freshRow.created_at,
-        updated_at: freshRow.updated_at
-      })
-      // The raw row has no joined aircraft type (only the dedicated FLIGHT_SELECT query
-      // does); keep whatever was already shown rather than blanking it out.
+      // FLIGHT_SELECT embeds flight_service, so services and quantities come from the junction (B26e)
+      const reloaded = rowToFlight(freshRow)
+      // Keep the shown aircraft type if the joined aircraft carries none.
       if (!reloaded.aircraftType) {
         reloaded.aircraftType = formData.aircraftType ?? ''
       }

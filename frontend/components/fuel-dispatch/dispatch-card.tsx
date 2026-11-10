@@ -176,6 +176,9 @@ export function DispatchCard({ dispatch, track, changes, now = Date.now() }: Dis
             aircraftType={dispatch.AircraftType}
             plannedLbs={dispatch.QuantityInWeight}
             title={`${dispatch.FlightNumber} ${dispatch.TailNumber}`}
+            qtDispatchId={dispatch.TransactionID ?? `${dispatch.FlightNumber}-${dispatch.TailNumber}`}
+            tailNumber={dispatch.TailNumber}
+            airline={dispatch.AirlineName}
           />
         </div>
       )}

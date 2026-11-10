@@ -60,6 +60,7 @@ import { ServicePill, ServicePillPicker } from './service-pill-picker'
 import { FlightCardSkeletonBody } from './flight-card-skeleton'
 import { FlightFormDialog } from './flight-form-dialog'
 import { WingLoadingPanel } from '@/components/fuel-dispatch/wing-loading-panel'
+import { QT_FLIGHT_PREFIX } from '@/lib/qt-flights'
 import type { Flight } from './types'
 
 // Calculate time remaining until a timestamp
@@ -726,7 +727,7 @@ export function FlightCard({
           </div>
 
           {isQt && flight.fuelLbs ? (
-            <WingLoadingPanel aircraftType={flight.aircraftType} plannedLbs={flight.fuelLbs} title={`${flight.callSign ?? ""} ${flight.tailNumber}`.trim()} />
+            <WingLoadingPanel aircraftType={flight.aircraftType} plannedLbs={flight.fuelLbs} title={`${flight.callSign ?? ""} ${flight.tailNumber}`.trim()} qtDispatchId={flight.id.startsWith(QT_FLIGHT_PREFIX) ? flight.id.slice(QT_FLIGHT_PREFIX.length) : undefined} tailNumber={flight.tailNumber} airline={flight.contactName} />
           ) : null}
 
           {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}

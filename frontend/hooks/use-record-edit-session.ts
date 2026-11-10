@@ -38,6 +38,8 @@ export interface UseRecordEditSessionOptions<
    * live-change banner or the save-time conflict dialog). Use it to repopulate form state.
    */
   onReload?: (freshRow: TRow) => void
+  /** PostgREST select list for the reload fetch. Defaults to '*' (no embedded relations). */
+  select?: string
 }
 
 export interface UseRecordEditSessionResult<
@@ -89,7 +91,7 @@ function getDisplayName(
 export function useRecordEditSession<TRow extends Record<string, unknown>>(
   options: UseRecordEditSessionOptions<TRow>
 ): UseRecordEditSessionResult<TRow> {
-  const { table, recordId, updatedAt, enabled, onReload } = options
+  const { table, recordId, updatedAt, enabled, onReload, select = '*' } = options
   const idColumn = options.idColumn ?? 'id'
   const updatedAtColumn = options.updatedAtColumn ?? 'updated_at'
 
@@ -264,7 +266,7 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
         try {
           // biome-ignore lint/suspicious/noExplicitAny: table is a runtime string; this hook is intentionally schema-agnostic
           const { data, error } = await (db.from(table) as any)
-            .select('*')
+            .select(select)
             .eq(idColumn, recordId)
             .single()
           if (!error && data) {
@@ -297,7 +299,7 @@ export function useRecordEditSession<TRow extends Record<string, unknown>>(
         baselineRef.current = nextUpdatedAt
       pendingSaveRef.current = null
     },
-    [db, table, idColumn, updatedAtColumn, recordId, onReload]
+    [db, table, idColumn, updatedAtColumn, recordId, onReload, select]
   )
 
   return {

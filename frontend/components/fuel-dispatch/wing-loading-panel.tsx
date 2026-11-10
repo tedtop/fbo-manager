@@ -8,12 +8,11 @@ import {
   DEFAULT_DENSITY,
   findFuelType,
   planWingLoad,
-  SHEET_TOLERANCE_GAL,
-  truckCheck,
   type TankLbs
 } from '@/lib/wing-loading'
 import { Calculator } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { FuelSheetMeters } from './fuel-sheet-meters'
 
 interface WingLoadingPanelProps {
   /** Aircraft type as QT or the board gives it ("737", "B739M", "E75"). */
@@ -22,6 +21,10 @@ interface WingLoadingPanelProps {
   plannedLbs: number
   /** Shown in the dialog title, e.g. "UA1026 N17448". */
   title?: string
+  /** QT TransactionID: what a saved fueling is keyed by. Without it the sheet works but cannot be saved. */
+  qtDispatchId?: string | number
+  tailNumber?: string
+  airline?: string
 }
 
 const num = (value: string): number | undefined => {
@@ -32,14 +35,13 @@ const fmt = (n: number) => Math.round(n).toLocaleString()
 
 // The airline's routine fuel service form, worked out for the fueler: type in what each tank holds on
 // arrival and every line to write on the sheet is filled in. Nothing is stored.
-export function WingLoadingPanel({ aircraftType, plannedLbs, title }: WingLoadingPanelProps) {
+export function WingLoadingPanel({ aircraftType, plannedLbs, title, qtDispatchId, tailNumber, airline }: WingLoadingPanelProps) {
   const detected = findFuelType(aircraftType)
   const [typeKey, setTypeKey] = useState(detected?.key ?? '')
   const [open, setOpen] = useState(false)
   const [before, setBefore] = useState<Record<keyof TankLbs, string>>({ left: '', center: '', right: '' })
   const [density, setDensity] = useState(String(DEFAULT_DENSITY))
   const [wingMax, setWingMax] = useState('')
-  const [truck, setTruck] = useState('')
 
   const fuelType = AIRCRAFT_FUEL_TYPES.find((t) => t.key === typeKey) ?? detected
   // Nov-Mar uses the placard's winter wing figure.
@@ -60,6 +62,11 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title }: WingLoadin
     [fuelType, plannedLbs, winter, density, wingMax, before]
   )
 
+  const restore = useCallback((saved: { before: Record<keyof TankLbs, string>; density: string }) => {
+    setBefore(saved.before)
+    if (saved.density) setDensity(saved.density)
+  }, [])
+
   if (!fuelType || !result) return null
 
   const tanks: { key: keyof TankLbs; label: string }[] = [
@@ -68,8 +75,6 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title }: WingLoadin
     { key: 'right', label: 'R Wing' }
   ]
   const calcGallons = result.totalAddGallons
-  const truckGallons = num(truck)
-  const check = truckGallons === undefined ? null : truckCheck(calcGallons, truckGallons)
   const row = 'flex items-baseline justify-between gap-3 py-1'
 
   return (
@@ -90,7 +95,7 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title }: WingLoadin
           <DialogHeader>
             <DialogTitle>Fuel sheet{title ? `: ${title}` : ''}</DialogTitle>
             <DialogDescription>
-              Type what each tank holds on arrival; write the bold numbers on the airline sheet.
+              Type what each tank holds on arrival and the truck meter numbers; write the bold numbers on the airline sheet.
             </DialogDescription>
           </DialogHeader>
 
@@ -185,28 +190,16 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title }: WingLoadin
               <span className="font-sans">Calculated gallons to add</span>
               <b>{fmt(calcGallons)}</b>
             </div>
-            <div className={row}>
-              <span className="font-sans">Subtract total gallons added (truck meter)</span>
-              <Input
-                aria-label="Gallons added by the truck"
-                inputMode="numeric"
-                placeholder="gal"
-                value={truck}
-                onChange={(e) => setTruck(e.target.value)}
-                className="h-7 w-20 px-1 text-right text-xs"
-              />
-            </div>
-            <div className={row}>
-              <span className="font-sans">Equals (tolerance +{SHEET_TOLERANCE_GAL} / -{SHEET_TOLERANCE_GAL})</span>
-              {check ? (
-                <b className={check.withinTolerance ? 'text-success' : 'text-destructive'}>
-                  {check.difference} {check.withinTolerance ? 'OK' : 'out of tolerance'}
-                </b>
-              ) : (
-                <span className="text-muted-foreground">enter truck gallons</span>
-              )}
-            </div>
           </div>
+
+          <FuelSheetMeters
+            result={result}
+            qtDispatchId={qtDispatchId === undefined ? undefined : String(qtDispatchId)}
+            tailNumber={tailNumber}
+            aircraftType={aircraftType}
+            airline={airline}
+            onRestore={restore}
+          />
 
           {result.warnings.map((w) => (
             <p key={w} className="text-xs text-destructive">
