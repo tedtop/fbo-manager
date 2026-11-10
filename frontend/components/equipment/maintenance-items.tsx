@@ -19,7 +19,7 @@ import { ErrorMessage } from '@/messages/error-message'
 type Mode = { kind: 'add' } | { kind: 'edit'; item: MaintenanceItemRow } | { kind: 'resolve'; item: MaintenanceItemRow } | null
 
 /** Maintenance items of one piece of equipment: open first, add / edit / resolve / reopen / delete. Times are FBO-zone wall clock. */
-export function MaintenanceItems({ equipmentId }: { equipmentId: number }) {
+export function MaintenanceItems({ equipmentId, onAllResolved }: { equipmentId: number; onAllResolved?: () => void }) {
   const { items, loading, error, create, update, resolve, reopen, remove } = useMaintenanceItems(equipmentId)
   const { user } = useCurrentUser()
   const { fboZone, suffixAt } = useDisplayZone()
@@ -74,6 +74,7 @@ export function MaintenanceItems({ equipmentId }: { equipmentId: number }) {
         await update({ id: mode.item.id, updates: { title: title.trim(), description: notes.trim(), noted_at: instant } })
       } else {
         await resolve({ id: mode.item.id, resolutionNotes: notes.trim(), resolvedAt: instant, resolvedBy: user?.id ?? null })
+        if (openCount === 1) onAllResolved?.()
       }
       setMode(null)
     } catch (err) {

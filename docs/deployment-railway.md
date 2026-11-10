@@ -166,7 +166,7 @@ truck_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/truck-<N>/thumbs/<date>_truck-<N>_p<page>_<
 schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/{original,pages,thumbs}/...                            same idea for front-desk schedule sheets
 ```
 
-`hash8` is the first 8 hex of the sha-256 of that file's bytes, so the same bytes always get the same name and a different scan never overwrites another. The date is the sheet date, not the upload day. The database columns `storage_path`, `thumb_path`, `original_path` say where each file is (files from the first import version, `truck_sheet/<yyyy>/<mm>/<uuid>-<name>`, may exist on live and are not moved). The bucket needs the policies from migration `20261105000100_truck_sheet_scan_pages.sql` (signed-in users may read, upload and delete in `scans`), otherwise the browser cannot store or show scans. Design and reasons: `docs/PLAN.md`, "Truck sheet scan storage and page attachment".
+`hash8` is the first 8 hex of the sha-256 of that file's bytes, so the same bytes always get the same name and a different scan never overwrites another. The date is the sheet date, not the upload day. The database columns `storage_path`, `thumb_path`, `original_path` say where each file is (files from the first import version, `truck_sheet/<yyyy>/<mm>/<uuid>-<name>`, may exist on live and are not moved). The bucket needs the policies from migration `20261105000400_truck_sheet_scan_pages.sql` (signed-in users may read, upload and delete in `scans`), otherwise the browser cannot store or show scans. Design and reasons: `docs/PLAN.md`, "Truck sheet scan storage and page attachment".
 
 ## Troubleshooting
 

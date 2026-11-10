@@ -33,6 +33,8 @@ interface ShiftChipProps {
   continuation?: boolean
   /** Dense variant for month-view cells; prefix appears before the time */
   compact?: boolean
+  /** With compact: show the full start–end range instead of just the start */
+  showRange?: boolean
   prefix?: string
   className?: string
 }
@@ -43,6 +45,7 @@ export function ShiftChip({
   onClick,
   continuation = false,
   compact = false,
+  showRange = false,
   prefix,
   className,
 }: ShiftChipProps) {
@@ -70,6 +73,7 @@ export function ShiftChip({
         title={`Overnight shift ${formatShiftRange(startTime, endTime)} started the previous day`}
       >
         <Moon className="h-3 w-3 shrink-0" />
+        {prefix && <span className="shrink-0 font-semibold">{prefix}</span>}
         <span className="truncate">→ {formatShiftTime(endTime)}</span>
       </button>
     )
@@ -94,7 +98,7 @@ export function ShiftChip({
       >
         {prefix && <span className="shrink-0 font-semibold">{prefix}</span>}
         <span className="truncate tabular-nums">
-          {formatShiftTime(startTime)}
+          {showRange ? formatShiftRange(startTime, endTime) : formatShiftTime(startTime)}
           {overnight && <Moon className="ml-0.5 inline h-2.5 w-2.5" />}
         </span>
       </button>

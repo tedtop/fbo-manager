@@ -33,6 +33,13 @@ export const DOC_MODULES: readonly DocModule[] = [
     ]
   },
   {
+    id: 'equipment',
+    title: 'Equipment',
+    route: '/equipment',
+    docs: ['usage-guide'],
+    helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'meter-readings', 'scans']
+  },
+  {
     id: 'fuel-farm',
     title: 'Fuel Farm',
     route: '/fuel-farm',
@@ -45,6 +52,13 @@ export const DOC_MODULES: readonly DocModule[] = [
     route: '/fuel-dispatch',
     docs: ['usage-guide'],
     helpAnchors: ['status', 'cards', 'changes', 'countdowns', 'filter', 'density', 'weather', 'fuel-sheet', 'save-fueling', 'meter-gaps']
+  },
+  {
+    id: 'equipment',
+    title: 'Equipment',
+    route: '/equipment',
+    docs: ['usage-guide'],
+    helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'out-of-service', 'daily-readings', 'filter-changes', 'equipment-notes', 'meter-readings', 'scans']
   }
 ]
 

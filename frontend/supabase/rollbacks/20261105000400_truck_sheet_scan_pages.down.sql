@@ -1,4 +1,4 @@
--- Rollback of 20261105000100_truck_sheet_scan_pages.sql. Fails if rows with doc_type 'schedule_sheet' exist (delete them first).
+-- Rollback of 20261105000400_truck_sheet_scan_pages.sql. Fails if rows with doc_type 'schedule_sheet' exist (delete them first).
 drop policy if exists "Authenticated users can read scans" on storage.objects;
 drop policy if exists "Authenticated users can upload scans" on storage.objects;
 drop policy if exists "Authenticated users can delete scans" on storage.objects;

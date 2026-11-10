@@ -11,6 +11,8 @@ import {
   startOfWeek,
 } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useAppSettings } from '@/hooks/use-app-settings'
+import { formatPersonName } from '@/lib/app-settings'
 import { ShiftChip } from './shift-chip'
 import type { MemberWithUser } from '@/repositories/departments.repo'
 import type { ScheduleShiftRow } from '@/repositories/schedule.repo'
@@ -19,7 +21,6 @@ import {
   type SchedulePermissionContext,
 } from '@/services/schedule.service'
 
-const MAX_CHIPS_PER_DAY = 4
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 interface MonthViewProps {
@@ -42,15 +43,17 @@ export function MonthView({
 }: MonthViewProps) {
   const today = format(new Date(), 'yyyy-MM-dd')
 
-  const initialsByUser = useMemo(() => {
+  const { settings: { nameDisplay } } = useAppSettings()
+
+  const nameByUser = useMemo(() => {
     const map = new Map<number, string>()
     for (const m of members) {
       if (m.user) {
-        map.set(m.user_id, `${m.user.first_name[0] ?? ''}${m.user.last_name[0] ?? ''}`.toUpperCase())
+        map.set(m.user_id, formatPersonName(m.user.first_name, m.user.last_name, nameDisplay))
       }
     }
     return map
-  }, [members])
+  }, [members, nameDisplay])
 
   const weeks = useMemo(() => {
     const gridStart = startOfWeek(startOfMonth(anchor), { weekStartsOn: 1 })
@@ -71,6 +74,7 @@ export function MonthView({
       if (list) list.push(s)
       else map.set(s.shift_date, [s])
     }
+    for (const list of map.values()) list.sort((a, b) => a.start_time.localeCompare(b.start_time))
     return map
   }, [shifts])
 
@@ -95,8 +99,6 @@ export function MonthView({
               const inMonth = isSameMonth(day, anchor)
               const isToday = dateStr === today
               const dayShifts = shiftsByDate.get(dateStr) ?? []
-              const visible = dayShifts.slice(0, MAX_CHIPS_PER_DAY)
-              const hidden = dayShifts.length - visible.length
               const staffCount = new Set(dayShifts.map((s) => s.user_id)).size
 
               return (
@@ -109,7 +111,7 @@ export function MonthView({
                     if (e.key === 'Enter' || e.key === ' ') onDayClick(dateStr)
                   }}
                   className={cn(
-                    'min-h-[6.5rem] cursor-pointer border-l border-border p-1.5 transition-colors first:border-l-0 hover:bg-muted/40',
+                    'min-h-[7rem] cursor-pointer border-l border-border p-1.5 transition-colors first:border-l-0 hover:bg-muted/40',
                     !inMonth && 'bg-muted/20 opacity-50',
                     isToday && 'bg-primary/5'
                   )}
@@ -143,7 +145,7 @@ export function MonthView({
                   </div>
 
                   <div className="space-y-0.5">
-                    {visible.map((s) => {
+                    {dayShifts.map((s) => {
                       const editable = canEditShiftFor(permission, s.user_id)
                       return (
                         <ShiftChip
@@ -151,7 +153,7 @@ export function MonthView({
                           startTime={s.start_time}
                           endTime={s.end_time}
                           compact
-                          prefix={initialsByUser.get(s.user_id) ?? '?'}
+                          prefix={nameByUser.get(s.user_id) ?? '?'}
                           onClick={
                             editable
                               ? () => onEditShift(s)
@@ -161,11 +163,6 @@ export function MonthView({
                         />
                       )
                     })}
-                    {hidden > 0 && (
-                      <div className="px-1 text-[10px] text-muted-foreground">
-                        +{hidden} more
-                      </div>
-                    )}
                   </div>
                 </div>
               )

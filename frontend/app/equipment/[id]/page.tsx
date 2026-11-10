@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { MeterGaps } from '@/components/equipment/meter-gaps'
+import { DailyReadings } from '@/components/equipment/daily-readings'
+import { EquipmentNotes } from '@/components/equipment/equipment-notes'
+import { FilterChanges } from '@/components/equipment/filter-changes'
+import { useStatusChange } from '@/components/equipment/use-status-change'
 import { MaintenanceItems } from '@/components/equipment/maintenance-items'
 import { StatusBadge, type EquipmentStatus } from '@/components/equipment/status-badge'
 import { TruckReadings } from '@/components/equipment/truck-readings'
@@ -34,6 +38,8 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
 
+  const { requestStatus, dialog: statusDialog } = useStatusChange((sid, st) => updateEquipment(sid, { status: st }))
+
   const item = equipment.find((e) => e.id === id)
 
   return (
@@ -61,7 +67,7 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
             <div>
-              <StatusBadge status={item.status as EquipmentStatus} onStatusChange={(s) => updateEquipment(item.id, { status: s })} />
+              <StatusBadge status={item.status as EquipmentStatus} onStatusChange={(s) => requestStatus(item, s)} />
             </div>
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -76,11 +82,26 @@ export default function EquipmentDetailPage({ params }: { params: Promise<{ id: 
             {item.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{item.notes}</p>}
           </Card>
 
-          <MaintenanceItems equipmentId={item.id} />
+          <MaintenanceItems
+            equipmentId={item.id}
+            onAllResolved={() => {
+              if (item.status === 'out_of_service' && confirm(`All items resolved. Set ${item.equipment_name} back to Available?`)) {
+                void updateEquipment(item.id, { status: 'available' })
+              }
+            }}
+          />
+          {item.equipment_type === 'fuel_truck' && (
+            <>
+              <DailyReadings equipmentId={item.id} />
+              <FilterChanges equipmentId={item.id} />
+            </>
+          )}
+          <EquipmentNotes equipmentId={item.id} />
           {canSeeTruckSheets && <MeterGaps equipmentId={item.id} />}
           {canSeeTruckSheets && <TruckReadings equipmentId={item.id} truckNumber={item.equipment_id} />}
         </>
       )}
+      {statusDialog}
     </div>
   )
 }

@@ -565,7 +565,7 @@ invoice_slip/<YYYY>/<MM>/<YYYY-MM-DD>/...                                       
 - Never overwrite: uploads use `upsert: false`; an existing object under the same name has the same bytes and is reused. Page numbers on a truck/day only grow (append = max + 1). Cleanup after a failed import removes only objects that call created. Replacing or removing pages is a deliberate manual action (not built).
 - A multi-page PDF is stored once under `original/`; every page row of it points at that path (`original_path`, `original_page`). A photo is its own original. All page images are re-encoded upright JPEGs (quality 0.92, longest side capped at 3000 px, no upscaling, no PNG), so the stored page is always upright whatever the phone did; the original keeps whatever orientation it came in. Each page also gets a 400 px wide thumbnail (JPEG q0.8) stored under `thumbs/` and recorded in `thumb_path`.
 
-Database (migration `20261105000100_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
+Database (migration `20261105000400_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
 
 - `scanned_documents` gains `thumb_path`, `rotation_degrees smallint` (0/90/180/270, clockwise turn applied to make the page upright; default 0), `content_sha256 text` (hash of the upright page bytes), `original_path text`, `original_page smallint`, `original_content_type text`, `fuel_truck_id` (equipment.id, on delete set null), `scan_date date` (the sheet date).
 - `doc_type` check widened to add `schedule_sheet` (rows for schedule sheets are not written yet; the object layout is).
@@ -590,7 +590,7 @@ Duplicates (pure decision in `lib/scan-duplicates.ts`):
 - A page whose upright hash is already stored (anywhere) is marked "already stored" in the card, skipped on import and listed in the result message. A new sheet whose pages are all already stored is blocked the same way.
 - Limit: the hash is of the re-encoded upright JPEG, so it catches re-importing the same file or PDF page, not a fresh photo of the same paper.
 
-Viewing: `/truck-sheets/trucks/[truckNo]` lists that truck's sheets by day (newest first) with the pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. The lists show the stored thumbnails; the dialog loads the upright page.
+Viewing (changed by B70): the truck's page is now the equipment detail page `/equipment/[id]` (see "Equipment detail page" below). Inside each day's sheet card it shows the stored pages as thumbnails in page order, each opening the upright image in a dialog (signed URL, 1 h) with a link to the original file; the single sheet page shows the same pages. The lists show the stored thumbnails; the dialog loads the upright page. The old `/truck-sheets/trucks/[truckNo]` route only redirects to the equipment page.
 
 Not done: live migration (needs Ted), schedule-sheet and invoice-slip rows, deleting/replacing a stored page, server-side thumbnails (thumbnails are made in the browser).
 
@@ -655,3 +655,45 @@ Not built there. Minuteman would need the same: the equivalent of `truck_meter_r
 ### Migration
 
 `20261108000200_fuel_meter_gaps.sql`: `meter_gap_annotation`, `truck_meter_readings.source`. Local only until Ted approves live (`db query --linked -f`, never `db push`). `fuel_tank_readings` is not touched.
+
+## Equipment detail page (maintenance items, meter readings, scans)
+
+Built 2026-11-05 (B70). Ted's decision: a truck's page belongs under equipment, not under truck sheets. `/equipment/[id]` (id = `equipment.id`) is reached from the equipment name on the `/equipment` cards and from the truck number on `/truck-sheets` and `/truck-sheets/[id]` (plain text when the user lacks the equipment module). Gating follows the module: `/equipment` prefix maps to the `equipment` module in `lib/access.ts`. The old `/truck-sheets/trucks/[truckNo]` page redirects (truck number matched case-insensitively to `equipment.equipment_id`; unknown number goes to the list).
+
+Layout (cards, no wide tables, checked at 390 px): header card (name, equipment id, type, status badge that can be changed as on the list, last/next maintenance, notes); Maintenance items; Meter readings and scans.
+
+### Maintenance items
+
+Table `equipment_maintenance_item` (migration 20261105000200, rollback in `supabase/rollbacks`): `id`, `equipment_id` (FK equipment, cascade), `title`, `description`, `status` open|resolved, `noted_at` timestamptz (WHEN it was found, user-editable, default now), `noted_by` (users.id, the current user, set by the app), `resolved_at`/`resolved_by`/`resolution_notes` (a check ties `resolved_at` to status resolved), `deleted_at` (soft delete like `flight`), `created_at`, `updated_at` (DB trigger `set_updated_at`, never modified_at). RLS: one "authenticated" policy like `scanned_documents`.
+
+- An open item does NOT change `equipment.status`; status stays a manual setting. The equipment list card shows a count badge ("2 open maintenance items", links to the page).
+- Order: open before resolved, newest `noted_at` first in each group (`sortMaintenanceItems`).
+- Time zone: the "Noted at" input is a wall-clock `datetime-local` read in the FBO zone (`useDisplayZone().fboZone`, via `toInstantIso` in `lib/local-date.ts`), stored as the UTC instant, shown back in the FBO zone with its MST/MDT suffix. Not the browser zone, not Zulu.
+- Actions: add, edit, resolve (time defaults to now, optional notes), reopen, soft delete.
+- Layers: `repositories/equipment-maintenance.repo.ts` (Supabase only), `hooks/use-equipment-maintenance.ts` (react-query), `components/equipment/maintenance-items.tsx`, pure helpers in `lib/equipment-maintenance.ts`.
+
+### Meter readings and scans
+
+Truck sheets belong to equipment through `truck_sheets.fuel_truck_id -> equipment.id`. The import sets it by matching the sheet's truck number to `equipment.equipment_id` (creating a fuel_truck equipment row when none exists), so the detail page queries by that FK (`findTruckSheetsForEquipment`) and does no text matching. Scans hang off the sheet (`scanned_documents.truck_sheet_id`), so `useTruckSheetScans(sheetIds)` is reused unchanged and each day's card shows readings and pages together.
+
+Per sheet (newest `sheet_date` first, 30 at first, "Show more" adds 30): fuel type, front/rear meter start (sheet header) to end (last reading with that meter), gallons pumped (fueling lines), starting and remaining gallons (last line with one), initials, link to `/truck-sheets/[id]` (`lib/truck-sheet-summary.ts`). The section renders nothing when the equipment has no sheets, or when the user has no `truck_sheets` access (hidden by `useModuleAccess`, and a failing query also leaves it empty), so non-trucks and restricted roles never see an error.
+
+Not done: who noted/resolved an item is stored (`noted_by`, `resolved_by`) but not yet shown; no per-item attachments or photos; applying the migration to live needs Ted's go.
+
+
+## Fuel truck daily log (B71)
+
+Built 2026-11-08, Ted's scoping: one truck = one Equipment page; Truck Sheets stay as the day-by-day module and just cross-link (`/truck-sheets/[id]` and the Truck Sheets list link to `/equipment/[id]`; the equipment page links each day to its sheet).
+
+Migration `20261108000100_truck_daily_log.sql` (rollback in `supabase/rollbacks`; applied to LIVE 2026-11-08), replaces the short-lived `equipment.dpi_reading` text column:
+- `equipment_reading`: `read_at`, `dpi_psi` (differential pressure across the filters), `nozzle_psi`, `notes`, `read_by`, `truck_sheet_id` (null for manual entries; reserved for B80). At least one pressure required.
+- `equipment_filter_change`: `changed_at`, `filter_description`, `dpi_at_change`, `notes`, `changed_by`.
+- `equipment_note`: `body`, `noted_at`, `noted_by`.
+- `equipment.status_changed_at` (trigger on status change) so a down truck shows how long it has been down.
+- All soft delete via `deleted_at`, RLS authenticated, `updated_at` via `set_updated_at`.
+
+Rules: filters live `FILTER_LIFE_DAYS` = 365 (due soon in the last 30 days, overdue after); `DPI_REPLACE_AT` = 15 psi is a PLACEHOLDER limit for the projected-days-to-replace line, Ted to confirm the real one. Trend = psi/day between the oldest and newest DPI reading (`lib/equipment-log.ts`, tested). Out of Service asks for a reason and files it as an open maintenance item (`components/equipment/use-status-change.tsx`); the list card shows "Down N days: reason" from the oldest open item; resolving the last open item on a down truck offers to set it Available.
+
+Layers: `repositories/equipment-log.repo.ts`, `hooks/use-equipment-log.ts`, components `daily-readings`, `filter-changes`, `equipment-notes`. Fuel trucks only for readings and filters; notes for all equipment.
+
+Deferred (Ted wants all of these): B80 enter DPI/PSI on the truck sheet entry/review as well (writes an `equipment_reading` with `truck_sheet_id`); B81 meter calibration and fuel quality checks (water/particulate, sample results); B82 preventive maintenance with due dates (oil, tires, brakes, inspections) replacing the single next-maintenance date; B83 photos on notes and maintenance items.

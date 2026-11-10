@@ -114,7 +114,7 @@ export function TankCard({ tank, outside, onUpdateLevel, onError, onEdit }: Tank
             style={{ height: `${m.fillPercent}%` }}
           />
           {m.hasRecordedLow && (
-            <div className="unusable-zone" style={{ height: `${m.unusableZonePercent}%` }} />
+            <div className={cn('unusable-zone', fuelClass)} style={{ height: `${m.unusableZonePercent}%` }} />
           )}
           <div className="level-markers">
             {markerPositions(usableMax).map((mk) => (
@@ -169,7 +169,7 @@ export function TankCard({ tank, outside, onUpdateLevel, onError, onEdit }: Tank
           inputMode="decimal"
           className="h-9 text-center text-sm"
           data-testid={`level-input-${id}`}
-          placeholder={`Reading (in or 5'7")`}
+          placeholder="Level (inches)"
           aria-label={`New ${id} reading`}
           value={inputValue}
           disabled={updating}
