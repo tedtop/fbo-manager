@@ -2,7 +2,7 @@
 title: Arrivals and Departures usage guide
 module: flight-operations
 order: 1
-anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone]
+anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
 ---
 
 ## Overview
@@ -85,6 +85,16 @@ Use **Delete** at the bottom of the card. A confirmation names the tail ("Delete
 - **Date Range** choices: Today, **Today + Future** (the default), Tomorrow, This Week, All Dates. Days are local days. A flight is included when its stay overlaps the range; with only one scheduled time, that time (or an actual time) decides.
 - The view buttons switch between Split, Calendar, Arrivals Only and Departures Only.
 - Clearing the filters returns to Today + Future with nothing else selected.
+
+### Airline flights from QT {#airlines}
+
+Airline flights dispatched in QT (the airline fueling app) appear on the board automatically, next to the GA flights. They are marked with a **QT** source badge and the big plane icon (GA flights show a landing or takeoff plane), so they stand out from GA, and they show the airline, gate, fuel quantity and any MEL warning. An airline card is headed by the flight number with the tail in brackets, for example **UA1026 (N345NN)**, and the search box finds either one. Airline flights that QT shows as departed are hidden from the board automatically to keep it short; turn on **Show hidden** in the filters to see them.
+
+**Wing loading.** An airline card with a fuel request has a **Wing loading** line (and the same one sits on each Fuel Dispatch card). The QT amount is the **planned gate fuel**: what the aircraft should hold after fueling. The line shows how that splits between the left wing, right wing and, where the type has one, the center tank, the way the airline's sheet does: both wings are filled evenly to their maximum and only the rest goes in the center. Press **Fuel sheet** to open the worked form: type what each tank holds on arrival (the BEFORE column on the sheet) and it fills in every line to write down: the desired amount per tank, the before total, pounds to add, density (default 6.79 lbs/gal), calculated gallons, and, once you type the gallons the truck meter shows, the difference against the sheet's plus or minus 75 gallon tolerance. You can change the aircraft type (737-800/900 and the MAX 9 differ), the wing max or the density if the sheet says otherwise. Nothing is saved. Wing numbers come from the ramp placard; the center-tank capacities for the 737s and A319/A320 are not yet confirmed from a real sheet and are marked as such.
+
+- They are **read-only** here. To change an airline flight, change it in QT; the board follows QT within about 30 seconds.
+- Use the **Airlines** checkbox in the toolbar to show or hide them. It is on by default.
+- Airline flights are not stored in the FBO database, so they cannot be hidden, deleted, given services or used for a fuel request from the board. Fuel for them is managed on the **Fuel Dispatch** page.
 
 ### Time zone and Zulu {#time-zone}
 

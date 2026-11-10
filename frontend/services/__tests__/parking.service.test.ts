@@ -1,0 +1,59 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createTestClient } from '@/tests/support/client'
+import { resetDatabase } from '@/tests/support/reset'
+import { createAircraft, findAircraftByTailNumber } from '@/repositories/aircraft.repo'
+import { addArea, archiveArea, editArea, listAreas, placeAircraft, unparkAircraft } from '@/services/parking.service'
+import { toGeoJsonPolygon } from '@/lib/parking-geometry'
+
+const db = createTestClient()
+
+const ramp = toGeoJsonPolygon([
+  [-114.1, 46.9],
+  [-114.0, 46.9],
+  [-114.0, 47.0],
+  [-114.1, 47.0],
+  [-114.1, 46.9],
+])
+const tieDownRow = toGeoJsonPolygon([
+  [-114.06, 46.94],
+  [-114.04, 46.94],
+  [-114.04, 46.96],
+  [-114.06, 46.96],
+  [-114.06, 46.94],
+])
+
+beforeEach(async () => {
+  await resetDatabase(db)
+})
+
+describe('parking.service', () => {
+  it('adds, edits, lists and archives areas', async () => {
+    const area = await addArea(db, { code: 'RAMP', name: 'Ramp', polygon: ramp })
+    await editArea(db, area.id, { name: 'Main ramp' })
+    expect((await listAreas(db)).map((a) => a.name)).toEqual(['Main ramp'])
+
+    await archiveArea(db, area.id)
+    expect(await listAreas(db)).toEqual([])
+    expect(await listAreas(db, { includeInactive: true })).toHaveLength(1)
+  })
+
+  it('placeAircraft resolves the smallest containing area and unparkAircraft clears it', async () => {
+    await addArea(db, { code: 'RAMP', name: 'Ramp', polygon: ramp })
+    const row = await addArea(db, { code: 'TD-A', name: 'Row A', kind: 'tie_down', polygon: tieDownRow })
+    await createAircraft(db, { tail_number: 'N1SVC' })
+    const areas = await listAreas(db)
+
+    const inRow = await placeAircraft(db, 'N1SVC', 46.95, -114.05, 180, areas)
+    expect(inRow.parked_area_id).toBe(row.id)
+
+    const inRampOnly = await placeAircraft(db, 'N1SVC', 46.91, -114.09, 90, areas)
+    expect(inRampOnly.parked_area_id).not.toBe(row.id)
+    expect(inRampOnly.parked_area_id).not.toBeNull()
+
+    const outside = await placeAircraft(db, 'N1SVC', 40, -100, 0, areas)
+    expect(outside.parked_area_id).toBeNull()
+
+    await unparkAircraft(db, 'N1SVC')
+    expect((await findAircraftByTailNumber(db, 'N1SVC'))?.parked_lat).toBeNull()
+  })
+})

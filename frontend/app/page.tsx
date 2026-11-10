@@ -15,13 +15,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useTheme } from '@/components/navigation-wrapper'
 import { useDisplayZone } from '@/hooks/use-display-zone'
 import { useFlights } from '@/hooks/use-flights'
+import { useQtBoardFlights } from '@/hooks/use-qt-board-flights'
 import { useTransactions } from '@/hooks/use-transactions'
 import { useToast } from '@/hooks/use-toast'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { describeError } from '@/lib/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 export default function FlightOperationsPage() {
   const { data: session, status } = useSession()
@@ -31,7 +32,7 @@ export default function FlightOperationsPage() {
   >('split')
   const [weekOffset, setWeekOffset] = useState(0)
   // The board follows the FBO time zone (or Zulu): day and week boundaries are that zone's midnights.
-  const { zone, ready: zoneReady } = useDisplayZone()
+  const { zone, fboZone, ready: zoneReady } = useDisplayZone()
 
   const [filters, setFilters] = useState<FlightFilters>({
     search: '',
@@ -71,6 +72,9 @@ export default function FlightOperationsPage() {
     setFlightHidden,
     forgetFlight
   } = useFlights(dateParams)
+  // Airline flights from QT, merged in live (read-only; not stored).
+  const qtFlights = useQtBoardFlights(fboZone, zoneReady)
+  const boardFlights = useMemo(() => [...flights, ...qtFlights], [flights, qtFlights])
   const { createTransaction } = useTransactions()
   const { toast } = useToast()
   const { theme } = useTheme()
@@ -250,7 +254,7 @@ export default function FlightOperationsPage() {
         <FlightBoard
           mode={view}
           theme={theme}
-          flights={flights}
+          flights={boardFlights}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
           onHideFlight={(flight, expectedUpdatedAt) =>
@@ -273,7 +277,7 @@ export default function FlightOperationsPage() {
       {showBoard && view === 'calendar' && !boardLoading && (
         <CalendarWeekView
           theme={theme}
-          flights={flights}
+          flights={boardFlights}
           onEditFlight={handleEditFlight}
           onDeleteFlight={handleDeleteFlight}
           filters={filters}

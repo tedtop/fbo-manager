@@ -8,7 +8,12 @@ export type FlightInsert = TablesInsert<'flight'>
 export type FlightUpdate = TablesUpdate<'flight'>
 
 export type FlightWithRelations = FlightRow & {
-  aircraft: { tail_number: string; aircraft_type_icao: string; aircraft_type_display: string } | null
+  aircraft: {
+    tail_number: string
+    aircraft_type_icao: string
+    aircraft_type_display: string
+    parked_area: { id: number; code: string; name: string; kind: string } | null
+  } | null
   location: { location_code: string | null; description: string; latitude: string | null; longitude: string | null } | null
   created_by: {
     id: number
@@ -46,7 +51,7 @@ export function serviceQuantitiesFromRow(
 
 const FLIGHT_SELECT = `
   *,
-  aircraft:tail_number ( tail_number, aircraft_type_icao, aircraft_type_display ),
+  aircraft:tail_number ( tail_number, aircraft_type_icao, aircraft_type_display, parked_area:parked_area_id ( id, code, name, kind ) ),
   location:location_id ( location_code, description, latitude, longitude ),
   created_by:created_by_id ( id, first_name, last_name, username, role ),
   flight_service ( quantity, service:service_id ( key, sort_order, quantity_unit ) )

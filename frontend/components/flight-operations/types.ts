@@ -4,11 +4,20 @@ import type { Database } from '@/types/database'
 type BackendFlightStatus =
   Database['public']['Tables']['flight']['Row']['flight_status']
 
+// Where the flight's aircraft is parked (aircraft.parked_area_id -> parking_area). Read-only.
+export interface ParkingArea {
+  id: number
+  code: string
+  name: string
+  kind: string
+}
+
 // Shape produced by hooks/use-flights.ts's rowToFlight() adapter over a Supabase flight row
 export interface FlightRow {
   id: number | string
   aircraft?: string | null
   aircraft_type_display?: string | null
+  parking_area?: ParkingArea | null
   call_sign?: string | null
   scheduled_arrival_time?: string | null
   scheduled_departure_time?: string | null
@@ -63,7 +72,9 @@ export interface Flight {
   id: string
   tailNumber: string // tail_number (FK to aircraft.tail_number)
   aircraftType: string // derived from aircraft table
+  parkingArea?: ParkingArea | null // aircraft.parked_area_id (read-only, never sent to the API)
   callSign?: string // call_sign
+  fuelLbs?: number // QT airline flights only: planned gate fuel from QT, lbs (not stored)
 
   // Timing (direct from database - no derived fields)
   arrivalTime?: string // scheduled_arrival_time (ISO timestamp; unset for a departure-only / hangar-pull flight)
@@ -118,6 +129,8 @@ export interface FlightFilters {
   services: string[]
   // B43b: list hidden flights too (off by default)
   showHidden: boolean
+  // Hide the airline flights that come from QT (shown by default; unset = shown)
+  hideAirlines?: boolean
 }
 
 // Map DB flight_status to component status
@@ -210,6 +223,7 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     type,
     tailNumber: apiFlight.aircraft || '',
     aircraftType: (apiFlight as any).aircraft_type_display || '',
+    parkingArea: apiFlight.parking_area ?? null,
     arrivalTime: apiFlight.scheduled_arrival_time ?? undefined,
     departureTime: apiFlight.scheduled_departure_time ?? undefined,
     actualArrivalTime: apiFlight.actual_arrival_time ?? undefined,

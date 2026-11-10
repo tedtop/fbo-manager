@@ -20,7 +20,7 @@ describe('Add Flight retries the type lookup for Unknown aircraft', () => {
   }
   const pickTail = (tail: string) => {
     cy.get('input[placeholder="e.g., N12345"]').clear().type(tail)
-    cy.contains('[role="option"]', tail).click()
+    cy.contains('button', tail).click()
   }
 
   it('fills the type from the registry when it knows the tail', () => {

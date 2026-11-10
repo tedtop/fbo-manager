@@ -5,7 +5,6 @@ import { createCustomer } from '@/repositories/customers.repo'
 import { createEquipment } from '@/repositories/equipment.repo'
 import { createFlight } from '@/repositories/flights.repo'
 import { createFueler } from '@/repositories/fuelers.repo'
-import { createParkingLocation } from '@/repositories/parking.repo'
 import { createTank } from '@/repositories/tanks.repo'
 
 let counter = 0
@@ -65,11 +64,18 @@ export async function makeParkingLocation(
   db: Db,
   overrides: Partial<Database['public']['Tables']['parking_location']['Insert']> = {}
 ) {
-  return createParkingLocation(db, {
-    description: 'Test ramp spot',
-    display_order: 1,
-    ...overrides,
-  })
+  // flight.location_id still references the deprecated parking_location table.
+  const { data, error } = await db
+    .from('parking_location')
+    .insert({
+      description: 'Test ramp spot',
+      display_order: 1,
+      ...overrides,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
 }
 
 // `training.repo.ts` was removed when the training/compliance module was rebuilt onto

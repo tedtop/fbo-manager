@@ -137,14 +137,36 @@ async function callGetDispatchDetail(
 export class QtError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /** Which step failed; Fuel Dispatch words its banner from this (Minuteman's diagnostics.stage). */
+    readonly stage?: 'login_failed' | 'retry_after_login_failed'
   ) {
     super(message)
   }
 }
 
+// Several clients poll (Fuel Dispatch every 30s, the board every 60s, each tab): share one QT call per
+// window instead of one each.
+const CACHE_MS = 10_000
+let cached: { at: number; data: Record<string, unknown> } | null = null
+let pending: Promise<Record<string, unknown>> | null = null
+
+/** The QT dispatch list, shared across callers for a few seconds. */
+export function fetchQtDispatchDetail(): Promise<Record<string, unknown>> {
+  if (cached && Date.now() - cached.at < CACHE_MS) return Promise.resolve(cached.data)
+  pending ??= fetchQtDispatchDetailUncached()
+    .then((data) => {
+      cached = { at: Date.now(), data }
+      return data
+    })
+    .finally(() => {
+      pending = null
+    })
+  return pending
+}
+
 /** Fetch the QT dispatch list, logging in (and retrying once) if the session was rejected. */
-export async function fetchQtDispatchDetail(): Promise<Record<string, unknown>> {
+async function fetchQtDispatchDetailUncached(): Promise<Record<string, unknown>> {
   const { QT_COMPANY_LOCATION_ID, QT_USER_ID } = process.env
   if (!QT_COMPANY_LOCATION_ID || !QT_USER_ID) {
     throw new QtError(
@@ -162,7 +184,8 @@ export async function fetchQtDispatchDetail(): Promise<Record<string, unknown>> 
     } catch (err) {
       throw new QtError(
         `QT session expired and re-login failed: ${err instanceof Error ? err.message : err}`,
-        502
+        502,
+        'login_failed'
       )
     }
     result = await callGetDispatchDetail(QT_COMPANY_LOCATION_ID, QT_USER_ID, cookie)
@@ -170,7 +193,8 @@ export async function fetchQtDispatchDetail(): Promise<Record<string, unknown>> 
       cachedCookie = null
       throw new QtError(
         'QT rejected the request even after re-login - check QT_USERNAME/QT_PASSWORD or contact QT support',
-        502
+        502,
+        'retry_after_login_failed'
       )
     }
   }
