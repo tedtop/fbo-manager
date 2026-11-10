@@ -49,38 +49,15 @@ import {
   applyQuickTurnChange,
   buildTimestamp,
   convertFormZone,
+  displayDates,
+  formFromInstants,
+  formatGroundTime,
+  formTimestamps,
   isQuickTurnSaved,
-  toDateInput,
-  toTimeInput,
-  validateScheduledTimes
+  validateScheduledTimes,
+  type FormTimes
 } from './flight-time'
 import type { Flight } from './types'
-
-// Local "HH:mm" of an ISO timestamp, '' when absent.
-function calculateGroundTime(
-  arrivalTime: string,
-  departureTime: string
-): string {
-  if (!arrivalTime || !departureTime) return 'N/A'
-
-  const [arrHour, arrMin] = arrivalTime.split(':').map(Number)
-  const [depHour, depMin] = departureTime.split(':').map(Number)
-
-  let totalMinutes = depHour * 60 + depMin - (arrHour * 60 + arrMin)
-
-  // Handle overnight case (departure is next day)
-  if (totalMinutes < 0) {
-    totalMinutes += 24 * 60 // Add 24 hours
-  }
-
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-
-  if (hours === 0) {
-    return `${minutes}m`
-  }
-  return `${hours}h ${minutes}m`
-}
 
 interface FlightFormDialogProps {
   open: boolean
@@ -129,6 +106,27 @@ export function FlightFormDialog({
   const [quickTurn, setQuickTurn] = useState(true)
   const [actualArrivalTime, setActualArrivalTime] = useState('')
   const [actualDepartureTime, setActualDepartureTime] = useState('')
+  // B40: own dates for the times after the first. '' = automatic (same day as `date`, rolling to the next
+  // day when a time is earlier than the one before it); a date = that exact day (multi-day stay, midnight).
+  const [departureDate, setDepartureDate] = useState('')
+  const [actualArrivalDate, setActualArrivalDate] = useState('')
+  const [actualDepartureDate, setActualDepartureDate] = useState('')
+  const formTimes: FormTimes = {
+    date,
+    arrival: arrivalTime,
+    departure: departureTime,
+    actualArrival: actualArrivalTime,
+    actualDeparture: actualDepartureTime,
+    departureDate,
+    actualArrivalDate,
+    actualDepartureDate
+  }
+  const shownDates = displayDates(formTimes, zone)
+  const scheduledInstants = formTimestamps(formTimes, zone)
+  const groundTimeLabel = formatGroundTime(
+    scheduledInstants.arrival,
+    scheduledInstants.departure
+  )
   const { toast } = useToast()
   const [timeError, setTimeError] = useState<string | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
@@ -180,18 +178,28 @@ export function FlightFormDialog({
       )?.aircraft_type_icao || undefined
     )
 
-    // Extract date and times from timestamps (date from the arrival, else the departure)
-    const dateSource = flight.arrivalTime ?? flight.departureTime
-    if (dateSource) {
-      setDate(toDateInput(dateSource, zone))
-    }
+    // Extract each date and time from the stored instants (first date from the arrival, else the departure)
+    const loaded = formFromInstants(
+      {
+        arrival: flight.arrivalTime,
+        departure: flight.departureTime,
+        actualArrival: flight.actualArrivalTime,
+        actualDeparture: flight.actualDepartureTime
+      },
+      zone,
+      date
+    )
+    setDate(loaded.date)
+    setDepartureDate(loaded.departureDate ?? '')
+    setActualArrivalDate(loaded.actualArrivalDate ?? '')
+    setActualDepartureDate(loaded.actualDepartureDate ?? '')
     setScheduled({
-      arrival: toTimeInput(flight.arrivalTime, zone),
-      departure: toTimeInput(flight.departureTime, zone),
+      arrival: loaded.arrival,
+      departure: loaded.departure,
       quickTurn: flight.isQuickTurn ?? false
     })
-    setActualArrivalTime(toTimeInput(flight.actualArrivalTime, zone))
-    setActualDepartureTime(toTimeInput(flight.actualDepartureTime, zone))
+    setActualArrivalTime(loaded.actualArrival)
+    setActualDepartureTime(loaded.actualDeparture)
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open is intentionally included so the form resets whenever the Sheet reopens; applyFlightToForm is a stable in-component helper
@@ -212,6 +220,9 @@ export function FlightFormDialog({
       setScheduled({ arrival: '', departure: '', quickTurn: true })
       setActualArrivalTime('')
       setActualDepartureTime('')
+      setDepartureDate('')
+      setActualArrivalDate('')
+      setActualDepartureDate('')
     }
   }, [initialData, open])
 
@@ -262,22 +273,15 @@ export function FlightFormDialog({
     const from = zoneRef.current
     if (from === zone) return
     zoneRef.current = zone
-    const next = convertFormZone(
-      {
-        date,
-        arrival: arrivalTime,
-        departure: departureTime,
-        actualArrival: actualArrivalTime,
-        actualDeparture: actualDepartureTime
-      },
-      from,
-      zone
-    )
+    const next = convertFormZone(formTimes, from, zone)
     setDate(next.date)
     setArrivalTime(next.arrival)
     setDepartureTime(next.departure)
     setActualArrivalTime(next.actualArrival)
     setActualDepartureTime(next.actualDeparture)
+    setDepartureDate(next.departureDate ?? '')
+    setActualArrivalDate(next.actualArrivalDate ?? '')
+    setActualDepartureDate(next.actualDepartureDate ?? '')
   }, [zone])
 
   const editSession = useRecordEditSession<FlightWithRelations>({
@@ -384,27 +388,14 @@ export function FlightFormDialog({
       return
     }
 
-    // Construct timestamps from date and time values. A time earlier than the one before it in the
-    // sequence (arrival -> departure) falls on the next day, e.g. a QT arrival at 23:30 departs at 00:30.
-    const arrivalTimestamp = buildTimestamp(date, arrivalTime, undefined, zone)
-    const departureTimestamp = buildTimestamp(
-      date,
-      departureTime,
-      arrivalTime,
-      zone
-    )
-    const actualArrivalTimestamp = buildTimestamp(
-      date,
-      actualArrivalTime,
-      undefined,
-      zone
-    )
-    const actualDepartureTimestamp = buildTimestamp(
-      date,
-      actualDepartureTime,
-      actualArrivalTime || arrivalTime,
-      zone
-    )
+    // Construct timestamps from each time's date (B40). Without an override a time falls on the first date,
+    // or the next day when earlier than the one before it (a QT arrival at 23:30 departs at 00:30).
+    const {
+      arrival: arrivalTimestamp,
+      departure: departureTimestamp,
+      actualArrival: actualArrivalTimestamp,
+      actualDeparture: actualDepartureTimestamp
+    } = formTimestamps(formTimes, zone)
     const savedQuickTurn = isQuickTurnSaved(scheduled)
 
     // A field holding only the pre-filled prefix has no tail number in it yet.
@@ -631,7 +622,12 @@ export function FlightFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
+              <Label htmlFor="date">
+                Date *{' '}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (arrival; the other times can have their own date)
+                </span>
+              </Label>
               <Input
                 id="date"
                 type="date"
@@ -670,9 +666,11 @@ export function FlightFormDialog({
                     <TimeInput
                       id="arrivalTime"
                       value={arrivalTime}
-                      onChange={(v) =>
+                      onChange={(v) => {
+                        // QT: the departure follows the arrival, on the same day (or the next past midnight)
+                        if (quickTurn) setDepartureDate('')
                         setScheduled(applyArrivalChange(scheduled, v))
-                      }
+                      }}
                       aria-describedby={timeError ? 'timeError' : undefined}
                     />
                     <Label
@@ -689,17 +687,29 @@ export function FlightFormDialog({
                       value={actualArrivalTime}
                       onChange={(v) => setActualArrivalTime(v)}
                     />
+                    {actualArrivalTime && (
+                      <Input
+                        id="actualArrivalDate"
+                        data-testid="actualArrivalDate"
+                        type="date"
+                        aria-label="actualArrivalDate"
+                        value={shownDates.actualArrival}
+                        onChange={(e) => setActualArrivalDate(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    )}
                   </div>
 
                   <div className="flex flex-col items-center gap-2 pt-7">
                     <Checkbox
                       id="quickTurn"
                       checked={quickTurn}
-                      onCheckedChange={(checked) =>
+                      onCheckedChange={(checked) => {
+                        if (checked === true) setDepartureDate('')
                         setScheduled(
                           applyQuickTurnChange(scheduled, checked === true)
                         )
-                      }
+                      }}
                     />
                     <label
                       htmlFor="quickTurn"
@@ -728,6 +738,17 @@ export function FlightFormDialog({
                       }
                       aria-describedby={timeError ? 'timeError' : undefined}
                     />
+                    {departureTime && (
+                      <Input
+                        id="departureDate"
+                        data-testid="departureDate"
+                        type="date"
+                        aria-label="departureDate"
+                        value={shownDates.departure}
+                        onChange={(e) => setDepartureDate(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    )}
                     <Label
                       htmlFor="actualDepartureTime"
                       className="text-xs text-muted-foreground"
@@ -742,6 +763,17 @@ export function FlightFormDialog({
                       value={actualDepartureTime}
                       onChange={(v) => setActualDepartureTime(v)}
                     />
+                    {actualDepartureTime && (
+                      <Input
+                        id="actualDepartureDate"
+                        data-testid="actualDepartureDate"
+                        type="date"
+                        aria-label="actualDepartureDate"
+                        value={shownDates.actualDeparture}
+                        onChange={(e) => setActualDepartureDate(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -763,7 +795,7 @@ export function FlightFormDialog({
                 {arrivalTime && departureTime && (
                   <div className="text-sm text-muted-foreground text-center pt-2 border-t border-border">
                     Ground time:{' '}
-                    {calculateGroundTime(arrivalTime, departureTime)}
+                    {groundTimeLabel}
                   </div>
                 )}
               </div>

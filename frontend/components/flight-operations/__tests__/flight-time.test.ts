@@ -6,6 +6,10 @@ import {
   applyQuickTurnChange,
   buildTimestamp,
   convertFormZone,
+  displayDates,
+  formFromInstants,
+  formatGroundTime,
+  formTimestamps,
   toDateInput,
   toTimeInput,
   isQuickTurnSaved,
@@ -276,5 +280,79 @@ describe('convertFormZone', () => {
 
   it('is a no-op for the same zone', () => {
     expect(convertFormZone(form, 'UTC', 'UTC')).toBe(form)
+  })
+})
+
+describe('per-time dates (B40)', () => {
+  const Z = 'America/Denver'
+  const base = { date: '2026-11-10', arrival: '09:00', departure: '15:00', actualArrival: '', actualDeparture: '' }
+
+  it('defaults every time to the first date; a departure before the arrival time still rolls a day', () => {
+    expect(formTimestamps(base, Z)).toMatchObject({
+      arrival: buildTimestamp('2026-11-10', '09:00', undefined, Z),
+      departure: buildTimestamp('2026-11-10', '15:00', undefined, Z)
+    })
+    const qt = { ...base, arrival: '23:30', departure: '00:30' }
+    expect(formTimestamps(qt, Z).departure).toBe(buildTimestamp('2026-11-11', '00:30', undefined, Z))
+  })
+
+  it('a 3-day stay: departure date override is used as typed, even when the time is later than the arrival', () => {
+    const stay = { ...base, departureDate: '2026-11-12' }
+    expect(formTimestamps(stay, Z).departure).toBe(buildTimestamp('2026-11-12', '15:00', undefined, Z))
+    expect(displayDates(stay, Z).departure).toBe('2026-11-12')
+  })
+
+  it('an actual arrival after midnight takes its own date', () => {
+    const late = { ...base, arrival: '23:00', departure: '', actualArrival: '00:20', actualArrivalDate: '2026-11-11' }
+    expect(formTimestamps(late, Z).actualArrival).toBe(buildTimestamp('2026-11-11', '00:20', undefined, Z))
+  })
+
+  it('an actual departure earlier than the actual arrival time rolls to the next day', () => {
+    const f = { ...base, actualArrival: '09:10', actualDeparture: '08:00' }
+    expect(formTimestamps(f, Z).actualDeparture).toBe(buildTimestamp('2026-11-11', '08:00', undefined, Z))
+  })
+
+  it('loads a stored 3-day stay with its dates, and a same-day flight with no overrides', () => {
+    const inst = {
+      arrival: buildTimestamp('2026-11-10', '09:00', undefined, Z),
+      departure: buildTimestamp('2026-11-12', '15:00', undefined, Z),
+      actualArrival: buildTimestamp('2026-11-11', '00:20', undefined, Z)
+    }
+    expect(formFromInstants(inst, Z)).toEqual({
+      date: '2026-11-10', arrival: '09:00', departure: '15:00', actualArrival: '00:20', actualDeparture: '',
+      departureDate: '2026-11-12', actualArrivalDate: '2026-11-11'
+    })
+    const sameDay = { arrival: inst.arrival, departure: buildTimestamp('2026-11-10', '15:00', undefined, Z) }
+    expect(formFromInstants(sameDay, Z)).toEqual(base)
+  })
+
+  it('load -> rebuild round-trips the instants', () => {
+    const inst = {
+      arrival: buildTimestamp('2026-11-10', '23:30', undefined, Z),
+      departure: buildTimestamp('2026-11-13', '07:00', undefined, Z),
+      actualDeparture: buildTimestamp('2026-11-13', '07:40', undefined, Z)
+    }
+    expect(formTimestamps(formFromInstants(inst, Z), Z)).toEqual(inst)
+  })
+
+  it('a departure-only flight uses the departure date as the first date', () => {
+    const inst = { departure: buildTimestamp('2026-11-12', '15:00', undefined, Z) }
+    expect(formFromInstants(inst, Z).date).toBe('2026-11-12')
+  })
+
+  it('the Zulu flip keeps multi-day instants', () => {
+    const stay = { ...base, departureDate: '2026-11-12' }
+    const zulu = convertFormZone(stay, Z, 'UTC')
+    expect(formTimestamps(zulu, 'UTC')).toEqual(formTimestamps(stay, Z))
+    expect(convertFormZone(zulu, 'UTC', Z)).toEqual(stay)
+  })
+})
+
+describe('formatGroundTime', () => {
+  it('spans days', () => {
+    expect(formatGroundTime('2026-11-10T16:00:00Z', '2026-11-13T20:05:00Z')).toBe('3d 4h 5m')
+    expect(formatGroundTime('2026-11-10T16:00:00Z', '2026-11-10T16:45:00Z')).toBe('45m')
+    expect(formatGroundTime('2026-11-10T16:00:00Z', '2026-11-10T18:05:00Z')).toBe('2h 5m')
+    expect(formatGroundTime('2026-11-10T16:00:00Z', undefined)).toBe('N/A')
   })
 })

@@ -102,19 +102,109 @@ export function toTimeInput(timestamp?: string, zone?: string): string {
   return timestamp ? formatLocalTime(new Date(timestamp), zone) : ''
 }
 
-// The form's date and "HH:mm" fields, all wall-clock in one zone.
+// The form's date and "HH:mm" fields, all wall-clock in one zone. `date` is the stay's first date (the
+// arrival's, or the departure's for a hangar pull). The other three dates are optional overrides (B40):
+// "" / undefined = automatic (same day as `date`; a departure earlier than the arrival time rolls to the
+// next day), a "YYYY-MM-DD" = that exact day, e.g. a 3-day stay or an actual arrival after midnight.
 export interface FormTimes {
   date: string
   arrival: string
   departure: string
   actualArrival: string
   actualDeparture: string
+  departureDate?: string
+  actualArrivalDate?: string
+  actualDepartureDate?: string
 }
 
-// Rebuilds the instants the form would save (same chaining rules as the submit handler) in `from`, and
-// re-reads them as date/time strings in `to`. Used when the Zulu toggle flips while the sheet is open:
-// the typed instants stay put, only their display changes. With no time typed, a date that was "today"
-// in `from` becomes today in `to`; any other date is kept.
+export interface FormInstants {
+  arrival?: string
+  departure?: string
+  actualArrival?: string
+  actualDeparture?: string
+}
+
+// The date each time lands on when it has no override. Mirrors the chaining the form always had: the
+// departure and the actual departure fall on the next day when earlier than the time before them.
+function autoDate(form: FormTimes, field: keyof FormInstants): { date: string; notBefore?: string } {
+  switch (field) {
+    case 'departure':
+      return { date: form.date, notBefore: form.arrival }
+    case 'actualDeparture':
+      return { date: form.date, notBefore: form.actualArrival || form.arrival }
+    default:
+      return { date: form.date }
+  }
+}
+
+// Rebuilds the instants the form would save, in `zone`. An explicit date wins and is never rolled.
+export function formTimestamps(form: FormTimes, zone?: string): FormInstants {
+  const overrides: Record<keyof FormInstants, string | undefined> = {
+    arrival: undefined,
+    departure: form.departureDate,
+    actualArrival: form.actualArrivalDate,
+    actualDeparture: form.actualDepartureDate
+  }
+  const times: Record<keyof FormInstants, string> = {
+    arrival: form.arrival,
+    departure: form.departure,
+    actualArrival: form.actualArrival,
+    actualDeparture: form.actualDeparture
+  }
+  const out: FormInstants = {}
+  for (const field of ['arrival', 'departure', 'actualArrival', 'actualDeparture'] as const) {
+    const explicit = overrides[field]
+    const auto = autoDate(form, field)
+    out[field] = explicit
+      ? buildTimestamp(explicit, times[field], undefined, zone)
+      : buildTimestamp(auto.date, times[field], auto.notBefore, zone)
+  }
+  return out
+}
+
+// The date shown in each time's own date field: the override, else the automatic day. Blank time -> blank.
+export function displayDates(form: FormTimes, zone?: string): Record<keyof FormInstants, string> {
+  const inst = formTimestamps(form, zone)
+  const dateOf = (t?: string) => (t ? toDateInput(t, zone) : '')
+  return {
+    arrival: form.arrival ? form.date : '',
+    departure: dateOf(inst.departure),
+    actualArrival: dateOf(inst.actualArrival),
+    actualDeparture: dateOf(inst.actualDeparture)
+  }
+}
+
+// Stored instants -> form fields in `zone`. Dates that differ from the automatic day become overrides, so
+// a plain same-day flight loads with none and a 3-day stay loads each date correctly.
+export function formFromInstants(inst: FormInstants, zone?: string, fallbackDate = ''): FormTimes {
+  const first = inst.arrival ?? inst.departure ?? inst.actualArrival ?? inst.actualDeparture
+  const base: FormTimes = {
+    date: first ? toDateInput(first, zone) : fallbackDate,
+    arrival: toTimeInput(inst.arrival, zone),
+    departure: toTimeInput(inst.departure, zone),
+    actualArrival: toTimeInput(inst.actualArrival, zone),
+    actualDeparture: toTimeInput(inst.actualDeparture, zone)
+  }
+  const auto = formTimestamps(base, zone)
+  const pick = (field: 'departure' | 'actualArrival' | 'actualDeparture'): string => {
+    const actual = inst[field]
+    if (!actual) return ''
+    const day = toDateInput(actual, zone)
+    return auto[field] && toDateInput(auto[field], zone) === day ? '' : day
+  }
+  const result = { ...base }
+  const departureDate = pick('departure')
+  const actualArrivalDate = pick('actualArrival')
+  const actualDepartureDate = pick('actualDeparture')
+  if (departureDate) result.departureDate = departureDate
+  if (actualArrivalDate) result.actualArrivalDate = actualArrivalDate
+  if (actualDepartureDate) result.actualDepartureDate = actualDepartureDate
+  return result
+}
+
+// Rebuilds the instants the form would save in `from`, and re-reads them as date/time strings in `to`.
+// Used when the Zulu toggle flips while the sheet is open: the typed instants stay put, only their display
+// changes. With no time typed, a date that was "today" in `from` becomes today in `to`; any other is kept.
 export function convertFormZone(
   form: FormTimes,
   from: string,
@@ -122,26 +212,21 @@ export function convertFormZone(
   now: Date = new Date()
 ): FormTimes {
   if (from === to) return form
-  const arrival = buildTimestamp(form.date, form.arrival, undefined, from)
-  const departure = buildTimestamp(form.date, form.departure, form.arrival, from)
-  const actualArrival = buildTimestamp(form.date, form.actualArrival, undefined, from)
-  const actualDeparture = buildTimestamp(
-    form.date,
-    form.actualDeparture,
-    form.actualArrival || form.arrival,
-    from
-  )
-  const anchor = arrival ?? departure ?? actualArrival ?? actualDeparture
-  const date = anchor
-    ? toDateInput(anchor, to)
-    : form.date === formatLocalDate(now, from)
-      ? formatLocalDate(now, to)
-      : form.date
-  return {
-    date,
-    arrival: toTimeInput(arrival, to),
-    departure: toTimeInput(departure, to),
-    actualArrival: toTimeInput(actualArrival, to),
-    actualDeparture: toTimeInput(actualDeparture, to)
-  }
+  const inst = formTimestamps(form, from)
+  const anyTime = inst.arrival ?? inst.departure ?? inst.actualArrival ?? inst.actualDeparture
+  const fallback = form.date === formatLocalDate(now, from) ? formatLocalDate(now, to) : form.date
+  const next = formFromInstants(inst, to, fallback)
+  return anyTime ? next : { ...next, date: fallback }
+}
+
+// "2h 5m" / "45m" / "3d 4h 0m" between two instants; "N/A" when either is missing or departure is earlier.
+export function formatGroundTime(arrival?: string, departure?: string): string {
+  if (!arrival || !departure) return 'N/A'
+  const total = Math.round((new Date(departure).getTime() - new Date(arrival).getTime()) / 60000)
+  if (!Number.isFinite(total) || total < 0) return 'N/A'
+  const days = Math.floor(total / 1440)
+  const hours = Math.floor((total % 1440) / 60)
+  const minutes = total % 60
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`
+  return hours === 0 ? `${minutes}m` : `${hours}h ${minutes}m`
 }
