@@ -51,7 +51,7 @@ export const DOC_MODULES: readonly DocModule[] = [
     title: 'Fuel Dispatch',
     route: '/fuel-dispatch',
     docs: ['usage-guide'],
-    helpAnchors: ['status', 'cards', 'changes', 'countdowns', 'filter', 'density', 'weather', 'fuel-sheet']
+    helpAnchors: ['status', 'cards', 'changes', 'countdowns', 'filter', 'density', 'weather', 'fuel-sheet', 'save-fueling', 'meter-gaps']
   },
   {
     id: 'equipment',

@@ -70,6 +70,8 @@ Tooling:
 - D5 (2026-11-02, Ted): stop ski-jobs Supabase containers for the local test stack (B01); delete flight-board-ui/ and /flight-ops (B21).
 - D3 (proposed): canonical route `/`; others redirect.
 - D4 (proposed): calendar stays desktop-first; mobile gets split/arrivals/departures lists only.
+- D15 (2026-11-09, Ted approved; B91): Live migration history reconciled, metadata only, no SQL run on live. Verified read-only against live, then `migration repair --status applied`: 20261102000500 (no-op; `flight.created_by_id` default is already 1 on live), 20261105000150 (badge_id column and guard function), 20261105000200 (hire_date column and guard function), 20261108000100 (truck daily log tables, `equipment.status_changed_at`; it also dropped `equipment.dpi_reading`). NOT recorded: 20261105000300 (equipment DPI): `equipment.dpi_reading` is not on live because 20261108000100 dropped it, so history cannot show it as applied on evidence; replaying locally (add, then drop) gives the same end state as live, and recording it is Ted's call (it would only stop a future `db push --include-all` from re-adding a column that is then dropped). Duplicate local version `20261105000100` (parking_areas and profiles_badge_id; live records one): `profiles_badge_id` renumbered to `20261105000150` (sorts before 000200, which depends on its guard function), its rollback too; parking_areas keeps 000100. Both schema changes are on live. Left alone: local-only 20260703*/20260704* (local test schema, not meant for live) and remote-only 20251030*/20251109054839 (Minuteman's). Only one local 20261105000200 exists on master.
+- D16 (2026-11-09; B46): Schema drift triage. `pnpm schema:parity` must run against a local DB built fresh from all migrations; the long-lived Docker stack drifted (it had skipped 20261104001400, 001500, badge_id, hire_date and later because of the duplicate version numbers, see D15), which hid and invented diffs. On a fresh DB all migrations replay cleanly and there were 28 diffs. Fixed locally in `20261109000100_local_parity_with_live.sql`: dropped the 18 `assigned_fueler_id`/`available_at` columns (test_schema copy-paste, unused by the app; removed from types/database.ts), `flight.created_by_source` default 'line-department', `parking_location.airport` default 'MSO', `parking_location.location_code` NOT NULL. `equipment.sort_order` was already fine on a fresh DB. Allow-listed with reason: 6 FK ON DELETE differences (flight.created_by_id, flight.tail_number, fuel_transaction.flight_id/fuel_truck_id/ordered_by_id, truck_sheets.fuel_truck_id), because Cypress cleanup relies on the local cascade/set-null actions. That migration is a no-op on live and is deliberately not recorded in live history. No live changes.
 
 ## Risks / open questions
 - R1: Docker already runs another project's Supabase on 54321/54322. Tests cannot run until stopped or fbo ports are moved.
@@ -595,6 +597,66 @@ Viewing (changed by B70): the truck's page is now the equipment detail page `/eq
 Not done: live migration (needs Ted), schedule-sheet and invoice-slip rows, deleting/replacing a stored page, server-side thumbnails (thumbnails are made in the browser).
 
 Built 2026-11-05 (B69). Differences from the plan above: the review screen also shows "Check the orientation" under a page when the reader was not sure; the hash lookup is global (any sheet); schedule-sheet originals now use `schedule_sheet/<date>/...` (the date comes from the extracted sheet, scan day when missing). Tests: vitest `lib/__tests__/scan-storage.test.ts`, `scan-duplicates.test.ts`, `lib/truck-sheet/__tests__/rotation.test.ts` and the rotation cases in `parse-jet-a.test.ts`, repository test `repositories/__tests__/truck-sheet-scans.repo.test.ts` (local Supabase), Cypress `cypress/e2e/truck-sheets/truck-sheet-scans.cy.ts` (OCR route stubbed; imports a 2-page PDF with page 1 reported rotated 90, checks the stored rows and paths, the truck page, the re-import message and adding pages to an existing sheet). The migration is applied to the local stack only; it must be applied to live (with Ted's approval) before the new import is used there, because the new columns and the storage policies do not exist on live.
+
+## Airline fuelings with meter readings, and meter-gap flagging (Ted, 2026-11-08)
+
+Goal: what the fueler types in the Fuel sheet dialog (truck, meter start/stop, tanks, planned gate fuel) is stored, lands in the same tables as truck-sheet scans, and gaps in a truck's meter chain are flagged so a discrepancy, meter roll or forgotten fueling can be annotated later. Saving is never blocked by a gap.
+
+### Decisions (Ted)
+
+1. On save record everything: truck, front/rear meter start and stop, gallons pumped (stop minus start), calculated gallons, density, planned fuel, tank before/after L/C/R (E175 has no center). Reuse `fuel_transaction` and `truck_meter_readings`.
+2. The fueler types both meter start and stop. Pumped gallons are compared with calculated gallons against the sheet's +/-75 gal tolerance (`truckCheck`).
+3. Gap rule: per truck and register, each reading's start equals the previous reading's end (ordered by time). A mismatch is a flagged gap showing the missing gallons. Gaps are annotated later (reason + note) and resolved. Flags show on the equipment fuel-truck page and in the Fuel sheet dialog when the typed start differs from the truck's last end. Meter roll-over is a recognised case.
+
+### Where the data goes
+
+| What | Table.column |
+|---|---|
+| Planned gate fuel (lbs) | `fuel_transaction.quantity_lbs` |
+| Calculated gallons to add | `fuel_transaction.gallons_requested` |
+| Gallons pumped (sum of registers) | `fuel_transaction.gallons_delivered`, also `quantity_gallons` |
+| Density | `fuel_transaction.density` |
+| Tank before / after L, C, R, total (lbs) | `tank_reading_before_*`, `tank_reading_after_*`, `tank_reading_unit = 'lbs'` (center null on E175) |
+| Truck | `fuel_transaction.fuel_truck_id` (equipment) |
+| Key of the dispatch | `fuel_transaction.qt_dispatch_id` = QT TransactionID, `source = 'qt'`, `ticket_number = 'QT-<id>'`. Saving again updates this row, it never makes a second one |
+| One row per register used | `truck_meter_readings` (`meter`, `meter_start`, `meter_end`, `gallons_pumped`, `tail_number`, `aircraft_type`, `customer`, `req_gals_or_lbs`, `service_time`, `fuel_transaction_id`), on the truck's sheet for that day |
+
+A typed reading needs a `truck_sheets` row (one per truck and day, as scans use): the save finds today's sheet for the truck or creates it (`fuel_type jet_a`, header meter starts null), and appends at `max(line_number)+1`. New column `truck_meter_readings.source` (`scan` default, `typed`) tells the two apart. Scans and typed readings are one chain.
+
+### Gap detection (`lib/meter-gaps.ts`, pure)
+
+Input: the truck's sheets with readings. Output: `gaps` and `lastEnd` per register.
+
+1. Points: every reading with a `meter`, `meter_start`, `meter_end`, and a `reading_type` that moves the truck's own meter (`fueling`, `transfer_out`, `other`; not `tank_fill` / `transfer_in`). A sheet header `front_meter_start` / `rear_meter_start` is an anchor point (start = end = header value) ahead of that sheet's readings, so a day with a wrong opening number is caught even without fuelings.
+2. Order per register: `sheet_date`, anchor first, `line_number`, `id`. Scan upload order does not matter, a scan of an earlier day uploaded later sorts into place.
+3. For each point after the first: `expected` = previous end, `diff = start - expected`.
+   - `|diff| <= 0.05`: chained, no flag.
+   - `diff > 0`: **gap**, `missingGallons = diff`.
+   - `diff < 0` and `-diff <= modulus/2`: **overlap** (start below the previous end: duplicate, typo or out-of-order), `missingGallons` negative.
+   - `diff < 0` and `-diff > modulus/2`: the register rolled over between the two: **rollover** gap, `missingGallons = diff + modulus`.
+4. Out-of-order tolerance: a point whose start equals the end of any other point of that register is not flagged (the order was wrong, not the numbers).
+5. A reading with `end < start`: if `start > modulus/2` and `end < modulus/2` it rolled over inside the fueling, pumped = `end + modulus - start`; otherwise it is invalid (stop below start) and is not chained; the dialog refuses to compute it.
+6. `modulus` defaults to 1,000,000 (six digits before the tenth), a parameter, not yet a per-truck setting. If a truck's register really rolls at another number the rollover shows up as an overlap the user annotates as "meter roll".
+
+Gaps are computed, not stored. The identity of a gap is the point that exposes it (`r<readingId>` or `s<sheetId>` for a header anchor) plus the register.
+
+### Annotations: `meter_gap_annotation`
+
+`id`, `fuel_truck_id` (cascade), `meter`, `to_reading_id` or `to_sheet_id` (exactly one, cascade, unique each with `meter` for anchors), `expected_start`, `actual_start` (snapshot when annotated), `reason` (`meter_roll`, `forgotten_fueling`, `typo`, `other`), `note`, `resolved`, `resolved_at`, timestamps. RLS: all for authenticated. A gap with an annotation that is `resolved` is shown as resolved (collapsed); an unannotated gap is open. If the numbers are later corrected so the gap disappears, the annotation simply no longer matches anything.
+
+### Where it shows
+
+- Fuel sheet dialog: truck select, front and rear start/stop. Choosing a truck prefills the start with the truck's last end. If a typed start differs: amber note "Truck 12 front meter last ended at X; this starts at Y: Z gal not recorded", Save still works.
+- Equipment fuel-truck page: new "Meter gaps" section (open count, each gap with dates, expected/actual, missing gallons, annotate/resolve).
+- Documentation: `frontend/content/docs/fuel-dispatch` (Fuel sheet, saving, gaps) and `equipment` section for the gap list.
+
+### Minuteman
+
+Not built there. Minuteman would need the same: the equivalent of `truck_meter_readings`/`meter_gap_annotation`, a port of `lib/meter-gaps.ts` and the Fuel sheet meter inputs. Tracked in BACKLOG.
+
+### Migration
+
+`20261108000200_fuel_meter_gaps.sql`: `meter_gap_annotation`, `truck_meter_readings.source`. Local only until Ted approves live (`db query --linked -f`, never `db push`). `fuel_tank_readings` is not touched.
 
 ## Equipment detail page (maintenance items, meter readings, scans)
 

@@ -37,8 +37,6 @@ export type Database = {
           last_login: string | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -69,8 +67,6 @@ export type Database = {
           fleet_id: string
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
           parked_lat: string | null
           parked_lng: string | null
           parked_heading: number | null
@@ -137,8 +133,6 @@ export type Database = {
           usable_max_inches: string
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           tank_id: string
@@ -238,8 +232,6 @@ export type Database = {
           display_order: number
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -289,8 +281,6 @@ export type Database = {
           fueled_at: string | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
           deleted_at: string | null
           hidden_at: string | null
         }
@@ -356,8 +346,6 @@ export type Database = {
           status: 'active' | 'inactive'
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -385,8 +373,6 @@ export type Database = {
           aircraft_type: string | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -408,8 +394,6 @@ export type Database = {
           certified_by_id: number | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -601,8 +585,6 @@ export type Database = {
           tank_reading_unit: 'lbs' | 'gal' | 'kg'
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -1183,6 +1165,38 @@ export type Database = {
           },
         ]
       }
+      meter_gap_annotation: {
+        Row: {
+          id: number
+          fuel_truck_id: number
+          meter: 'front' | 'rear'
+          to_reading_id: number | null
+          to_sheet_id: number | null
+          expected_start: number | null
+          actual_start: number | null
+          reason: 'meter_roll' | 'forgotten_fueling' | 'typo' | 'other' | null
+          note: string | null
+          resolved: boolean
+          resolved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          fuel_truck_id: number
+          meter: 'front' | 'rear'
+          to_reading_id?: number | null
+          to_sheet_id?: number | null
+          expected_start?: number | string | null
+          actual_start?: number | string | null
+          reason?: 'meter_roll' | 'forgotten_fueling' | 'typo' | 'other' | null
+          note?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['meter_gap_annotation']['Insert']>
+        Relationships: []
+      }
       truck_meter_readings: {
         Row: {
           id: number
@@ -1206,6 +1220,7 @@ export type Database = {
           flight_id: number | null
           fuel_transaction_id: number | null
           notes: string | null
+          source: 'scan' | 'typed'
           created_at: string
           updated_at: string
         }
@@ -1231,6 +1246,7 @@ export type Database = {
           flight_id?: number | null
           fuel_transaction_id?: number | null
           notes?: string | null
+          source?: 'scan' | 'typed'
         }
         Update: Partial<Database['public']['Tables']['truck_meter_readings']['Insert']>
         Relationships: [

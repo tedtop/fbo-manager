@@ -34,5 +34,29 @@
   {
     "key": "*:foreign_key:*:actions:DEFERRABLE INITIALLY DEFERRED=>*",
     "reason": "Django-era live FKs are DEFERRABLE INITIALLY DEFERRED with NO ACTION; the test schema uses explicit ON DELETE CASCADE/SET NULL. Delete behaviour differs by design in the test schema."
+  },
+  {
+    "key": "flight:foreign_key:FOREIGN KEY created_by_id REFERENCES users(id):actions:ON DELETE SET NULL=>NO ACTION",
+    "reason": "Local test schema keeps explicit ON DELETE actions so e2e/Cypress cleanup (deleting trucks, aircraft, flights with dependents) works; live is stricter (RESTRICT/NO ACTION) or cascades differently. Live behaviour is not relied on by the app. Reviewed B46 2026-11-09, deliberately left different."
+  },
+  {
+    "key": "flight:foreign_key:FOREIGN KEY tail_number REFERENCES aircraft(tail_number):actions:ON DELETE RESTRICT=>ON DELETE CASCADE",
+    "reason": "Local test schema keeps explicit ON DELETE actions so e2e/Cypress cleanup (deleting trucks, aircraft, flights with dependents) works; live is stricter (RESTRICT/NO ACTION) or cascades differently. Live behaviour is not relied on by the app. Reviewed B46 2026-11-09, deliberately left different."
+  },
+  {
+    "key": "fuel_transaction:foreign_key:FOREIGN KEY flight_id REFERENCES flight(id):actions:ON DELETE CASCADE=>ON DELETE SET NULL",
+    "reason": "Local test schema keeps explicit ON DELETE actions so e2e/Cypress cleanup (deleting trucks, aircraft, flights with dependents) works; live is stricter (RESTRICT/NO ACTION) or cascades differently. Live behaviour is not relied on by the app. Reviewed B46 2026-11-09, deliberately left different."
+  },
+  {
+    "key": "fuel_transaction:foreign_key:FOREIGN KEY fuel_truck_id REFERENCES equipment(id):actions:NO ACTION=>ON DELETE SET NULL",
+    "reason": "Local test schema keeps explicit ON DELETE actions so e2e/Cypress cleanup (deleting trucks, aircraft, flights with dependents) works; live is stricter (RESTRICT/NO ACTION) or cascades differently. Live behaviour is not relied on by the app. Reviewed B46 2026-11-09, deliberately left different."
+  },
+  {
+    "key": "fuel_transaction:foreign_key:FOREIGN KEY ordered_by_id REFERENCES users(id):actions:NO ACTION=>ON DELETE SET NULL",
+    "reason": "Local test schema keeps explicit ON DELETE actions so e2e/Cypress cleanup (deleting trucks, aircraft, flights with dependents) works; live is stricter (RESTRICT/NO ACTION) or cascades differently. Live behaviour is not relied on by the app. Reviewed B46 2026-11-09, deliberately left different."
+  },
+  {
+    "key": "truck_sheets:foreign_key:FOREIGN KEY fuel_truck_id REFERENCES equipment(id):actions:ON DELETE RESTRICT=>ON DELETE CASCADE",
+    "reason": "Local test schema keeps explicit ON DELETE actions so e2e/Cypress cleanup (deleting trucks, aircraft, flights with dependents) works; live is stricter (RESTRICT/NO ACTION) or cascades differently. Live behaviour is not relied on by the app. Reviewed B46 2026-11-09, deliberately left different."
   }
 ]
