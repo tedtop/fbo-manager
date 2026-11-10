@@ -51,7 +51,7 @@ export const DOC_MODULES: readonly DocModule[] = [
     title: 'Equipment',
     route: '/equipment',
     docs: ['usage-guide'],
-    helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'meter-readings', 'scans']
+    helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'out-of-service', 'daily-readings', 'filter-changes', 'equipment-notes', 'meter-readings', 'scans']
   }
 ]
 
