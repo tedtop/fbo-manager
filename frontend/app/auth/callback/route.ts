@@ -27,11 +27,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (searchParams.get('error') || searchParams.get('error_description') || !code) return fail()
+  // A password-reset link that no longer works gets its own wording and a way to ask for a new one.
+  const failReset = () => {
+    const url = new URL('/forgot-password', base)
+    url.searchParams.set('error', 'expired')
+    return NextResponse.redirect(url)
+  }
+  const isReset = next === '/reset-password'
+
+  if (searchParams.get('error') || searchParams.get('error_description') || !code) {
+    return isReset ? failReset() : fail()
+  }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error) return fail()
+  if (error) return isReset ? failReset() : fail()
 
   const target = new URL(next, base)
   if (target.origin !== new URL(base).origin) return NextResponse.redirect(new URL('/', base))

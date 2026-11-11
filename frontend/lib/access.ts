@@ -37,7 +37,7 @@ const EXTRA_PATH_MODULES: [prefix: string, module: ModuleKey][] = [
 ]
 
 /** Signed-in, active users may always open these, even before they hold a role. */
-const OPEN_PATHS = ['/pending', '/profile', '/change-password', '/delete-account']
+const OPEN_PATHS = ['/pending', '/profile', '/change-password', '/reset-password', '/delete-account']
 
 /** Documentation (D11): readable by every user who holds at least one module, but not by pending users. */
 const DOCS_PATH = '/docs'
