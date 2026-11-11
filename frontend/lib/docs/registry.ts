@@ -66,6 +66,13 @@ export const DOC_MODULES: readonly DocModule[] = [
     route: '/equipment',
     docs: ['usage-guide'],
     helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'out-of-service', 'daily-readings', 'filter-changes', 'equipment-notes', 'meter-readings', 'scans']
+  },
+  {
+    id: 'users',
+    title: 'Manage Users',
+    route: '/users',
+    docs: ['usage-guide'],
+    helpAnchors: ['assign-roles', 'administrator-includes-all-roles']
   }
 ]
 

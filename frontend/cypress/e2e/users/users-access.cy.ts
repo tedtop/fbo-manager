@@ -89,4 +89,29 @@ describe('New sign-up access: pending page and promotion from Users', () => {
     cy.visit('/login')
     cy.contains('button', 'Continue with Google').should('be.visible')
   })
+
+  it('ticking Administrator shows Front Desk and Line Department as included and stores no extra rows', () => {
+    const adminEmail = `cy-adm-${stamp}@example.com`
+    let adminId: string | null = null
+    cy.task('createNewHireUser', { email: adminEmail, password, givenName: 'Ada', familyName: 'Admin' }).then((id) => {
+      adminId = id as string
+    })
+    cy.login('admin')
+    cy.visit('/users')
+    cy.contains('tr', adminEmail).find('button[aria-haspopup="menu"]').click()
+    cy.contains('[role="menuitem"]', 'Edit').click()
+    cy.contains('[role="dialog"]', 'Edit User').within(() => {
+      cy.contains('label', 'Front Desk').find('button[role="checkbox"]').click() // an explicit choice first
+      cy.contains('label', 'Administrator').find('button[role="checkbox"]').click()
+      cy.contains('label', 'Front Desk').should('contain.text', 'Included with Administrator')
+      cy.contains('label', 'Front Desk').find('button[role="checkbox"]').should('be.disabled').and('have.attr', 'aria-checked', 'true')
+      cy.contains('label', 'Line Department').find('button[role="checkbox"]').should('be.disabled').and('have.attr', 'aria-checked', 'true')
+      cy.contains('label', 'Customer').find('button[role="checkbox"]').should('not.be.disabled').and('have.attr', 'aria-checked', 'false')
+      cy.contains('button', 'Save Changes').click()
+    })
+    cy.contains(/User updated/).should('be.visible')
+    cy.contains('tr', adminEmail).should('contain.text', 'Administrator').and('not.contain.text', 'Front Desk')
+    cy.then(() => cy.task('getRoleNames', adminId)).should('deep.eq', ['Administrator'])
+    cy.then(() => cy.task('deleteAuthUser', adminId))
+  })
 })
