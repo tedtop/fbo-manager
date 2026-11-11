@@ -88,7 +88,7 @@ Tooling:
 - D29 (2026-11-11, Ted): Corrections after keying in are **flagged, never silent**. The line shows "keyed 300, now 312 (+12 gal)" until someone resolves it with a note.
 - D30 (2026-11-11, Ted): A **Close the day** checklist lists open orders, unnumbered fills, unkeyed lines, differences, unmatched scan lines, open meter gaps and unpicked airline slips. Someone closes the day, with a note when items remain.
 - D31 (2026-11-11, Ted): The ramp fee line is added automatically to every visit, showing the aircraft class. It is waived automatically when the visit's fuel reaches the class's **minimum gallons** (set in Settings) or the aircraft has a hangar lease (B67). A manager can override it with a reason. Counter sales go on the visit's list when there is one, otherwise on a counter list by customer or tail.
-- D32 (2026-11-11, Ted): Airline fuel printouts are **logged as typed** in the Fuel sheet (per-tank targets, total/block, uplift, density and units, flight, tail, printed by, an optional photo) in a `fuel_printout` table. A report compares them with the wing-loading capacities, and a manager confirms any capacity change; nothing changes by itself. OCR of printouts comes later and is free only.
+- D32 (2026-11-11, Ted): Airline fuel slips (United "Routine Fuel Service Form", sample transcribed in section 6b) are **logged as typed** in the Fuel sheet. They are stored in a `fuel_printout` table holding what the existing Fuel sheet columns do not: the printed desired per tank with its near-capacity stars, planned gate fuel, the airline's own tolerance, the form identity, station density and deferred items. The Fuel sheet takes up to three trucks. A capacity report uses after readings and starred desired figures (an unstarred figure is data, not capacity), and a manager confirms any change; nothing changes by itself. The signature and employee number are not stored per slip. OCR comes later and is free only.
 - D33 (2026-11-11, Ted): **Defuels are a rare manual correction**, not a flow ("only seen it once in 2 years"). A Defuel adjustment line on the charge list has a negative gallon quantity, a required reason and a manager sign-off. Scan matching never auto-matches a defuel line; the unmatched list can mark it "Defuel". A meter gap it causes is annotated `other` with the note "defuel". There is no order type or status.
 
 ## Risks / open questions
@@ -889,24 +889,75 @@ All columns are nullable and no link is required. Data arrives out of order and 
 
 ### 6b. Airline fuel printout log (Ted, 2026-11-11; D32)
 
-The airlines hand over a fuel printout or slip per fueling. It shows:
-- target fuel per tank (for example 737 MAX wing tanks 8,650 lb each);
-- total or block fuel and the uplift;
-- density and units;
-- flight, tail, date and time, and who printed it.
+Ted wants the airlines' fuel printouts logged, and the log used to check the wing-loading tank capacities. The capacities live in `lib/wing-loading.ts`; on 2026-11-11 B88 set them from Boeing and Airbus documents, with the MAX wings at 8,650 lb from airline slips.
 
-Ted wants what the airlines actually give logged, and the log used to check the wing-loading tank capacities (`lib/wing-loading.ts`; B88 set them from Boeing and Airbus documents and the MAX wings to 8,650 lb from airline slips on 2026-11-11). Fields are to be confirmed against Ted's United sample (`docs/samples/`, coming).
+**The real document.** It is the United Airlines "Routine Fuel Service Form", a dot-matrix printout per departure. The fueler fills in the handwritten parts. Ted's sample (UA1026, 2026-11-03) is transcribed below. The photo is not stored in the repo, because it carries a signature and an employee number.
 
-- **Entry (D32).** Typed in the Fuel sheet (wing-loading dialog), in a "Printout" block beside the existing tank before/after, with an optional photo stored like scan pages (`scanned_documents`, doc type `fuel_printout`). OCR is not in scope. Once enough samples per airline exist, free OCR (Tesseract / Google Cloud Vision, never paid Claude) can prefill the block: a later item, not planned now.
-- **Table `fuel_printout`.** Fixed columns, per Ted's analytics preference:
-  - links: `id`, `fuel_transaction_id` (unique, nullable, set null), `airline_icao`, `flight_number`, `tail_number`, `aircraft_type`, `wing_loading_key` (the `lib/wing-loading.ts` type key);
-  - who and when: `printed_at`, `printed_by` (text as printed);
-  - units: `unit` (`lb|kg|gal`), `density`;
-  - targets: `target_left`, `target_center`, `target_right`, `target_aux`, `target_total`, `block_fuel`, `uplift`;
-  - other: `photo_document_id`, `notes`, timestamps.
-  
-  All values are as printed (no conversion stored); reports convert to lb with the printed density.
-- **Capacity check (B131).** A report per wing-loading type shows the number of printouts and the highest left, right and center targets seen (in lb), against the app's capacity. A target above capacity is marked "printout exceeds app capacity". A manager confirms a new capacity, which is stored in an `app_setting` key `wing_tank_capacities` that overrides the code constants (which stay as defaults). The app never changes a capacity by itself. B131 coordinates with B88: B88 owns the constants, and B131 adds only the override and the report.
+| Part | Printed / handwritten | Sample value |
+|---|---|---|
+| Form serial | printed | 000015023868 |
+| Header | printed | DFSF, flight 1026, 03NOV, MSO-DEN, fleet number 7519, tail N27519, gate A4, JET A, station density 6.79 |
+| Second header line | printed | departure time 0615; issue 1-0506 03NOV; last station density 03NOV 0110Z |
+| "Dispatch requested fuel load": per-tank lb, Before / Desired / After | Before and After handwritten; Desired printed | L wing 6100 / 8650\* / 8620; Center 0 / 5200 / 5330; R wing 5890 / 8650\* / 8650; totals 11990 before, 22600 after |
+| \* marker | printed | "tanks near or at capacity, caution: fuel spill possible" |
+| Planned gate fuel | printed | 22500 lb |
+| Subtract before total, then pounds to add/remove | handwritten | 11990, then 10510 |
+| Divided by density | printed | 6.79 lb/gal |
+| Calculated gallons to add/remove | handwritten | 1548 |
+| Total gallons added, per truck (slots for trucks 1-3) | handwritten | 1544 on truck 5282 (slots 2 and 3 empty) |
+| Difference, and the airline's tolerance | handwritten; tolerance printed | 4; +75 / -75 gal |
+| Sign-off | handwritten | checklist line, signer name, employee number |
+| Deferred fuel items (placard text) | printed | "7519: no items" |
+| ATC flight plan | printed | FPL-UAL1026, type B39M (737 MAX 9), KMSO to KDEN, reg N27519 |
+
+**Most of the form is already the Fuel sheet.** The wing-loading dialog was built from this form. `saveAirlineFueling` already stores:
+
+| Form field | Already stored in |
+|---|---|
+| Before and after per tank | `fuel_transaction.tank_reading_before_*` / `_after_*` (lbs) |
+| Planned gate fuel | `quantity_lbs` |
+| Density | `density` |
+| Calculated gallons | `gallons_requested` |
+| Gallons added | `gallons_delivered` |
+| Truck | `fuel_truck_id`, plus one `truck_meter_readings` row per register |
+| Difference and tolerance check | computed by `truckCheck`, using `SHEET_TOLERANCE_GAL = 75` |
+
+Not stored yet, so these are the new columns: the printed **Desired** per tank and its near-capacity marks, the airline's own tolerance, the form identity (serial, flight, date, route, fleet number, gate, departure time, issue), station density, deferred items, and **trucks 2 and 3**.
+
+- **Entry (D32).** Typed into the Fuel sheet, in a "Slip" block beside the existing tank before/after. An optional photo is stored like scan pages (`scanned_documents`, doc type `fuel_printout`, private bucket, viewable only in the app).
+  - The Fuel sheet takes up to three trucks. Each truck gets its own gallons and its front/rear meters, and writes its own `truck_meter_readings` rows on its own sheet. `fuel_transaction.fuel_truck_id` stays the first truck.
+  - No OCR now. The printout is dot-matrix and machine-printed apart from the handwriting, so free OCR (Tesseract / Google Cloud Vision, never paid Claude) could prefill the printed fields later. That is a later item, not planned.
+- **Table `fuel_printout`** (fixed columns, per Ted's analytics preference; one row per slip). Values are kept as printed, and reports convert units.
+  - Links: `id`, `fuel_transaction_id` (unique, nullable, set null), `airline_icao` (`UAL`), `form_type` (`ua_routine_fuel_service`).
+  - Form identity:
+    - `form_serial` (text; unique per airline when set);
+    - `flight_number`, `flight_date`;
+    - `origin`, `destination`;
+    - `fleet_number`, `tail_number`, `gate`;
+    - `fuel_grade`, `departure_time` (text as printed), `issue` (text);
+    - `aircraft_type` (from the ATC line, for example `B39M`), `wing_loading_key` (resolved).
+  - Densities: `station_density`, `last_station_density_at` (text). These can differ from the density used, which stays in `fuel_transaction.density`.
+  - Desired (printed): `unit` (`lb|kg`), `desired_left`, `desired_center`, `desired_right`, `desired_aux`, `planned_gate_fuel`, and `near_capacity_tanks text[]` (the starred tanks, for example `{left,right}`).
+  - Tolerance: `tolerance_plus_gal`, `tolerance_minus_gal` (75 / 75 on the sample).
+  - Other: `deferred_fuel_items` (text), `photo_document_id`, `notes`, timestamps.
+- **Who signed.** The signer is the user who filled the order (`fuel_transaction.filled_by`). The signature and employee number are not typed into fbo-manager. If Ted later wants the airline employee number, it belongs once on the user (B68), not on every slip.
+- **Capacity check (B131).** A report per wing-loading type covers:
+  - the number of slips;
+  - the highest **after** reading per tank (the gauge after fueling, the best evidence of what a tank holds);
+  - the highest **desired** figure on a starred (near-capacity) tank;
+  - the app's capacity for each tank.
+
+  The rules:
+  - Only starred desired figures and after readings on starred tanks count as capacity evidence. An unstarred desired figure, such as the center 5200 on the sample, is a load plan, logged as data only.
+  - A figure above the app capacity is marked "slip exceeds app capacity".
+  - A manager confirms a new capacity, stored in the `app_setting` key `wing_tank_capacities`. It overrides the code constants, which stay as defaults. Nothing changes by itself.
+  - B131 coordinates with B88: B88 owns the constants, and B131 adds only the override and the report.
+
+  On the sample, the MAX 9 desired wing figure (8650\*) equals the B88 constant, and the after readings (8620 / 8650) are within it.
+- **Two different tolerances. Keep them separate (recommendation for Ted).**
+  - The airline's **+/-75 gal** compares *calculated* gallons (pounds from the aircraft gauges divided by density) with gallons *added* (truck meter). It absorbs gauge and density error. It is already `truckCheck`, and per-slip values are now stored so another airline's tolerance can differ.
+  - The plan's **2 % / 5 gal** (B127) compares two records of the *same truck meter* (gallons typed at fill time vs the scanned truck-sheet line). These should agree almost exactly. A 75 gal window there would let scan lines match the wrong fueling.
+  - Recommendation: do not align them. Keep +/-75 as the per-slip airline check, and keep the scan match tight (5 gal, or 1 % for large uplifts).
 
 ### 7. Edge cases
 
@@ -928,5 +979,5 @@ Ted wants what the airlines actually give logged, and the log used to check the 
 1. The name of the outside software, and whether it can export a daily invoice list (CSV). That would let Close the day match numbers automatically later.
 2. Ramp fee classes and the minimum gallons per class (B51), and the service-to-product mapping, with no prices (B52).
 3. ~~Defuels~~: answered 2026-11-11 (D33), very rare, a manual adjustment.
-4. Is the 2 % / 5 gal auto-match tolerance right?
-5. A United fuel printout sample (promised 2026-11-11) to confirm the `fuel_printout` fields.
+4. Is the 2 % / 5 gal auto-match tolerance right? It is a different check from the airline slip's +/-75 gal (section 6b); the recommendation is to keep them separate.
+5. ~~United printout sample~~: received 2026-11-11 and transcribed in section 6b. Still open: do other airlines (for example SkyWest E175 or the CRJs) use a different form?
