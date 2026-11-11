@@ -128,15 +128,19 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 | B92 | Minuteman: merge the wing-loading branch (`feature/wing-loading` 7a7f2fc) | canceled | P1 | S | Canceled by Ted 2026-11-10: the ~/src/minuteman repo is read-only for this project; do not merge or deploy anything there. Pushed, not merged; waits for Ted's go-ahead to deploy Minuteman prod |
 | B93 | QT airline flights on the board + wing-loading fuel sheet | review | P1 | M | On master (QT airline cards, departed hidden, icons, wing-loading dialog c851dc7 / c9ac076); Ted checks on prod |
 | B94 | Stop granting `anon` on every sequence in new migrations; revoke it on live with B29 | todo | P1 | S | Found 2026-11-11: several migrations (latest 20261105000100 parking_areas, 20261108000200 fuel_meter_gaps) end with the copy-pasted `grant all on all sequences in schema public to anon, authenticated, service_role`; on live `anon` now has USAGE on all 43 public sequences (can burn ids with nextval; no table data). Remove `anon` from that line in new migrations, add a test that rejects it, and fold `revoke all on all sequences in schema public from anon` into the B29 anon-lockdown migration (live apply waits for Ted with B29) |
+| B95 | Users: Badge ID, start date (hire_date) and role cards (Google sign-in session, 2026-11-05) | review | P2 | S | On master 7e8791b; migrations for badge_id and hire_date applied to live. Ted still enters his own start date (2024-07-29) |
+| B96 | Enforce "last active Administrator" in the database | todo | P2 | S | Today the guard is app-only (`lib/user-guards.ts`); add a trigger on user_roles / profiles.status so the last active Administrator cannot be demoted or deactivated by any path; repo test; live apply waits for Ted (auth) |
+| B97 | Cypress coverage beyond the flight board | todo | P2 | M | 12 of 20 specs cover the board; equipment, invoicing, users and fuel are thin. Add happy-path specs per module. Also confirm on current master three July fixes that only lived on the retired feature/playwright-testing branch: silent flight persistence failure (886dde0), Fuel Farm tank Edit button (9de1a99), Fuel Dispatch edit-concurrency guard + stale assign dialog (845aa22); re-fix any that regressed |
+| B98 | Users: work-anniversary view and yearly badge-ID export for the line manager (optional) | todo | P3 | S | Idea from the Google sign-in session; scope with Ted before building |
 
 ## Milestones to v1 (orchestrator, 2026-11-09)
 
 - **M0 Consolidate:** B87, B91, B26e (form reload fix first), re-enable CI.
 - **M1 Board + form in daily use:** review pile B01-B23, B39, B42-B45d, B47, B60, B93; B17, B19c, B24, B40, B41, B46, B49, B50, B86.
-- **M2 Real logins + security:** B59, B59a, B76, B78, B38, B29, B94, B30, B37, B31.
+- **M2 Real logins + security:** B59, B59a, B76, B78, B38, B29, B94, B95, B96, B30, B37, B31.
 - **M3 Fuel ops parity:** B69-B71, B84, B85, B87, B88, B90, B80, B68, B51, B52, B53, B77.
-- **M4 Parking, equipment, docs:** B54-B58, B70, B27-B28, B56, B59b, B35, B79, B63, B65, B66, B67.
-- **Post-v1:** B25, B48, B61, B62, B64, B81, B82, B83.
+- **M4 Parking, equipment, docs:** B54-B58, B70, B27-B28, B56, B59b, B35, B79, B97, B63, B65, B66, B67.
+- **Post-v1:** B25, B48, B61, B62, B64, B81, B82, B83, B98.
 
 ## Linear mapping
 
