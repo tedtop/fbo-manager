@@ -295,7 +295,6 @@ export function usePlaneMarkers({
       const el = document.createElement('div')
       el.className = 'parking-plane'
       el.title = `${tail} - ${plane.typeDisplay}`
-      el.style.position = 'relative'
       el.style.filter = 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))'
 
       const img = document.createElement('img')
