@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert } from '@/types/database'
+import { lowestReading, type MeasuredLow } from '@/lib/fuel-farm'
 
 export type TankReadingRow = Tables<'tank_level_readings'>
 export type TankReadingInsert = TablesInsert<'tank_level_readings'>
@@ -122,4 +123,20 @@ export async function findTankHistory(
   for (const b of await baselinePromise) baseline[b.tankId] = b.level
 
   return { since, baseline, readings }
+}
+
+/** Lowest reading ever saved for a tank (level + date), or null with no readings. Read only. */
+export async function findLowestMeasured(
+  db: SupabaseClient<Database>,
+  tankId: string
+): Promise<MeasuredLow | null> {
+  const { data, error } = await db
+    .from('tank_level_readings')
+    .select('level, recorded_at')
+    .eq('tank_id', tankId)
+    .order('level', { ascending: true })
+    .order('recorded_at', { ascending: true })
+    .limit(1)
+  if (error) throw error
+  return lowestReading((data ?? []).map((r) => ({ level: r.level, recordedAt: r.recorded_at })))
 }

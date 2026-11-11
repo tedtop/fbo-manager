@@ -25,6 +25,8 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
+import { useTankLowestLevel } from '@/hooks/use-tank-lowest-level'
+import { inchesToGallons } from '@/lib/gallons-tables'
 import { useEffect, useState } from 'react'
 
 interface TankFormDialogProps {
@@ -41,6 +43,7 @@ export function TankFormDialog({
   onSubmit
 }: TankFormDialogProps) {
   const [loading, setLoading] = useState(false)
+  const lowest = useTankLowestLevel(tank?.tank_id ?? null, open && !!tank)
   const [formData, setFormData] = useState<TankInsert>({
     tank_id: '',
     tank_name: '',
@@ -283,6 +286,27 @@ export function TankFormDialog({
                 />
               </div>
             </div>
+
+            {tank && (
+              <div className="space-y-2">
+                <Label>Lowest measured</Label>
+                <div
+                  data-testid="lowest-measured"
+                  className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
+                >
+                  {lowest.loading
+                    ? 'Loading...'
+                    : lowest.measured
+                      ? `${lowest.measured.level}" on ${new Date(lowest.measured.recordedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+                      : 'No readings yet'}
+                </div>
+                {lowest.measured && (
+                  <p data-testid="lowest-gallons" className="text-xs text-muted-foreground">
+                    {Math.round(inchesToGallons(tank.tank_id, lowest.measured.level)).toLocaleString()} gal at the lowest level ever measured.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <SheetFooter className="flex-col gap-2 border-t border-border p-4 sm:flex-row sm:justify-end">
