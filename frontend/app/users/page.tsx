@@ -1,10 +1,44 @@
 'use client'
 
+import {
+  isPlaceholderEmail,
+  StaffEmailDialog,
+  type StaffEmailDialogState
+} from '@/components/users/staff-email-dialog'
+import {
+  EmailChangeDialog,
+  type EmailChangeState
+} from '@/components/users/email-change-dialog'
+import {
+  type CellState,
+  InlineCell,
+  type Nav
+} from '@/components/users/inline-cell'
 import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
 import { useModuleAccess } from '@/hooks/use-permissions'
 import { useRoles } from '@/hooks/use-roles'
+import { displayPhone } from '@/lib/phone-mask'
+import { displayRoles } from '@/lib/role-rules'
+import {
+  INLINE_FIELDS,
+  type InlineField,
+  type InlineValue,
+  buildInlinePatch,
+  checkInlineEmail,
+  draftDisplay,
+  inlineInitial,
+  isUnchanged
+} from '@/lib/user-inline-edit'
+import {
+  DEFAULT_USER_SORT,
+  type UserSort,
+  type UserSortKey,
+  nextSort,
+  sortUsers
+} from '@/lib/user-sort'
 import { useUsers } from '@/hooks/use-users'
 import {
+  ADMIN_ROLE_NAME,
   accountRemovalBlocked,
   isAwaitingAccess,
   roleChangeBlocked
@@ -37,9 +71,9 @@ import {
 } from '@/components/ui/table'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
-import { MoreHorizontal } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 /** Start date when an admin has set one, else the sign-up date. Date-only strings are formatted as written so no time zone shifts the day. */
 function formatJoined(user: { hire_date: string | null; created_at: string }): string {
@@ -49,6 +83,10 @@ function formatJoined(user: { hire_date: string | null; created_at: string }): s
   }
   return new Date(user.created_at).toLocaleDateString()
 }
+
+/** A role-less account on a real email: someone who signed in themselves, not a seeded staff account. */
+const isGoogleSignup = (u: ProfileWithRoles) =>
+  isAwaitingAccess(u) && !isPlaceholderEmail(u.email)
 
 export default function UsersPage() {
   const { allowed, loading: accessLoading } = useModuleAccess('users', 'manage')
@@ -61,6 +99,8 @@ export default function UsersPage() {
     setUserStatus,
     setUserRoles,
     deleteUser,
+    setStaffEmail,
+    updateUserFields,
     refetch
   } = useUsers()
   const { roles } = useRoles()
@@ -73,8 +113,14 @@ export default function UsersPage() {
   >('all')
   const [roleFilter, setRoleFilter] = useState<string>('all')
 
+  const [sort, setSort] = useState<UserSort>(DEFAULT_USER_SORT)
+  const [editing, setEditing] = useState<{ id: string; field: InlineField } | null>(null)
+  const [cellStates, setCellStates] = useState<Record<string, CellState & { draft?: InlineValue; display?: string }>>({})
+  const [emailChange, setEmailChange] = useState<EmailChangeState | null>(null)
+
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<ProfileWithRoles | null>(null)
+  const [emailDialog, setEmailDialog] = useState<StaffEmailDialogState | null>(null)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -88,12 +134,7 @@ export default function UsersPage() {
   }
 
   const filteredUsers = useMemo(() => {
-    // New sign-ups waiting for a role first, then newest accounts first.
-    const ordered = [...users].sort((a, b) => {
-      const pending = Number(isAwaitingAccess(b)) - Number(isAwaitingAccess(a))
-      return pending || b.created_at.localeCompare(a.created_at)
-    })
-    return ordered.filter((u) => {
+    return sortUsers(users, sort).filter((u) => {
       if (statusFilter !== 'all' && u.status !== statusFilter) return false
       if (roleFilter === 'none') {
         if (u.roles.length > 0) return false
@@ -105,12 +146,12 @@ export default function UsersPage() {
       if (search) {
         const q = search.toLowerCase()
         const haystack =
-          `${u.first_name} ${u.last_name} ${u.email} ${u.employee_id ?? ''} ${u.badge_id ?? ''}`.toLowerCase()
+          `${u.first_name} ${u.last_name} ${u.email} ${u.phone_number ?? ''} ${u.employee_id ?? ''} ${u.badge_id ?? ''}`.toLowerCase()
         if (!haystack.includes(q)) return false
       }
       return true
     })
-  }, [users, search, statusFilter, roleFilter])
+  }, [users, sort, search, statusFilter, roleFilter])
 
   const handleSubmit = async (data: UserFormData) => {
     if (editingUser) {
@@ -217,6 +258,154 @@ export default function UsersPage() {
       showError(err instanceof Error ? err.message : 'Failed to delete user')
     }
   }
+
+  const handleSetStaffEmail = async (
+    staffId: string,
+    email: string,
+    linkFromUserId?: string
+  ) => {
+    await setStaffEmail(staffId, email, linkFromUserId)
+    showSuccess(
+      linkFromUserId
+        ? 'Linked. They can now sign in with Google once more.'
+        : `Email set to ${email.trim().toLowerCase()}. They can now Continue with Google.`
+    )
+  }
+
+  const isAdmin = !!users
+    .find((u) => u.id === currentUserId)
+    ?.roles.some((r) => r.name === ADMIN_ROLE_NAME)
+
+  /** Email is the sign-in identity: only an administrator, never on their own row, never on a Google sign-up (that one is linked instead). */
+  const emailEditable = useCallback(
+    (u: ProfileWithRoles) => isAdmin && u.id !== currentUserId && !isGoogleSignup(u),
+    [isAdmin, currentUserId]
+  )
+
+  const setCell = (key: string, state: (CellState & { draft?: InlineValue; display?: string }) | null) =>
+    setCellStates((prev) => {
+      const next = { ...prev }
+      if (state) next[key] = state
+      else delete next[key]
+      return next
+    })
+
+  /** Move the editor to the next / previous editable cell in row order. */
+  const moveFrom = (userId: string, field: InlineField, nav: Nav) => {
+    if (nav === 'none') {
+      setEditing(null)
+      return
+    }
+    const cells: { id: string; field: InlineField }[] = []
+    for (const u of filteredUsers)
+      for (const f of INLINE_FIELDS) if (f !== 'email' || emailEditable(u)) cells.push({ id: u.id, field: f })
+    const i = cells.findIndex((c) => c.id === userId && c.field === field)
+    const target = cells[i + (nav === 'next' ? 1 : -1)]
+    setEditing(target ?? null)
+  }
+
+  const handleInlineCommit = (
+    user: ProfileWithRoles,
+    field: InlineField,
+    value: InlineValue,
+    nav: Nav
+  ): string | null => {
+    const key = `${user.id}:${field}`
+    if (isUnchanged(user, field, value)) {
+      setCell(key, null)
+      moveFrom(user.id, field, nav)
+      return null
+    }
+    if (field === 'email') {
+      const check = checkInlineEmail(value as string, user.email)
+      if (!check.ok) return check.error
+      setEmailChange({
+        userId: user.id,
+        name: `${user.first_name} ${user.last_name}`.trim() || user.email,
+        currentEmail: user.email,
+        email: check.email
+      })
+      moveFrom(user.id, field, nav)
+      return null
+    }
+    const built = buildInlinePatch(field, value)
+    if (!built.ok) return built.error
+    setCell(key, { status: 'saving', draft: value, display: draftDisplay(field, value) })
+    moveFrom(user.id, field, nav)
+    updateUserFields(user.id, built.patch)
+      .then(() => {
+        setCell(key, { status: 'saved' })
+        setTimeout(() => setCellStates((prev) => (prev[key]?.status === 'saved' ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key)) : prev)), 2000)
+      })
+      .catch((err) =>
+        setCell(key, {
+          status: 'error',
+          draft: value,
+          display: draftDisplay(field, value),
+          message: err instanceof Error ? err.message : 'Could not save'
+        })
+      )
+    return null
+  }
+
+  const confirmEmailChange = async (userId: string, email: string) => {
+    await setStaffEmail(userId, email)
+    showSuccess(`Email set to ${email}. They can now Continue with Google.`)
+  }
+
+  const sortHead = (key: UserSortKey, label: string) => {
+    const active = sort.key === key
+    const Icon = !active ? ChevronsUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
+    return (
+      <TableHead
+        aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        <button
+          type="button"
+          onClick={() => setSort((cur) => nextSort(cur, key))}
+          className="-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          data-sort={key}
+        >
+          {label}
+          <Icon className={`h-3.5 w-3.5 ${active ? 'text-foreground' : 'text-muted-foreground/60'}`} />
+        </button>
+      </TableHead>
+    )
+  }
+
+  /** One editable cell; shows the pending value while a save is in flight or has failed. */
+  const cell = (
+    user: ProfileWithRoles,
+    field: InlineField,
+    label: string,
+    display: React.ReactNode,
+    readOnly = false
+  ) => {
+    const st = cellStates[`${user.id}:${field}`]
+    const shown = st && st.status !== 'saved' && st.display !== undefined ? (st.display || '—') : display
+    return (
+      <InlineCell
+        userId={user.id}
+        field={field}
+        label={label}
+        editing={editing?.id === user.id && editing.field === field}
+        readOnly={readOnly}
+        display={shown}
+        initial={st?.draft ?? inlineInitial(user, field)}
+        state={st}
+        onStart={() => setEditing({ id: user.id, field })}
+        onCancel={() => setEditing(null)}
+        onCommit={(v, nav) => handleInlineCommit(user, field, v, nav)}
+      />
+    )
+  }
+
+  // Staff accounts still on a placeholder email: the targets for "Link to staff account".
+  const staffCandidates = users.filter(
+    (u) =>
+      u.id !== currentUserId &&
+      isPlaceholderEmail(u.email)
+  )
 
   if (accessLoading || loading) {
     return (
@@ -371,13 +560,14 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Employee ID</TableHead>
-                  <TableHead>Badge ID</TableHead>
-                  <TableHead>Status</TableHead>
+                  {sortHead('name', 'Name')}
+                  {sortHead('email', 'Email')}
+                  {sortHead('phone', 'Phone')}
+                  {sortHead('role', 'Role')}
+                  {sortHead('joined', 'Joined')}
+                  {sortHead('employee_id', 'Employee ID')}
+                  {sortHead('badge_id', 'Badge ID')}
+                  {sortHead('status', 'Status')}
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -385,21 +575,29 @@ export default function UsersPage() {
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium text-foreground">
-                      {user.first_name || user.last_name ? (
-                        `${user.first_name} ${user.last_name}`.trim()
-                      ) : (
-                        <span className="text-muted-foreground italic">
-                          No name yet
-                        </span>
+                      {cell(
+                        user,
+                        'name',
+                        `name of ${user.email}`,
+                        user.first_name || user.last_name ? (
+                          `${user.first_name} ${user.last_name}`.trim()
+                        ) : (
+                          <span className="text-muted-foreground italic">
+                            No name yet
+                          </span>
+                        )
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {user.email}
+                      {cell(user, 'email', `email of ${user.first_name || user.email}`, user.email, !emailEditable(user))}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {cell(user, 'phone', `phone of ${user.email}`, displayPhone(user.phone_number) || '—')}
                     </TableCell>
                     <TableCell>
-                      {user.roles.length > 1 ? (
+                      {displayRoles(user.roles).length > 1 ? (
                         <div className="flex flex-wrap gap-1">
-                          {user.roles.map((role) => (
+                          {displayRoles(user.roles).map((role) => (
                             <Badge key={role.id} variant="secondary">
                               {role.name}
                             </Badge>
@@ -408,7 +606,9 @@ export default function UsersPage() {
                       ) : (
                         <Select
                           value={
-                            user.roles[0] ? String(user.roles[0].id) : 'none'
+                            displayRoles(user.roles)[0]
+                              ? String(displayRoles(user.roles)[0].id)
+                              : 'none'
                           }
                           onValueChange={(v) => handleSetRole(user, v)}
                         >
@@ -434,13 +634,13 @@ export default function UsersPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {formatJoined(user)}
+                      {cell(user, 'hire_date', `start date of ${user.email}`, formatJoined(user))}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {user.employee_id || '—'}
+                      {cell(user, 'employee_id', `employee ID of ${user.email}`, user.employee_id || '—')}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {user.badge_id || '—'}
+                      {cell(user, 'badge_id', `badge ID of ${user.email}`, user.badge_id || '—')}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -467,6 +667,21 @@ export default function UsersPage() {
                           >
                             Edit
                           </DropdownMenuItem>
+                          {user.id !== currentUserId && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setEmailDialog(
+                                  isGoogleSignup(user)
+                                    ? { mode: 'link', signup: user }
+                                    : { mode: 'set', staff: user }
+                                )
+                              }
+                            >
+                              {isGoogleSignup(user)
+                                ? 'Link to staff account'
+                                : 'Set real email'}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             onClick={() => handleToggleStatus(user)}
                           >
@@ -490,6 +705,19 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      <StaffEmailDialog
+        state={emailDialog}
+        staffCandidates={staffCandidates}
+        onClose={() => setEmailDialog(null)}
+        onSet={handleSetStaffEmail}
+      />
+
+      <EmailChangeDialog
+        state={emailChange}
+        onClose={() => setEmailChange(null)}
+        onConfirm={confirmEmailChange}
+      />
 
       <UserSheet
         open={sheetOpen}

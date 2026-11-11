@@ -1,10 +1,14 @@
 'use client'
 
 import {
+  type AircraftDimensions,
+  dimensionsFor
+} from '@/lib/aircraft-dimensions'
+import { metersToPixels } from '@/lib/map-scale'
+import {
   type MoveKeys,
   type ParkedPlane,
   type PlanePose,
-  iconPixelSize,
   normalizeHeading,
   roundCoordinate,
   stepPose,
@@ -13,18 +17,22 @@ import {
 import { popPose, pushPose } from '@/lib/parking-undo'
 import { type Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
-import { aircraftIconUrl } from './aircraft-icon'
+import { aircraftIconUrl, paddedSize } from './aircraft-icon'
 
 export const SAVE_DELAY_MS = 1000
 const PUBLISH_INTERVAL_MS = 100
 const MIN_LABEL_ICON_PX = 16
+/** Clickable area never gets smaller than this, however far out the map is zoomed. */
+const MIN_HIT_PX = 20
 
 type Entry = {
   marker: Marker
   el: HTMLDivElement
   img: HTMLImageElement
   label: HTMLSpanElement
-  typeIcao: string
+  dims: AircraftDimensions
+  /** Data URL currently on the img, so it is only swapped when category/selection changes. */
+  iconUrl: string
   selected: boolean
 }
 
@@ -109,14 +117,32 @@ export function usePlaneMarkers({
   const layoutEntry = useCallback(
     (tailNumber: string, entry: Entry, bearing: number, zoom: number) => {
       const { lat } = entry.marker.getLngLat()
-      const { width, height } = iconPixelSize(entry.typeIcao, lat, zoom)
-      entry.img.style.width = `${width}px`
-      entry.img.style.height = `${height}px`
+      // True scale: the drawn silhouette is the real wingspan x length in metres at this
+      // latitude and zoom (a plain DOM style write, no React render per zoom frame).
+      const { dims } = entry
+      const width = metersToPixels(dims.wingspanM, lat, zoom)
+      const height = metersToPixels(dims.lengthM, lat, zoom)
+      const padded = paddedSize(width, height)
+      entry.img.style.width = `${padded.width}px`
+      entry.img.style.height = `${padded.height}px`
+      // A type missing from the dimensions table is drawn at a nominal size, slightly muted.
+      entry.img.style.opacity = dims.estimated ? '0.7' : ''
+      // The marker box keeps a minimum hit target; the silhouette stays centred and true size.
+      entry.el.style.width = `${Math.max(width, MIN_HIT_PX)}px`
+      entry.el.style.height = `${Math.max(height, MIN_HIT_PX)}px`
       const selected = tailNumber === selectedRef.current
+      const iconUrl = aircraftIconUrl(
+        dims.category,
+        selected,
+        dims.wingspanM / dims.lengthM
+      )
+      if (entry.iconUrl !== iconUrl) {
+        entry.iconUrl = iconUrl
+        entry.img.src = iconUrl
+      }
       if (entry.selected !== selected) {
         entry.selected = selected
-        entry.img.src = aircraftIconUrl(selected)
-        entry.el.style.zIndex = selected ? '10' : ''
+        entry.el.style.zIndex = selected ? '1' : ''
         entry.el.style.filter = selected
           ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.9))'
           : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))'
@@ -292,17 +318,22 @@ export function usePlaneMarkers({
 
     const createEntry = (plane: ParkedPlane): Entry => {
       const tail = plane.tailNumber
+      const dims = dimensionsFor(plane.typeIcao)
       const el = document.createElement('div')
       el.className = 'parking-plane'
       el.title = `${tail} - ${plane.typeDisplay}`
-      el.style.position = 'relative'
+      // Absolute like every MapLibre marker (the tail label is positioned inside it).
+      el.style.position = 'absolute'
+      el.style.display = 'flex'
+      el.style.alignItems = 'center'
+      el.style.justifyContent = 'center'
       el.style.filter = 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))'
 
       const img = document.createElement('img')
       img.alt = tail
       img.draggable = false
       img.style.display = 'block'
-      img.src = aircraftIconUrl(false)
+      img.style.flex = 'none'
       el.appendChild(img)
 
       const label = document.createElement('span')
@@ -313,7 +344,7 @@ export function usePlaneMarkers({
         top: '50%',
         color: '#ffffff',
         font: '700 11px/1 ui-sans-serif, system-ui, sans-serif',
-        textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 2px #000',
+        textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 0 6px #000',
         whiteSpace: 'nowrap',
         pointerEvents: 'none'
       })
@@ -357,7 +388,8 @@ export function usePlaneMarkers({
         el,
         img,
         label,
-        typeIcao: plane.typeIcao,
+        dims,
+        iconUrl: '',
         selected: false
       }
     }
@@ -370,7 +402,7 @@ export function usePlaneMarkers({
         entry = createEntry(plane)
         entries.set(plane.tailNumber, entry)
       } else if (!dirtyRef.current.has(plane.tailNumber)) {
-        entry.typeIcao = plane.typeIcao
+        entry.dims = dimensionsFor(plane.typeIcao)
         entry.marker.setLngLat([plane.lng, plane.lat])
         entry.marker.setRotation(plane.heading)
       }

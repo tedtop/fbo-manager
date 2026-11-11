@@ -114,6 +114,10 @@ export function useMapInstance(containerRef: RefObject<HTMLDivElement | null>) {
       console.error('Map error:', e.error ?? e)
     })
     mapRef.current = map
+    // Test seam, only inside a Cypress run: specs turn coordinates into pointer positions.
+    if ((window as { Cypress?: unknown }).Cypress) {
+      ;(window as { __parkingMap?: MapLibreMap }).__parkingMap = map
+    }
 
     return () => {
       map.remove()

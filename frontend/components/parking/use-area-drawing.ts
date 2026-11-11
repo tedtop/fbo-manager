@@ -9,6 +9,7 @@ import {
   squareUpRing,
   toGeoJsonPolygon
 } from '@/lib/parking-geometry'
+import { isRectangle, rectangularizeRing } from '@/lib/rect-geometry'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import type { Map as MapLibreMap } from 'maplibre-gl'
@@ -21,17 +22,34 @@ import {
   createDrawControl,
   escapeBelongsToOthers
 } from './draw-support'
+import { RECT_MODE } from './rect-mode'
 
-export { DRAW_FINISH_HINT, EDIT_HINT, type Notice } from './draw-support'
+export {
+  DRAW_FINISH_HINT,
+  EDIT_HINT,
+  RECT_EDIT_HINT,
+  type Notice
+} from './draw-support'
 
 /**
  * `idle`: no editable shape (no area selected, or the selected area has no boundary yet).
  * `drawing`: `draw_polygon` is collecting corners for the selected area.
- * `editing`: the selected area's boundary is open in `direct_select`: corners, midpoints and
- * the whole shape can be dragged, and every change is saved. There is no button for this
- * mode: selecting an area that has a boundary enters it, deselecting leaves it.
+ * `editing`: the selected area's boundary is open for editing and every change is saved.
+ * A rectangle opens in the custom `direct_rect` mode (corner and side handles that keep it a
+ * rectangle, rect-mode.ts), any other shape in Draw's `direct_select` (drag corners, drag
+ * midpoints to add corners); both can drag the whole shape. A rectangle can be switched to
+ * free editing and back (`setFreeEditing`). There is no button for `editing` itself:
+ * selecting an area that has a boundary enters it, deselecting leaves it.
  */
 export type DrawMode = 'idle' | 'drawing' | 'editing'
+
+/** What the open shape is and how it is being edited (only meaningful while `editing`). */
+export type ShapeState = {
+  /** The shape is a rectangle right now (a free edit can make or break that). */
+  rectangular: boolean
+  /** Editing with plain polygon handles; false means the rectangle handles. */
+  free: boolean
+}
 
 type Options = {
   mapRef: RefObject<MapLibreMap | null>
@@ -71,6 +89,10 @@ export function useAreaDrawing({
   const [drawReady, setDrawReady] = useState(false)
   const [mode, setModeState] = useState<DrawMode>('idle')
   const modeRef = useRef<DrawMode>('idle')
+  const [shape, setShape] = useState<ShapeState>({
+    rectangular: false,
+    free: true
+  })
   // The area the current draw session (drawing or editing) belongs to.
   const activeAreaIdRef = useRef<number | null>(null)
   // True while this hook itself drives MapboxDraw, so its modechange events are not user input.
@@ -111,11 +133,16 @@ export function useAreaDrawing({
     }
   }, [])
 
-  /** Opens `ring` as the editable shape of `areaId`, replacing whatever Draw holds. */
+  /**
+   * Opens `ring` as the editable shape of `areaId`, replacing whatever Draw holds. A
+   * rectangle gets the rectangle handles unless `free` asks for plain polygon editing.
+   */
   const showShape = useCallback(
-    (ring: Ring, areaId: number) => {
+    (ring: Ring, areaId: number, free = false) => {
       const draw = drawRef.current
       if (!draw) return
+      const rectangular = isRectangle(ring)
+      const rectHandles = rectangular && !free
       withInternal(() => {
         draw.deleteAll()
         const [featureId] = draw.add({
@@ -125,7 +152,10 @@ export function useAreaDrawing({
         })
         activeAreaIdRef.current = areaId
         setMode('editing')
-        draw.changeMode('direct_select', { featureId })
+        setShape({ rectangular, free: !rectHandles })
+        draw.changeMode(rectHandles ? RECT_MODE : 'direct_select', {
+          featureId
+        })
       })
     },
     [setMode, withInternal]
@@ -217,6 +247,7 @@ export function useAreaDrawing({
         notInvalid()
         return
       }
+      setShape((current) => ({ ...current, rectangular: isRectangle(ring) }))
       queueSave(ring, areaId, 'Boundary for {code} saved.')
     }
 
@@ -297,22 +328,31 @@ export function useAreaDrawing({
     onNoticeRef.current({ kind: 'info', text: 'Drawing cancelled.' })
   }, [restoreSavedShape])
 
+  /**
+   * The selected area's shape as it is now: the editable copy while editing (it may hold
+   * changes not saved yet), else the saved boundary.
+   */
+  const currentRing = useCallback((): Ring | null => {
+    const draw = drawRef.current
+    const target = areaRef.current
+    if (!draw || !target) return null
+    const live =
+      modeRef.current === 'editing'
+        ? (
+            draw.getAll().features[0]?.geometry?.coordinates as
+              | number[][][]
+              | undefined
+          )?.[0]
+        : undefined
+    return ringOf(live) ?? ringOf(target.polygon)
+  }, [])
+
   /** Squares the shape up to the map as currently seen (`bearing`) and saves it. */
   const snapToGrid = useCallback(
     (bearing: number) => {
-      const draw = drawRef.current
       const target = areaRef.current
-      if (!draw || !target || modeRef.current === 'drawing') return
-      // The editable copy is the freshest shape: it may hold changes not saved yet.
-      const live =
-        modeRef.current === 'editing'
-          ? (
-              draw.getAll().features[0]?.geometry?.coordinates as
-                | number[][][]
-                | undefined
-            )?.[0]
-          : undefined
-      const current = ringOf(live) ?? ringOf(target.polygon)
+      if (!target || modeRef.current === 'drawing') return
+      const current = currentRing()
       if (!current) return
       const snapped = squareUpRing(current, bearing)
       if (snapped === current) {
@@ -331,7 +371,66 @@ export function useAreaDrawing({
       })
       void scheduler.flush()
     },
-    [scheduler, showShape]
+    [scheduler, showShape, currentRing]
+  )
+
+  /**
+   * Squares the shape up into the smallest rectangle around it that keeps its own
+   * orientation (unlike snapToGrid, which follows the screen), and saves it.
+   */
+  const makeRectangle = useCallback(() => {
+    const target = areaRef.current
+    if (!target || modeRef.current === 'drawing') return
+    const current = currentRing()
+    if (!current) return
+    const rect = rectangularizeRing(current)
+    if (rect === current) {
+      if (isRectangle(current)) {
+        // Nothing to square up: just go back to the rectangle handles.
+        showShape(current, target.id)
+        onNoticeRef.current({
+          kind: 'info',
+          text: `${target.code} is already a rectangle.`
+        })
+      } else {
+        onNoticeRef.current({
+          kind: 'error',
+          text: `The shape of ${target.code} is too small to make a rectangle.`
+        })
+      }
+      return
+    }
+    showShape(rect, target.id)
+    scheduler.schedule({
+      areaId: target.id,
+      code: target.code,
+      ring: rect,
+      message: 'Made a rectangle'
+    })
+    void scheduler.flush()
+  }, [scheduler, showShape, currentRing])
+
+  /**
+   * Switches the open shape between plain polygon editing (`free`) and the rectangle
+   * handles. Only a rectangle can have the latter; the toggle is client state, not saved.
+   */
+  const setFreeEditing = useCallback(
+    (free: boolean) => {
+      const draw = drawRef.current
+      const feature = draw?.getAll().features[0]
+      if (!draw || !feature || modeRef.current !== 'editing') return
+      const ring = ringOf(feature.geometry?.coordinates?.[0])
+      if (!ring) return
+      const rectangular = isRectangle(ring)
+      const rectHandles = rectangular && !free
+      withInternal(() =>
+        draw.changeMode(rectHandles ? RECT_MODE : 'direct_select', {
+          featureId: feature.id
+        })
+      )
+      setShape({ rectangular, free: !rectHandles })
+    },
+    [withInternal]
   )
 
   /**
@@ -369,9 +468,12 @@ export function useAreaDrawing({
 
   return {
     mode,
+    shape,
     startDraw,
     cancelDraw,
     snapToGrid,
+    makeRectangle,
+    setFreeEditing,
     flushPending,
     isClickSuppressed
   }

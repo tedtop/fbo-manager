@@ -16,6 +16,19 @@
   .maplibregl-canvas-container.maplibregl-interactive {
   cursor: grab;
 }
+.maplibregl-map.mouse-move.mode-direct_rect
+  .maplibregl-canvas-container.maplibregl-interactive {
+  cursor: grab;
+}
+/* A rectangle's handles (corners and sides) and body all show the move cursor. */
+.maplibregl-map.mode-direct_rect.feature-vertex.mouse-move
+  .maplibregl-canvas-container.maplibregl-interactive,
+.maplibregl-map.mode-direct_rect.feature-midpoint.mouse-move
+  .maplibregl-canvas-container.maplibregl-interactive,
+.maplibregl-map.mode-direct_rect.feature-feature.mouse-move
+  .maplibregl-canvas-container.maplibregl-interactive {
+  cursor: move;
+}
 .maplibregl-map.mode-direct_select.feature-vertex.mouse-move
   .maplibregl-canvas-container.maplibregl-interactive {
   cursor: move;

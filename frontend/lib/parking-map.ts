@@ -1,13 +1,4 @@
-import {
-  type AircraftSizeCategory,
-  getAircraftSizeCategory
-} from '@/lib/aircraft-sizes'
-import {
-  AIRCRAFT_TYPES,
-  type AircraftTypeDefinition,
-  DEFAULT_AIRCRAFT_TYPE
-} from '@/lib/aircraft-types'
-import { findAreaAtPoint, ringOf } from '@/lib/parking-geometry'
+import { findAreaAtPoint, polygonBounds, ringOf } from '@/lib/parking-geometry'
 import type { AircraftRow } from '@/repositories/aircraft.repo'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
 
@@ -39,63 +30,27 @@ export const KIND_META: Record<
   other: { label: 'Other', color: OTHER_COLOR }
 }
 
+// Solid fills of the area layer. They are close to the kind colours above but darker, so the
+// white labels and white plane icons read on them. Opaque on purpose: they hide the aircraft
+// that appear in the satellite imagery, so only our own plane markers show inside an area.
+export const AREA_FILL_COLORS: Record<ParkingAreaKind, string> = {
+  ramp: '#4c3a8a',
+  hangar: '#8a4a14',
+  tie_down: '#3f6212',
+  other: '#9d2a62'
+}
+
+/** Fill opacity of an area: solid normally, see-through for the selected one being aligned to the imagery. */
+export const AREA_FILL_OPACITY = { solid: 0.97, selected: 0.3 }
+
 export const AREA_KINDS = Object.keys(KIND_META) as ParkingAreaKind[]
-
-// ---------------------------------------------------------------------------
-// Icon sizing
-// ---------------------------------------------------------------------------
-
-const METERS_PER_DEGREE_LAT = 111_320
-const FEET_PER_METER = 3.28084
-
-/**
- * lib/aircraft-types.ts dimensions are ~2.2x real size "for map visibility". Rendering them
- * at half that keeps the planes about 1.1x real size, matching the previous map.
- */
-export const ICON_SCALE = 0.5
-
-/** Ground resolution of a MapLibre GL map (512px world tile) in feet per CSS pixel. */
-export function feetPerPixel(lat: number, zoom: number): number {
-  const metersPerPixel =
-    (78_271.517 * Math.cos((lat * Math.PI) / 180)) / 2 ** zoom
-  return metersPerPixel * FEET_PER_METER
-}
-
-const SIZE_CATEGORY_TYPE: Record<AircraftSizeCategory, string> = {
-  small: 'light_single',
-  medium: 'light_jet',
-  large: 'mid_size_jet',
-  jumbo: 'narrow_body'
-}
-
-/**
- * Icon dimensions for a stored aircraft type. Accepts the ids from lib/aircraft-types.ts
- * (what the Add airplane form stores) or an ICAO code (mapped through the size category).
- */
-export function resolveIconDefinition(
-  typeIcao: string
-): AircraftTypeDefinition {
-  const byId = AIRCRAFT_TYPES.find((t) => t.id === typeIcao)
-  if (byId) return byId
-  const id = typeIcao
-    ? SIZE_CATEGORY_TYPE[getAircraftSizeCategory(typeIcao)]
-    : DEFAULT_AIRCRAFT_TYPE
-  return AIRCRAFT_TYPES.find((t) => t.id === id) ?? AIRCRAFT_TYPES[0]
-}
-
-export function iconPixelSize(
-  typeIcao: string,
-  lat: number,
-  zoom: number
-): { width: number; height: number } {
-  const def = resolveIconDefinition(typeIcao)
-  const scale = ICON_SCALE / feetPerPixel(lat, zoom)
-  return { width: def.wingspan * scale, height: def.length * scale }
-}
 
 // ---------------------------------------------------------------------------
 // Heading and movement maths
 // ---------------------------------------------------------------------------
+
+const METERS_PER_DEGREE_LAT = 111_320
+const FEET_PER_METER = 3.28084
 
 /** Degrees folded into [0, 360). */
 export function normalizeHeading(degrees: number): number {
@@ -249,26 +204,36 @@ export type AreaFeatureCollection = {
       code: string
       kind: ParkingAreaKind
       color: string
+      fillColor: string
       selected: boolean
     }
   }>
 }
 
+function boundsSize(ring: number[][]): number {
+  const [minX, minY, maxX, maxY] = polygonBounds(ring)
+  return (maxX - minX) * (maxY - minY)
+}
+
 /**
  * GeoJSON for the area layers. Areas without a drawable polygon are skipped, as is
- * `hiddenId` (the area whose shape Draw is currently editing).
+ * `hiddenId` (the area whose shape Draw is currently editing). Larger areas come first, so
+ * with opaque fills an area nested inside another is drawn on top of it and stays visible.
  */
 export function areaFeatureCollection(
   areas: readonly ParkingAreaRow[],
   selectedId: number | null,
   hiddenId: number | null = null
 ): AreaFeatureCollection {
-  const features: AreaFeatureCollection['features'] = []
+  const sized: Array<{
+    feature: AreaFeatureCollection['features'][number]
+    size: number
+  }> = []
   for (const area of areas) {
     if (area.id === hiddenId) continue
     const ring = ringOf(area.polygon)
     if (!ring || ring.length < 4) continue
-    features.push({
+    const feature: AreaFeatureCollection['features'][number] = {
       type: 'Feature',
       geometry: { type: 'Polygon', coordinates: [ring] },
       properties: {
@@ -276,9 +241,12 @@ export function areaFeatureCollection(
         code: area.code,
         kind: area.kind,
         color: KIND_META[area.kind].color,
+        fillColor: AREA_FILL_COLORS[area.kind],
         selected: area.id === selectedId
       }
-    })
+    }
+    sized.push({ feature, size: boundsSize(ring) })
   }
-  return { type: 'FeatureCollection', features }
+  sized.sort((a, b) => b.size - a.size)
+  return { type: 'FeatureCollection', features: sized.map((s) => s.feature) }
 }

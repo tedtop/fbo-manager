@@ -16,7 +16,7 @@ as the actual proof; the UI looking like it worked is never treated as sufficien
 
 | Path | What |
 |---|---|
-| `e2e/<area>/*.cy.ts` | Specs: `flight-operations`, `equipment`, `invoicing`, `settings`, `api`, `users`, `schedule-import`, `fuel-farm` |
+| `e2e/<area>/*.cy.ts` | Specs: `flight-operations`, `equipment`, `invoicing`, `settings`, `api`, `users`, `schedule-import`, `fuel-farm`, `parking` |
 | `support/commands.ts` | `cy.login(role)`, `cy.pickAirport`, `cy.typeAirport` |
 | `tasks/` | Node-side helpers: `env.ts` (local stack constants and the safety guard), `db.ts` (service-role client), `seed.ts` (dev accounts), `*.tasks.ts` (per-area `cy.task` implementations) |
 | `../cypress.config.ts` | Registers all tasks, base URL, spec pattern |
@@ -94,6 +94,7 @@ Write waits as retry-able assertions or `cy.intercept` aliases, not fixed `cy.wa
 | Invoicing: digital fuel ticket, "Complete ticket" | `invoicing/fuel-ticket.cy.ts` | Highest priority, the exact bug class named in the 2026-07-03 handoff. Verifies the invoice, its line item, *and* the fueling event (`truck_meter_readings`) created as a side effect, plus the `invoice_number` stamped back onto that reading |
 | Settings: tail number prefix | `settings/tail-prefix.cy.ts` | N prefill, suggestions stay closed until typed after the prefix, prefix-only save refused, change to `C-` persists, invalid prefix rejected, empty prefix means no prefill |
 | Fuel Farm: lowest measured level (B99) | `fuel-farm/tank-lowest-level.cy.ts` | Edit Tank shows the lowest level ever measured with its date and gallons, read only, no override field. Own tank `CYB99` |
+| Parking: square up and resize areas (B100) | `parking/shape-editing.cy.ts` | Config-mode map at 40 degrees, real pointer events on the canvas (map via the `window.__parkingMap` seam, set only under Cypress): Make rectangle in one click keeps the shape's own direction, a corner handle scales from the opposite corner, a side handle moves just that side, Edit freely adds a corner from a midpoint, Snap to grid still aligns to the map. Each ends in a DB read proving the saved polygon is an exact rectangle. Own areas `CYB100*` |
 | Settings: home airport picker | `settings/airport-picker.cy.ts` | GPI lists Glacier Park before Guapi, picking saves KGPI and survives a reload; an unknown strip is used as typed |
 | API auth | `api/api-auth.cy.ts` | Anonymous callers get 401 on every protected route; a signed-in admin passes the gate (400 for a bad tail, OCR routes not 401/403) |
 | New sign-up access | `users/users-access.cy.ts` | Role-less user (admin API, Google cannot run here) is held on `/pending`, `/users` bounces; admin promotes them in Users and the DB shows the assignment with `assigned_by`; the login page offers Continue with Google. See `docs/google-signin.md` |

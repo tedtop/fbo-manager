@@ -11,13 +11,13 @@ import {
   SheetHeader,
   SheetTitle
 } from '@/components/ui/sheet'
-import { Slider } from '@/components/ui/slider'
 import {
   type ParkedPlane,
   headingForScreenDirection,
   toStoredHeading
 } from '@/lib/parking-map'
 import { Plane, Trash2 } from 'lucide-react'
+import { CompassRose } from './compass-rose'
 
 interface AircraftSheetProps {
   open: boolean
@@ -79,30 +79,13 @@ export function AircraftSheet({
           </dl>
 
           <div className="space-y-3">
-            <Label htmlFor="plane-heading">Heading</Label>
-            <div className="flex items-center gap-4">
-              <div
-                className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 border-muted"
-                aria-hidden="true"
-              >
-                <Plane
-                  className="size-6 text-primary"
-                  fill="currentColor"
-                  style={{
-                    transform: `rotate(${heading - mapBearing - 45}deg)`
-                  }}
-                />
-              </div>
-              <Slider
-                id="plane-heading"
-                min={0}
-                max={359}
-                step={1}
-                value={[heading]}
-                onValueChange={([value]) => onHeadingChange(value)}
-                aria-label="Heading in degrees"
-              />
-            </div>
+            <Label>Orient the aircraft</Label>
+            <CompassRose
+              heading={heading}
+              mapBearing={mapBearing}
+              typeIcao={plane.typeIcao}
+              onChange={onHeadingChange}
+            />
             <div className="grid grid-cols-4 gap-2">
               {SCREEN_DIRECTIONS.map((d) => (
                 <Button
@@ -127,9 +110,12 @@ export function AircraftSheet({
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Drag the plane on the map to move it. With it selected, arrow keys
-              turn (left/right) and move (up/down) it, and Cmd/Ctrl+Z undoes the
-              last move.
+              Click or drag on the compass to point the aircraft (the top of the
+              compass is the top of the map). With the compass focused, the
+              arrow keys turn it by 1 degree, 10 with Shift. Drag the plane on
+              the map to move it. With it selected on the map, arrow keys turn
+              (left/right) and move (up/down) it, and Cmd/Ctrl+Z undoes the last
+              move.
             </p>
           </div>
         </div>

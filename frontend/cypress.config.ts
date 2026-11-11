@@ -4,6 +4,7 @@ import { seedDevUsers } from './cypress/tasks/seed'
 import { equipmentTasks } from './cypress/tasks/equipment.tasks'
 import { fuelFarmTasks } from './cypress/tasks/fuel-farm.tasks'
 import { invoicingTasks } from './cypress/tasks/invoicing.tasks'
+import { parkingTasks } from './cypress/tasks/parking.tasks'
 import { scheduleImportTasks } from './cypress/tasks/schedule-import.tasks'
 import { settingsTasks } from './cypress/tasks/settings.tasks'
 import { truckSheetTasks } from './cypress/tasks/truck-sheets.tasks'
@@ -45,6 +46,7 @@ export default defineConfig({
         ...equipmentTasks,
         ...fuelFarmTasks,
         ...invoicingTasks,
+        ...parkingTasks,
         ...scheduleImportTasks,
         ...settingsTasks,
         ...truckSheetTasks,

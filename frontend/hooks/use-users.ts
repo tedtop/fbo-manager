@@ -9,7 +9,9 @@ import {
   type UpdateUserInput,
   deleteUser,
   inviteUser,
+  setStaffEmail,
   setUserActiveStatus,
+  updateUserFields,
   updateUserWithRoles
 } from '@/services/user-management.service'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -44,6 +46,15 @@ export function useUsers() {
     onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
   })
 
+  const fieldsMutation = useMutation({
+    mutationFn: ({
+      userId,
+      patch
+    }: { userId: string; patch: Parameters<typeof updateUserFields>[2] }) =>
+      updateUserFields(db, userId, patch, currentUserId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
+  })
+
   const setRolesMutation = useMutation({
     mutationFn: ({ userId, roleIds }: { userId: string; roleIds: number[] }) =>
       setUserRoles(db, userId, roleIds, currentUserId),
@@ -64,6 +75,16 @@ export function useUsers() {
     onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
   })
 
+  const setEmailMutation = useMutation({
+    mutationFn: ({
+      userId,
+      email,
+      linkFromUserId
+    }: { userId: string; email: string; linkFromUserId?: string }) =>
+      setStaffEmail(userId, email, linkFromUserId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
+  })
+
   return {
     users: query.data ?? [],
     loading: query.isLoading,
@@ -71,12 +92,18 @@ export function useUsers() {
     inviteUser: (input: InviteUserInput) => inviteMutation.mutateAsync(input),
     updateUser: (userId: string, input: UpdateUserInput) =>
       updateMutation.mutateAsync({ userId, input }),
+    /** B107: save one or more profile fields from a table cell. */
+    updateUserFields: (userId: string, patch: Parameters<typeof updateUserFields>[2]) =>
+      fieldsMutation.mutateAsync({ userId, patch }),
     /** Replace a user's roles (the quick promote / change-role control on the Users page). */
     setUserRoles: (userId: string, roleIds: number[]) =>
       setRolesMutation.mutateAsync({ userId, roleIds }),
     setUserStatus: (userId: string, status: 'active' | 'disabled') =>
       setStatusMutation.mutateAsync({ userId, status }),
     deleteUser: (userId: string) => deleteMutation.mutateAsync(userId),
+    /** B78: real email on a staff account; linkFromUserId removes the Awaiting-access Google sign-up first. */
+    setStaffEmail: (userId: string, email: string, linkFromUserId?: string) =>
+      setEmailMutation.mutateAsync({ userId, email, linkFromUserId }),
     refetch: query.refetch
   }
 }
