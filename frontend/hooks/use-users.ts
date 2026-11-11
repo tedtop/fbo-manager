@@ -11,6 +11,7 @@ import {
   inviteUser,
   setStaffEmail,
   setUserActiveStatus,
+  updateUserFields,
   updateUserWithRoles
 } from '@/services/user-management.service'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -42,6 +43,15 @@ export function useUsers() {
       input
     }: { userId: string; input: UpdateUserInput }) =>
       updateUserWithRoles(db, userId, input, currentUserId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
+  })
+
+  const fieldsMutation = useMutation({
+    mutationFn: ({
+      userId,
+      patch
+    }: { userId: string; patch: Parameters<typeof updateUserFields>[2] }) =>
+      updateUserFields(db, userId, patch, currentUserId),
     onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all })
   })
 
@@ -82,6 +92,9 @@ export function useUsers() {
     inviteUser: (input: InviteUserInput) => inviteMutation.mutateAsync(input),
     updateUser: (userId: string, input: UpdateUserInput) =>
       updateMutation.mutateAsync({ userId, input }),
+    /** B107: save one or more profile fields from a table cell. */
+    updateUserFields: (userId: string, patch: Parameters<typeof updateUserFields>[2]) =>
+      fieldsMutation.mutateAsync({ userId, patch }),
     /** Replace a user's roles (the quick promote / change-role control on the Users page). */
     setUserRoles: (userId: string, roleIds: number[]) =>
       setRolesMutation.mutateAsync({ userId, roleIds }),

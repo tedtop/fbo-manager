@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { normalizeEmail } from '@/lib/email'
 
 /**
  * B78: put a staff member's real email on their existing staff account so their first
@@ -25,13 +26,7 @@ export type SetStaffEmailResult =
   | { ok: true; email: string; deletedUserId: string | null; staffRowUpdated: boolean }
   | { ok: false; status: number; error: string }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-export function normalizeEmail(raw: unknown): string | null {
-  if (typeof raw !== 'string') return null
-  const email = raw.trim().toLowerCase()
-  return EMAIL_RE.test(email) && email.length <= 254 ? email : null
-}
+export { normalizeEmail }
 
 /** Strong random password so the shared seed password stops working. */
 export function randomPassword(): string {

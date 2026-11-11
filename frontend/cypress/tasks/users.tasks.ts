@@ -83,6 +83,18 @@ export const usersTasks = {
     return { authEmail: auth.user?.email ?? null, profileEmail: profile?.email ?? null, staffEmail: staff?.email ?? null }
   },
 
+  /** B107: the profile fields the Users table edits, plus who last changed the row. */
+  async getProfileFields(userId: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db
+      .from('profiles')
+      .select('first_name, last_name, phone_number, employee_id, badge_id, hire_date, updated_by')
+      .eq('id', userId)
+      .single()
+    if (error) throw new Error(`getProfileFields: ${error.message}`)
+    return data
+  },
+
   /** B78: does this auth user still exist? */
   async authUserExists(userId: string) {
     const db = createE2EDbClient()

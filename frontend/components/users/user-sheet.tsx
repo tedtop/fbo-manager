@@ -5,6 +5,7 @@ import type { RoleWithPermissions } from '@/types/domain/users'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/users/phone-input'
 import { Label } from '@/components/ui/label'
 import {
   Sheet,
@@ -17,6 +18,7 @@ import {
 import { ErrorMessage } from '@/messages/error-message'
 import { ADMIN_ROLE_NAME } from '@/lib/user-guards'
 import { isIncludedWithAdmin, normalizeRoleIds } from '@/lib/role-rules'
+import { displayPhone, phoneError } from '@/lib/phone-mask'
 import { useEffect, useState } from 'react'
 
 export interface UserFormData {
@@ -68,7 +70,7 @@ export function UserSheet({
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        phoneNumber: user.phone_number,
+        phoneNumber: displayPhone(user.phone_number),
         employeeId: user.employee_id ?? '',
         badgeId: user.badge_id ?? '',
         hireDate: user.hire_date ?? '',
@@ -94,6 +96,13 @@ export function UserSheet({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    // A legacy value that was not a 10-digit number may stay as it was; anything the admin changes must be a full number.
+    const phoneProblem =
+      formData.phoneNumber !== (user?.phone_number ?? '') && phoneError(formData.phoneNumber)
+    if (phoneProblem) {
+      setError(phoneProblem)
+      return
+    }
     setLoading(true)
     try {
       await onSubmit({ ...formData, roleIds: normalizeRoleIds(roles, formData.roleIds) })
@@ -170,14 +179,12 @@ export function UserSheet({
 
           <div className="space-y-2">
             <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
+            <PhoneInput
               id="phoneNumber"
-              type="tel"
               value={formData.phoneNumber}
-              onChange={(e) =>
-                setFormData({ ...formData, phoneNumber: e.target.value })
+              onValueChange={(phoneNumber) =>
+                setFormData({ ...formData, phoneNumber })
               }
-              placeholder="(555) 555-1234"
             />
           </div>
 
