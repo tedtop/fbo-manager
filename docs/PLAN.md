@@ -89,6 +89,7 @@ Tooling:
 - D30 (2026-11-11, Ted): A **Close the day** checklist lists open orders, unnumbered fills, unkeyed lines, differences, unmatched scan lines, open meter gaps and unpicked airline slips. Someone closes the day, with a note when items remain.
 - D31 (2026-11-11, Ted): The ramp fee line is added automatically to every visit, showing the aircraft class. It is waived automatically when the visit's fuel reaches the class's **minimum gallons** (set in Settings) or the aircraft has a hangar lease (B67). A manager can override it with a reason. Counter sales go on the visit's list when there is one, otherwise on a counter list by customer or tail.
 - D32 (2026-11-11, Ted): Airline fuel printouts are **logged as typed** in the Fuel sheet (per-tank targets, total/block, uplift, density and units, flight, tail, printed by, an optional photo) in a `fuel_printout` table. A report compares them with the wing-loading capacities, and a manager confirms any capacity change; nothing changes by itself. OCR of printouts comes later and is free only.
+- D33 (2026-11-11, Ted): **Defuels are a rare manual correction**, not a flow ("only seen it once in 2 years"). A Defuel adjustment line on the charge list has a negative gallon quantity, a required reason and a manager sign-off. Scan matching never auto-matches a defuel line; the unmatched list can mark it "Defuel". A meter gap it causes is annotated `other` with the note "defuel". There is no order type or status.
 
 ## Risks / open questions
 - R1: Docker already runs another project's Supabase on 54321/54322. Tests cannot run until stopped or fbo ports are moved.
@@ -719,7 +720,7 @@ Deferred (Ted wants all of these): B80 enter DPI/PSI on the truck sheet entry/re
 
 ## Fuel-to-billing and POS design (Ted, 2026-11-11; M3b)
 
-Planning lane, design only. Decisions D18-D32 are in the decisions log. The build is B120-B135 in BACKLOG.md (milestone M3b). Section 1 maps the code as it was before this design. It was checked by a separate review pass on 2026-11-11.
+Planning lane, design only. Decisions D18-D33 are in the decisions log. The build is B120-B135 in BACKLOG.md (milestone M3b). Section 1 maps the code as it was before this design. It was checked by a separate review pass on 2026-11-11.
 
 ### 1. What exists today (2026-11-11)
 
@@ -912,7 +913,11 @@ Ted wants what the airlines actually give logged, and the log used to check the 
 - **Cancelled after assignment:** the fueler sees it disappear from "My fuel orders", with a toast.
 - **Cancelled after filling:** not possible. A real cancel is "edit gallons to 0" plus a difference, or "void list"; both need a note.
 - **Fuel with no flight on the board:** the phone walk-up asks for a tail. If the tail has a flight that day it attaches; otherwise a counter charge list for the tail is made.
-- **Defuel and fuel returned:** out of scope. Record it as a note on the order, and Ted decides if it needs a type (open question).
+- **Defuel and fuel returned (D33):** very rare (Ted has seen one in two years), so there is no defuel flow, order type or status. It is a manual **Defuel adjustment** line on the visit's charge list: a negative quantity in gallons, a required reason, and a manager sign-off (`keyed_in_by` plus a manager check through B38; until B38 exists, the reason is enough and the line is marked "unsigned"). The original fill is never edited for a defuel.
+  - Charge list: `buildChargeLines` leaves manual lines alone, so the adjustment survives sync, and the difference rule (D29) does not apply to it.
+  - Truck-sheet matching: a scan line for fuel taken back (written as a transfer in, or noted as defuel) is never auto-matched. In the unmatched list it can be marked "Defuel" and linked to the adjustment line, or just dismissed with a note.
+  - Meter chain: if the defuel moves a truck's meter or leaves a gap, it is annotated with reason `other` and a note "defuel" (B87). There is no new reason value.
+  - Tank levels: fuel farm reconciliation is not part of this design, so nothing else changes.
 - **Voiding a list:** clears `invoice_number` on stamped readings and frees the fills for another list (the existing void behaviour), and needs a reason.
 - **Old fuel tickets** (with prices and payment): they stay readable in the Charges list, marked "Old ticket". No migration rewrites them.
 - **Tank-level reconciliation** (truck gallons vs the fuel farm): not in this design. The fuel farm belongs to Minuteman's tables, and B87 meter gaps cover the truck side.
@@ -922,6 +927,6 @@ Ted wants what the airlines actually give logged, and the log used to check the 
 
 1. The name of the outside software, and whether it can export a daily invoice list (CSV). That would let Close the day match numbers automatically later.
 2. Ramp fee classes and the minimum gallons per class (B51), and the service-to-product mapping, with no prices (B52).
-3. Defuels: do they happen, and should they be an order type?
+3. ~~Defuels~~: answered 2026-11-11 (D33), very rare, a manual adjustment.
 4. Is the 2 % / 5 gal auto-match tolerance right?
 5. A United fuel printout sample (promised 2026-11-11) to confirm the `fuel_printout` fields.
