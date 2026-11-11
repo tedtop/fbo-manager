@@ -40,6 +40,13 @@ export const DOC_MODULES: readonly DocModule[] = [
     helpAnchors: ['open-equipment', 'log-maintenance-item', 'resolve-maintenance-item', 'meter-readings', 'scans']
   },
   {
+    id: 'parking',
+    title: 'Ramp Management (Parking)',
+    route: '/parking',
+    docs: ['usage-guide'],
+    helpAnchors: ['add-airplane', 'move-airplane', 'heading', 'remove-airplane', 'board-chip', 'scale-and-layers', 'config-mode', 'new-area', 'draw-boundary', 'edit-shape', 'make-rectangle', 'edit-freely', 'snap-to-grid', 'map-rotation', 'clear-or-archive']
+  },
+  {
     id: 'fuel-farm',
     title: 'Fuel Farm',
     route: '/fuel-farm',
