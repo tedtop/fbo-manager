@@ -52,6 +52,16 @@ On a wide screen the card at the top right shows the Missoula (KMSO) conditions:
 
 On a card with a fuel request, press **Fuel sheet** to open the worked fuel service form: type in what each tank holds on arrival and every line to write on the sheet is filled in. The planned gate fuel from QT is the total the aircraft should hold after fueling; the gallons to add are that, minus what is on board, divided by the density.
 
+The fuel sheet picks the tank capacities from the aircraft type (you can change the type in the list at the top). Wings are filled evenly to their maximum and only the rest goes in the center tank. Types whose capacities are still unconfirmed show **(unverified)** in the list and a note under the sheet: for those, check the wing max against the airline's own sheet and type it over the **Wing max** box if it differs.
+
+| Type | Each wing (US gal) | Center (US gal) | Status | Source |
+| --- | --- | --- | --- | --- |
+| B737-700/800/900 | 1,288 | 4,299 | Confirmed | Boeing ARFF 737 page 737.1.6 (30 Apr 2024) and D6-58325-7 Rev C (Oct 2025); total 6,875 gal at 6.7 lb/gal. Optional auxiliary tanks (-900ER, BBJ) are not included |
+| B737 MAX 7/8/9/10 | 1,288 | 4,299 | **Unverified** | Boeing ARFF 737 page 737.1.1 shows the same tanks as the NG (6,875 gal), but D6-38A004 Rev K (Jul 2025) gives 6,820 gal usable |
+| A319/A320 | 2,046 | 2,179 | Confirmed | Airbus Aircraft Characteristics, Airport and Maintenance Planning, Rev Jul 01/26, 2-1-1, at 0.785 kg/l. Wings differ slightly by variant (2,046 to 2,108 gal each); the smallest (neo) is used |
+
+Pounds on the sheet are these gallons at the density the document states (6.7 lb/gal Boeing, 0.785 kg/l Airbus). The E175 and CRJ figures are from the airline sheets and are confirmed.
+
 ### Save the fueling with the truck meters {#save-fueling}
 
 Under the calculated gallons, choose the **fuel truck** and type the **meter start and stop** for the front register (and the rear register if you used it). The gallons pumped are stop minus start and are compared with the calculated gallons: within 75 gallons either way shows **OK**, otherwise **out of tolerance**. Press **Save fueling**.

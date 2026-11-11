@@ -109,6 +109,7 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title, qtDispatchId
               {AIRCRAFT_FUEL_TYPES.map((t) => (
                 <option key={t.key} value={t.key}>
                   {t.label}
+                  {t.verified ? '' : ' (unverified)'}
                 </option>
               ))}
             </select>
@@ -207,10 +208,12 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title, qtDispatchId
             </p>
           ))}
           {!fuelType.verified && (
-            <p className="text-xs text-muted-foreground">
-              Capacities for this type are not yet confirmed from a fuel sheet; check the wing max.
+            <p data-testid="unverified-note" className="text-xs text-muted-foreground">
+              Tank capacities for this type are unverified: check the wing max against the airline sheet.
+              {fuelType.unverifiedNote ? ` ${fuelType.unverifiedNote}` : ''}
             </p>
           )}
+          {fuelType.source && <p className="text-[10px] text-muted-foreground">Capacities: {fuelType.source}.</p>}
         </DialogContent>
       </Dialog>
     </div>

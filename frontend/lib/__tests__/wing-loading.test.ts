@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findFuelType, planWingLoad, truckCheck } from '@/lib/wing-loading'
+import { AIRCRAFT_FUEL_TYPES, findFuelType, planWingLoad, truckCheck } from '@/lib/wing-loading'
 
 const b737 = findFuelType('737')!
 
@@ -7,7 +7,10 @@ describe('findFuelType', () => {
   it('recognises the common airline type strings', () => {
     expect(findFuelType('737')?.key).toBe('b737ng')
     expect(findFuelType('B738')?.key).toBe('b737ng')
-    expect(findFuelType('B739M')?.key).toBe('b737max9')
+    expect(findFuelType('B739M')?.key).toBe('b737max')
+    expect(findFuelType('B38M')?.key).toBe('b737max')
+    expect(findFuelType('737 MAX 8')?.key).toBe('b737max')
+    expect(findFuelType('B739')?.key).toBe('b737ng')
     expect(findFuelType('E75')?.key).toBe('e175')
     expect(findFuelType('E175')?.key).toBe('e175')
     expect(findFuelType('A320')?.key).toBe('a320')
@@ -62,5 +65,52 @@ describe('truckCheck', () => {
   it('compares calculated gallons with the truck meter against the 75 gallon tolerance', () => {
     expect(truckCheck(1879.2, 1886)).toEqual({ difference: -7, withinTolerance: true, tolerance: 75 })
     expect(truckCheck(1879, 1700).withinTolerance).toBe(false)
+  })
+})
+
+// Documented capacities (see the source comment in lib/wing-loading.ts): Boeing 1,288 / 4,299 / 1,288 US gal at
+// 6.7 lb/gal; Airbus wing 2,046 gal each (neo, smallest variant), center 2,179 gal at 0.785 kg/l.
+describe('documented tank capacities', () => {
+  const split = (type: string, plannedLbs: number) => {
+    const t = findFuelType(type)!
+    return { t, r: planWingLoad({ capacity: t, plannedLbs }) }
+  }
+
+  it.each(['B738', 'B739'])('%s: full tanks sum to the published 6,875 gal and 46,062 lb', (type) => {
+    const t = findFuelType(type)!
+    expect(t.key).toBe('b737ng')
+    expect(t.wingLbs).toBe(8630)
+    expect(t.centerLbs).toBe(28803)
+    expect(2 * t.wingLbs + t.centerLbs!).toBeCloseTo(46062, -1)
+    const { r } = split(type, 40000)
+    expect(r.after).toEqual({ left: 8630, center: 22740, right: 8630 })
+    expect(r.warnings).toEqual([])
+  })
+
+  it.each(['B38M', 'B39M'])('%s: MAX uses the same tanks and stays marked unverified', (type) => {
+    const { t, r } = split(type, 20000)
+    expect(t.key).toBe('b737max')
+    expect(t.verified).toBe(false)
+    expect(t.unverifiedNote).toMatch(/6,820/)
+    expect(r.after).toEqual({ left: 8630, center: 2740, right: 8630 })
+  })
+
+  it.each(['A319', 'A320'])('%s: wings fill to 13,404 lbs each before the center takes fuel', (type) => {
+    const { t, r } = split(type, 30000)
+    expect(t.key).toBe('a320')
+    expect(t.verified).toBe(true)
+    expect(t.wingLbs).toBe(13404)
+    expect(t.centerLbs).toBe(14275)
+    expect(r.after).toEqual({ left: 13404, center: 3192, right: 13404 })
+  })
+
+  it('warns when the center tank would overflow', () => {
+    const { r } = split('A320', 45000)
+    expect(r.after.center).toBe(14275)
+    expect(r.warnings.join()).toMatch(/Center tank over/)
+  })
+
+  it('lists exactly the MAX as unverified', () => {
+    expect(AIRCRAFT_FUEL_TYPES.filter((t) => !t.verified).map((t) => t.key)).toEqual(['b737max'])
   })
 })

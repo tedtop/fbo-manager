@@ -5,11 +5,11 @@
 export interface TankCapacity {
   /** Max fuel per wing tank, lbs (summer). */
   wingLbs: number
-  /** Winter max per wing tank where it differs (placard: B737 8,600 summer / 8,800 winter). */
+  /** Winter max per wing tank where it differs (MAI ramp placard, May 2025: B737 8,800 winter, kept as the airline's figure). */
   wingWinterLbs?: number
   /** Center tank max, lbs; 0 = no center tank; undefined = unknown (no overflow check). */
   centerLbs?: number
-  /** Wing and center maxima confirmed from the ramp placard or a real fuel sheet. */
+  /** Wing and center maxima confirmed against the manufacturer's published per-tank figures (see `source`). */
   verified: boolean
 }
 
@@ -18,14 +18,64 @@ export interface AircraftFuelType extends TankCapacity {
   label: string
   /** Matches the type string QT or a dispatcher gives, upper-cased and stripped of spaces/dashes. */
   match: RegExp
+  /** Where the capacities come from (document, revision, page). */
+  source?: string
+  /** Why the type is still unverified, shown to the fueler and listed in the docs. */
+  unverifiedNote?: string
 }
 
-// Wing numbers are the MAI ramp placard (May 2025). Center tanks are published figures at 6.7 lbs/gal
-// except where marked verified: confirm each against a real fuel sheet and correct it here.
+// Capacity sources (B88, 2026-11-11). Per-tank gallons come from the manufacturers' free airport documents and
+// are converted to lbs at the density each document states, so the table can be re-checked against the page cited.
+//  - Boeing 737-600/-700/-800/-900/ER: "Airplane Rescue and Fire Fighting Information", 737 section, page
+//    737.1.6, 30 Apr 2024 (boeing.com/content/dam/boeing/v2/airports/arff/arff737.pdf): tank No. 1 and No. 2
+//    1,288 US gal each, center 4,299 US gal = 6,875 US gal, which matches the usable total in "Next-Generation 737
+//    Airplane Characteristics for Airport Planning" D6-58325-7 Rev C (Oct 2025), pages 2-1 to 2-6 (6,875 gal,
+//    46,062 lb = 6.7 lb/gal). Optional aux tanks (-900ER 520 / 962 gal, BBJ) are not modelled.
+//  - Boeing 737 MAX-7/-8/-9/-10: the same ARFF document, page 737.1.1, 30 Apr 2024, prints the same 1,288 / 4,299 /
+//    1,288 gal, but "737 MAX Airplane Characteristics for Airport Planning" D6-38A004 Rev K (Jul 2025), pages 2-1 to
+//    2-4, gives usable fuel 6,820 US gal at 6.7 lb/gal. The 55 gal difference is not explained per tank, so MAX stays
+//    unverified.
+//  - Airbus A319/A320: "Aircraft Characteristics - Airport and Maintenance Planning" A319 and A320, Rev Jul 01/26,
+//    section 2-1-1 (page 5), density 0.785 kg/l (6.552 lb/US gal): total wing fuel 15,959 l (CFM ceo) / 15,609 l
+//    (IAE ceo) / 15,490 l (neo) = 4,216 / 4,123 / 4,092 US gal across both wings; center tank 8,250 l = 2,179 US gal
+//    in every variant. Per wing is half the wing total. The table uses the smallest (neo, 2,046 gal per wing) so a
+//    plan never overfills; the airline's own wing figure can be typed over it on the sheet.
+const BOEING_LB_PER_GAL = 6.7
+const AIRBUS_LB_PER_GAL = 0.785 * 2.20462 * 3.78541 // 0.785 kg/l
+
+const lbs = (gallons: number, lbPerGal: number) => Math.round(gallons * lbPerGal)
+
 export const AIRCRAFT_FUEL_TYPES: AircraftFuelType[] = [
-  { key: 'b737max9', label: 'B737 MAX 9', match: /^(B?7?39M|737MAX9|B?7M9|B39M|7379M)/, wingLbs: 8600, wingWinterLbs: 8800, centerLbs: 28800, verified: false },
-  { key: 'b737ng', label: 'B737-800/900', match: /^(B?73[789]|737)/, wingLbs: 8600, wingWinterLbs: 8800, centerLbs: 28800, verified: false },
-  { key: 'a320', label: 'A319/A320', match: /^(A?3(19|20)|A32[01])/, wingLbs: 14000, verified: false },
+  {
+    key: 'b737max',
+    label: 'B737 MAX',
+    match: /^(B?7?3[789]M|737MAX|B?7M[789]|B3[789]M|B3XM|B3[789]MAX)/,
+    wingLbs: lbs(1288, BOEING_LB_PER_GAL),
+    wingWinterLbs: 8800,
+    centerLbs: lbs(4299, BOEING_LB_PER_GAL),
+    verified: false,
+    source: 'Boeing ARFF 737, p. 737.1.1 (30 Apr 2024); Boeing D6-38A004 Rev K (Jul 2025)',
+    unverifiedNote: 'Boeing prints 6,875 gal in its fire-fighting sheet but 6,820 gal usable in the airport planning document.'
+  },
+  {
+    key: 'b737ng',
+    label: 'B737-700/800/900',
+    match: /^(B?73[6789]|737)/,
+    wingLbs: lbs(1288, BOEING_LB_PER_GAL),
+    wingWinterLbs: 8800,
+    centerLbs: lbs(4299, BOEING_LB_PER_GAL),
+    verified: true,
+    source: 'Boeing ARFF 737, p. 737.1.6 (30 Apr 2024); Boeing D6-58325-7 Rev C (Oct 2025)'
+  },
+  {
+    key: 'a320',
+    label: 'A319/A320',
+    match: /^(A?3(19|20)|A32[01])/,
+    wingLbs: lbs(2046, AIRBUS_LB_PER_GAL),
+    centerLbs: lbs(2179, AIRBUS_LB_PER_GAL),
+    verified: true,
+    source: 'Airbus AC A319 / A320 Airport and Maintenance Planning, Rev Jul 01/26, 2-1-1'
+  },
   { key: 'e175', label: 'E175', match: /^(E?175|E75)/, wingLbs: 10390, centerLbs: 0, verified: true },
   { key: 'crj200', label: 'CRJ200', match: /^(CRJ2|CL?60|CRJ200)/, wingLbs: 4488, centerLbs: 4930, verified: true },
   { key: 'crj700', label: 'CRJ700/900', match: /^(CRJ[79]|CRJ700|CRJ900)/, wingLbs: 7492, centerLbs: 4610, verified: true }
