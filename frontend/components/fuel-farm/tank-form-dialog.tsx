@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/sheet'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import { useTankLowestLevel } from '@/hooks/use-tank-lowest-level'
-import { resolveLowestLevel } from '@/lib/fuel-farm'
+import { inchesToGallons } from '@/lib/gallons-tables'
 import { useEffect, useState } from 'react'
 
 interface TankFormDialogProps {
@@ -43,16 +43,7 @@ export function TankFormDialog({
   onSubmit
 }: TankFormDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [overrideInput, setOverrideInput] = useState('')
   const lowest = useTankLowestLevel(tank?.tank_id ?? null, open && !!tank)
-  const savedOverride = lowest.override ? Number(lowest.override.lowest_level_inches) : null
-  const resolvedLowest = tank
-    ? resolveLowestLevel(tank.tank_id, lowest.measured, savedOverride)
-    : null
-
-  useEffect(() => {
-    setOverrideInput(savedOverride != null ? String(savedOverride) : '')
-  }, [savedOverride, open, tank?.tank_id])
   const [formData, setFormData] = useState<TankInsert>({
     tank_id: '',
     tank_name: '',
@@ -112,11 +103,6 @@ export function TankFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const raw = overrideInput.trim()
-    const overrideValue = raw === '' ? null : Number(raw)
-    if (tank && overrideValue != null && (Number.isNaN(overrideValue) || overrideValue < 0)) {
-      return
-    }
     setLoading(true)
     try {
       if (tank) {
@@ -124,8 +110,6 @@ export function TankFormDialog({
           onSubmit(formData, expectedUpdatedAt)
         )
         if (outcome.status === 'conflict') return
-        // Clearing the field removes the override; only touch the table when it changed.
-        if (overrideValue !== savedOverride) await lowest.saveOverride(overrideValue)
       } else {
         await onSubmit(formData)
       }
@@ -304,40 +288,23 @@ export function TankFormDialog({
             </div>
 
             {tank && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Lowest measured</Label>
-                  <div
-                    data-testid="lowest-measured"
-                    className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
-                  >
-                    {lowest.loading
-                      ? 'Loading...'
-                      : lowest.measured
-                        ? `${lowest.measured.level}" on ${new Date(lowest.measured.recordedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
-                        : 'No readings yet'}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lowest_override">Lowest level override (inches)</Label>
-                  <Input
-                    id="lowest_override"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={overrideInput}
-                    onChange={(e) => setOverrideInput(e.target.value)}
-                    placeholder="Use measured"
-                  />
-                </div>
-                <p
-                  data-testid="lowest-effective"
-                  className="col-span-2 -mt-2 text-xs text-muted-foreground"
+              <div className="space-y-2">
+                <Label>Lowest measured</Label>
+                <div
+                  data-testid="lowest-measured"
+                  className="flex h-9 items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground"
                 >
-                  {resolvedLowest?.inches != null
-                    ? `Lowest level: ${resolvedLowest.inches}" (${resolvedLowest.gallons?.toLocaleString()} gal), ${resolvedLowest.source === 'override' ? 'manual override' : 'measured'}. Clear the override to use the measured value.`
-                    : 'Clear the override to use the measured value.'}
-                </p>
+                  {lowest.loading
+                    ? 'Loading...'
+                    : lowest.measured
+                      ? `${lowest.measured.level}" on ${new Date(lowest.measured.recordedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+                      : 'No readings yet'}
+                </div>
+                {lowest.measured && (
+                  <p data-testid="lowest-gallons" className="text-xs text-muted-foreground">
+                    {Math.round(inchesToGallons(tank.tank_id, lowest.measured.level)).toLocaleString()} gal at the lowest level ever measured.
+                  </p>
+                )}
               </div>
             )}
           </div>

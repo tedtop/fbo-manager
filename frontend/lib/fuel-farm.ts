@@ -89,13 +89,6 @@ export function jetATotalUsable(tanks: FarmTank[]): number {
     .reduce((sum, t) => sum + computeTankMetrics(t.tankId, t.level, t.usableMax, t.recordedLow).usableGallons, 0)
 }
 
-export interface LowestLevelInfo {
-  /** Lowest level to show: the override when set, else the measured low; null when neither exists. */
-  inches: number | null
-  gallons: number | null
-  source: 'override' | 'measured' | 'none'
-}
-
 export interface MeasuredLow {
   level: number
   recordedAt: string
@@ -112,22 +105,4 @@ export function lowestReading(readings: { level: number | string; recordedAt: st
     }
   }
   return best
-}
-
-/**
- * Lowest-level figure for display only (Edit Tank sheet). The override wins over the measured value.
- * It is NOT fed into computeTankMetrics: the unusable band and usable gallons still follow the measured low.
- */
-export function resolveLowestLevel(
-  tankId: string,
-  measured: MeasuredLow | null,
-  overrideInches: number | null
-): LowestLevelInfo {
-  const inches = overrideInches ?? measured?.level ?? null
-  if (inches == null) return { inches: null, gallons: null, source: 'none' }
-  return {
-    inches,
-    gallons: Math.round(inchesToGallons(tankId, inches)),
-    source: overrideInches != null ? 'override' : 'measured'
-  }
 }

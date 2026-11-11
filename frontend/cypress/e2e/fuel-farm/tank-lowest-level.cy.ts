@@ -1,6 +1,4 @@
-import { taskUntil } from '../../support/task-poll'
-
-// Cypress spec (B99): Edit Tank shows the lowest level ever measured (read only) and a manual override.
+// Cypress spec (B99): Edit Tank shows the lowest level ever measured (read only), with its date and gallons.
 // Uses its own tank (CYB99) with seeded readings; nothing else on the Fuel Farm page is touched.
 const TANK = 'CYB99'
 
@@ -8,9 +6,8 @@ const openEdit = () => {
   cy.visit('/fuel-farm')
   cy.get(`button[aria-label="Edit Cy ${TANK}"]`).click()
 }
-const override = () => cy.get('#lowest_override')
 
-describe('Fuel Farm: lowest level override', () => {
+describe('Fuel Farm: lowest measured level', () => {
   beforeEach(() => {
     cy.task('cleanTank', TANK)
     cy.task('seedTankWithReadings', {
@@ -28,35 +25,10 @@ describe('Fuel Farm: lowest level override', () => {
     cy.task('cleanTank', TANK)
   })
 
-  it('shows the measured low with its date, and an empty override', () => {
+  it('shows the measured low with its date and gallons, read only', () => {
     openEdit()
     cy.get('[data-testid="lowest-measured"]').should('contain.text', '18.5"').and('contain.text', 'Feb 14, 2026')
-    override().should('have.value', '')
-    cy.get('[data-testid="lowest-effective"]').should('contain.text', 'measured')
-  })
-
-  it('saves an override, survives a reopen, and clearing it removes the row', () => {
-    openEdit()
-    override().type('12.5')
-    cy.get('[role="dialog"]').contains('button', /^Update$/).click()
-    cy.contains('Tank updated').should('be.visible')
-    taskUntil<{ lowest_level_inches: string } | null>('getTankLevelOverride', TANK, (row) => {
-      expect(Number(row?.lowest_level_inches)).to.eq(12.5)
-    })
-
-    openEdit()
-    override().should('have.value', '12.5')
-    cy.get('[data-testid="lowest-effective"]').should('contain.text', '12.5"').and('contain.text', 'manual override')
-    cy.get('[data-testid="lowest-measured"]').should('contain.text', '18.5"')
-
-    override().clear()
-    cy.get('[role="dialog"]').contains('button', /^Update$/).click()
-    cy.contains('Tank updated').should('be.visible')
-    taskUntil<unknown>('getTankLevelOverride', TANK, (row) => {
-      expect(row).to.eq(null)
-    })
-
-    openEdit()
-    override().should('have.value', '')
+    cy.get('[data-testid="lowest-gallons"]').should('contain.text', 'gal')
+    cy.get('#lowest_override').should('not.exist')
   })
 })

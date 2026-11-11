@@ -54,15 +54,13 @@ The result says **Acceptable** when the wheel reading is within ±1.0° API of t
 
 Press the pencil at the top right of a tank card to change its name, fuel type, capacity and level limits. **New Tank** adds one. Limits are in inches: the minimum and physical maximum bound what a reading can be, and the usable max is the line used for % full and ullage.
 
-At the bottom of the sheet, **Lowest measured** shows the lowest level ever saved for that tank and the date it happened (read only, from the tank's readings). Next to it, **Lowest level override (inches)** lets the line manager set the lowest level by hand when the measured one is wrong, for example a mistyped reading. Save with **Update**. Clear the field and press **Update** to remove the override and go back to the measured value. The line under the two fields says which one is in use, with its gallons.
-
-The override is for the record only: the grey unusable band and **gal usable** on the cards still follow the lowest *measured* reading.
+At the bottom of the sheet, **Lowest measured** shows the lowest level ever saved for that tank, the date it happened and the gallons at that level (read only, from the tank's readings). It is the same low that sets the grey unusable band on the card.
 
 ## Troubleshooting
 
 - **"Database offline" in the refresh chip.** The page could not load readings. It keeps retrying every 30 seconds; the last loaded readings stay on screen.
 - **A reading was refused.** It was below the tank's minimum or above its physical limit. Check the tape and the units (inches, or feet and inches with an apostrophe).
-- **The unusable band looks too high.** It follows the lowest reading ever saved for that tank, so a mistyped low reading raises it. Ask an administrator to correct the reading. The override in Edit Tank does not move the band.
+- **The unusable band looks too high.** It follows the lowest reading ever saved for that tank, so a mistyped low reading raises it. Ask an administrator to correct the reading.
 - **Gravity QC says "No loads logged yet".** No loads have been logged; the mixed averages appear after the first one.
 
 To go back to the tanks, open the [Fuel Farm](module:fuel-farm).
