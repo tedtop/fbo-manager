@@ -21,7 +21,7 @@ The Arrivals / Departures board (the home page, "Flight Ops") lists every aircra
 Press **Add Flight** in the board toolbar. The form is a panel on the right.
 
 1. **Tail Number** (required). The field is pre-filled with your tail prefix (for example `N`, set in Settings) and suggests known aircraft as you type. Saving with only the prefix shows "Enter the tail number".
-2. **Aircraft Type** (required). For an aircraft the app has not seen before, the type is looked up from the tail number and filled in when found; check it and correct it if needed.
+2. **Aircraft Type** (required). For an aircraft the app has not seen before, the type is looked up from the tail number and filled in when found; check it and correct it if needed. The lookup asks a public aircraft database first and, for US (N) tails it does not know, the FAA aircraft registry; the FAA answer is matched to the type list only when the make and model are recognised, otherwise the field stays empty for you to pick.
 3. **Status** (required), normally left at Scheduled.
 4. **Date** (required, the arrival day; for a hangar pull, the departure day) and **Scheduled Times** (24-hour). At least one of arrival or departure is needed.
 5. Optional: Origin, Destination, Contact Name and Notes, Services, Notes, Fuel order notes.
