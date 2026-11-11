@@ -74,6 +74,22 @@ Tooling:
 - D16 (2026-11-09; B46): Schema drift triage. `pnpm schema:parity` must run against a local DB built fresh from all migrations; the long-lived Docker stack drifted (it had skipped 20261104001400, 001500, badge_id, hire_date and later because of the duplicate version numbers, see D15), which hid and invented diffs. On a fresh DB all migrations replay cleanly and there were 28 diffs. Fixed locally in `20261109000100_local_parity_with_live.sql`: dropped the 18 `assigned_fueler_id`/`available_at` columns (test_schema copy-paste, unused by the app; removed from types/database.ts), `flight.created_by_source` default 'line-department', `parking_location.airport` default 'MSO', `parking_location.location_code` NOT NULL. `equipment.sort_order` was already fine on a fresh DB. Allow-listed with reason: 6 FK ON DELETE differences (flight.created_by_id, flight.tail_number, fuel_transaction.flight_id/fuel_truck_id/ordered_by_id, truck_sheets.fuel_truck_id), because Cypress cleanup relies on the local cascade/set-null actions. That migration is a no-op on live and is deliberately not recorded in live history. No live changes.
 - D17 (2026-11-11; B86): FAA registry as the second tail-type source. Chosen: the FAA's official per-N-number inquiry page (`registry.faa.gov/AircraftInquiry/Search/NNumberResult?nNumberTxt=`), fetched server-side from `/api/aircraft/lookup` only when adsbdb has no answer and the tail is a US N-number; one request per new tail, cached per process, 6 s timeout, plain descriptive User-Agent. Free, no key, official, and robots.txt only disallows `/aircraftinquiry/*.asp`; there is no JSON API, so the make/model/Mode S/owner cells are read from the page's `data-label` table cells (`lib/faa-registry.ts`). Make/model are mapped to ICAO by rules for Cessna, Beech, Piper, Gulfstream, Cirrus, Pilatus, Daher, Embraer and a few others, and only a designator present in `lib/icao-aircraft-types.ts` is returned (else null, user picks). Rejected: the downloadable `ReleasableAircraft.zip` (~60 MB, daily; needs a table and an import job, and registry.faa.gov answers 403 to scripted downloads) and paid APIs. Risk: the page markup can change; the parser then returns null and the lookup silently degrades to adsbdb-only (unit-tested on a real page copy). Owner is display only, as for adsbdb. Non-US tails stay adsbdb-only.
 
+- D18 (2026-11-11, Ted): **fbo-manager stays a shadow record for billing.** The outside front-desk software keeps making invoices, numbers, prices, taxes and payments. fbo-manager tracks what was done and makes sure it gets keyed in once. Design: "Fuel-to-billing and POS design".
+- D19 (2026-11-11, Ted): Fuel requests come from the front desk on the board card, from line techs on the phone (walk-ups and radio calls), and from QT dispatch (airlines). Customers posting requests online is designed for (source `customer`) but built later (D7).
+- D20 (2026-11-11, Ted): **No prices in fbo-manager.** Charge lists carry quantities only. Prices, contract rates, taxes and fees stay in the outside software. B51 keeps only the classes and the waiver minimums; B52 keeps only the service-to-product mapping.
+- D21 (2026-11-11, Ted): GA is billed **one invoice per visit**. All fuel, services, fees and counter items for one flight visit go on one charge list.
+- D22 (2026-11-11): A fuel order is a `fuel_transaction` with `status` requested -> assigned -> fueling -> filled, or cancelled with a reason. This replaces `progress`. A partial fill is filled with fewer gallons; several fills per visit are several orders.
+- D23 (2026-11-11, Ted): **Nothing about payment is recorded** for new work: no method, amount, settle or processor. The old ticket screen's payment fields stay readable for existing rows. A card processor stays design-only and parked (B135).
+- D24 (2026-11-11, Ted): The fuel ticket screen becomes the **charge list**, reusing `invoices` / `invoice_line_items`. The number is nullable until recorded, there is a `kind` of visit, counter or airline, and each line has a keyed-in tick. Prices and settle are removed from the UI.
+- D25 (2026-11-11): On the board card, one "Fuel" action creates or edits the fuel order. The `fuel` pill is retired from the service picker, and the card shows the order's status chip (requested / assigned / filled 312 gal).
+- D26 (2026-11-11, Ted): The outside invoice number is recorded at the **first charge**, usually fuel. Later charges show as "not yet keyed in" until ticked. The number shows on the tech's phone for the truck sheet.
+- D27 (2026-11-11, Ted): The line tech records the fill on the phone (truck, gallons, optional meters, Prist, Filled). The truck-sheet scan adds the meters later and is matched to the order automatically; leftovers go to a review list.
+- D28 (2026-11-11, Ted): Airline (QT) fuelings record the 5-digit paper-book **slip number** in the Fuel sheet. There is a daily airline-slip list with "picked up" ticks for accounting, and a monthly gallons-per-airline report.
+- D29 (2026-11-11, Ted): Corrections after keying in are **flagged, never silent**. The line shows "keyed 300, now 312 (+12 gal)" until someone resolves it with a note.
+- D30 (2026-11-11, Ted): A **Close the day** checklist lists open orders, unnumbered fills, unkeyed lines, differences, unmatched scan lines, open meter gaps and unpicked airline slips. Someone closes the day, with a note when items remain.
+- D31 (2026-11-11, Ted): The ramp fee line is added automatically to every visit, showing the aircraft class. It is waived automatically when the visit's fuel reaches the class's **minimum gallons** (set in Settings) or the aircraft has a hangar lease (B67). A manager can override it with a reason. Counter sales go on the visit's list when there is one, otherwise on a counter list by customer or tail.
+- D32 (2026-11-11, Ted): Airline fuel printouts are **logged as typed** in the Fuel sheet (per-tank targets, total/block, uplift, density and units, flight, tail, printed by, an optional photo) in a `fuel_printout` table. A report compares them with the wing-loading capacities, and a manager confirms any capacity change; nothing changes by itself. OCR of printouts comes later and is free only.
+
 ## Risks / open questions
 - R1: Docker already runs another project's Supabase on 54321/54322. Tests cannot run until stopped or fbo ports are moved.
 - R2: F1/D2 may need a migration (live data, shared Supabase instance). Never touch `fuel_tank_readings`.
@@ -700,3 +716,212 @@ Rules: filters live `FILTER_LIFE_DAYS` = 365 (due soon in the last 30 days, over
 Layers: `repositories/equipment-log.repo.ts`, `hooks/use-equipment-log.ts`, components `daily-readings`, `filter-changes`, `equipment-notes`. Fuel trucks only for readings and filters; notes for all equipment.
 
 Deferred (Ted wants all of these): B80 enter DPI/PSI on the truck sheet entry/review as well (writes an `equipment_reading` with `truck_sheet_id`); B81 meter calibration and fuel quality checks (water/particulate, sample results); B82 preventive maintenance with due dates (oil, tires, brakes, inspections) replacing the single next-maintenance date; B83 photos on notes and maintenance items.
+
+## Fuel-to-billing and POS design (Ted, 2026-11-11; M3b)
+
+Planning lane, design only. Decisions D18-D32 are in the decisions log. The build is B120-B135 in BACKLOG.md (milestone M3b). Section 1 maps the code as it was before this design. It was checked by a separate review pass on 2026-11-11.
+
+### 1. What exists today (2026-11-11)
+
+**Works end to end**
+- **QT airline fueling, typed.** QT dispatch is polled live: `/api/qt/dispatch` appends to the shared `fuel_dispatch_history` table. The wing-loading Fuel sheet saves through `saveAirlineFueling`, which writes:
+  - a `fuel_transaction` (source `qt`, keyed on `qt_dispatch_id`, `progress=completed`, tank before/after in lbs);
+  - one typed `truck_meter_readings` row per register, on that truck's sheet for the day.
+  
+  Meter gaps are flagged (B87).
+- **Truck-sheet scans.** Vision OCR, then review, then `truck_sheets` and `truck_meter_readings`, with the original pages stored (B69).
+- **Fuel ticket (`/invoicing`, `fuel-ticket-sheet.tsx`).** Records an invoice the front desk already made in the outside software:
+  - the invoice number is typed by hand: dash `26-3330` = live, 5-digit = paper book with a pending-pickup state;
+  - the price per gallon is typed by hand;
+  - a fuel line can bill a scanned truck-sheet line, and the unique index stops double billing;
+  - status runs draft -> open/paid -> settle -> void, and a PDF prints.
+
+**Disconnected or stubbed**
+- **Board card.** "Fuel Request" only adds the `fuel` pill (no gallons, no order). "Order fuel" makes a manual `fuel_transaction` that the pill does not reflect. `source='flight_card'` is never written.
+- **Fueler assignment** uses the relic `fueler` table (B68). `qt_sync_status` is never written.
+- **Unwired repo code.** `findMatchCandidates`, `linkReadingToTransaction` and `findUninvoicedTransactions` have no callers, so scans never link to orders and GA tickets never reference a `fuel_transaction`.
+- **Pricing.** There is no fuel price list, contract price or tax. The `product` prices are seed values Ted never confirmed. `service.product_id` is all NULL (B52), ramp-fee classes are not built (B51) and the hangar lease is not modelled (B67).
+- **Payments.** A label only; there is no POS code of any kind.
+
+**Duplicated**
+- Gallons are stored in 4 tables, and fuel type uses 3 different enums.
+- Customer is free text in 3 places; only `invoices.customer_id` is a real link.
+- Tank gauge readings are stored both in `fuel_transaction.tank_reading_*` and in `invoice_fuel_readings`.
+
+**External**
+- QT, read only.
+- Minuteman shares the DB (fuel farm tables, `fuel_dispatch_history`). It does not use `fuel_transaction`, `truck_meter_readings` or `invoices`; fbo-manager alone owns those.
+- The front desk's outside software issues the dash invoice numbers. There is no integration.
+
+### 2. The shape of it (D18-D21)
+
+The outside front-desk software stays the system of record for billing, prices, taxes and payment. fbo-manager is a **shadow record** whose job is that nothing done on the ramp is missed or billed twice:
+
+```
+fuel request -> fuel order -> filled (phone) -> on the visit's charge list -> keyed into the outside software (number recorded)
+                                   ^                                   ^
+               truck-sheet scan matches the fill (meters)     ramp fee, services, counter items join the same list
+                                                     -> Close the day checklist catches anything left over
+```
+
+No prices, totals, taxes or payments live in fbo-manager (D20, D23). Quantities do: gallons, quarts and GPU starts. A future switch away from the outside software would be a new design, not a toggle (B135 parks it).
+
+### 3. State machines
+
+**Fuel order** (`fuel_transaction.status`, replaces `progress`, D22):
+
+```
+requested --assign--> assigned --start--> fueling --filled--> filled
+    |                    |                   |
+    +--------------------+-------------------+--cancel(reason)--> cancelled --reopen--> requested
+```
+
+- **Creating an order.** QT airline orders are created at Fuel sheet save, already `filled` (as today). Walk-ups from the phone start at `requested` or go straight to `filled`.
+- **Transitions** (`lib/fuel-orders.ts`): create as `requested` (board, phone) or create as `filled` (QT Fuel sheet, phone walk-up after the fact, scan "No order"). Fill is allowed from `requested`, `assigned` or `fueling`; the phone Fill form works on any open order and assigns the filler. Cancel is allowed from any open state. Reopen goes `cancelled` -> `requested`. Gallons on a `filled` order change only through `updateFilledOrder`, which records the change and lets D29 flag it.
+- **`filled` is terminal.** It stores `gallons_delivered`, the truck, the filled time (`completed_at`, which already exists) and who filled it (`filled_by`), plus optional meters and Prist. Changing gallons after filling is allowed. It is logged in `updated_at`, and if the gallons were already keyed in it raises a difference (D29).
+- **Partial fill.** This is `filled` with fewer gallons than requested; the card and charge list show a "short" badge. A plane that leaves without fuel is `cancelled` with the reason "left without fuel".
+- **Several fills per visit.** Allowed: each fill is its own order and its own charge line. One fill done from two registers or trucks is one order with several meter readings, as the Fuel sheet already does.
+
+**Charge list** (an `invoices` row, D24):
+
+```
+to key in (no number) --number recorded--> keyed (all lines ticked)
+        ^                                      |
+        +---- new or changed line / difference -+         any --void(reason)--> void
+```
+
+- Stored `invoices.status` keeps its existing check: a new list is `draft` until its number is recorded, then `open`; `void` stays as is; `paid` is only on old tickets.
+- "Keyed" is derived (a number is recorded and every live line has `keyed_in_at`). It is not stored.
+- Adding a line after keying puts the list back to "to key in" for that line only.
+
+**Day** (`day_close`, D30): `open` -> `closed` by a person, with a checklist snapshot. It can be reopened with a note.
+
+### 4. Data model changes
+
+All columns are nullable and no link is required. Data arrives out of order and is linked later; this is the resilience rule from the domain notes.
+
+1. **`fuel_transaction`** (B120):
+   - `status text not null default 'requested'` with check (`requested|assigned|fueling|filled|cancelled`), backfilled from `progress` (`started`->`requested`, `in_progress`->`fueling`, `completed`->`filled`). Order inside one transaction: add the column nullable, update, set not null and the default, then drop `progress`. Only fbo-manager uses the table, so B120 renames every `progress` consumer in the same change (board fuel status, dispatch, dashboard, fuel order card, transaction form, services, repos, `lib/types.ts`), with `pnpm tsc --noEmit` as the gate.
+   - The live table is Django-era, so the `source` and `fuel_type` checks are dropped by name, looked up in `pg_constraint`, and re-added. A rollback file restores `progress` from `status`. `fuel_transaction` is backed up before the live apply (B01c).
+   - Reuse the existing `completed_at` (filled time) and `assigned_at`. New: `cancel_reason`, `filled_by` (user), `requested_for` (target time), `prist` bool.
+   - `ticket_number` stays NOT NULL and gets a DB default from a sequence (`FO-` plus the next number), so the board, phone and scans never race the old client-side count. `createFuelOrder` relies on it.
+   - `flight.fueled_at` is not used by this design. The order status is the one "fueled" signal, and `use-flight-fuel-status` is rewritten on it.
+   - `source` gains `phone` and `scan` (a fueling first seen on a truck sheet), and later `customer`. `flight_card` becomes the board value and is actually written.
+   - `fuel_type` gets one shared app enum, mapped to the three DB spellings in one module (`lib/fuel-types.ts`). DB enums are not changed now.
+   - Assigned fuelers: `fuel_order_fueler(fuel_transaction_id, user_id)`, created in B122 (after B68), which replaces `fueler_assignment`.
+2. **`invoices` becomes the charge list** (B123; the table is not renamed, the UI says "Charge list"):
+   - `invoice_number` becomes nullable, still unique when set (the unique constraint already allows several NULLs).
+   - `customer_name` drops NOT NULL. A new check requires `customer_name` or `tail_number`, so a list built from a flight with no known customer is valid.
+   - New `kind` (`visit|counter|airline|legacy`) and `void_reason`. Every row that exists at migration time gets `legacy`; new rows default to `visit`. "Old tickets" are `kind='legacy'`.
+   - Price, total, payment and settle columns stay for the old rows, but new code stops writing them (D23).
+   - The unused legacy `invoice` / `invoice_item` tables are dropped later (B134, waits for Ted).
+3. **`invoice_line_items` become charge lines** (B123):
+   - `service_id` (board service source), `source_key` (idempotency key such as `fuel:<txId>`, `service:<flightServiceId>`, `ramp:<flightId>`, `manual:<uuid>`), `unit`.
+   - Keying: `keyed_in_at`, `keyed_in_by`, `keyed_quantity` (snapshot at keying).
+   - Waivers: `waived` bool, `waiver_reason` (`fuel_minimum|hangar_lease|manual`), `waiver_note`.
+   - Differences: `difference_resolved_quantity`, `difference_note`.
+   - `removed_at`: a line whose source disappears after keying is kept and flagged, never deleted.
+   - The existing unique index on `fuel_transaction_id` still stops double billing of a fill.
+   - `fuel_type` on lines has a fourth set of spellings (`avgas_100`, `avgas_80`, `unleaded`); `lib/fuel-types.ts` maps it too.
+4. **Airline fuel printout log** (B130, D32): a `fuel_printout` table, see section 6b.
+5. **Ramp fee classes** (B51, revised): an `app_setting` key `ramp_fee_classes`, with a class list, the aircraft types per class and the **minimum gallons that waive the fee**. No fee amounts. A hangar lease flag on the aircraft comes from B67 (`aircraft.hangar_lease` or a lease table, B67's call); until then the waiver is fuel-minimum or manual only.
+6. **`day_close`** (B133): `day` date (FBO zone, unique), `closed_at`, `closed_by`, `note`, `snapshot` jsonb (the counts at closing), `reopened_at`, `reopen_note`.
+7. **Truck-sheet matching** uses the existing `truck_meter_readings.fuel_transaction_id`. No new column.
+
+### 5. Who does what, on which screen
+
+| Step | Screen | Role |
+|---|---|---|
+| Request fuel (gallons or top-off, type, Prist, time, note) | Board card "Fuel" action (replaces the Fuel Request pill and Order fuel, D25) | Front desk |
+| Walk-up or radio call | Phone "My fuel orders", + New | Line |
+| Airline order | QT dispatch, as today; the Fuel sheet records the fill and the slip number (D28) | Line |
+| Assign / start | Fuel Dispatch "Orders" board by status; the phone "Take it" button | Line lead, line |
+| Fill | Phone: truck, gallons, optional front/rear meters (reuses `fuel-sheet-meters`), Prist, Filled | Line |
+| Charge list builds itself | Visit charge list: fills, mapped services with quantities, ramp fee | System (`syncChargeList`) |
+| Counter sale | Charges, + Counter list (customer and/or tail; oil, TKS, Prist, catering) | Front desk |
+| Key in and record the number | Charge list: number box, tick each line keyed. The number shows on the tech's phone for the truck sheet (D26) | Front desk |
+| Scan matching | Truck-sheet review: auto-match, plus an "unmatched" list (D27) | Whoever scans (Ted, nights) |
+| Corrections | A difference badge on the line, then resolve with a note (D29) | Front desk |
+| Close the day | Charges -> Close the day (D30) | Front desk / manager |
+
+**Roles.** Gating is in the UI only; RLS stays `authenticated` for these tables, which is acceptable for a shadow record. These use the existing module permissions (`fuel_dispatch`, `invoicing`):
+- ramp fee override and day reopen need manager (B38);
+- the line role needs only `fuel_dispatch`.
+
+### 6. Rules
+
+- **`syncChargeList(flightId)`** (service layer, idempotent, B124). It is a pure `buildChargeLines(facts)` plus an upsert by `source_key`. Lines come from:
+  - every `filled` order on the flight (quantity = `gallons_delivered`);
+  - a Prist line (the Prist product, quantity 1) for every filled order with `prist` set;
+  - every `flight_service` whose service has a `product_id` (quantity from `flight_service.quantity`, unit from `service.quantity_unit`; board-only services never appear);
+  - the ramp-fee line, which is owned by B132's rule `rampFeeLine(facts)` and is plugged into the builder only when B132 lands. Before that, sync makes no ramp line.
+
+  It runs after an order fill or edit, a services save, or an aircraft lease change, and when the charge list opens.
+  - A source that disappears removes an unkeyed line, but only flags a keyed one (`removed_at`).
+  - Manual lines (counter items, extra products) are never touched by sync.
+  - Sync only writes to the flight's newest non-void visit list. It creates a new list when there is none, including after a void. Void lists are never changed.
+  - Deleting a fill that sits on a list is refused (`on delete restrict`, already in place). The user voids the list or edits the gallons instead.
+- **Ramp fee waiver.** `waived = hangar_lease`, or the visit's filled gallons are at least the class minimum. The class comes from the aircraft type (`lib/aircraft-sizes.ts` -> `ramp_fee_classes`). An unknown class shows "class?" and is never auto-waived. A manager override needs a reason.
+- **Charge list per visit.** One visit charge list per flight by default. If the outside software forces a split, the front desk adds a second list on the same flight, with its own number (D24).
+- **Number on the tech's phone.** It appears on the order once the list has a number. Typed readings for that order get `invoice_number` stamped (as a billed scan line does today), and it is cleared if the list is voided.
+- **Scan matching.**
+  - The day is the FBO-zone day of the order's `completed_at`. The existing `findMatchCandidates` (UTC `created_at` +-1 day, no status filter) is replaced, not reused as is.
+  - Scan lines are grouped per tail and sheet day (front and rear registers of one fill are separate lines). A group auto-links all its lines to an order when exactly one filled order of that tail on that day matches the group's summed gallons, within 2 % or 5 gal. An order can have several linked lines.
+  - Two or more candidates, or none, go to an "Unmatched truck-sheet lines" list with candidates to pick. "No order" can be chosen; it creates a filled order with source `scan`, for fuelings nobody entered live.
+  - The sum of a fill's linked lines' `gallons_pumped` that differs from the order's `gallons_delivered` raises a difference (D29). The meters win, and the order is updated only by a person.
+- **Difference.** A line is flagged when its current source quantity (the fill's gallons, or the sum of its linked scan lines when they disagree) differs from `keyed_quantity` and from `difference_resolved_quantity`. The current quantity is the fill's gallons, or the linked scan's gallons when they disagree. Resolving stores the quantity and a note; nothing is changed silently.
+- **Close the day** (one FBO-zone day) lists, with links:
+  1. orders still requested, assigned or fueling;
+  2. filled orders not on a numbered charge list;
+  3. lines not keyed;
+  4. open differences;
+  5. unmatched truck-sheet lines;
+  6. open meter gaps on that day's sheets;
+  7. airline slips not picked up.
+
+  Closing is allowed with items left, but needs a note. The snapshot keeps the counts.
+- **Airline slips** (D28). The Fuel sheet gets a "Slip no." field (5 digits), which writes an `airline` charge list with `number_source=paper_book` and one fuel line marked keyed. Pickup uses the existing `accounting_picked_up_at`. Other screens:
+  - Charges -> Airline slips: the daily list with "picked up" ticks;
+  - a monthly report of gallons per airline (from `fuel_transaction` source `qt` and the aircraft `airline_icao`), on screen and as CSV.
+- **Airline slips re-saved.** Saving the Fuel sheet again updates the slip line's quantity and `keyed_quantity` together, because the airline slip is keyed when it is written. A re-save is therefore never a difference.
+- **Chatbot later (B64).** Order creation and filling stay as service functions (`createFuelOrder`, `fillFuelOrder`) with no UI logic, so a future tool call can use them.
+
+### 6b. Airline fuel printout log (Ted, 2026-11-11; D32)
+
+The airlines hand over a fuel printout or slip per fueling. It shows:
+- target fuel per tank (for example 737 MAX wing tanks 8,650 lb each);
+- total or block fuel and the uplift;
+- density and units;
+- flight, tail, date and time, and who printed it.
+
+Ted wants what the airlines actually give logged, and the log used to check the wing-loading tank capacities (`lib/wing-loading.ts`; B88 set them from Boeing and Airbus documents and the MAX wings to 8,650 lb from airline slips on 2026-11-11). Fields are to be confirmed against Ted's United sample (`docs/samples/`, coming).
+
+- **Entry (D32).** Typed in the Fuel sheet (wing-loading dialog), in a "Printout" block beside the existing tank before/after, with an optional photo stored like scan pages (`scanned_documents`, doc type `fuel_printout`). OCR is not in scope. Once enough samples per airline exist, free OCR (Tesseract / Google Cloud Vision, never paid Claude) can prefill the block: a later item, not planned now.
+- **Table `fuel_printout`.** Fixed columns, per Ted's analytics preference:
+  - links: `id`, `fuel_transaction_id` (unique, nullable, set null), `airline_icao`, `flight_number`, `tail_number`, `aircraft_type`, `wing_loading_key` (the `lib/wing-loading.ts` type key);
+  - who and when: `printed_at`, `printed_by` (text as printed);
+  - units: `unit` (`lb|kg|gal`), `density`;
+  - targets: `target_left`, `target_center`, `target_right`, `target_aux`, `target_total`, `block_fuel`, `uplift`;
+  - other: `photo_document_id`, `notes`, timestamps.
+  
+  All values are as printed (no conversion stored); reports convert to lb with the printed density.
+- **Capacity check (B131).** A report per wing-loading type shows the number of printouts and the highest left, right and center targets seen (in lb), against the app's capacity. A target above capacity is marked "printout exceeds app capacity". A manager confirms a new capacity, which is stored in an `app_setting` key `wing_tank_capacities` that overrides the code constants (which stay as defaults). The app never changes a capacity by itself. B131 coordinates with B88: B88 owns the constants, and B131 adds only the override and the report.
+
+### 7. Edge cases
+
+- **Cancelled after assignment:** the fueler sees it disappear from "My fuel orders", with a toast.
+- **Cancelled after filling:** not possible. A real cancel is "edit gallons to 0" plus a difference, or "void list"; both need a note.
+- **Fuel with no flight on the board:** the phone walk-up asks for a tail. If the tail has a flight that day it attaches; otherwise a counter charge list for the tail is made.
+- **Defuel and fuel returned:** out of scope. Record it as a note on the order, and Ted decides if it needs a type (open question).
+- **Voiding a list:** clears `invoice_number` on stamped readings and frees the fills for another list (the existing void behaviour), and needs a reason.
+- **Old fuel tickets** (with prices and payment): they stay readable in the Charges list, marked "Old ticket". No migration rewrites them.
+- **Tank-level reconciliation** (truck gallons vs the fuel farm): not in this design. The fuel farm belongs to Minuteman's tables, and B87 meter gaps cover the truck side.
+- **Live data:** `fuel_tank_readings` and Minuteman tables are never touched.
+
+### 8. Open questions for Ted
+
+1. The name of the outside software, and whether it can export a daily invoice list (CSV). That would let Close the day match numbers automatically later.
+2. Ramp fee classes and the minimum gallons per class (B51), and the service-to-product mapping, with no prices (B52).
+3. Defuels: do they happen, and should they be an order type?
+4. Is the 2 % / 5 gal auto-match tolerance right?
+5. A United fuel printout sample (promised 2026-11-11) to confirm the `fuel_printout` fields.
