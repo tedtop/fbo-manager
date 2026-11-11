@@ -160,3 +160,12 @@ describe('time zone setting (key timezone)', () => {
     ).toBe('America/Denver')
   })
 })
+
+describe('user_name_sort setting', () => {
+  it('defaults to last name and reads first/last, ignoring junk', async () => {
+    const { settingsFromRows, DEFAULT_APP_SETTINGS } = await import('@/lib/app-settings')
+    expect(DEFAULT_APP_SETTINGS.userNameSort).toBe('last')
+    expect(settingsFromRows([{ key: 'user_name_sort', value: 'first' }]).userNameSort).toBe('first')
+    expect(settingsFromRows([{ key: 'user_name_sort', value: 'bogus' }]).userNameSort).toBe('last')
+  })
+})

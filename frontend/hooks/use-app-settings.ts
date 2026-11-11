@@ -11,6 +11,8 @@ import {
   type NameDisplay,
   TAIL_NUMBER_PREFIX_KEY,
   TIME_ZONE_KEY,
+  USER_NAME_SORT_KEY,
+  type UserNameSort,
   normalizeTailPrefix,
   settingsFromRows
 } from '@/lib/app-settings'
@@ -72,6 +74,12 @@ export function useAppSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
   })
 
+  const saveUserNameSort = useMutation({
+    mutationFn: (by: UserNameSort) =>
+      upsertAppSetting(db, USER_NAME_SORT_KEY, by),
+    onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
+  })
+
   const saveTimeZone = useMutation({
     mutationFn: (zone: string) => upsertAppSetting(db, TIME_ZONE_KEY, zone),
     onSuccess: () => qc.invalidateQueries({ queryKey: appSettingKeys.all })
@@ -86,6 +94,7 @@ export function useAppSettings() {
     saveHomeAirport,
     saveAirportDisplay,
     saveNameDisplay,
+    saveUserNameSort,
     saveTimeZone
   }
 }

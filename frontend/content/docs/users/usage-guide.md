@@ -41,7 +41,7 @@ An Administrator can open and manage every module, so ticking **Administrator** 
 
 ### Sort the list {#sort-columns}
 
-Click a column heading (Name, Email, Phone, Role, Joined, Employee ID, Badge ID, Status) to sort by it. Click again to reverse; the arrow shows the direction. The list starts sorted by name: last name, then first name, with "No name yet" accounts at the bottom. Empty cells always sort to the bottom.
+Click a column heading (Name, Email, Phone, Role, Joined, Employee ID, Badge ID, Status) to sort by it. Click again to reverse; the arrow shows the direction. The list starts sorted by name, with "No name yet" accounts at the bottom. Empty cells always sort to the bottom. Whether the name sort goes by last name first (Leathers, Keith) or first name first (Keith, Leathers) is a setting: **Settings > Names > Sort users by**. A heading click changes the order for that visit only; reloading the page goes back to the setting.
 
 ### Edit a cell in the table {#edit-in-table}
 

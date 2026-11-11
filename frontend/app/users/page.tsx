@@ -15,6 +15,7 @@ import {
   type Nav
 } from '@/components/users/inline-cell'
 import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { useModuleAccess } from '@/hooks/use-permissions'
 import { useRoles } from '@/hooks/use-roles'
 import { displayPhone } from '@/lib/phone-mask'
@@ -113,7 +114,10 @@ export default function UsersPage() {
   >('all')
   const [roleFilter, setRoleFilter] = useState<string>('all')
 
-  const [sort, setSort] = useState<UserSort>(DEFAULT_USER_SORT)
+  // Starts on the default (Name, ascending, by the user_name_sort setting); a header click overrides it for this visit.
+  const [sortOverride, setSortOverride] = useState<UserSort | null>(null)
+  const sort = sortOverride ?? DEFAULT_USER_SORT
+  const { settings } = useAppSettings()
   const [editing, setEditing] = useState<{ id: string; field: InlineField } | null>(null)
   const [cellStates, setCellStates] = useState<Record<string, CellState & { draft?: InlineValue; display?: string }>>({})
   const [emailChange, setEmailChange] = useState<EmailChangeState | null>(null)
@@ -134,7 +138,7 @@ export default function UsersPage() {
   }
 
   const filteredUsers = useMemo(() => {
-    return sortUsers(users, sort).filter((u) => {
+    return sortUsers(users, sort, settings.userNameSort).filter((u) => {
       if (statusFilter !== 'all' && u.status !== statusFilter) return false
       if (roleFilter === 'none') {
         if (u.roles.length > 0) return false
@@ -151,7 +155,7 @@ export default function UsersPage() {
       }
       return true
     })
-  }, [users, sort, search, statusFilter, roleFilter])
+  }, [users, sort, settings.userNameSort, search, statusFilter, roleFilter])
 
   const handleSubmit = async (data: UserFormData) => {
     if (editingUser) {
@@ -362,7 +366,7 @@ export default function UsersPage() {
       >
         <button
           type="button"
-          onClick={() => setSort((cur) => nextSort(cur, key))}
+          onClick={() => setSortOverride((cur) => nextSort(cur ?? DEFAULT_USER_SORT, key))}
           className="-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           data-sort={key}
         >

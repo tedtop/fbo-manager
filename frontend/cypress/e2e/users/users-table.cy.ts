@@ -1,3 +1,5 @@
+import { taskUntil } from '../../support/task-poll'
+
 // B107: Users table: column sorting, Phone column, spreadsheet-style inline editing, enforced phone mask.
 // Every save is checked with a direct DB read (cy.task), not just the on-screen "Saved".
 
@@ -36,10 +38,12 @@ describe('B107: Users table sort, inline edit and phone mask', () => {
   })
 
   after(() => {
+    cy.task('setAppSetting', { key: 'user_name_sort', value: null })
     for (const acc of created) cy.task('deleteStaffAccount', acc)
   })
 
   beforeEach(() => {
+    cy.task('setAppSetting', { key: 'user_name_sort', value: null }) // default: last name first
     cy.login('admin')
     cy.visit('/users')
     cy.contains('th', 'Phone').should('be.visible')
@@ -173,5 +177,26 @@ describe('B107: Users table sort, inline edit and phone mask', () => {
     cy.contains('button', 'Save Changes').click()
     cy.contains('User updated').should('be.visible')
     cy.task('getProfileFields', a.authId).its('phone_number').should('eq', '(555) 555-1111')
+  })
+
+  it('Settings > Sort users by switches the default Name sort; a header click still overrides it', () => {
+    // Zed Aaa / Abe(l) Zzz: by last name Aaa first, by first name Abe(l) first.
+    rowNames().then((r) => expect(r[0]).to.contain(`Aaa${stamp}`))
+
+    cy.visit('/settings')
+    cy.get('#userNameSort').select('First name (Keith, Leathers)')
+    taskUntil<string | null>('getAppSetting', 'user_name_sort', (v) => expect(v).to.eq('first'))
+
+    cy.visit('/users')
+    search(stamp)
+    cy.get('tbody tr').should('have.length', 2)
+    cy.get('th[aria-sort="ascending"]').should('contain', 'Name')
+    rowNames().then((r) => expect(r[0]).to.contain(`Zzz${stamp}`))
+    cy.get('[data-sort="name"]').click() // override: descending
+    rowNames().then((r) => expect(r[0]).to.contain(`Aaa${stamp}`))
+
+    cy.visit('/settings')
+    cy.get('#userNameSort').select('Last name (Leathers, Keith)')
+    taskUntil<string | null>('getAppSetting', 'user_name_sort', (v) => expect(v).to.eq('last'))
   })
 })

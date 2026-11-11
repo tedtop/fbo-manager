@@ -10,6 +10,7 @@ export const HOME_AIRPORT_KEY = 'home_airport'
 export const AIRPORT_DISPLAY_KEY = 'airport_display'
 export const TIME_ZONE_KEY = 'timezone'
 export const NAME_DISPLAY_KEY = 'name_display'
+export const USER_NAME_SORT_KEY = 'user_name_sort'
 
 /** One kind of equipment. `value` is what equipment.equipment_type stores and never changes; label and icon are display. */
 export type EquipmentTypeDef = { value: string; label: string; icon: string }
@@ -69,7 +70,17 @@ export function formatPersonName(
   return `${first} ${last[0].toUpperCase()}`.trim()
 }
 
+/** B107: which name Manage Users sorts by first. Stored in app_setting key user_name_sort. */
+export type UserNameSort = 'first' | 'last'
+
+export const USER_NAME_SORT_OPTIONS: { value: UserNameSort; label: string; example: string }[] = [
+  { value: 'last', label: 'Last name', example: 'Leathers, Keith' },
+  { value: 'first', label: 'First name', example: 'Keith, Leathers' }
+]
+
 export type AppSettings = {
+  /** Manage Users default Name sort: last name then first, or first name then last. */
+  userNameSort: UserNameSort
   /** Stored code (ICAO) of the home airport: pre-fills Origin on new flights and ranks its country first. */
   homeAirport: string
   /** Which airport code the app shows on screen; the ICAO is always what is stored. */
@@ -88,6 +99,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   homeAirport: 'KMSO',
   airportDisplay: 'faa',
   nameDisplay: 'first_last_initial',
+  userNameSort: 'last',
   timeZone: DEFAULT_TIME_ZONE,
   tailNumberPrefix: 'N',
   equipmentTypes: DEFAULT_EQUIPMENT_TYPES
@@ -235,6 +247,12 @@ export function settingsFromRows(
       NAME_DISPLAY_OPTIONS.some((o) => o.value === row.value)
     ) {
       settings.nameDisplay = row.value as NameDisplay
+    }
+    if (
+      row.key === USER_NAME_SORT_KEY &&
+      USER_NAME_SORT_OPTIONS.some((o) => o.value === row.value)
+    ) {
+      settings.userNameSort = row.value as UserNameSort
     }
     if (row.key === TIME_ZONE_KEY && isValidTimeZone(row.value)) {
       settings.timeZone = row.value.trim()

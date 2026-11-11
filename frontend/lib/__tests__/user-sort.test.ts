@@ -72,3 +72,19 @@ describe('user sort', () => {
     expect(nextSort({ key: 'name', dir: 'desc' }, 'email')).toEqual({ key: 'email', dir: 'asc' })
   })
 })
+
+describe('name sort setting (user_name_sort)', () => {
+  const x = user({ first_name: 'Ann', last_name: 'Zed' })
+  const y = user({ first_name: 'Bob', last_name: 'Adams' })
+  const z = user({ first_name: 'Al', last_name: 'Adams' })
+  const blank = user({})
+
+  it('last: last name then first name', () => {
+    expect(names(sortUsers([blank, x, y, z], DEFAULT_USER_SORT, 'last'))).toEqual(['Al Adams', 'Bob Adams', 'Ann Zed', '—'])
+  })
+
+  it('first: first name then last name, still "No name yet" last in both directions', () => {
+    expect(names(sortUsers([blank, x, y, z], DEFAULT_USER_SORT, 'first'))).toEqual(['Al Adams', 'Ann Zed', 'Bob Adams', '—'])
+    expect(names(sortUsers([blank, x, y, z], { key: 'name', dir: 'desc' }, 'first'))).toEqual(['Bob Adams', 'Ann Zed', 'Al Adams', '—'])
+  })
+})
