@@ -45,11 +45,6 @@ import { ServicePillPicker } from './service-pill-picker'
 import { TailNumberAutocomplete } from './tail-number-autocomplete'
 import {
   applyArrivalChange,
-  applyPreset,
-  FLIGHT_PRESETS,
-  presetOf,
-  scheduledForPreset,
-  type FlightPreset,
   applyDepartureChange,
   applyQuickTurnChange,
   buildTimestamp,
@@ -129,14 +124,6 @@ export function FlightFormDialog({
     actualDepartureDate
   }
   const shownDates = displayDates(formTimes, zone)
-  const activePreset = presetOf(scheduledForPreset(arrivalTime, departureTime, quickTurn))
-  const handlePreset = (preset: FlightPreset) => {
-    const next = applyPreset({ arrival: arrivalTime, departure: departureTime, quickTurn }, preset)
-    setScheduled(next)
-    if (preset !== 'transient') setDepartureDate('')
-    if (preset === 'hangar_pull') setActualArrivalTime('')
-    if (preset === 'return') setActualDepartureTime('')
-  }
   const scheduledInstants = formTimestamps(formTimes, zone)
   const groundTimeLabel = formatGroundTime(
     scheduledInstants.arrival,
@@ -669,24 +656,19 @@ export function FlightFormDialog({
                 {isZulu ? banner : `Times in ${zoneLabel}`}
               </p>
               <div
-                role="group"
-                aria-label="Flight type"
-                className="flex gap-2"
+                data-testid="form-times-hint"
+                className="space-y-1 text-xs text-muted-foreground"
               >
-                {FLIGHT_PRESETS.map((p) => (
-                  <Button
-                    key={p.value}
-                    type="button"
-                    size="sm"
-                    variant={activePreset === p.value ? 'default' : 'outline'}
-                    aria-pressed={activePreset === p.value}
-                    data-testid={`preset-${p.value}`}
-                    title={p.hint}
-                    onClick={() => handlePreset(p.value)}
-                  >
-                    {p.label}
-                  </Button>
-                ))}
+                <p>
+                  A transient flight has an arrival and a departure. QT is
+                  ticked by default: departure is arrival + 1 hour and follows
+                  arrival changes. Type your own departure, or untick QT, for a
+                  longer stay.
+                </p>
+                <p>
+                  Hangar pull: leave arrival blank (departure only). Return:
+                  clear the departure (arrival only).
+                </p>
               </div>
               <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
@@ -821,11 +803,6 @@ export function FlightFormDialog({
                     {timeError}
                   </p>
                 )}
-
-                <p className="text-xs text-muted-foreground">
-                  Leave departure blank for a return, or arrival blank for a
-                  hangar pull.
-                </p>
 
                 {arrivalTime && departureTime && (
                   <div className="text-sm text-muted-foreground text-center pt-2 border-t border-border">

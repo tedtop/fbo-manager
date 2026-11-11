@@ -88,4 +88,18 @@ export const truckSheetTasks = {
     if (error) throw new Error(`getTruckSheetScans: ${error.message}`)
     return { sheets: sheets ?? [], scans: scans ?? [] }
   },
+
+  /** The equipment_reading rows of a test truck, with the truck sheet each came from (null = entered by hand). */
+  async getTruckReadings(truck: string) {
+    const db = createE2EDbClient()
+    const { data: eq } = await db.from('equipment').select('id').eq('equipment_id', truck).maybeSingle()
+    if (!eq) return []
+    const { data, error } = await db
+      .from('equipment_reading')
+      .select('dpi_psi, nozzle_psi, truck_sheet_id, read_at')
+      .eq('equipment_id', eq.id)
+      .is('deleted_at', null)
+    if (error) throw new Error(`getTruckReadings: ${error.message}`)
+    return data ?? []
+  },
 }
