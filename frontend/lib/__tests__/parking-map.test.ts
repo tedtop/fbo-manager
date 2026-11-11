@@ -2,17 +2,13 @@ import {
   AREA_FILL_COLORS,
   AREA_FILL_OPACITY,
   AREA_KINDS,
-  ICON_SCALE,
   KIND_META,
   areaFeatureCollection,
   countAircraftByArea,
-  feetPerPixel,
   headingForScreenDirection,
-  iconPixelSize,
   moveAlongHeading,
   normalizeHeading,
   normalizeTailNumber,
-  resolveIconDefinition,
   stepPose,
   tailNumberError,
   toParkedPlane,
@@ -72,32 +68,6 @@ describe('headings', () => {
     expect(headingForScreenDirection(270, 40)).toBe(310)
     expect(headingForScreenDirection(0, 0)).toBe(0)
     expect(headingForScreenDirection(270, 180)).toBe(90)
-  })
-})
-
-describe('icon sizing', () => {
-  it('halves the resolution at each zoom level', () => {
-    const z17 = feetPerPixel(46.9, 17)
-    expect(feetPerPixel(46.9, 18)).toBeCloseTo(z17 / 2, 6)
-  })
-
-  it('matches the MapLibre ground resolution at the equator, zoom 0', () => {
-    expect(feetPerPixel(0, 0)).toBeCloseTo(78_271.517 * 3.28084, 3)
-  })
-
-  it('sizes the icon by wingspan x length in feet', () => {
-    const def = resolveIconDefinition('light_single')
-    const { width, height } = iconPixelSize('light_single', 46.9, 18)
-    const expectedScale = ICON_SCALE / feetPerPixel(46.9, 18)
-    expect(width).toBeCloseTo(def.wingspan * expectedScale, 6)
-    expect(height).toBeCloseTo(def.length * expectedScale, 6)
-  })
-
-  it('accepts type ids and ICAO codes, falling back to a default', () => {
-    expect(resolveIconDefinition('regional_jet').id).toBe('regional_jet')
-    expect(resolveIconDefinition('C172').id).toBe('light_single')
-    expect(resolveIconDefinition('B738').id).toBe('narrow_body')
-    expect(resolveIconDefinition('').id).toBe('light_single')
   })
 })
 

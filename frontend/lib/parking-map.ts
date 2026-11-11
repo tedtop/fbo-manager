@@ -1,12 +1,3 @@
-import {
-  type AircraftSizeCategory,
-  getAircraftSizeCategory
-} from '@/lib/aircraft-sizes'
-import {
-  AIRCRAFT_TYPES,
-  type AircraftTypeDefinition,
-  DEFAULT_AIRCRAFT_TYPE
-} from '@/lib/aircraft-types'
 import { findAreaAtPoint, polygonBounds, ringOf } from '@/lib/parking-geometry'
 import type { AircraftRow } from '@/repositories/aircraft.repo'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
@@ -55,60 +46,11 @@ export const AREA_FILL_OPACITY = { solid: 0.97, selected: 0.3 }
 export const AREA_KINDS = Object.keys(KIND_META) as ParkingAreaKind[]
 
 // ---------------------------------------------------------------------------
-// Icon sizing
+// Heading and movement maths
 // ---------------------------------------------------------------------------
 
 const METERS_PER_DEGREE_LAT = 111_320
 const FEET_PER_METER = 3.28084
-
-/**
- * lib/aircraft-types.ts dimensions are ~2.2x real size "for map visibility". Rendering them
- * at half that keeps the planes about 1.1x real size, matching the previous map.
- */
-export const ICON_SCALE = 0.5
-
-/** Ground resolution of a MapLibre GL map (512px world tile) in feet per CSS pixel. */
-export function feetPerPixel(lat: number, zoom: number): number {
-  const metersPerPixel =
-    (78_271.517 * Math.cos((lat * Math.PI) / 180)) / 2 ** zoom
-  return metersPerPixel * FEET_PER_METER
-}
-
-const SIZE_CATEGORY_TYPE: Record<AircraftSizeCategory, string> = {
-  small: 'light_single',
-  medium: 'light_jet',
-  large: 'mid_size_jet',
-  jumbo: 'narrow_body'
-}
-
-/**
- * Icon dimensions for a stored aircraft type. Accepts the ids from lib/aircraft-types.ts
- * (what the Add airplane form stores) or an ICAO code (mapped through the size category).
- */
-export function resolveIconDefinition(
-  typeIcao: string
-): AircraftTypeDefinition {
-  const byId = AIRCRAFT_TYPES.find((t) => t.id === typeIcao)
-  if (byId) return byId
-  const id = typeIcao
-    ? SIZE_CATEGORY_TYPE[getAircraftSizeCategory(typeIcao)]
-    : DEFAULT_AIRCRAFT_TYPE
-  return AIRCRAFT_TYPES.find((t) => t.id === id) ?? AIRCRAFT_TYPES[0]
-}
-
-export function iconPixelSize(
-  typeIcao: string,
-  lat: number,
-  zoom: number
-): { width: number; height: number } {
-  const def = resolveIconDefinition(typeIcao)
-  const scale = ICON_SCALE / feetPerPixel(lat, zoom)
-  return { width: def.wingspan * scale, height: def.length * scale }
-}
-
-// ---------------------------------------------------------------------------
-// Heading and movement maths
-// ---------------------------------------------------------------------------
 
 /** Degrees folded into [0, 360). */
 export function normalizeHeading(degrees: number): number {
