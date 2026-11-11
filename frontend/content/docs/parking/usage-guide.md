@@ -24,11 +24,15 @@ Press **Add airplane**. Pick an aircraft that already exists, or create a new on
 
 ### Move an airplane {#move-airplane}
 
-Drag the airplane on the map. With it selected you can also use the arrow keys (up and down move it, left and right turn it), and Cmd/Ctrl+Z undoes the last move. Dropping it inside an area attaches it to that area; dropping it on open ramp leaves it without one.
+Drag the airplane on the map. With it selected on the map you can also use the arrow keys (up and down move it, left and right turn it), and Cmd/Ctrl+Z undoes the last move. Dropping it inside an area attaches it to that area; dropping it on open ramp leaves it without one.
 
 ### Turn an airplane {#heading}
 
-Click an airplane to open its drawer, then use the **Heading** slider or the four "Face left / up / right / down" buttons. The directions are as you see them on screen, so they stay right when you rotate the map.
+Click an airplane to open its drawer. The **compass** in the drawer shows the airplane (its own silhouette) pointing the way it is parked. **Click or drag on the compass** to point it a new way; the heading changes by 1 degree and saves automatically.
+
+- The red **N** is true north and turns with the map, so if you have rotated the map, north on the compass still matches north on the map. The small purple mark at the top of the compass is "up on your screen".
+- With the compass selected (click it, or Tab to it), the **arrow keys** turn the airplane by 1 degree and **Shift + arrow** by 10. **Home** points it north.
+- The four buttons under the compass turn the airplane to face left, up, right or down as you see them on screen, whatever the map rotation.
 
 ### Remove an airplane from the ramp {#remove-airplane}
 
