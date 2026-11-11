@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dpiTrendPerDay, daysUntilDpiLimit, filterState } from '../equipment-log'
+import { dpiTrendPerDay, daysUntilDpiLimit, filterState, parsePsi, psiProblem, truckSheetReadingRow } from '../equipment-log'
 
 const at = (d: number) => new Date(Date.UTC(2026, 10, d, 12)).toISOString()
 
@@ -29,5 +29,52 @@ describe('dpi trend', () => {
     ]
     expect(daysUntilDpiLimit(rising)).toBe(18)
     expect(daysUntilDpiLimit([...rising].reverse().map((p, i) => ({ ...p, dpi_psi: i ? 8 : 4 })))).toBeNull()
+  })
+})
+
+describe('truck sheet DPI / nozzle PSI', () => {
+  it('parses psi text', () => {
+    expect(parsePsi('')).toBeNull()
+    expect(parsePsi('  ')).toBeNull()
+    expect(parsePsi('6.5')).toBe(6.5)
+    expect(parsePsi(' 45 ')).toBe(45)
+    expect(parsePsi('6.55')).toBe(6.6)
+    expect(parsePsi('-1')).toBe('invalid')
+    expect(parsePsi('abc')).toBe('invalid')
+    expect(parsePsi('1e3')).toBe('invalid')
+    expect(parsePsi('10000')).toBe('invalid')
+  })
+
+  it('names the bad field', () => {
+    expect(psiProblem('', '')).toBeNull()
+    expect(psiProblem('6', '45')).toBeNull()
+    expect(psiProblem('x', '')).toMatch(/DPI/)
+    expect(psiProblem('', 'x')).toMatch(/Nozzle/)
+  })
+
+  const base = { equipmentId: 7, truckSheetId: 99, sheetDate: '2026-11-10' }
+
+  it('builds no row when both are empty', () => {
+    expect(truckSheetReadingRow({ ...base, dpiText: '', nozzleText: '' })).toBeNull()
+  })
+
+  it('builds a row linked to the sheet, dated on the sheet day', () => {
+    const row = truckSheetReadingRow({ ...base, dpiText: '6.5', nozzleText: '' })
+    expect(row).toMatchObject({ equipment_id: 7, truck_sheet_id: 99, dpi_psi: 6.5, nozzle_psi: null, read_by: null })
+    expect(new Date(row!.read_at).getTime()).toBe(new Date('2026-11-10T12:00:00').getTime())
+  })
+
+  it('accepts nozzle alone', () => {
+    expect(truckSheetReadingRow({ ...base, dpiText: '', nozzleText: '44' })).toMatchObject({ dpi_psi: null, nozzle_psi: 44 })
+  })
+
+  it('refuses invalid text', () => {
+    expect(() => truckSheetReadingRow({ ...base, dpiText: 'x', nozzleText: '' })).toThrow(/DPI/)
+  })
+
+  it('feeds the trend like a manual reading', () => {
+    const a = truckSheetReadingRow({ ...base, sheetDate: '2026-11-01', dpiText: '4', nozzleText: '' })!
+    const b = truckSheetReadingRow({ ...base, sheetDate: '2026-11-11', dpiText: '8', nozzleText: '' })!
+    expect(dpiTrendPerDay([a, b])).toBeCloseTo(0.4)
   })
 })

@@ -37,8 +37,6 @@ export type Database = {
           last_login: string | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -69,8 +67,6 @@ export type Database = {
           fleet_id: string
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
           parked_lat: string | null
           parked_lng: string | null
           parked_heading: number | null
@@ -137,8 +133,6 @@ export type Database = {
           usable_max_inches: string
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           tank_id: string
@@ -238,8 +232,6 @@ export type Database = {
           display_order: number
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -289,8 +281,6 @@ export type Database = {
           fueled_at: string | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
           deleted_at: string | null
           hidden_at: string | null
         }
@@ -356,8 +346,6 @@ export type Database = {
           status: 'active' | 'inactive'
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -385,8 +373,6 @@ export type Database = {
           aircraft_type: string | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -408,8 +394,6 @@ export type Database = {
           certified_by_id: number | null
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number
@@ -601,8 +585,6 @@ export type Database = {
           tank_reading_unit: 'lbs' | 'gal' | 'kg'
           created_at: string
           updated_at: string
-          assigned_fueler_id: number | null
-          available_at: string | null
         }
         Insert: {
           id?: number

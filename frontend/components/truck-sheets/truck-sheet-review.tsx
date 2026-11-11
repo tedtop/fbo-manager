@@ -181,7 +181,7 @@ export function TruckSheetReview({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-10 gap-3">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Date</Label>
           <Input
@@ -252,8 +252,29 @@ export function TruckSheetReview({
             className="h-8 text-xs"
           />
         </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">DPI (psi)</Label>
+          <Input
+            inputMode="decimal"
+            data-testid="sheet-dpi"
+            value={sheet.dpi_psi}
+            onChange={(e) => patch({ dpi_psi: e.target.value })}
+            placeholder="—"
+            className="h-8 text-xs font-mono"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Nozzle PSI</Label>
+          <Input
+            inputMode="decimal"
+            data-testid="sheet-nozzle"
+            value={sheet.nozzle_psi}
+            onChange={(e) => patch({ nozzle_psi: e.target.value })}
+            placeholder="—"
+            className="h-8 text-xs font-mono"
+          />
+        </div>
       </div>
-
 
       {/* Problems that stop the import */}
       {sheetProblem(sheet) && (

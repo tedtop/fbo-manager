@@ -1,6 +1,8 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { psiProblem, truckSheetReadingRow } from '@/lib/equipment-log'
+import { createReading, deleteReading } from '@/repositories/equipment-log.repo'
 import { createEquipment, findAllEquipment } from '@/repositories/equipment.repo'
 import {
   createTruckMeterReadings,
@@ -66,6 +68,9 @@ export interface ReviewSheet {
   front_meter_start: string
   rear_meter_start: string
   fueler_initials: string
+  /** DPI and nozzle PSI as written on the sheet (psi); empty when not recorded. Saved as an equipment_reading. */
+  dpi_psi: string
+  nozzle_psi: string
   page_count: number
   source_files: string[]
   /** The pages in order; the upright images and the originals are persisted to Storage on import. */
@@ -157,6 +162,8 @@ export function mergeExtractions(
       front_meter_start: first.front_meter_start,
       rear_meter_start: first.rear_meter_start,
       fueler_initials: first.fueler_initials,
+      dpi_psi: '',
+      nozzle_psi: '',
       page_count: group.length,
       source_files: group.map((p) => p.file.name),
       pages: group.map((p) => p.page),
@@ -182,6 +189,8 @@ export function sheetProblem(sheet: ReviewSheet): string | null {
   if (!sanitizeTruckNo(sheet.truck_number)) return 'Enter the truck number.'
   if (!validDate(sheet.sheet_date)) return 'Enter the sheet date.'
   if (!sheet.fuel_type) return 'Choose the fuel type.'
+  const psi = psiProblem(sheet.dpi_psi, sheet.nozzle_psi)
+  if (psi) return psi
   return null
 }
 
@@ -283,6 +292,7 @@ export function useTruckSheetCommit() {
         const label = { sheetId: sheet.id, truck: sheet.truck_number, date: sheet.sheet_date }
         let uploadedPaths: string[] = []
         let createdSheetId: number | null = null
+        let createdReadingId: number | null = null
         let attachRestore: { id: number; pageCount: number } | null = null
         try {
           const problem = sheetProblem(sheet)
@@ -384,6 +394,16 @@ export function useTruckSheetCommit() {
                 notes: r.notes || null,
               }))
             await createTruckMeterReadings(db, inserts)
+
+            // DPI / nozzle PSI from the sheet go to the truck's daily log (same history the Equipment page trends)
+            const logRow = truckSheetReadingRow({
+              equipmentId: fuelTruckId,
+              truckSheetId: sheetRow.id,
+              sheetDate: sheet.sheet_date,
+              dpiText: sheet.dpi_psi,
+              nozzleText: sheet.nozzle_psi,
+            })
+            if (logRow) createdReadingId = (await createReading(db, logRow)).id
           }
 
           // 3. The page rows, linked to the sheet and the truck
@@ -396,6 +416,13 @@ export function useTruckSheetCommit() {
           // Undo this sheet so a truck sheet never stays without its scans: the new record (readings cascade),
           // the page count, and the objects. Whatever cannot be undone is said in the message.
           const leftovers: string[] = []
+          if (createdReadingId != null) {
+            try {
+              await deleteReading(db, createdReadingId)
+            } catch {
+              leftovers.push(`DPI reading #${createdReadingId} could not be removed again`)
+            }
+          }
           if (createdSheetId != null) {
             try {
               await deleteTruckSheet(db, createdSheetId)
@@ -424,6 +451,7 @@ export function useTruckSheetCommit() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: truckSheetKeys.all })
       queryClient.invalidateQueries({ queryKey: scanKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['equipment-log'] })
     },
   })
 }

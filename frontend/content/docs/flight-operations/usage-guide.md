@@ -21,12 +21,20 @@ The Arrivals / Departures board (the home page, "Flight Ops") lists every aircra
 Press **Add Flight** in the board toolbar. The form is a panel on the right.
 
 1. **Tail Number** (required). The field is pre-filled with your tail prefix (for example `N`, set in Settings) and suggests known aircraft as you type. Saving with only the prefix shows "Enter the tail number".
-2. **Aircraft Type** (required). For an aircraft the app has not seen before, the type is looked up from the tail number and filled in when found; check it and correct it if needed.
+2. **Aircraft Type** (required). For an aircraft the app has not seen before, the type is looked up from the tail number and filled in when found; check it and correct it if needed. The lookup asks a public aircraft database first and, for US (N) tails it does not know, the FAA aircraft registry; the FAA answer is matched to the type list only when the make and model are recognised, otherwise the field stays empty for you to pick.
 3. **Status** (required), normally left at Scheduled.
-4. **Date** (required) and **Scheduled Times** (24-hour). At least one of arrival or departure is needed.
+4. **Date** (required, the arrival day; for a hangar pull, the departure day) and **Scheduled Times** (24-hour). At least one of arrival or departure is needed.
 5. Optional: Origin, Destination, Contact Name and Notes, Services, Notes, Fuel order notes.
 
 New flights have **QT** ticked, so you normally only enter the arrival time. If the aircraft is new, it is created together with the flight.
+
+### Arrival, departure and QT {#times-hint}
+
+A short hint above the times explains how they work. A transient flight has an arrival and a departure. **QT** (quick turn) is ticked by default: the departure is the arrival plus 1 hour and follows any change to the arrival. Type your own departure and QT unticks by itself; you can also untick QT and then set a longer stay. For a **hangar pull** leave the arrival blank and enter only the departure. For a **return** clear the departure (that unticks QT) and enter only the arrival. A flight created by clicking a slot in the calendar opens as **Add New Flight** (it used to open as Edit Flight).
+
+### Multi-day stays and times after midnight {#multi-day}
+
+Each time you enter gets its own small date field under it (Departure, and both Actual times). By default it is the same day as **Date**, or the next day when a time is earlier than the one before it (a 23:30 arrival with a 00:30 departure). To enter a stay of several days, change the departure's date, for example to three days later. An actual arrival after midnight works the same way: set its date to the next day. Next to the times, **Ground time** shows the full stay including days (for example `3d 5h 0m`). When you edit a flight, every date loads back as it was saved. Ticking QT, or changing the arrival while QT is on, puts the departure back on the automatic day.
 
 ### Quick turn (QT) and the +1 hour rule {#quick-turn}
 
@@ -131,7 +139,7 @@ Two people can open the same flight. The form tells you:
 | Tail Number | Required. Pre-filled with the tail prefix from Settings; a field holding only the prefix is treated as empty. |
 | Aircraft Type | Required. Looked up automatically for new aircraft when possible. |
 | Status | Required: Scheduled, Arrived, Departed, Delayed or Cancelled. |
-| Date | Required. The day the scheduled times are on. |
+| Date | Required. The arrival day (the departure day for a hangar pull). Departure and both actual times have their own date fields, same day by default. |
 | Scheduled arrival / departure | At least one is required. 24-hour local time. A time earlier than the one before it falls on the next day. |
 | Actual arrival / departure | Optional. Fill in when it happens. |
 | QT | On for new flights. Departure is arrival + 1 hour while on; typing a departure unticks it. |

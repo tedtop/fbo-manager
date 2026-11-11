@@ -54,6 +54,8 @@ The result says **Acceptable** when the wheel reading is within ±1.0° API of t
 
 Press the pencil at the top right of a tank card to change its name, fuel type, capacity and level limits. **New Tank** adds one. Limits are in inches: the minimum and physical maximum bound what a reading can be, and the usable max is the line used for % full and ullage.
 
+At the bottom of the sheet, **Lowest measured** shows the lowest level ever saved for that tank, the date it happened and the gallons at that level (read only, from the tank's readings). It is the same low that sets the grey unusable band on the card.
+
 ## Troubleshooting
 
 - **"Database offline" in the refresh chip.** The page could not load readings. It keeps retrying every 30 seconds; the last loaded readings stay on screen.

@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
 
-function segmentColor(count: number): string {
+export function segmentColor(count: number): string {
   if (count === 0) return 'bg-muted'
   if (count === 1) return 'bg-red-500/70'
   if (count === 2) return 'bg-amber-500/70'

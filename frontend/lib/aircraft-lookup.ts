@@ -1,3 +1,6 @@
+import { type FaaRegistration, fetchFaaRegistration, isUsTail, mapFaaToIcao } from '@/lib/faa-registry'
+import { findIcaoType, formatIcaoType } from '@/lib/icao-aircraft-types'
+
 export interface AircraftLookupResult {
   tail: string
   icao24: string | null
@@ -10,7 +13,7 @@ export interface AircraftLookupResult {
   /** https image URL from airport-data.com, null when there is no photo. */
   photoUrl: string | null
   photoThumbUrl: string | null
-  source: 'adsbdb'
+  source: 'adsbdb' | 'faa'
 }
 
 const ADSBDB_URL = 'https://api.adsbdb.com/v0/aircraft'
@@ -39,7 +42,8 @@ function httpsUrl(value: unknown): string | null {
 }
 
 /**
- * Looks the aircraft type up from the registration via adsbdb. Returns null for
+ * Looks the aircraft type up from the registration: adsbdb first, then (US tails
+ * only, when adsbdb has nothing) the FAA registry, B86. Returns null for
  * unknown tails, empty tails, non-200 responses, network errors and timeouts.
  * The registered owner and photo are returned for display only: the owner must
  * not be logged or persisted to the database.
@@ -57,6 +61,7 @@ export async function lookupAircraftType(
 
   let result: AircraftLookupResult | null = null
   let cacheable = false
+  // A failed adsbdb call (network, 5xx) is not cached, so a transient outage is retried.
   try {
     const res = await fetchImpl(
       `${ADSBDB_URL}/${encodeURIComponent(normalized)}`,
@@ -89,6 +94,34 @@ export async function lookupAircraftType(
     // network error, timeout or malformed JSON: treated as no result
   }
 
+  if (!result && isUsTail(normalized)) {
+    const reg = await fetchFaaRegistration(normalized, fetchImpl)
+    if (reg === undefined) cacheable = false
+    else result = faaResult(normalized, reg)
+  }
+
   if (useCache && cacheable) remember(normalized, result)
   return result
+}
+
+function faaResult(
+  tail: string,
+  reg: FaaRegistration | null
+): AircraftLookupResult | null {
+  if (!reg) return null
+  const typeIcao = mapFaaToIcao(reg.manufacturer, reg.model)
+  const type = typeIcao ? findIcaoType(typeIcao) : undefined
+  if (!typeIcao || !type) return null
+  return {
+    tail,
+    icao24: reg.modeSHex,
+    typeIcao,
+    typeDescription: formatIcaoType(type),
+    manufacturer: type.manufacturer,
+    owner: reg.owner,
+    ownerCountry: 'United States',
+    photoUrl: null,
+    photoThumbUrl: null,
+    source: 'faa'
+  }
 }
