@@ -36,7 +36,11 @@ Choose **Out of Service** in the status menu (list or detail page). It asks for 
 
 ### Daily readings (DPI and nozzle pressure) {#daily-readings}
 
-On a fuel truck's page press **Log readings** and enter the differential pressure across the filters (DPI, psi) and/or the nozzle pressure (psi), the time (starts at now) and an optional note. Do this once a day. The section shows the latest values, a small trend line for each, and, when DPI is climbing, how many days until it reaches the replacement limit (15 psi for now). The list card shows the latest DPI / nozzle values.
+On a fuel truck's page press **Log readings** and enter the differential pressure across the filters (DPI, psi) and/or the nozzle pressure (psi), the time (starts at now) and an optional note. Do this once a day, or write them on the day's truck sheet (below). The section shows the latest values, a small trend line for each, and, when DPI is climbing, how many days until it reaches the replacement limit (15 psi for now). The list card shows the latest DPI / nozzle values.
+
+### DPI and nozzle PSI from the truck sheet {#sheet-readings}
+
+When you import a truck sheet (Truck Sheets, then the scan review), fill **DPI (psi)** and **Nozzle PSI** in the sheet header with the values written on the paper sheet; leave them empty when the sheet has none (either one alone is fine). The import saves them as a reading dated midday on the sheet's date, in the same Daily readings history above, so the trend, the latest values on the list card and the days-to-limit projection include them. A value that is not a number stops the import of that sheet until it is corrected. Adding pages to a sheet that already exists adds no readings, so enter a missed value with **Log readings** on the truck's page instead. A scanned sheet is not read for these two values; type them.
 
 ### Filter changes {#filter-changes}
 
