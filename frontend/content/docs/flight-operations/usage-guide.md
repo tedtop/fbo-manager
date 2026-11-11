@@ -28,9 +28,9 @@ Press **Add Flight** in the board toolbar. The form is a panel on the right.
 
 New flights have **QT** ticked, so you normally only enter the arrival time. If the aircraft is new, it is created together with the flight.
 
-### Transient, Hangar pull and Return {#presets}
+### Arrival, departure and QT {#times-hint}
 
-Three buttons above the times set the kind of flight in one click. **Transient** (the default) is an arrival with QT, or a longer stay. **Hangar pull** is departure only: it clears the arrival, unticks QT and leaves you to type the departure. **Return** is arrival only: it clears the computed departure and unticks QT. The highlighted button follows the times you have entered. A flight created by clicking a slot in the calendar now opens as **Add New Flight** (it used to open as Edit Flight).
+A short hint above the times explains how they work. A transient flight has an arrival and a departure. **QT** (quick turn) is ticked by default: the departure is the arrival plus 1 hour and follows any change to the arrival. Type your own departure and QT unticks by itself; you can also untick QT and then set a longer stay. For a **hangar pull** leave the arrival blank and enter only the departure. For a **return** clear the departure (that unticks QT) and enter only the arrival. A flight created by clicking a slot in the calendar opens as **Add New Flight** (it used to open as Edit Flight).
 
 ### Multi-day stays and times after midnight {#multi-day}
 
