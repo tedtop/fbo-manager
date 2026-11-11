@@ -87,12 +87,15 @@ describe('documented tank capacities', () => {
     expect(r.warnings).toEqual([])
   })
 
-  it.each(['B38M', 'B39M'])('%s: MAX uses the same tanks and stays marked unverified', (type) => {
+  it.each(['B38M', 'B39M'])('%s: MAX wings 8,650 lb (airline slips), center derived from 6,820 gal', (type) => {
     const { t, r } = split(type, 20000)
     expect(t.key).toBe('b737max')
-    expect(t.verified).toBe(false)
-    expect(t.unverifiedNote).toMatch(/6,820/)
-    expect(r.after).toEqual({ left: 8630, center: 2740, right: 8630 })
+    expect(t.wingLbs).toBe(8650)
+    expect(t.centerLbs).toBe(28394)
+    expect(2 * t.wingLbs + t.centerLbs!).toBe(45694)
+    expect(t.source).toMatch(/airline fuel slips/)
+    expect(t.source).toMatch(/derived/)
+    expect(r.after).toEqual({ left: 8650, center: 2700, right: 8650 })
   })
 
   it.each(['A319', 'A320'])('%s: wings fill to 13,404 lbs each before the center takes fuel', (type) => {
@@ -110,7 +113,7 @@ describe('documented tank capacities', () => {
     expect(r.warnings.join()).toMatch(/Center tank over/)
   })
 
-  it('lists exactly the MAX as unverified', () => {
-    expect(AIRCRAFT_FUEL_TYPES.filter((t) => !t.verified).map((t) => t.key)).toEqual(['b737max'])
+  it('has no unverified types left', () => {
+    expect(AIRCRAFT_FUEL_TYPES.filter((t) => !t.verified).map((t) => t.key)).toEqual([])
   })
 })
