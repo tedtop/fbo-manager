@@ -39,6 +39,14 @@ export const usersTasks = {
     return { roleName: (assignment.roles as unknown as { name: string }).name, assignedBy: assignment.assigned_by ?? null }
   },
 
+  /** Names of every role the user holds, sorted. */
+  async getRoleNames(userId: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db.from('user_roles').select('roles(name)').eq('user_id', userId)
+    if (error) throw new Error(`getRoleNames: ${error.message}`)
+    return (data ?? []).map((r) => (r.roles as unknown as { name: string }).name).sort()
+  },
+
   /** Deletes the auth user (cascades to profile and user_roles). */
   async deleteAuthUser(userId: string) {
     const db = createE2EDbClient()

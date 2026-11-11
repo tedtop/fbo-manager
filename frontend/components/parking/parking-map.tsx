@@ -304,7 +304,8 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
           [west, south],
           [east, north]
         ],
-        { padding: 60, duration: 800 }
+        // fitBounds resets the bearing to north otherwise, losing the rotation the user set.
+        { padding: 60, duration: 800, bearing: map.getBearing() }
       )
     }
   }
@@ -428,12 +429,15 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
       selectedId={selectedAreaId}
       loading={parking.areasLoading}
       drawMode={drawing.mode}
+      shape={drawing.shape}
       onSelect={selectArea}
       onNew={() => openAreaSheet(null)}
       onEdit={(area) => openAreaSheet(area)}
       onArchive={setArchiveTarget}
       onDraw={startDrawing}
       onSnapToGrid={snapSelectedToGrid}
+      onMakeRectangle={drawing.makeRectangle}
+      onFreeEditing={drawing.setFreeEditing}
       onCancelDrawing={drawing.cancelDraw}
       onClearBoundary={() => selectedArea && setClearTarget(selectedArea)}
     />

@@ -3,6 +3,7 @@ import {
   evaluateGate,
   firstAccessibleHref,
   isRouteOrChild,
+  NAV_ITEMS,
   moduleForPath,
   normalizePath,
   parseAccessState,
@@ -253,5 +254,16 @@ describe('evaluateGate docs (D11)', () => {
     expect(evaluateGate('/docs', disabled).kind).toBe('redirect')
     expect(evaluateGate('/docs-x', line).kind).toBe('redirect')
     expect(evaluateGate('/%64ocs/../users', line).kind).toBe('redirect')
+  })
+})
+
+describe('Administrator holds every module (B106)', () => {
+  it('an admin snapshot passes the gate for every nav page and extra path', () => {
+    const modules = [...new Set(NAV_ITEMS.map((i) => i.module))]
+    const access = Object.fromEntries(modules.map((m) => [m, 'manage'])) as AccessState['access']
+    const admin: AccessState = { status: 'active', roles: ['Administrator'], access }
+    for (const path of [...NAV_ITEMS.map((i) => i.href), '/settings', '/dispatch', '/dashboard', '/flight-operations']) {
+      expect(evaluateGate(path, admin), path).toEqual({ kind: 'allow' })
+    }
   })
 })

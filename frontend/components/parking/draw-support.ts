@@ -7,12 +7,17 @@ import { createSaveScheduler } from '@/lib/save-scheduler'
 // @ts-ignore -- @mapbox/mapbox-gl-draw ships no type declarations
 import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import { DRAW_STYLES } from './draw-styles'
+import { RECT_MODE, RectMode } from './rect-mode'
 
 export type Notice = { kind: 'info' | 'success' | 'error'; text: string }
 
 export const DRAW_FINISH_HINT = 'Double-click to finish shape · Esc to cancel'
+/** Free polygon editing (any shape). */
 export const EDIT_HINT =
   'Drag a corner to move it, a midpoint to add a corner, or the shape to move it all. Changes save automatically. Esc or a click on empty map to deselect.'
+/** Rectangle editing: the shape stays a rectangle. */
+export const RECT_EDIT_HINT =
+  'Drag a corner to resize the rectangle from the opposite corner, a side handle to move just that side, or the shape to move it all. Changes save automatically. Esc or a click on empty map to deselect.'
 
 const SAVE_DELAY_MS = 400
 
@@ -37,6 +42,7 @@ export function createDrawControl(): MapboxDraw {
   return new MapboxDraw({
     displayControlsDefault: false,
     defaultMode: 'simple_select',
+    modes: { ...MapboxDraw.modes, [RECT_MODE]: RectMode },
     styles: DRAW_STYLES
   })
 }

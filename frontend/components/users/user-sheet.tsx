@@ -15,6 +15,8 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { ErrorMessage } from '@/messages/error-message'
+import { ADMIN_ROLE_NAME } from '@/lib/user-guards'
+import { isIncludedWithAdmin, normalizeRoleIds } from '@/lib/role-rules'
 import { useEffect, useState } from 'react'
 
 export interface UserFormData {
@@ -86,12 +88,15 @@ export function UserSheet({
     }))
   }
 
+  const adminRoleId = roles.find((r) => r.name === ADMIN_ROLE_NAME)?.id
+  const isAdminPicked = adminRoleId !== undefined && formData.roleIds.includes(adminRoleId)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      await onSubmit(formData)
+      await onSubmit({ ...formData, roleIds: normalizeRoleIds(roles, formData.roleIds) })
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save user')
@@ -236,12 +241,17 @@ export function UserSheet({
               <div className="space-y-2">
                 {roles.map((role) => {
                   const inputId = `role-${role.id}`
-                  const selected = formData.roleIds.includes(role.id)
+                  const included = isAdminPicked && isIncludedWithAdmin(role.name)
+                  const selected = included || formData.roleIds.includes(role.id)
                   return (
                     <label
                       key={role.id}
                       htmlFor={inputId}
-                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/40 ${
+                      className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                        included
+                          ? 'cursor-not-allowed opacity-70'
+                          : 'cursor-pointer hover:bg-accent/40'
+                      } ${
                         selected
                           ? 'border-primary bg-primary/5'
                           : 'border-border'
@@ -251,11 +261,17 @@ export function UserSheet({
                         id={inputId}
                         checked={selected}
                         onCheckedChange={() => toggleRole(role.id)}
+                        disabled={included}
                         className="mt-0.5"
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium text-foreground">
                           {role.name}
+                          {included && (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              Included with Administrator
+                            </span>
+                          )}
                         </span>
                         {role.description && (
                           <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">

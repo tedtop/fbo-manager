@@ -8,6 +8,7 @@ import {
 import { type UserFormData, UserSheet } from '@/components/users/user-sheet'
 import { useModuleAccess } from '@/hooks/use-permissions'
 import { useRoles } from '@/hooks/use-roles'
+import { displayRoles } from '@/lib/role-rules'
 import { useUsers } from '@/hooks/use-users'
 import {
   accountRemovalBlocked,
@@ -428,9 +429,9 @@ export default function UsersPage() {
                       {user.email}
                     </TableCell>
                     <TableCell>
-                      {user.roles.length > 1 ? (
+                      {displayRoles(user.roles).length > 1 ? (
                         <div className="flex flex-wrap gap-1">
-                          {user.roles.map((role) => (
+                          {displayRoles(user.roles).map((role) => (
                             <Badge key={role.id} variant="secondary">
                               {role.name}
                             </Badge>
@@ -439,7 +440,9 @@ export default function UsersPage() {
                       ) : (
                         <Select
                           value={
-                            user.roles[0] ? String(user.roles[0].id) : 'none'
+                            displayRoles(user.roles)[0]
+                              ? String(displayRoles(user.roles)[0].id)
+                              : 'none'
                           }
                           onValueChange={(v) => handleSetRole(user, v)}
                         >

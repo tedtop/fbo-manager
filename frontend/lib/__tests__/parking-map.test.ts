@@ -1,14 +1,14 @@
 import {
-  ICON_SCALE,
+  AREA_FILL_COLORS,
+  AREA_FILL_OPACITY,
+  AREA_KINDS,
+  KIND_META,
   areaFeatureCollection,
   countAircraftByArea,
-  feetPerPixel,
   headingForScreenDirection,
-  iconPixelSize,
   moveAlongHeading,
   normalizeHeading,
   normalizeTailNumber,
-  resolveIconDefinition,
   stepPose,
   tailNumberError,
   toParkedPlane,
@@ -68,32 +68,6 @@ describe('headings', () => {
     expect(headingForScreenDirection(270, 40)).toBe(310)
     expect(headingForScreenDirection(0, 0)).toBe(0)
     expect(headingForScreenDirection(270, 180)).toBe(90)
-  })
-})
-
-describe('icon sizing', () => {
-  it('halves the resolution at each zoom level', () => {
-    const z17 = feetPerPixel(46.9, 17)
-    expect(feetPerPixel(46.9, 18)).toBeCloseTo(z17 / 2, 6)
-  })
-
-  it('matches the MapLibre ground resolution at the equator, zoom 0', () => {
-    expect(feetPerPixel(0, 0)).toBeCloseTo(78_271.517 * 3.28084, 3)
-  })
-
-  it('sizes the icon by wingspan x length in feet', () => {
-    const def = resolveIconDefinition('light_single')
-    const { width, height } = iconPixelSize('light_single', 46.9, 18)
-    const expectedScale = ICON_SCALE / feetPerPixel(46.9, 18)
-    expect(width).toBeCloseTo(def.wingspan * expectedScale, 6)
-    expect(height).toBeCloseTo(def.length * expectedScale, 6)
-  })
-
-  it('accepts type ids and ICAO codes, falling back to a default', () => {
-    expect(resolveIconDefinition('regional_jet').id).toBe('regional_jet')
-    expect(resolveIconDefinition('C172').id).toBe('light_single')
-    expect(resolveIconDefinition('B738').id).toBe('narrow_body')
-    expect(resolveIconDefinition('').id).toBe('light_single')
   })
 })
 
@@ -259,5 +233,36 @@ describe('areaFeatureCollection', () => {
     )
     expect(fc.features[0].properties.kind).toBe('hangar')
     expect(fc.features[0].properties.color).toMatch(/^#[0-9a-f]{6}$/)
+  })
+
+  it('carries a solid fill colour per kind, distinct from the others and the edit blue', () => {
+    const fills = AREA_KINDS.map((kind) => {
+      const fc = areaFeatureCollection(
+        [area(1, 'X', square(0, 0, 1), kind)],
+        null
+      )
+      expect(fc.features[0].properties.fillColor).toBe(AREA_FILL_COLORS[kind])
+      return AREA_FILL_COLORS[kind]
+    })
+    expect(new Set(fills).size).toBe(AREA_KINDS.length)
+    expect(fills).not.toContain('#38bdf8')
+    for (const kind of AREA_KINDS) {
+      expect(AREA_FILL_COLORS[kind]).not.toBe(KIND_META[kind].color)
+    }
+  })
+
+  it('draws larger areas first so nested ones stay on top of opaque fills', () => {
+    const small = area(1, 'S', square(0.2, 0.2, 0.1))
+    const big = area(2, 'B', square(0, 0, 1))
+    const fc = areaFeatureCollection([small, big], null)
+    expect(fc.features.map((f) => f.properties.code)).toEqual(['B', 'S'])
+  })
+})
+
+describe('AREA_FILL_OPACITY', () => {
+  it('is solid enough to hide imagery aircraft, except for the selected area', () => {
+    expect(AREA_FILL_OPACITY.solid).toBeGreaterThanOrEqual(0.95)
+    expect(AREA_FILL_OPACITY.selected).toBeGreaterThanOrEqual(0.25)
+    expect(AREA_FILL_OPACITY.selected).toBeLessThanOrEqual(0.4)
   })
 })
