@@ -59,13 +59,14 @@ export const DRAW_STYLES = [
       'circle-stroke-width': 2.5
     }
   },
-  // Midpoints: drag one to add a corner
+  // Midpoints: drag one to add a corner (on a rectangle they are side handles instead, a
+  // little larger, and drag just that side)
   {
     id: 'gl-draw-midpoint',
     type: 'circle',
     filter: ['==', 'meta', 'midpoint'],
     paint: {
-      'circle-radius': 4,
+      'circle-radius': ['case', ['==', ['get', 'rect'], 'true'], 5.5, 4],
       'circle-color': DRAW_EDIT_COLOR,
       'circle-stroke-color': DRAW_HALO_COLOR,
       'circle-stroke-width': 2

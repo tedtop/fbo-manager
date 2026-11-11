@@ -90,10 +90,14 @@ export default function ParkingManagementPage() {
               "New area" and name it. 2) Select it in the list (or click it on
               the map). 3) Press "Draw boundary", click each corner on the map
               and double-click to finish the shape (Esc cancels). 4) An area
-              with a boundary is editable as soon as you select it: drag a
-              corner, drag a midpoint to add one, or drag the shape to move it;
-              changes save automatically. "Snap to grid" squares the shape up to
-              the map as you see it. Click empty map or press Esc to deselect.
+              with a boundary is editable as soon as you select it: a
+              rectangle has corner and side handles that keep it a rectangle
+              ("Edit freely" switches to plain corners), any other shape lets
+              you drag a corner or drag a midpoint to add one, and dragging the
+              shape moves it; changes save automatically. "Make rectangle"
+              squares a shape up in its own direction, "Snap to grid" aligns it
+              with the map as you see it. Click empty map or press Esc to
+              deselect.
             </>
           ) : (
             <>

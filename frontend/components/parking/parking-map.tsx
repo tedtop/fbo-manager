@@ -428,12 +428,15 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
       selectedId={selectedAreaId}
       loading={parking.areasLoading}
       drawMode={drawing.mode}
+      shape={drawing.shape}
       onSelect={selectArea}
       onNew={() => openAreaSheet(null)}
       onEdit={(area) => openAreaSheet(area)}
       onArchive={setArchiveTarget}
       onDraw={startDrawing}
       onSnapToGrid={snapSelectedToGrid}
+      onMakeRectangle={drawing.makeRectangle}
+      onFreeEditing={drawing.setFreeEditing}
       onCancelDrawing={drawing.cancelDraw}
       onClearBoundary={() => selectedArea && setClearTarget(selectedArea)}
     />

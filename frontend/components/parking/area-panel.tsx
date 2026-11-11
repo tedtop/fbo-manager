@@ -6,7 +6,13 @@ import { KIND_META, type ParkingAreaKind } from '@/lib/parking-map'
 import { cn } from '@/lib/utils'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
 import { Archive, Check, Pencil, Plus } from 'lucide-react'
-import { DRAW_FINISH_HINT, type DrawMode, EDIT_HINT } from './use-area-drawing'
+import {
+  DRAW_FINISH_HINT,
+  type DrawMode,
+  EDIT_HINT,
+  RECT_EDIT_HINT,
+  type ShapeState
+} from './use-area-drawing'
 
 interface AreaPanelProps {
   areas: readonly ParkingAreaRow[]
@@ -15,12 +21,17 @@ interface AreaPanelProps {
   selectedId: number | null
   loading: boolean
   drawMode: DrawMode
+  /** Rectangle or free editing of the open shape (while `drawMode` is editing). */
+  shape: ShapeState
   onSelect: (area: ParkingAreaRow) => void
   onNew: () => void
   onEdit: (area: ParkingAreaRow) => void
   onArchive: (area: ParkingAreaRow) => void
   onDraw: () => void
   onSnapToGrid: () => void
+  onMakeRectangle: () => void
+  /** `true` drops a rectangle to plain polygon editing, `false` goes back to its handles. */
+  onFreeEditing: (free: boolean) => void
   onCancelDrawing: () => void
   onClearBoundary: () => void
 }
@@ -45,12 +56,15 @@ export function AreaPanel({
   selectedId,
   loading,
   drawMode,
+  shape,
   onSelect,
   onNew,
   onEdit,
   onArchive,
   onDraw,
   onSnapToGrid,
+  onMakeRectangle,
+  onFreeEditing,
   onCancelDrawing,
   onClearBoundary
 }: AreaPanelProps) {
@@ -170,6 +184,19 @@ export function AreaPanel({
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={onMakeRectangle}
+                    disabled={!hasBoundary}
+                    title={
+                      hasBoundary
+                        ? 'Square the shape up into the smallest rectangle around it, keeping its direction'
+                        : 'Draw a boundary first'
+                    }
+                  >
+                    Make rectangle
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={onSnapToGrid}
                     disabled={!hasBoundary}
                     title={
@@ -190,8 +217,36 @@ export function AreaPanel({
                     </Button>
                   )}
                 </div>
+                {hasBoundary && (
+                  <p className="text-xs text-muted-foreground">
+                    Make rectangle keeps the shape's own direction; Snap to grid
+                    aligns it with the map as you see it.
+                  </p>
+                )}
                 {drawMode === 'editing' && (
-                  <p className="text-xs text-muted-foreground">{EDIT_HINT}</p>
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {shape.free ? EDIT_HINT : RECT_EDIT_HINT}
+                    </p>
+                    {!shape.free && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onFreeEditing(true)}
+                      >
+                        Edit freely
+                      </Button>
+                    )}
+                    {shape.free && shape.rectangular && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onFreeEditing(false)}
+                      >
+                        Keep rectangular
+                      </Button>
+                    )}
+                  </>
                 )}
               </>
             )}
