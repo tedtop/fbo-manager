@@ -167,7 +167,7 @@ Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is prima
 | B45d | FBO-120 | B46 | FBO-114 | B47 | FBO-115 | B48 | FBO-116 |
 | B49 | FBO-121 | B50 | FBO-122 | B51 | FBO-123 | B52 | FBO-124 |
 | B53 | FBO-125 | B54 | FBO-126 | B54a | FBO-132 | B55 | FBO-127 |
-| B56 | FBO-128 | review | FBO-129 | B58 | FBO-130 | B59 | FBO-131 Written 2026-11-11: `frontend/content/docs/parking/usage-guide.md`, registered in `lib/docs/registry.ts`; Help button wiring still B27c. |
+| B56 | FBO-128 | B57 | FBO-129 | B58 | FBO-130 | B59 | FBO-131 |
 | B59a | FBO-133 | B59b | FBO-134 | B60 | FBO-135 | B61 | FBO-136 |
 | B62 | FBO-137 | B63 | FBO-138 | B64 | FBO-139 | B65 | FBO-140 |
 | B66 | FBO-141 | B67 | FBO-142 | B68 | FBO-143 | B69 | FBO-144 |
