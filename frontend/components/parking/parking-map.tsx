@@ -304,7 +304,8 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
           [west, south],
           [east, north]
         ],
-        { padding: 60, duration: 800 }
+        // fitBounds resets the bearing to north otherwise, losing the rotation the user set.
+        { padding: 60, duration: 800, bearing: map.getBearing() }
       )
     }
   }
