@@ -7,7 +7,7 @@ import {
   type AircraftTypeDefinition,
   DEFAULT_AIRCRAFT_TYPE
 } from '@/lib/aircraft-types'
-import { findAreaAtPoint, ringOf } from '@/lib/parking-geometry'
+import { findAreaAtPoint, polygonBounds, ringOf } from '@/lib/parking-geometry'
 import type { AircraftRow } from '@/repositories/aircraft.repo'
 import type { ParkingAreaRow } from '@/repositories/parking-area.repo'
 
@@ -38,6 +38,19 @@ export const KIND_META: Record<
   tie_down: { label: 'Tie-down', color: TIE_DOWN_COLOR },
   other: { label: 'Other', color: OTHER_COLOR }
 }
+
+// Solid fills of the area layer. They are close to the kind colours above but darker, so the
+// white labels and white plane icons read on them. Opaque on purpose: they hide the aircraft
+// that appear in the satellite imagery, so only our own plane markers show inside an area.
+export const AREA_FILL_COLORS: Record<ParkingAreaKind, string> = {
+  ramp: '#4c3a8a',
+  hangar: '#8a4a14',
+  tie_down: '#3f6212',
+  other: '#9d2a62'
+}
+
+/** Fill opacity of an area: solid normally, see-through for the selected one being aligned to the imagery. */
+export const AREA_FILL_OPACITY = { solid: 0.97, selected: 0.3 }
 
 export const AREA_KINDS = Object.keys(KIND_META) as ParkingAreaKind[]
 
@@ -249,26 +262,36 @@ export type AreaFeatureCollection = {
       code: string
       kind: ParkingAreaKind
       color: string
+      fillColor: string
       selected: boolean
     }
   }>
 }
 
+function boundsSize(ring: number[][]): number {
+  const [minX, minY, maxX, maxY] = polygonBounds(ring)
+  return (maxX - minX) * (maxY - minY)
+}
+
 /**
  * GeoJSON for the area layers. Areas without a drawable polygon are skipped, as is
- * `hiddenId` (the area whose shape Draw is currently editing).
+ * `hiddenId` (the area whose shape Draw is currently editing). Larger areas come first, so
+ * with opaque fills an area nested inside another is drawn on top of it and stays visible.
  */
 export function areaFeatureCollection(
   areas: readonly ParkingAreaRow[],
   selectedId: number | null,
   hiddenId: number | null = null
 ): AreaFeatureCollection {
-  const features: AreaFeatureCollection['features'] = []
+  const sized: Array<{
+    feature: AreaFeatureCollection['features'][number]
+    size: number
+  }> = []
   for (const area of areas) {
     if (area.id === hiddenId) continue
     const ring = ringOf(area.polygon)
     if (!ring || ring.length < 4) continue
-    features.push({
+    const feature: AreaFeatureCollection['features'][number] = {
       type: 'Feature',
       geometry: { type: 'Polygon', coordinates: [ring] },
       properties: {
@@ -276,9 +299,12 @@ export function areaFeatureCollection(
         code: area.code,
         kind: area.kind,
         color: KIND_META[area.kind].color,
+        fillColor: AREA_FILL_COLORS[area.kind],
         selected: area.id === selectedId
       }
-    })
+    }
+    sized.push({ feature, size: boundsSize(ring) })
   }
-  return { type: 'FeatureCollection', features }
+  sized.sort((a, b) => b.size - a.size)
+  return { type: 'FeatureCollection', features: sized.map((s) => s.feature) }
 }

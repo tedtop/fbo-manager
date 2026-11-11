@@ -1,5 +1,9 @@
 import {
+  AREA_FILL_COLORS,
+  AREA_FILL_OPACITY,
+  AREA_KINDS,
   ICON_SCALE,
+  KIND_META,
   areaFeatureCollection,
   countAircraftByArea,
   feetPerPixel,
@@ -259,5 +263,36 @@ describe('areaFeatureCollection', () => {
     )
     expect(fc.features[0].properties.kind).toBe('hangar')
     expect(fc.features[0].properties.color).toMatch(/^#[0-9a-f]{6}$/)
+  })
+
+  it('carries a solid fill colour per kind, distinct from the others and the edit blue', () => {
+    const fills = AREA_KINDS.map((kind) => {
+      const fc = areaFeatureCollection(
+        [area(1, 'X', square(0, 0, 1), kind)],
+        null
+      )
+      expect(fc.features[0].properties.fillColor).toBe(AREA_FILL_COLORS[kind])
+      return AREA_FILL_COLORS[kind]
+    })
+    expect(new Set(fills).size).toBe(AREA_KINDS.length)
+    expect(fills).not.toContain('#38bdf8')
+    for (const kind of AREA_KINDS) {
+      expect(AREA_FILL_COLORS[kind]).not.toBe(KIND_META[kind].color)
+    }
+  })
+
+  it('draws larger areas first so nested ones stay on top of opaque fills', () => {
+    const small = area(1, 'S', square(0.2, 0.2, 0.1))
+    const big = area(2, 'B', square(0, 0, 1))
+    const fc = areaFeatureCollection([small, big], null)
+    expect(fc.features.map((f) => f.properties.code)).toEqual(['B', 'S'])
+  })
+})
+
+describe('AREA_FILL_OPACITY', () => {
+  it('is solid enough to hide imagery aircraft, except for the selected area', () => {
+    expect(AREA_FILL_OPACITY.solid).toBeGreaterThanOrEqual(0.95)
+    expect(AREA_FILL_OPACITY.selected).toBeGreaterThanOrEqual(0.25)
+    expect(AREA_FILL_OPACITY.selected).toBeLessThanOrEqual(0.4)
   })
 })

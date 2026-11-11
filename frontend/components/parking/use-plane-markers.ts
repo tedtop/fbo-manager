@@ -116,7 +116,7 @@ export function usePlaneMarkers({
       if (entry.selected !== selected) {
         entry.selected = selected
         entry.img.src = aircraftIconUrl(selected)
-        entry.el.style.zIndex = selected ? '10' : ''
+        entry.el.style.zIndex = selected ? '1' : ''
         entry.el.style.filter = selected
           ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.9))'
           : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))'
@@ -312,7 +312,7 @@ export function usePlaneMarkers({
         top: '50%',
         color: '#ffffff',
         font: '700 11px/1 ui-sans-serif, system-ui, sans-serif',
-        textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 2px #000',
+        textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 2px #000, 0 0 6px #000',
         whiteSpace: 'nowrap',
         pointerEvents: 'none'
       })
