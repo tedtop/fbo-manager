@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { WeekView } from '@/components/line-schedule/week-view'
+import { HourlyView } from '@/components/line-schedule/hourly-view'
 import { RosterView } from '@/components/line-schedule/roster-view'
 import { MonthView } from '@/components/line-schedule/month-view'
 import { ShiftDialog } from '@/components/line-schedule/shift-dialog'
@@ -46,7 +47,7 @@ import {
   type SchedulePermissionContext,
 } from '@/services/schedule.service'
 
-type ViewMode = 'week' | 'roster' | 'month'
+type ViewMode = 'hourly' | 'week' | 'roster' | 'month'
 
 const CATEGORY_LEGEND = [
   { label: 'Morning', icon: Sunrise, className: 'text-amber-600 dark:text-amber-400' },
@@ -197,6 +198,9 @@ export default function LineSchedulePage() {
 
           <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
             <TabsList className="h-8">
+              <TabsTrigger value="hourly" className="text-xs">
+                Hourly
+              </TabsTrigger>
               <TabsTrigger value="week" className="text-xs">
                 Week
               </TabsTrigger>
@@ -229,6 +233,14 @@ export default function LineSchedulePage() {
             members={members}
             permission={permission}
             onAddShift={(date, userId) => openAdd(date, userId)}
+            onEditShift={openEdit}
+          />
+        ) : view === 'hourly' ? (
+          <HourlyView
+            days={weekDays}
+            shifts={shifts}
+            members={members}
+            permission={permission}
             onEditShift={openEdit}
           />
         ) : view === 'roster' ? (
@@ -264,7 +276,7 @@ export default function LineSchedulePage() {
               </span>
             ))}
           </span>
-          {view === 'week' && <CoverageLegend />}
+          {(view === 'week' || view === 'hourly') && <CoverageLegend />}
           {selfServiceOnly && (
             <span className="flex items-center gap-1">
               <Pencil className="h-3 w-3" />
