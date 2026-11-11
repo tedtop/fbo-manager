@@ -174,6 +174,26 @@ export type Database = {
           }
         ]
       }
+      fuel_tank_level_override: {
+        Row: {
+          tank_id: string
+          lowest_level_inches: string
+          note: string | null
+          set_by: string | null
+          set_at: string
+          updated_at: string
+        }
+        Insert: {
+          tank_id: string
+          lowest_level_inches: number | string
+          note?: string | null
+          set_by?: string | null
+          set_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Database['public']['Tables']['fuel_tank_level_override']['Insert']>
+        Relationships: []
+      }
       tank_level_min: {
         Row: {
           tank_id: string
