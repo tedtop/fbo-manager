@@ -126,11 +126,31 @@ Fixed and now asserted as correct behavior: F1 (QT / classification), F2 and F5 
 order notes, no en-route status), F4 (date range filter, bounded fetch), F6 and F7 (error toasts, delete confirmation, no
 console noise), and soft-delete semantics. F10 (realtime, B16), F11, F12, F13 and F15 remain open.
 
-## Not yet covered
+## Not yet covered (2026-11-11)
 
-Every other create/edit form: aircraft, parking locations, tanks and tank readings, trainings/certifications, fuelers,
-truck sheets manual entry, transactions/fuel-dispatch, the training-compliance module, invoicing draft-save and
-settle/void flows. The expensive part (seeded auth, session reuse, DB-proof tasks) is done: covering another form is one
-spec following `equipment/equipment.cy.ts`, plus its tasks in `tasks/<area>.tasks.ts`. Prioritize by risk: forms with
-complex multi-step writes (like invoicing) are worth more than single-table CRUD, which the vitest repository suite
-already proves at the query level.
+Covered today: the flight board and its forms, equipment, the digital fuel ticket (happy path), settings (tail prefix,
+home airport), API auth, user access (sign-up to promotion), schedule import, and three truck-sheet specs (DPI, PDF,
+scans). Vitest (`tests/`, `**/__tests__/`) covers queries and pure rules for the rest, but no browser test proves those
+screens persist what they show. Gaps, in suggested order:
+
+**Write now (independent of the fuel flow)**
+- `line-schedule`: add, edit and delete a shift; coverage strip; the Hourly view; schedule scan import.
+- `users` beyond promotion: create, edit role, deactivate; access checks per module (`cy.login('user')` should be bounced
+  from admin-only pages).
+- `parking`: place an aircraft in a parking area; clear it (after B55 settles the plane list).
+- `training`: trainings and certifications create/edit (certifications live on users).
+- `settings` beyond the two tested keys: equipment types, name display, airport display.
+- `docs` module: open the panel from the flight form, scroll to an anchor, close it (plan in `docs/PLAN.md` section 5).
+- Behaviour tests for the `qt`, `aircraft` and `ocr` API routes (today they only get the 401/403 auth check).
+
+**Wait for the fuel flow (how fuel is requested, filled and billed is still being decided; tests written now would be
+rewritten)**
+- `fuel-dispatch` / `dispatch`: request, assign, fill, complete.
+- `fuel-farm`: tank readings entry, gravity QC, trend widget.
+- `invoicing` beyond the one happy path: draft-save, settle, void, billing of services and ramp fees (B26).
+- `truck-sheets` manual entry and the reconciliation with invoices.
+- Fuelers (the table is a relic; fuelers are Line Department users identified by initials).
+
+The expensive part (seeded auth, session reuse, DB-proof tasks) is done: covering another screen is one spec following
+`equipment/equipment.cy.ts`, plus its tasks in `tasks/<area>.tasks.ts`. Prioritize by risk: forms with multi-step writes
+are worth more than single-table CRUD, which the vitest repository suite already proves at the query level.
