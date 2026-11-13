@@ -7,6 +7,8 @@ import { TEST_SUPABASE_URL, assertSafeTestTarget } from './client'
 // (migration 20261104000200). flight_service is wiped (it cascades from flight anyway).
 // Keep this in sync with frontend/supabase/migrations/*.sql.
 const RESET_ORDER: Array<{ table: keyof Database['public']['Tables']; pk: string }> = [
+  { table: 'training_completion', pk: 'id' },
+  { table: 'training_course', pk: 'id' },
   { table: 'app_error_log', pk: 'id' },
   { table: 'scanned_documents', pk: 'id' },
   { table: 'invoice_fuel_readings', pk: 'id' },
