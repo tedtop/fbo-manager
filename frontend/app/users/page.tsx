@@ -150,7 +150,7 @@ export default function UsersPage() {
       if (search) {
         const q = search.toLowerCase()
         const haystack =
-          `${u.first_name} ${u.last_name} ${u.email} ${u.phone_number ?? ''} ${u.employee_id ?? ''} ${u.badge_id ?? ''}`.toLowerCase()
+          `${u.first_name} ${u.last_name} ${u.email} ${u.phone_number ?? ''} ${u.employee_id ?? ''} ${u.badge_id ?? ''} ${u.initials ?? ''}`.toLowerCase()
         if (!haystack.includes(q)) return false
       }
       return true
@@ -172,6 +172,7 @@ export default function UsersPage() {
         phoneNumber: data.phoneNumber,
         employeeId: data.employeeId,
         badgeId: data.badgeId,
+        initials: data.initials,
         hireDate: data.hireDate,
         roleIds: data.roleIds
       })
@@ -184,6 +185,7 @@ export default function UsersPage() {
         phoneNumber: data.phoneNumber,
         employeeId: data.employeeId,
         badgeId: data.badgeId,
+        initials: data.initials,
         hireDate: data.hireDate,
         roleIds: data.roleIds
       })

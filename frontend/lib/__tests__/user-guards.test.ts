@@ -30,6 +30,7 @@ function user(
     phone_number: '',
     employee_id: null,
     badge_id: null,
+    initials: null,
     hire_date: null,
     status,
     created_at: '',
