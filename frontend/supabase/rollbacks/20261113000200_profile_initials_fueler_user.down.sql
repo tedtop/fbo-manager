@@ -1,6 +1,6 @@
--- Rollback for 20261113000100_profile_initials_fueler_user.sql.
+-- Rollback for 20261113000200_profile_initials_fueler_user.sql.
 -- Also remove the version from the migration history if it was recorded:
---   supabase migration repair --linked --yes --status reverted 20261113000100
+--   supabase migration repair --linked --yes --status reverted 20261113000200
 CREATE OR REPLACE FUNCTION guard_profile_columns()
 RETURNS TRIGGER
 LANGUAGE plpgsql
