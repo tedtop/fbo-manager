@@ -5,9 +5,11 @@ import { equipmentTasks } from './cypress/tasks/equipment.tasks'
 import { fuelDispatchTasks } from './cypress/tasks/fuel-dispatch.tasks'
 import { fuelFarmTasks } from './cypress/tasks/fuel-farm.tasks'
 import { invoicingTasks } from './cypress/tasks/invoicing.tasks'
+import { lineScheduleTasks } from './cypress/tasks/line-schedule.tasks'
 import { parkingTasks } from './cypress/tasks/parking.tasks'
 import { scheduleImportTasks } from './cypress/tasks/schedule-import.tasks'
 import { settingsTasks } from './cypress/tasks/settings.tasks'
+import { trainingTasks } from './cypress/tasks/training.tasks'
 import { truckSheetTasks } from './cypress/tasks/truck-sheets.tasks'
 import { usersTasks } from './cypress/tasks/users.tasks'
 
@@ -48,9 +50,11 @@ export default defineConfig({
         ...fuelDispatchTasks,
         ...fuelFarmTasks,
         ...invoicingTasks,
+        ...lineScheduleTasks,
         ...parkingTasks,
         ...scheduleImportTasks,
         ...settingsTasks,
+        ...trainingTasks,
         ...truckSheetTasks,
         ...usersTasks,
 
