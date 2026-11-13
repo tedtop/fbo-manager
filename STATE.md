@@ -16,6 +16,7 @@ Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the or
 
 ## Waiting on Ted
 - **B120 live migration (2026-11-13 hourly build):** `feature/b120-fuel-order-status` (6433ef7) is built and verified (tsc clean, 48 pure tests; DB-backed repo/service tests passed on the builder's throwaway stack, not re-run by the verifier). Before merging: backup, spot-check `select progress, count(*) from fuel_transaction` and `select fuel_type, count(*)` (values outside jet_a/jet_a_plus/avgas abort the migration), then apply `supabase/migrations/20261113000100_fuel_order_status.sql` with `db query --linked -f` + `migration repair`. B121/B122/B127/B129/B130 build on it.
+- **B68 live migration (2026-11-13 hourly build):** `feature/b68-fuelers-as-users` (68bb911) is built and verified (tsc clean, 24 vitest; migration, rollback and re-apply run on the LOCAL stack, partial unique index checked). Apply `frontend/supabase/migrations/20261113000200_profile_initials_fueler_user.sql` (adds `profiles.initials` unique among active users, `truck_sheets.fueler_user_id`) with `db query --linked -f` + `migration repair`, then merge. Independent of B120 (order free). After it is live, set initials (TT, TS, KG...) on the real users in the user manager; until then scans show initials as unresolved with a picker. Not done in B68: dispatch assignment (needs B122's `fuel_order_fueler`), the resolved name on truck-sheet detail/list pages, dropping `fueler`.
 - **Look on prod (phone):** mobile toolbar + login (B19b); Fuel Farm (B84); `/parking` hard refresh, seeded plane positions, N509CQ shows airborne (B54/B55); tail lookup spinner + hover card (B60); QT airline cards + wing loading (B93); a real truck-sheet scan (B69).
 - **Answers:** TKS price per gallon and ramp fees per class (B51/B52); real DPI replace limit (15 psi placeholder) and whether 5282 "5/32" = DPI 5 / nozzle 32 (B71); 8338 dead-battery open item; N33PX type = C560; B27 docs design answers + react-markdown approval (B27a); Google emails for Chris Hart, Keith Leathers, Kelby Grussling, Dakota Mamuzich, Ted (B76).
 - **Go-aheads:** Minuteman wing-loading merge/deploy (B92); B26e column drop after the form fix; flight in the live realtime publication (B16); RLS + admin role live (B29/B30/B38); Google OAuth client for B59a; Google Map Tiles key (B58).
@@ -26,5 +27,5 @@ Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the or
 - Test runs use private dist dirs (`NEXT_DIST_DIR=.next-e2e/<name>`) and ports, never :4000.
 
 <!-- usage:start -->
-Usage (tokens, excl. cache reads): this session 97k | last 5h 26.81M | budget not set
+Usage (tokens, excl. cache reads): this session 69k | last 5h 27.06M | budget not set
 <!-- usage:end -->
