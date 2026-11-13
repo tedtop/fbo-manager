@@ -73,7 +73,7 @@ export function InvoicePdf({ invoice }: InvoicePdfProps) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <Field label="Name" value={invoice.customer_name} />
+          <Field label="Name" value={invoice.customer_name ?? invoice.tail_number ?? '—'} />
           <Field label="Address" value={invoice.station ?? '—'} />
           <Field label="Aircraft No." value={invoice.tail_number ?? '—'} mono />
           <Field

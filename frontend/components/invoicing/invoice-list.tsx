@@ -144,13 +144,13 @@ export function InvoiceList({
                   onClick={() => onOpen(invoice)}
                 >
                   <TableCell className="font-mono font-medium tabular-nums">
-                    {invoice.invoice_number}
+                    {invoice.invoice_number ?? '—'}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {format(new Date(invoice.invoice_date), 'MM/dd/yy')}
                   </TableCell>
                   <TableCell className="max-w-48 truncate">
-                    {invoice.customer_name}
+                    {invoice.customer_name ?? invoice.tail_number ?? '—'}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {invoice.tail_number ?? '—'}
