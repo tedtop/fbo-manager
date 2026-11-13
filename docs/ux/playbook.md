@@ -1,0 +1,47 @@
+# UX reviewer playbook (the reviewer's own method; edited run over run)
+
+## How to walk a task
+
+1. Read the task in `benchmark.md`, start at its start page, and do it as the persona would: the
+   persona knows the ramp, not the code. Count every click/tap/keystroke-field as a step, every
+   detour as a wrong turn, every error message or wrong result as an error.
+2. Walk it at 1280px first, then at 390px (`resize_window`), then look once in dark theme.
+3. Saves only on the local stack (port 4520, local Supabase). Seed what the task needs (planes,
+   areas) with the Cypress task helpers from a scratchpad script, and remove it afterwards.
+4. Verify the outcome in the DB (for example `parkingTasks.getParkedPose`), not only on screen.
+5. Write the steps down while walking. Score = steps + 3*wrong turns + 5*errors + 10*not done.
+
+## Heuristics checked on every task
+
+- Visibility of status: is the selection, saving or loading visible? Is the map blank while it loads?
+- Match to the ramp's words: tail, tow, hangar pull, DPI, QT; ICAO type codes as dispatch writes them.
+- Error prevention: destructive buttons apart from safe ones, confirm or undo.
+- Recognition over recall: search where people look; no retyping what was already typed.
+- Phone, gloves, sunlight: targets at least 44px (56px for gloves), no keyboard-only paths, drawers
+  that keep the thing being edited visible.
+- Speed for repeat work: autofocus, Enter submits, deep links (`?tail=`).
+- Parking "video game" movement (Ted 2026-11-13): instant response, smooth hold-repeat, sensible
+  step, visible selection, keys not stolen by page scroll, easy undo.
+
+## Ted's answers
+
+(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13)
+
+## Lessons learned
+
+- 2026-11-13: the built-in browser pane may be hidden; then `requestAnimationFrame` runs at about
+  2 fps and any timing-based behaviour (hold-to-move speed, tap distance) cannot be measured. Check
+  `tabs_context` first; if hidden, judge speed from the constants in code and test only outcomes
+  (moved / undone / saved).
+- 2026-11-13: the browser tool's `key` press sends keydown and keyup in the same frame, so a
+  single "tap" does not move a plane at all; hold with dispatched KeyboardEvents (keydown, wait,
+  keyup) from `javascript_tool` instead.
+- 2026-11-13: the local map takes 8-15 s to show on first dev compile; wait before judging.
+- 2026-11-13: `next dev` adds its dist dir to `frontend/tsconfig.json` include; revert those
+  lines in the main checkout after stopping the server.
+
+## Experiment log (one method change per run)
+
+| Run | Change tried | Kept? | Why |
+|-----|--------------|-------|-----|
+| 2026-11-13 | Baseline method + "read the module's input handlers and constants before walking, then probe the edges they imply" (found the E75L size gap and the tap/hold behaviour fast) | kept (provisional) | First run, no prior score; judge on Ted's accept rate for FBO-200..203 |

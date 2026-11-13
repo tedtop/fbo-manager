@@ -1,0 +1,2 @@
+date	playbook_change	tasks_run	friction_score	suggestions_filed	ted_accepted_rejected_since_last	kept_or_reverted	notes
+2026-11-13	baseline + read input handlers/constants before walking	P3=14 P4=5 P5=4 P6=6 P7=6 P8(phone P5)=5	40	FBO-200 FBO-201 FBO-202 FBO-203; question FBO-204	n/a (first run)	kept (provisional)	first run; P1/P2 (drawing) not walked; P4 timing not measurable (hidden pane, 2 fps); P6 walked locally with 3 planes, not on prod scale
