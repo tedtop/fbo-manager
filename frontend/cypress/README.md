@@ -16,7 +16,7 @@ as the actual proof; the UI looking like it worked is never treated as sufficien
 
 | Path | What |
 |---|---|
-| `e2e/<area>/*.cy.ts` | Specs: `flight-operations`, `equipment`, `invoicing`, `settings`, `api`, `users`, `schedule-import`, `fuel-farm`, `parking` |
+| `e2e/<area>/*.cy.ts` | Specs: `flight-operations`, `equipment`, `invoicing`, `settings`, `api`, `users`, `schedule-import`, `fuel-farm`, `fuel-dispatch`, `parking`, `line-schedule`, `training`, `docs` |
 | `support/commands.ts` | `cy.login(role)`, `cy.pickAirport`, `cy.typeAirport` |
 | `tasks/` | Node-side helpers: `env.ts` (local stack constants and the safety guard), `db.ts` (service-role client), `seed.ts` (dev accounts), `*.tasks.ts` (per-area `cy.task` implementations) |
 | `../cypress.config.ts` | Registers all tasks, base URL, spec pattern |
@@ -96,6 +96,16 @@ Write waits as retry-able assertions or `cy.intercept` aliases, not fixed `cy.wa
 | Fuel Farm: lowest measured level (B99) | `fuel-farm/tank-lowest-level.cy.ts` | Edit Tank shows the lowest level ever measured with its date and gallons, read only, no override field. Own tank `CYB99` |
 | Parking: square up and resize areas (B100) | `parking/shape-editing.cy.ts` | Config-mode map at 40 degrees, real pointer events on the canvas (map via the `window.__parkingMap` seam, set only under Cypress): Make rectangle in one click keeps the shape's own direction, a corner handle scales from the opposite corner, a side handle moves just that side, Edit freely adds a corner from a midpoint, Snap to grid still aligns to the map. Each ends in a DB read proving the saved polygon is an exact rectangle. Own areas `CYB100*` |
 | Settings: home airport picker | `settings/airport-picker.cy.ts` | GPI lists Glacier Park before Guapi, picking saves KGPI and survives a reload; an unknown strip is used as typed |
+| Airline fuel sheet and meter gaps (B93, B110) | `fuel-dispatch/airline-fuel-sheet.cy.ts` | QT stubbed with `cy.intercept`: read-only airline cards with the wing-loading summary, MAX wing figures (page clock pinned to summer), Save disabled and "Stop is below start", save to the truck with the amber meter-start mismatch, DB read, then the equipment "Meter gaps" section (Add note, Save and resolve); departed flights hidden until Show hidden |
+| Fuel Dispatch page (B110) | `fuel-dispatch/dispatch-page.cy.ts` | QT, METAR and open-meteo stubbed; page loads, shows dispatches and weather |
+| Fuel Farm: tank readings (B110) | `fuel-farm/tank-readings.cy.ts` | Own tank `CYFF`: entry converts inches to gallons with the same table as the app and the DB row proves it |
+| Aircraft FAA lookup on the flight form (B110) | `flight-operations/aircraft-faa-lookup.cy.ts` | Stubbed `source: 'faa'` result fills the type and saves; owner not persisted; "No registry match" case |
+| Tail number hover card (B110) | `flight-operations/aircraft-hover.cy.ts` | No lookup until a tail is focused/hovered, then type and owner; no-match and failure messages; Flightradar24 link |
+| Line schedule (B110) | `line-schedule/line-schedule.cy.ts` | Add, edit, delete a shift, coverage, hourly view; seeds the `line` department and a legacy `users` row for the admin |
+| Training (B110) | `training/training.cy.ts` | Create/edit/retire a training, complete it, matrix status; the duplicate-name message is pinned as KNOWN BUG (B136) |
+| Docs pages (B110) | `docs/docs-pages.cy.ts` | Docs index and pages render and cross-link |
+| Truck daily log (B110) | `equipment/equipment-daily-log.cy.ts` | DPI trend, filter change, notes, out-of-service reason |
+| Settings: time zone, names, equipment types (B110) | `settings/other-settings.cy.ts` | Each saved key is read back from `app_setting`; a new equipment type shows in the Add Equipment dialog; Fuel Truck cannot be removed |
 | API auth | `api/api-auth.cy.ts` | Anonymous callers get 401 on every protected route; a signed-in admin passes the gate (400 for a bad tail, OCR routes not 401/403) |
 | New sign-up access | `users/users-access.cy.ts` | Role-less user (admin API, Google cannot run here) is held on `/pending`, `/users` bounces; admin promotes them in Users and the DB shows the assignment with `assigned_by`; the login page offers Continue with Google. See `docs/google-signin.md` |
 | Schedule sheet import (B45b) | `schedule-import/schedule-import.cy.ts` | OCR route and registry lookup stubbed with `cy.intercept` (no Anthropic or adsbdb call): six printed legs become four flights, Unpair, a 502 message, import writes flights (instants in the app's America/Denver schedule zone, QT, `front-desk`), aircraft types from the lookup, services, a re-scan adds nothing, plus a 390px pass |
@@ -116,6 +126,7 @@ Assertions that flip when the fix lands (`grep -rn "KNOWN BUG\|NOT YET" cypress/
 
 - M1 mobile layout (B39): `flight-operations/mobile.cy.ts` asserts the page is wider than 390px.
 - F9 creator attribution (B17): `repositories/__tests__/flights.repo.test.ts`; the form never sends `created_by_id`, so the DB default (user 1) is used.
+- Training duplicate name (B136): `training/training.cy.ts` expects the specific "already exists" message but the app shows the generic one.
 - Card staleness (B44, no finding id): `flight-operations/flight-edit.cy.ts`. The card seeds notes/services from props once.
 
 Known flaky (kept strict on purpose, not hidden behind retries): `settings/tail-prefix.cy.ts` "an empty prefix means no
@@ -128,30 +139,18 @@ Fixed and now asserted as correct behavior: F1 (QT / classification), F2 and F5 
 order notes, no en-route status), F4 (date range filter, bounded fetch), F6 and F7 (error toasts, delete confirmation, no
 console noise), and soft-delete semantics. F10 (realtime, B16), F11, F12, F13 and F15 remain open.
 
-## Not yet covered (2026-11-11)
+## Not yet covered (2026-11-13)
 
-Covered today: the flight board and its forms, equipment, the digital fuel ticket (happy path), settings (tail prefix,
-home airport), API auth, user access (sign-up to promotion), schedule import, and three truck-sheet specs (DPI, PDF,
-scans). Vitest (`tests/`, `**/__tests__/`) covers queries and pure rules for the rest, but no browser test proves those
-screens persist what they show. Gaps, in suggested order:
+B110 backfilled specs for line schedule, training, docs, the airline fuel sheet and meter gaps, Fuel Dispatch, tank
+readings, the FAA lookup, the hover card, the truck daily log and the remaining settings. Still open:
 
-**Write now (independent of the fuel flow)**
-- `line-schedule`: add, edit and delete a shift; coverage strip; the Hourly view; schedule scan import.
-- `users` beyond promotion: create, edit role, deactivate; access checks per module (`cy.login('user')` should be bounced
-  from admin-only pages).
-- `parking`: place an aircraft in a parking area; clear it (after B55 settles the plane list).
-- `training`: trainings and certifications create/edit (certifications live on users).
-- `settings` beyond the two tested keys: equipment types, name display, airport display.
-- `docs` module: open the panel from the flight form, scroll to an anchor, close it (plan in `docs/PLAN.md` section 5).
-- Behaviour tests for the `qt`, `aircraft` and `ocr` API routes (today they only get the 401/403 auth check).
-
-**Wait for the fuel flow (how fuel is requested, filled and billed is still being decided; tests written now would be
-rewritten)**
-- `fuel-dispatch` / `dispatch`: request, assign, fill, complete.
-- `fuel-farm`: tank readings entry, gravity QC, trend widget.
-- `invoicing` beyond the one happy path: draft-save, settle, void, billing of services and ramp fees (B26).
-- `truck-sheets` manual entry and the reconciliation with invoices.
-- Fuelers (the table is a relic; fuelers are Line Department users identified by initials).
+- `users` beyond promotion: create, edit role, deactivate; per-module access checks (`cy.login('user')` bounced from
+  admin-only pages). B107 added `users/users-table.cy.ts` on its own branch.
+- `parking`: place an aircraft in a parking area and clear it (after B55 settles the plane list).
+- Line schedule scan import, and behaviour tests for the `qt` and `ocr` API routes (today only the 401/403 auth check).
+- Airline-card summary page "dispatch history".
+- Waiting for the fuel flow (B120, B68, B123 are unmerged): request, assign, fill, billing, truck-sheet reconciliation,
+  invoicing beyond the happy path, fuelers.
 
 The expensive part (seeded auth, session reuse, DB-proof tasks) is done: covering another screen is one spec following
 `equipment/equipment.cy.ts`, plus its tasks in `tasks/<area>.tasks.ts`. Prioritize by risk: forms with multi-step writes
