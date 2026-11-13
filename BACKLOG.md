@@ -195,7 +195,7 @@ Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is prima
 | B42 | FBO-108 | B43 | FBO-52 | B44 | FBO-110 | B43b | FBO-109 |
 | B45 | FBO-53 | B45a | FBO-111 | B45b | FBO-112 | B45c | FBO-113 |
 | B45d | FBO-120 | B46 | FBO-114 | B47 | FBO-115 | B48 | FBO-116 |
-| B49 | FBO-121 | review | FBO-122 | B51 | FBO-123 Built and on master (edc0c24); status reconciled 2026-11-13. | B52 | FBO-124 |
+| B49 | FBO-121 | B50 | FBO-122 | B51 | FBO-123 | B52 | FBO-124 |
 | B53 | FBO-125 | B54 | FBO-126 | B54a | FBO-132 | B55 | FBO-127 |
 | B56 | FBO-128 | B57 | FBO-129 | B58 | FBO-130 | B59 | FBO-131 |
 | B59a | FBO-133 | B59b | FBO-134 | B60 | FBO-135 | B61 | FBO-136 |
