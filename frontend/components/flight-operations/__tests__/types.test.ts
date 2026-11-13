@@ -32,7 +32,8 @@ describe('apiFlightToComponentFlight', () => {
       services: ['fuel'],
       status: 'scheduled',
       source: 'qt',
-      createdBy: { initials: 'ADM', name: 'Admin', department: 'System' },
+      // B17: no creator data on the row = the neutral legacy fallback, never a fake admin
+      createdBy: { initials: '--', name: 'Unknown creator', department: 'No creator recorded' },
       updatedAt: '2026-03-01T00:00:00Z',
     })
   })

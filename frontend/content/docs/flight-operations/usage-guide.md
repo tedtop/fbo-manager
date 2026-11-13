@@ -28,6 +28,8 @@ Press **Add Flight** in the board toolbar. The form is a panel on the right.
 
 New flights have **QT** ticked, so you normally only enter the arrival time. If the aircraft is new, it is created together with the flight.
 
+The flight is recorded as created by **you**: the card's small badge shows your initials, and hovering it shows your full name and department. This needs your login to be linked to a user in **Users** (same email address). If it is not linked, the flight is attributed to the default system user instead, so ask an administrator to add your user. Older flights with no creator on record show `--` and "Unknown creator".
+
 ### Arrival, departure and QT {#times-hint}
 
 A short hint above the times explains how they work. A transient flight has an arrival and a departure. **QT** (quick turn) is ticked by default: the departure is the arrival plus 1 hour and follows any change to the arrival. Type your own departure and QT unticks by itself; you can also untick QT and then set a longer stay. For a **hangar pull** leave the arrival blank and enter only the departure. For a **return** clear the departure (that unticks QT) and enter only the arrival. A flight created by clicking a slot in the calendar opens as **Add New Flight** (it used to open as Edit Flight).

@@ -31,6 +31,8 @@ import { useAppSettings } from '@/hooks/use-app-settings'
 import { isBlankTail } from '@/lib/app-settings'
 import { useDisplayZone } from '@/hooks/use-display-zone'
 import { formatLocalDate } from '@/lib/local-date'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { creatorFromUser } from './creator'
 import { useToast } from '@/hooks/use-toast'
 import { describeError } from '@/lib/error-message'
 import { findIcaoType, formatIcaoType } from '@/lib/icao-aircraft-types'
@@ -130,6 +132,7 @@ export function FlightFormDialog({
     scheduledInstants.departure
   )
   const { toast } = useToast()
+  const { user: currentUser } = useCurrentUser()
   const [timeError, setTimeError] = useState<string | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
   const [tailError, setTailError] = useState<string | null>(null)
@@ -476,11 +479,7 @@ export function FlightFormDialog({
       locationId: initialData?.locationId,
       source: formData.source || 'line-department',
       duration: 45, // Will be calculated by the type conversion function
-      createdBy: initialData?.createdBy || {
-        initials: 'USR',
-        name: 'User',
-        department: 'System'
-      },
+      createdBy: initialData?.createdBy || creatorFromUser(currentUser),
       createdAt: initialData?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }

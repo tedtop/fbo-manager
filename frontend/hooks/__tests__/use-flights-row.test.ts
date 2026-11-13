@@ -24,6 +24,18 @@ describe('rowToFlight (form reload path)', () => {
     expect(rowToFlight(row).serviceQuantities).toEqual({ tks: 12 })
   })
 
+  it('B17: shows the joined creator, and the neutral fallback (not a fake admin) when there is none', () => {
+    expect(
+      rowToFlight({ ...row, created_by: { id: 5, first_name: 'Tess', last_name: 'Tower', username: 'tt', role: 'line' } })
+        .createdBy
+    ).toEqual({ initials: 'TT', name: 'Tess Tower', department: 'Line Department' })
+    expect(rowToFlight({ ...row, created_by: null }).createdBy).toEqual({
+      initials: '--',
+      name: 'Unknown creator',
+      department: 'No creator recorded'
+    })
+  })
+
   it('carries the joined aircraft type', () => {
     expect(rowToFlight(row).aircraftType).toBe('Citation CJ3')
   })

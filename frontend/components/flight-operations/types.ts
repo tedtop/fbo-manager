@@ -1,3 +1,4 @@
+import { LEGACY_CREATOR } from './creator'
 import { toInstantIso } from '@/lib/local-date'
 import type { Database } from '@/types/database'
 
@@ -107,7 +108,7 @@ export interface Flight {
   // Source tracking (always present, defaults to line-department and admin user)
   source: FlightSource // created_by_source (NOT NULL, default: 'line-department')
   createdBy: {
-    // derived from created_by_id (NOT NULL, default: 1 = admin)
+    // derived from the joined created_by user (created_by_id NOT NULL)
     initials: string
     name: string
     department: string
@@ -207,10 +208,11 @@ export function apiFlightToComponentFlight(apiFlight: FlightRow): Flight {
     apiFlight.scheduled_departure_time ?? undefined
   )
 
-  // Extract creator info (always present, defaults to admin if not provided)
-  const createdByInitials = (apiFlight as any).created_by_initials || 'ADM'
-  const createdByName = (apiFlight as any).created_by_name || 'Admin'
-  const createdByDept = (apiFlight as any).created_by_department || 'System'
+  // Extract creator info (always present; neutral fallback if not provided)
+  // B17: no hard-coded admin; a row without creator data gets the neutral legacy fallback
+  const createdByInitials = (apiFlight as any).created_by_initials || LEGACY_CREATOR.initials
+  const createdByName = (apiFlight as any).created_by_name || LEGACY_CREATOR.name
+  const createdByDept = (apiFlight as any).created_by_department || LEGACY_CREATOR.department
 
   const createdBy = {
     initials: createdByInitials,

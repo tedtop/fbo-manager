@@ -1,5 +1,7 @@
 'use client'
 
+import { creatorFromUser } from '@/components/flight-operations/creator'
+import { resolveCreatorId } from '@/lib/flight-creator'
 import { createClient } from '@/lib/supabase/client'
 import {
   createFlight as createFlightRepo,
@@ -63,17 +65,14 @@ export function rowToFlight(row: any): Flight {
     passenger_count: row.passenger_count,
     notes: row.notes,
     created_by_source: row.created_by_source,
-    created_by_initials: row.created_by
-      ? `${row.created_by.first_name?.[0] ?? ''}${row.created_by.last_name?.[0] ?? ''}`.toUpperCase() || 'ADM'
-      : 'ADM',
-    created_by_name: row.created_by
-      ? `${row.created_by.first_name} ${row.created_by.last_name}`.trim() || row.created_by.username
-      : 'Admin',
-    created_by_department: row.created_by?.role === 'line'
-      ? 'Line Department'
-      : row.created_by?.role === 'frontdesk'
-        ? 'Front Desk'
-        : 'Administration',
+    // B17: creator comes from the joined users row; no row means the neutral legacy fallback in types.ts
+    ...(row.created_by
+      ? (({ initials, name, department }) => ({
+          created_by_initials: initials,
+          created_by_name: name,
+          created_by_department: department
+        }))(creatorFromUser(row.created_by))
+      : {}),
     created_at: row.created_at,
     updated_at: row.updated_at,
     hidden_at: row.hidden_at
@@ -179,7 +178,9 @@ export function useFlights(params?: {
         location_id: requestData.location_id,
         passenger_count: requestData.passenger_count,
         notes: requestData.notes ?? '',
-        created_by_source: requestData.created_by_source ?? 'line-department'
+        created_by_source: requestData.created_by_source ?? 'line-department',
+        // B17: the signed-in user's users.id; undefined (key omitted) lets the DB default apply
+        created_by_id: await resolveCreatorId(db)
       })
       const keys: string[] = requestData.services ?? []
       if (keys.length === 0) return rowToFlight(row)

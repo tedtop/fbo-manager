@@ -7,6 +7,7 @@ import {
   apiFlightToComponentFlight,
   componentFlightToApiRequest,
 } from '@/components/flight-operations/types'
+import { rowToFlight } from '@/hooks/use-flights'
 import { filterFlights } from '@/components/flight-operations/board-logic'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { localNextDayStartIso, formatLocalDate } from '@/lib/local-date'
@@ -263,9 +264,10 @@ describe('flights.repo', () => {
   })
 
   // F8: live has flight.created_by_id DEFAULT 1 (every form-created flight is attributed to user 1,
-  // see B17); the local schema mirrors that via migration 20261102000500. The flight form's create
-  // path (hooks/use-flights.ts createMutation) never sends created_by_id.
-  // KNOWN BUG F9: flips when B17 lands real creator attribution.
+  // see B17); the local schema mirrors that via migration 20261102000500. That default now only applies
+  // when the creator cannot be resolved (no session / no users row with the signed-in email).
+  // F9 (fixed by B17): the form's create path now sends the signed-in user's users.id as created_by_id
+  // (lib/flight-creator.ts resolveCreatorId); the default user 1 only remains the fallback when unresolved.
   const formPayload = (tail: string) => ({
     tail_number: tail,
     call_sign: 'N123AB',
@@ -291,7 +293,23 @@ describe('flights.repo', () => {
     ).rejects.toMatchObject({ code: '23503' })
   })
 
-  it('F8/F9: the exact form payload succeeds and is attributed to default user 1', async () => {
+  it('F9: the form payload with the signed-in user id is attributed to that user (initials/name from the join), not user 1', async () => {
+    const aircraft = await makeAircraft(db)
+    await makeUser(db, { id: 1, username: 'default-flight-creator' })
+    const signedIn = await makeUser(db, { first_name: 'Tess', last_name: 'Tower', role: 'frontdesk' })
+
+    const created = await createFlight(db, {
+      ...formPayload(aircraft.tail_number),
+      created_by_id: signedIn.id,
+    } as Parameters<typeof createFlight>[1])
+
+    expect(created.created_by_id).toBe(signedIn.id)
+    expect(created.created_by_id).not.toBe(1)
+    const flight = rowToFlight(created)
+    expect(flight.createdBy).toEqual({ initials: 'TT', name: 'Tess Tower', department: 'Front Desk' })
+  })
+
+  it('F8: the exact form payload without created_by_id still falls back to default user 1 (unresolved creator)', async () => {
     const aircraft = await makeAircraft(db)
     await makeUser(db, { id: 1, username: 'default-flight-creator' })
 
