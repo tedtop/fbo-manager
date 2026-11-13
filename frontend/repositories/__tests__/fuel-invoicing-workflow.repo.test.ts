@@ -317,9 +317,9 @@ describe('billing a fuel_transaction', () => {
     const tx = await createTransaction(db, {
       ticket_number: 'QUEUE-1',
       tail_number: 'N116FE',
-      progress: 'completed',
+      status: 'filled',
     })
-    await createTransaction(db, { ticket_number: 'STILL-OPEN', progress: 'started' })
+    await createTransaction(db, { ticket_number: 'STILL-OPEN', status: 'requested' })
 
     let queue = await findUninvoicedTransactions(db)
     expect(queue.map((t) => t.id)).toEqual([tx.id]) // only completed, unbilled
@@ -336,7 +336,7 @@ describe('billing a fuel_transaction', () => {
     const tx = await createTransaction(db, {
       ticket_number: 'ONCE',
       tail_number: 'N116FE',
-      progress: 'completed',
+      status: 'filled',
     })
     await billTransaction(tx.id)
 
@@ -365,7 +365,7 @@ describe('billing a fuel_transaction', () => {
     const tx = await createTransaction(db, {
       ticket_number: 'REBILL',
       tail_number: 'N116FE',
-      progress: 'completed',
+      status: 'filled',
     })
     const invoice = await billTransaction(tx.id)
 
@@ -380,7 +380,7 @@ describe('billing a fuel_transaction', () => {
     const tx = await createTransaction(db, {
       ticket_number: 'RESTRICT',
       tail_number: 'N116FE',
-      progress: 'completed',
+      status: 'filled',
     })
     const invoice = await billTransaction(tx.id)
 
@@ -407,7 +407,7 @@ describe('billing a fuel_transaction', () => {
     const tx = await createTransaction(db, {
       ticket_number: 'INHERIT',
       tail_number: 'N116FE',
-      progress: 'completed',
+      status: 'filled',
     })
     const { reading } = await makeSheetWithReading()
     await linkReadingToTransaction(db, reading.id, tx.id)

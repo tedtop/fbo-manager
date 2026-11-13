@@ -3,6 +3,8 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { FUEL_TYPE_LABELS, fromTransactionFuelType } from '@/lib/fuel-types'
+import { isOpenFuelOrder, type FuelOrderStatus } from '@/lib/fuel-orders'
 import { cn } from '@/lib/utils'
 import type { TransactionWithRelations } from '@/repositories/transactions.repo'
 import { format } from 'date-fns'
@@ -13,13 +15,15 @@ interface FuelOrderCardProps {
   onEdit: (tx: TransactionWithRelations) => void
   onDelete: (id: number) => void
   onAssignFuelers: (tx: TransactionWithRelations) => void
-  onUpdateProgress: (id: number, progress: 'started' | 'in_progress' | 'completed') => void
+  onUpdateStatus: (tx: TransactionWithRelations, action: 'start' | 'fill') => void
 }
 
-const progressConfig = {
-  started: { label: 'Started', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20' },
-  in_progress: { label: 'In Progress', color: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20' },
-  completed: { label: 'Completed', color: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' }
+const statusConfig: Record<FuelOrderStatus, { label: string; color: string }> = {
+  requested: { label: 'Requested', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20' },
+  assigned: { label: 'Assigned', color: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20' },
+  fueling: { label: 'Fueling', color: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20' },
+  filled: { label: 'Filled', color: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' },
+  cancelled: { label: 'Cancelled', color: 'bg-muted text-muted-foreground border-border' }
 }
 
 export function FuelOrderCard({
@@ -27,9 +31,9 @@ export function FuelOrderCard({
   onEdit,
   onDelete,
   onAssignFuelers,
-  onUpdateProgress
+  onUpdateStatus
 }: FuelOrderCardProps) {
-  const progress = progressConfig[transaction.progress]
+  const status = statusConfig[transaction.status]
   const fuelerNames = transaction.fueler_assignments
     .map((a) => a.fueler?.fueler_name)
     .filter(Boolean)
@@ -39,7 +43,7 @@ export function FuelOrderCard({
     <Card
       className={cn(
         'bg-card border-border hover:border-primary/20 transition-all',
-        transaction.progress === 'completed' && 'opacity-70'
+        (transaction.status === 'filled' || transaction.status === 'cancelled') && 'opacity-70'
       )}
     >
       <div className="p-3 space-y-2">
@@ -50,8 +54,8 @@ export function FuelOrderCard({
               {transaction.tail_number ?? `Ticket #${transaction.ticket_number}`}
             </span>
           </div>
-          <Badge className={cn('text-xs font-medium px-2 py-0.5', progress.color)}>
-            {progress.label}
+          <Badge className={cn('text-xs font-medium px-2 py-0.5', status.color)}>
+            {status.label}
           </Badge>
         </div>
 
@@ -80,11 +84,11 @@ export function FuelOrderCard({
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Gallons:</span>
           <span className="font-semibold text-foreground">
-            {Number(transaction.quantity_gallons).toLocaleString()}
+            {Number(transaction.gallons_delivered ?? transaction.quantity_gallons).toLocaleString()}
           </span>
           {transaction.fuel_type && (
             <Badge variant="outline" className="text-[10px] px-1 py-0">
-              {transaction.fuel_type === 'jet_a' ? 'Jet A' : 'Avgas'}
+              {FUEL_TYPE_LABELS[fromTransactionFuelType(transaction.fuel_type) ?? 'jet_a']}
             </Badge>
           )}
         </div>
@@ -102,7 +106,7 @@ export function FuelOrderCard({
         </div>
 
         <div className="flex gap-1 pt-1 border-t border-border">
-          {transaction.progress !== 'completed' && (
+          {isOpenFuelOrder(transaction.status) && (
             <Button
               variant="ghost"
               size="sm"
@@ -113,24 +117,24 @@ export function FuelOrderCard({
               Assign
             </Button>
           )}
-          {transaction.progress === 'started' && (
+          {transaction.status === 'assigned' && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onUpdateProgress(transaction.id, 'in_progress')}
+              onClick={() => onUpdateStatus(transaction, 'start')}
               className="h-6 text-xs flex-1"
             >
               Start
             </Button>
           )}
-          {transaction.progress === 'in_progress' && (
+          {isOpenFuelOrder(transaction.status) && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onUpdateProgress(transaction.id, 'completed')}
+              onClick={() => onUpdateStatus(transaction, 'fill')}
               className="h-6 text-xs flex-1 text-green-700 dark:text-green-400"
             >
-              Complete
+              Fill
             </Button>
           )}
           <Button

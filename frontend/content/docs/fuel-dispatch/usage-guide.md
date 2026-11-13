@@ -2,7 +2,7 @@
 title: Fuel Dispatch usage guide
 module: fuel-dispatch
 order: 1
-anchors: [status, cards, changes, countdowns, filter, density, weather, fuel-sheet, save-fueling, meter-gaps]
+anchors: [status, cards, changes, countdowns, filter, fuel-orders, density, weather, fuel-sheet, save-fueling, meter-gaps]
 ---
 
 ## Overview
@@ -39,6 +39,18 @@ Planned flights show how long until arrival and flights on the ground show how l
 ### Hide departed flights {#filter}
 
 The **Hide departed flights** switch at the bottom (on by default) removes flights that have already left. Turn it off to see them too. **Airlines / All** switches between the airline cards alone and the airline cards plus this app's own fuel orders (the **New Fuel Order** button appears there).
+
+### Fuel order status {#fuel-orders}
+
+Each of this app's own fuel orders (the cards under **All**) shows one status badge:
+
+- **Requested**: the order is in, nobody is on it yet. A new order starts here and gets its ticket number (FO-1, FO-2, ...) automatically when you save it, so the **Ticket Number** box can stay empty.
+- **Assigned**: a fueler has been picked with **Assign**. The **Start** button appears.
+- **Fueling**: the fueler has started. A started order used to read "In Progress".
+- **Filled**: the fuel is in the aircraft. **Fill** is available from any open status (requested, assigned or fueling) and records the gallons from the order, so type the gallons into the order first (**Edit**). An order without gallons cannot be filled.
+- **Cancelled**: the order will not be fueled. On the Dispatch table page (/dispatch), **Delete** cancels the order (it used to mark it completed); the card on this page still deletes the order for good.
+
+Airline fuelings saved from the Fuel sheet are created already **Filled**. Orders that were "Started" before this change now show as Requested, "In Progress" as Fueling and "Completed" as Filled.
 
 ### Fuel density {#density}
 

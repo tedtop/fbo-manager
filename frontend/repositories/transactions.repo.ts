@@ -1,5 +1,6 @@
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { handleWriteError } from '@/lib/db-errors'
+import type { FuelOrderStatus } from '@/lib/fuel-orders'
 import type {
   Database,
   Tables,
@@ -31,10 +32,10 @@ const TX_SELECT = `
 `
 
 export interface TransactionFilters {
-  progress?: 'started' | 'in_progress' | 'completed'
+  status?: FuelOrderStatus
   unassigned?: boolean
   flightId?: number
-  source?: 'qt' | 'flight_card' | 'manual'
+  source?: TransactionRow['source']
 }
 
 export async function findAllTransactions(
@@ -46,8 +47,8 @@ export async function findAllTransactions(
     .select(TX_SELECT)
     .order('created_at', { ascending: false })
 
-  if (filters?.progress) {
-    query = query.eq('progress', filters.progress)
+  if (filters?.status) {
+    query = query.eq('status', filters.status)
   }
   if (filters?.flightId) {
     query = query.eq('flight_id', filters.flightId)
@@ -168,7 +169,7 @@ export type UninvoicedTransaction = TransactionWithRelations & {
 }
 
 /**
- * Completed fuelings with no invoice line yet — the front desk's
+ * Filled orders with no invoice line yet — the front desk's
  * "not yet invoiced" queue (and the view a future chatbot-created
  * transaction lands in). PostgREST can't express NOT EXISTS, so the
  * referencing line items are embedded and empties filtered client-side,
@@ -184,7 +185,7 @@ export async function findUninvoicedTransactions(
   const { data, error } = await db
     .from('fuel_transaction')
     .select(`${TX_SELECT}, invoice_line_items ( id )`)
-    .eq('progress', 'completed')
+    .eq('status', 'filled')
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error

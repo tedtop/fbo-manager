@@ -107,7 +107,7 @@ export async function saveAirlineFueling(db: Db, input: AirlineFuelingInput): Pr
         ticket_number: `QT-${input.qtDispatchId}`,
         qt_dispatch_id: input.qtDispatchId,
         source: 'qt',
-        progress: 'completed',
+        status: 'filled' as const,
         completed_at: new Date().toISOString()
       })
 

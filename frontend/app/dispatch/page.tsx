@@ -99,19 +99,20 @@ export default function FuelDispatchPage() {
     (t: any) => !t.fueler_assignments || t.fueler_assignments.length === 0
   )
   const inProgressTx = transactions.filter(
-    (t: any) => t.progress === 'in_progress'
+    (t: any) => t.status === 'fueling'
   )
   const completedTx = transactions.filter(
-    (t: any) => t.progress === 'completed'
+    (t: any) => t.status === 'filled'
   )
 
-  const getProgressBadge = (progress: string) => {
-    switch (progress) {
-      case 'started':
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'requested':
+      case 'assigned':
         return 'bg-warning/10 text-warning border-warning/20'
-      case 'in_progress':
+      case 'fueling':
         return 'bg-accent/10 text-accent-foreground border-accent/20'
-      case 'completed':
+      case 'filled':
         return 'bg-success/10 text-success border-success/20'
       default:
         return 'bg-muted text-muted-foreground border-border'
@@ -280,8 +281,8 @@ export default function FuelDispatchPage() {
                     gal
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={getProgressBadge(transaction.progress)}>
-                      {transaction.progress?.replace('_', ' ') || 'started'}
+                    <Badge className={getStatusBadge(transaction.status)}>
+                      {transaction.status || 'requested'}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
@@ -322,7 +323,7 @@ export default function FuelDispatchPage() {
                       onClick={async () => {
                         if (!confirm('Delete this transaction?')) return
                         try {
-                          await updateTransaction(transaction.id, { progress: 'completed' })
+                          await updateTransaction(transaction.id, { status: 'cancelled', cancel_reason: 'Deleted from fuel dispatch' })
                         } catch (e) { console.error(e) }
                       }}
                     >

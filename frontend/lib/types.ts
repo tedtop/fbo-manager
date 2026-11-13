@@ -116,7 +116,7 @@ export interface FuelTransaction {
   flight_number?: string
   quantity_gallons: number
   quantity_lbs: number
-  progress: 'started' | 'in_progress' | 'completed'
+  status: 'requested' | 'assigned' | 'fueling' | 'filled' | 'cancelled'
   assigned_fuelers: string[]
   qt_sync_status: 'pending' | 'synced' | 'failed'
   created_at: string

@@ -18,7 +18,7 @@ async function getDashboardData() {
     const [tankRows, flightRows, txRows, certRows] = await Promise.all([
       findAllTanks(supabase as any),
       findAllFlights(supabase as any, { today: true }),
-      findAllTransactions(supabase as any, { progress: 'started' }),
+      findAllTransactions(supabase as any, { status: 'requested' }),
       findAllCertifications(supabase as any, { status: 'expiring_soon', days: 7 })
     ])
 

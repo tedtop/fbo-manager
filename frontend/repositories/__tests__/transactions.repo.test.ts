@@ -18,6 +18,28 @@ beforeEach(async () => {
 })
 
 describe('transactions.repo', () => {
+  it('gives two concurrent creates distinct FO-n ticket numbers from the database sequence', async () => {
+    const [a, b] = await Promise.all([createTransaction(db, {}), createTransaction(db, {})])
+    expect(a.ticket_number).toMatch(/^FO-\d+$/)
+    expect(b.ticket_number).toMatch(/^FO-\d+$/)
+    expect(a.ticket_number).not.toBe(b.ticket_number)
+
+    const many = await Promise.all(Array.from({ length: 10 }, () => createTransaction(db, {})))
+    expect(new Set(many.map((t) => t.ticket_number)).size).toBe(10)
+  })
+
+  it('defaults a new order to requested with prist off, and keeps an explicit ticket number', async () => {
+    const tx = await createTransaction(db, { ticket_number: 'QT-1' })
+    expect(tx).toMatchObject({ status: 'requested', prist: false, cancel_reason: null, filled_by: null, requested_for: null })
+    expect(tx.ticket_number).toBe('QT-1')
+  })
+
+  it('accepts the phone and scan sources and rejects an unknown status', async () => {
+    expect((await createTransaction(db, { source: 'phone' })).source).toBe('phone')
+    expect((await createTransaction(db, { source: 'scan' })).source).toBe('scan')
+    await expect(createTransaction(db, { status: 'started' as never })).rejects.toThrow()
+  })
+
   it('returns null for a nonexistent transaction id', async () => {
     expect(await findTransactionById(db, 999_999)).toBeNull()
   })
@@ -47,11 +69,11 @@ describe('transactions.repo', () => {
     expect(found?.fueler_assignments[0].fueler?.fueler_name).toBe('Assigned Fueler')
   })
 
-  it('filters by progress', async () => {
-    const started = await createTransaction(db, { ticket_number: 'A', progress: 'started' })
-    await createTransaction(db, { ticket_number: 'B', progress: 'completed' })
+  it('filters by status', async () => {
+    const started = await createTransaction(db, { ticket_number: 'A', status: 'requested' })
+    await createTransaction(db, { ticket_number: 'B', status: 'filled' })
 
-    const results = await findAllTransactions(db, { progress: 'started' })
+    const results = await findAllTransactions(db, { status: 'requested' })
     expect(results.map((t) => t.id)).toEqual([started.id])
   })
 
@@ -73,9 +95,9 @@ describe('transactions.repo', () => {
   })
 
   it('updates and deletes a transaction', async () => {
-    const tx = await createTransaction(db, { ticket_number: 'EDIT-ME', progress: 'started' })
-    const updated = await updateTransaction(db, tx.id, { progress: 'completed' })
-    expect(updated.progress).toBe('completed')
+    const tx = await createTransaction(db, { ticket_number: 'EDIT-ME', status: 'requested' })
+    const updated = await updateTransaction(db, tx.id, { status: 'filled' })
+    expect(updated.status).toBe('filled')
 
     await deleteTransaction(db, tx.id)
     expect(await findTransactionById(db, tx.id)).toBeNull()

@@ -15,11 +15,8 @@ import { Button } from '@/components/ui/button'
 import { useQTDispatch } from '@/hooks/use-qt-dispatch'
 import { useSession } from '@/hooks/use-session'
 import { useTransactions } from '@/hooks/use-transactions'
-import {
-  assignFueler,
-  removeFueler,
-  updateProgress
-} from '@/services/transactions.service'
+import { assignFueler, removeFueler } from '@/services/transactions.service'
+import { fillFuelOrder, startFuelOrder } from '@/services/fuel-orders.service'
 import { createClient } from '@/lib/supabase/client'
 import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
 import { useRouter } from 'next/navigation'
@@ -67,7 +64,7 @@ export default function FuelDispatchMonitorPage() {
     : dispatches
 
   const fuelOrders = transactions.filter(
-    (t) => t.source === 'manual' || t.source === 'flight_card'
+    (t) => t.source !== 'qt'
   )
 
   useEffect(() => {
@@ -112,9 +109,24 @@ export default function FuelDispatchMonitorPage() {
     }
   }
 
-  const handleProgress = async (id: number, progress: 'started' | 'in_progress' | 'completed') => {
-    await updateProgress(db, id, progress)
-    toast({ title: `Order ${progress === 'completed' ? 'completed' : progress === 'in_progress' ? 'started' : 'updated'}` })
+  const handleStatus = async (tx: TransactionWithRelations, action: 'start' | 'fill') => {
+    try {
+      if (action === 'start') {
+        await startFuelOrder(db, tx.id)
+        toast({ title: 'Order started' })
+      } else {
+        const gallons = Number(tx.gallons_delivered ?? tx.quantity_gallons ?? tx.gallons_requested)
+        await fillFuelOrder(db, tx.id, { gallonsDelivered: gallons })
+        toast({ title: 'Order filled' })
+      }
+      await txRefetch()
+    } catch (err) {
+      toast({
+        title: action === 'start' ? 'Could not start order' : 'Could not fill order',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleAssign = async (fuelerId: number) => {
@@ -267,7 +279,7 @@ export default function FuelDispatchMonitorPage() {
                     onEdit={openEdit}
                     onDelete={handleDelete}
                     onAssignFuelers={openAssign}
-                    onUpdateProgress={handleProgress}
+                    onUpdateStatus={handleStatus}
                   />
                 ))}
               </div>

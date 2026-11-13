@@ -31,7 +31,7 @@ export function useFlightFuelStatus(flightId: number | string) {
         .from('fuel_transaction')
         .select('completed_at')
         .eq('flight_id', numericId)
-        .eq('progress', 'completed')
+        .eq('status', 'filled')
       if (cancelled) return
       setCompletedTransactions(txns?.length ?? 0)
 
@@ -63,16 +63,13 @@ export function useFlightFuelStatus(flightId: number | string) {
         table: 'fuel_transaction',
         filter: `flight_id=eq.${numericId}`
       },
-      (payload) => {
-        if (
-          payload.eventType === 'INSERT' ||
-          payload.eventType === 'UPDATE'
-        ) {
-          const row = payload.new as { progress?: string; completed_at?: string | null }
-          if (row.progress === 'completed') {
-            setCompletedTransactions((c) => c + 1)
-          }
-        }
+      () => {
+        // A filled order can be edited again (updateFilledOrder), so recount instead of adding one per event.
+        db.from('fuel_transaction')
+          .select('id', { count: 'exact', head: true })
+          .eq('flight_id', numericId)
+          .eq('status', 'filled')
+          .then(({ count }) => setCompletedTransactions(count ?? 0))
       }
     )
 

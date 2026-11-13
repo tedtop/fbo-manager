@@ -23,7 +23,6 @@ import {
   ToggleGroup,
   ToggleGroupItem
 } from '@/components/ui/toggle-group'
-import { createClient } from '@/lib/supabase/client'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useFlights } from '@/hooks/use-flights'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
@@ -33,8 +32,7 @@ import {
   type TransactionRow,
   type TransactionWithRelations
 } from '@/repositories/transactions.repo'
-import { format } from 'date-fns'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type FuelType = 'jet_a' | 'jet_a_plus' | 'avgas' | ''
 
@@ -82,11 +80,6 @@ const FUEL_OPTIONS: { value: FuelType; label: string }[] = [
   { value: 'avgas', label: 'Avgas' }
 ]
 
-function generateTicketNumber(seq: number): string {
-  const today = format(new Date(), 'yyMMdd')
-  return `TKT-${today}-${String(seq).padStart(4, '0')}`
-}
-
 export function TransactionFormDialog({
   open,
   onOpenChange,
@@ -95,7 +88,6 @@ export function TransactionFormDialog({
   defaultFlightId,
   defaultTailNumber
 }: TransactionFormDialogProps) {
-  const db = useMemo(() => createClient(), [])
   const { flights } = useFlights()
   const { equipment } = useEquipment()
   const fuelTrucks = equipment.filter((e) => e.equipment_type === 'fuel_truck')
@@ -123,22 +115,13 @@ export function TransactionFormDialog({
       return
     }
 
-    // Auto-generate ticket number for new orders
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-
-    db.from('fuel_transaction')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString())
-      .then(({ count }) => {
-        setForm({
-          ...emptyForm,
-          ticket_number: generateTicketNumber((count ?? 0) + 1),
-          flight_id: defaultFlightId ?? null,
-          tail_number: defaultTailNumber ?? ''
-        })
-      })
-  }, [open, transaction, defaultFlightId, defaultTailNumber, db])
+    // The ticket number (FO-n) comes from the database sequence when the order is saved.
+    setForm({
+      ...emptyForm,
+      flight_id: defaultFlightId ?? null,
+      tail_number: defaultTailNumber ?? ''
+    })
+  }, [open, transaction, defaultFlightId, defaultTailNumber])
 
   const editSession = useRecordEditSession<TransactionRow>({
     table: 'fuel_transaction',
@@ -173,8 +156,7 @@ export function TransactionFormDialog({
       const lbs = form.quantity_lbs ? Number(form.quantity_lbs) : null
 
       const payload: TransactionInsert = {
-        ticket_number: form.ticket_number,
-        progress: 'started',
+        ticket_number: form.ticket_number || undefined,
         qt_sync_status: 'pending',
         flight_id: form.flight_id || null,
         tail_number: form.tail_number || null,
@@ -243,13 +225,13 @@ export function TransactionFormDialog({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="ticket_number">Ticket Number *</Label>
+              <Label htmlFor="ticket_number">Ticket Number{isEdit ? ' *' : ''}</Label>
               <Input
                 id="ticket_number"
                 value={form.ticket_number}
                 onChange={(e) => setForm({ ...form, ticket_number: e.target.value })}
-                required
-                placeholder="e.g. TKT-260703-0001"
+                required={isEdit}
+                placeholder="Assigned automatically (FO-n)"
               />
             </div>
 
