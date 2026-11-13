@@ -2,6 +2,7 @@ import { defineConfig } from 'cypress'
 import { createE2EDbClient } from './cypress/tasks/db'
 import { seedDevUsers } from './cypress/tasks/seed'
 import { equipmentTasks } from './cypress/tasks/equipment.tasks'
+import { fuelDispatchTasks } from './cypress/tasks/fuel-dispatch.tasks'
 import { fuelFarmTasks } from './cypress/tasks/fuel-farm.tasks'
 import { invoicingTasks } from './cypress/tasks/invoicing.tasks'
 import { parkingTasks } from './cypress/tasks/parking.tasks'
@@ -44,6 +45,7 @@ export default defineConfig({
     setupNodeEvents(on) {
       on('task', {
         ...equipmentTasks,
+        ...fuelDispatchTasks,
         ...fuelFarmTasks,
         ...invoicingTasks,
         ...parkingTasks,
