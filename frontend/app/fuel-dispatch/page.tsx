@@ -7,6 +7,7 @@ import { useWeather } from '@/hooks/use-weather'
 import { changeKey, normalizeTail } from '@/lib/dispatch-display'
 import Link from 'next/link'
 import { FuelOrderCard } from '@/components/fuel-dispatch/fuel-order-card'
+import { FillOrderDialog } from '@/components/fuel-dispatch/fill-order-dialog'
 import { FuelerAssignDialog } from '@/components/fuel-dispatch/fueler-assign-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import { DispatchCard } from '@/components/fuel-dispatch/dispatch-card'
@@ -57,6 +58,7 @@ export default function FuelDispatchMonitorPage() {
   const [editTx, setEditTx] = useState<TransactionWithRelations | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTx, setAssignTx] = useState<TransactionWithRelations | null>(null)
+  const [fillTx, setFillTx] = useState<TransactionWithRelations | null>(null)
 
   // Minuteman keeps QT's own order and only drops flights that have left (status "In Flight").
   const filteredDispatches = hideDeparted
@@ -110,22 +112,35 @@ export default function FuelDispatchMonitorPage() {
   }
 
   const handleStatus = async (tx: TransactionWithRelations, action: 'start' | 'fill') => {
+    if (action === 'fill') {
+      setFillTx(tx)
+      return
+    }
     try {
-      if (action === 'start') {
-        await startFuelOrder(db, tx.id)
-        toast({ title: 'Order started' })
-      } else {
-        const gallons = Number(tx.gallons_delivered ?? tx.quantity_gallons ?? tx.gallons_requested)
-        await fillFuelOrder(db, tx.id, { gallonsDelivered: gallons })
-        toast({ title: 'Order filled' })
-      }
+      await startFuelOrder(db, tx.id)
+      toast({ title: 'Order started' })
       await txRefetch()
     } catch (err) {
       toast({
-        title: action === 'start' ? 'Could not start order' : 'Could not fill order',
+        title: 'Could not start order',
         description: err instanceof Error ? err.message : 'An unexpected error occurred',
         variant: 'destructive'
       })
+    }
+  }
+
+  const handleFill = async (tx: TransactionWithRelations, gallons: number) => {
+    try {
+      await fillFuelOrder(db, tx.id, { gallonsDelivered: gallons })
+      toast({ title: 'Order filled' })
+      await txRefetch()
+    } catch (err) {
+      toast({
+        title: 'Could not fill order',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      })
+      throw err
     }
   }
 
@@ -353,6 +368,14 @@ export default function FuelDispatchMonitorPage() {
         }}
         transaction={editTx}
         onSubmit={editTx ? handleUpdate : handleCreate}
+      />
+
+      <FillOrderDialog
+        transaction={fillTx}
+        onOpenChange={(open) => {
+          if (!open) setFillTx(null)
+        }}
+        onFill={handleFill}
       />
 
       {/* Assign Fueler Dialog */}

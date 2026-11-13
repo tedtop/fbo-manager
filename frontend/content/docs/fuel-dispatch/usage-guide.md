@@ -47,7 +47,7 @@ Each of this app's own fuel orders (the cards under **All**) shows one status ba
 - **Requested**: the order is in, nobody is on it yet. A new order starts here and gets its ticket number (FO-1, FO-2, ...) automatically when you save it, so the **Ticket Number** box can stay empty.
 - **Assigned**: a fueler has been picked with **Assign**. The **Start** button appears.
 - **Fueling**: the fueler has started. A started order used to read "In Progress".
-- **Filled**: the fuel is in the aircraft. **Fill** is available from any open status (requested, assigned or fueling) and records the gallons from the order, so type the gallons into the order first (**Edit**). An order without gallons cannot be filled.
+- **Filled**: the fuel is in the aircraft. **Fill** is available from any open status (requested, assigned or fueling) and asks for the gallons delivered (required, more than zero; it starts with the gallons already on the order). Editing the gallons of a filled order changes the delivered gallons.
 - **Cancelled**: the order will not be fueled. On the Dispatch table page (/dispatch), **Delete** cancels the order (it used to mark it completed); the card on this page still deletes the order for good.
 
 Airline fuelings saved from the Fuel sheet are created already **Filled**. Orders that were "Started" before this change now show as Requested, "In Progress" as Fueling and "Completed" as Filled.

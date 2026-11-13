@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
+import { createClient } from '@/lib/supabase/client'
+import { cancelFuelOrder } from '@/services/fuel-orders.service'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -323,7 +325,8 @@ export default function FuelDispatchPage() {
                       onClick={async () => {
                         if (!confirm('Delete this transaction?')) return
                         try {
-                          await updateTransaction(transaction.id, { status: 'cancelled', cancel_reason: 'Deleted from fuel dispatch' })
+                          await cancelFuelOrder(createClient(), transaction.id, 'Deleted from fuel dispatch')
+                          await refetch()
                         } catch (e) { console.error(e) }
                       }}
                     >

@@ -32,7 +32,9 @@ import {
   type TransactionRow,
   type TransactionWithRelations
 } from '@/repositories/transactions.repo'
-import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { updateFilledOrder } from '@/services/fuel-orders.service'
+import { useEffect, useMemo, useState } from 'react'
 
 type FuelType = 'jet_a' | 'jet_a_plus' | 'avgas' | ''
 
@@ -95,7 +97,10 @@ export function TransactionFormDialog({
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionFormData>(emptyForm)
 
+  const db = useMemo(() => createClient(), [])
   const isEdit = !!transaction
+  // On a filled order the gallons shown are the delivered ones, and edits go through updateFilledOrder.
+  const isFilled = transaction?.status === 'filled'
 
   useEffect(() => {
     if (!open) return
@@ -109,7 +114,10 @@ export function TransactionFormDialog({
         fuel_type: transaction.fuel_type ?? '',
         fuel_truck_id: transaction.fuel_truck_id,
         fuel_request: transaction.fuel_request ?? '',
-        quantity_gallons: transaction.quantity_gallons ?? '',
+        quantity_gallons:
+          (transaction.status === 'filled' ? transaction.gallons_delivered : null) ??
+          transaction.quantity_gallons ??
+          '',
         quantity_lbs: transaction.quantity_lbs ?? ''
       })
       return
@@ -165,16 +173,20 @@ export function TransactionFormDialog({
         fuel_request: form.fuel_request || null,
         // Best-effort parse only — stays null for 'T/O', lbs requests, etc.
         gallons_requested: parseGallonsRequested(form.fuel_request),
-        quantity_gallons: gal,
+        // A filled order's gallons are saved below through updateFilledOrder (gallons_delivered).
+        ...(isFilled ? {} : { quantity_gallons: gal }),
         quantity_lbs: lbs,
         density: gal && lbs && density ? Number(density) : null,
         source: transaction?.source ?? 'manual',
         charge_flags: undefined
       }
       if (transaction) {
-        const outcome = await editSession.save((expectedUpdatedAt) =>
-          onSubmit(payload, expectedUpdatedAt)
-        )
+        const outcome = await editSession.save(async (expectedUpdatedAt) => {
+          await onSubmit(payload, expectedUpdatedAt)
+          if (isFilled && gal != null && gal !== Number(transaction.gallons_delivered)) {
+            await updateFilledOrder(db, transaction.id, gal)
+          }
+        })
         if (outcome.status === 'conflict') return
       } else {
         await onSubmit(payload)
