@@ -35,9 +35,18 @@ describe('Aircraft type lookup, FAA registry as second source (B86)', () => {
     cy.wait('@lookup').its('request.url').should('contain', `tail=${tailFaa}`)
     cy.get('#aircraftType').should('contain.text', 'Citation Excel')
     // the type is written to the aircraft row (what the next Add Flight and the board will show)
-    cy.task('getAircraft', tailFaa).should((a: any) => {
-      expect(a.aircraft_type_icao).to.eq('C56X')
-    })
+    // the write follows the form fill asynchronously, and cy.task does not retry, so poll the row
+    const waitForType = (tries: number): void => {
+      cy.task('getAircraft', tailFaa).then((a: any) => {
+        if (a?.aircraft_type_icao === 'C56X' || tries <= 0) {
+          expect(a.aircraft_type_icao).to.eq('C56X')
+          return
+        }
+        cy.wait(250)
+        waitForType(tries - 1)
+      })
+    }
+    waitForType(20)
     cy.task('getAircraft', tailFaa).then((a) => {
       expect(JSON.stringify(a)).not.to.contain('SECRET OWNER')
     })
