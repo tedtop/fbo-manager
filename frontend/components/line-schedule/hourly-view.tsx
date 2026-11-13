@@ -119,7 +119,7 @@ export function HourlyView({ days, shifts, members, permission, onEditShift }: H
 
   return (
     <div className="rounded-xl border border-border bg-card">
-      <div ref={scrollRef} className="max-h-[calc(100vh-14rem)] min-h-[24rem] overflow-auto">
+      <div ref={scrollRef} className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto">
         <div className="min-w-[56rem]">
           {/* Sticky day headers */}
           <div className="sticky top-0 z-30 grid grid-cols-[3.5rem_repeat(7,1fr)] border-b border-border bg-card">

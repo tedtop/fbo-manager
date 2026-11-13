@@ -109,14 +109,14 @@ export default function EquipmentPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Equipment</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Live status board — updates in real time
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-44">
               <SelectValue placeholder="All Types" />

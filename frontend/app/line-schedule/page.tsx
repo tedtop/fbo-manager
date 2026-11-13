@@ -133,7 +133,7 @@ export default function LineSchedulePage() {
   const loading = deptLoading || shiftsLoading
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
+    <div className="min-h-dvh bg-background p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -176,11 +176,11 @@ export default function LineSchedulePage() {
 
         {/* Navigation + view toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="min-w-[12rem] text-center text-sm font-medium tabular-nums">
+            <span className="min-w-[10rem] sm:min-w-[12rem] text-center text-sm font-medium tabular-nums">
               {rangeLabel}
             </span>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(1)}>

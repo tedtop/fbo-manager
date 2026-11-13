@@ -159,3 +159,4 @@ Two people can open the same flight. The form tells you:
 - **The departure date is the next day.** A departure time earlier than the arrival time is treated as after midnight.
 - **An airport code finds the wrong place.** Several airports can share a code. Type the full ICAO code (for example KGPI) or pick from the list by name.
 - **Settings shows "Access Restricted".** Changing the home airport, airport code display or tail prefix needs the users-management permission. Ask an administrator.
+- **Using the board on a phone.** The page never scrolls sideways: the navigation links fold into the menu button, the toolbar wraps onto several rows, and buttons are larger (at least 44 px) so they are easy to tap. The Add Flight form and other dialogs fit the screen and scroll inside themselves when the content is taller than the display. Wide tables (for example Users) scroll sideways inside the table, not the page.

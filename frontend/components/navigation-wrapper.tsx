@@ -69,7 +69,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ theme, setTheme: handleThemeChange }}>
       <main style={{ visibility: mounted ? 'visible' : 'hidden' }}>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-dvh bg-background">
           {!isAuthPage && (
             <Navigation theme={theme} onThemeChange={handleThemeChange} />
           )}

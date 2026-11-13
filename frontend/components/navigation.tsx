@@ -78,7 +78,7 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="text-foreground lg:hidden"
+                  className="size-11 text-foreground sm:size-9 lg:hidden"
                   aria-label="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
@@ -89,7 +89,7 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                   <DropdownMenuItem
                     key={item.name}
                     asChild
-                    className={pathname === item.href ? 'text-primary' : ''}
+                    className={`min-h-11 sm:min-h-0 ${pathname === item.href ? 'text-primary' : ''}`}
                   >
                     <Link href={item.href}>{item.name}</Link>
                   </DropdownMenuItem>
@@ -100,6 +100,7 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
               <Button
                 variant="outline"
                 size="icon"
+                className="size-11 sm:size-9"
                 onClick={() =>
                   onThemeChange(theme === 'dark' ? 'light' : 'dark')
                 }
@@ -119,26 +120,26 @@ export function Navigation({ theme = 'dark', onThemeChange }: NavigationProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="text-foreground"
+                  className="size-11 text-foreground sm:size-9"
                   aria-label="Account menu"
                 >
                   <User className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="min-h-11 sm:min-h-0">
                   <Link href="/profile">Profile</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="min-h-11 sm:min-h-0">
                   <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
                 {accountMenuItems.map((item) => (
-                  <DropdownMenuItem key={item.href} asChild>
+                  <DropdownMenuItem key={item.href} asChild className="min-h-11 sm:min-h-0">
                     <Link href={item.href}>{item.name}</Link>
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="min-h-11 sm:min-h-0">
                   Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>

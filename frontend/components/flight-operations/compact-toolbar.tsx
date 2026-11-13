@@ -116,7 +116,7 @@ export function CompactToolbar({
           variant={view === 'split' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => onViewChange('split')}
-          className="h-9 px-3"
+          className="h-11 min-w-11 px-3 sm:h-9 sm:min-w-0"
           title="Split View"
           aria-label="Split View"
           aria-pressed={view === 'split'}
@@ -127,7 +127,7 @@ export function CompactToolbar({
           variant={view === 'calendar' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => onViewChange('calendar')}
-          className="h-9 px-3"
+          className="h-11 min-w-11 px-3 sm:h-9 sm:min-w-0"
           title="Calendar View"
           aria-label="Calendar View"
           aria-pressed={view === 'calendar'}
@@ -138,7 +138,7 @@ export function CompactToolbar({
           variant={view === 'arrivals' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => onViewChange('arrivals')}
-          className="h-9 px-3"
+          className="h-11 min-w-11 px-3 sm:h-9 sm:min-w-0"
           title="Arrivals Only"
           aria-label="Arrivals Only"
           aria-pressed={view === 'arrivals'}
@@ -149,7 +149,7 @@ export function CompactToolbar({
           variant={view === 'departures' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => onViewChange('departures')}
-          className="h-9 px-3"
+          className="h-11 min-w-11 px-3 sm:h-9 sm:min-w-0"
           title="Departures Only"
           aria-label="Departures Only"
           aria-pressed={view === 'departures'}
@@ -168,7 +168,7 @@ export function CompactToolbar({
             onChange={(e) =>
               onFiltersChange({ ...filters, search: e.target.value })
             }
-            className="pl-9 pr-10 h-9 bg-background border-border text-foreground"
+            className="pl-9 pr-10 h-11 sm:h-9 bg-background border-border text-foreground"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded border border-border bg-muted/50 text-[10px] font-medium text-muted-foreground">
             /
@@ -180,7 +180,7 @@ export function CompactToolbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 relative bg-transparent text-foreground"
+              className="h-11 relative bg-transparent text-foreground sm:h-9"
             >
               <Filter className="w-4 h-4 mr-2" />
               Filters
@@ -331,13 +331,13 @@ export function CompactToolbar({
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </output>
         )}
-        <Button asChild variant="outline" size="sm" className="h-9 bg-transparent text-foreground md:mr-2">
+        <Button asChild variant="outline" size="sm" className="h-11 bg-transparent text-foreground sm:h-9 md:mr-2">
           <Link href="/flight-operations/import" title="Import schedule" aria-label="Import schedule">
             <ScanLine className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Import schedule</span>
           </Link>
         </Button>
-        <Button onClick={onAddFlight} size="sm" className="h-9 flex-1 md:flex-none">
+        <Button onClick={onAddFlight} size="sm" className="h-11 flex-1 sm:h-9 md:flex-none">
           <Plus className="w-4 h-4 mr-2" />
           Add Flight
         </Button>

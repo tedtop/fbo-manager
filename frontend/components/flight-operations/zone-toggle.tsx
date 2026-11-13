@@ -41,7 +41,7 @@ export function ZoneToggle({ className }: { className?: string }) {
         variant="outline"
         size="sm"
         onClick={() => setZulu(!isZulu)}
-        className="h-9 min-w-[3.5rem] bg-transparent px-3 font-mono"
+        className="h-11 min-w-[3.5rem] sm:h-9 bg-transparent px-3 font-mono"
         title={title}
         aria-label={isZulu ? 'Zulu time on. Switch to local time' : 'Local time. Switch to Zulu time'}
         data-testid="zulu-toggle"

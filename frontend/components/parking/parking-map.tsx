@@ -599,7 +599,7 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
                 <ChevronUp className="size-4" />
               )}
             </button>
-            {drawerOpen && <div className="h-[45vh]">{panel}</div>}
+            {drawerOpen && <div className="h-[45dvh]">{panel}</div>}
           </div>
         )}
       </div>
