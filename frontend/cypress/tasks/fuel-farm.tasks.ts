@@ -32,6 +32,18 @@ export const fuelFarmTasks = {
     return null
   },
 
+  /** Readings of a tank, newest first ({ level, recorded_at }). */
+  async getTankReadings(tankId: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db
+      .from('tank_level_readings')
+      .select('level, recorded_at')
+      .eq('tank_id', tankId)
+      .order('recorded_at', { ascending: false })
+    if (error) throw new Error(`getTankReadings: ${error.message}`)
+    return (data ?? []).map((r) => ({ level: Number(r.level), recorded_at: r.recorded_at }))
+  },
+
   /** Removes a spec-owned tank, and its readings. */
   async cleanTank(tankId: string) {
     const db = createE2EDbClient()

@@ -6,6 +6,7 @@ const TRUCK = `9${STAMP.slice(-3)}`.replace(/[^0-9A-Z]/g, 'X')
 const SEED_DATE = '2026-07-14' // the seeded truck sheet ends its front meter at 1,100 and its rear meter at 5,050
 const MAX_ID = `CYQT${STAMP}1`
 const NG_ID = `CYQT${STAMP}2`
+const GONE_ID = `CYQT${STAMP}3`
 
 // QT sends local times with no offset, in the airport's zone (the FBO zone setting defaults to America/Denver).
 const qtLocal = (ms: number) => {
@@ -33,6 +34,10 @@ function stubQt(nowMs: number) {
         dispatch({
           TransactionID: NG_ID, FlightID: NG_ID, FlightNumber: 'UA2000', TailNumber: 'N33264', AircraftType: 'B738',
           ArrivalDate: qtLocal(nowMs + 5_400_000), DepartureDate: qtLocal(nowMs + 9_000_000), Quantity: 3000, QuantityInWeight: 20370
+        }),
+        dispatch({
+          TransactionID: GONE_ID, FlightID: GONE_ID, FlightNumber: 'UA3000', TailNumber: 'N99999', AircraftType: 'B738', FlightStatus: 'In Flight',
+          ArrivalDate: qtLocal(nowMs - 7_200_000), DepartureDate: qtLocal(nowMs + 600_000), Quantity: 3000, QuantityInWeight: 20370
         })
       ]
     }
@@ -70,6 +75,17 @@ describe('Airline fuel sheet on the board', () => {
         cy.get('[data-testid="card-delete"]').should('not.exist')
         cy.get('[data-testid="wing-loading"]').should('contain', 'Wing loading').and('contain', 'lbs')
       })
+  })
+
+  it('hides an airline flight that has left, and Show hidden brings it back', () => {
+    cy.visit('/')
+    cy.wait('@qt')
+    cy.contains('[data-testid="qt-callsign"]', 'UA1026').should('be.visible')
+    cy.contains('UA3000').should('not.exist')
+    cy.contains('button', 'Filters').click()
+    cy.get('[role="switch"]#show-hidden-flights').click()
+    cy.get('body').type('{esc}')
+    cy.contains('[data-testid="qt-callsign"]', 'UA3000').should('be.visible')
   })
 
   it('works the fuel sheet for a 737 MAX: wings fill to 8,650 lb (summer) and the rest goes in the center', () => {
