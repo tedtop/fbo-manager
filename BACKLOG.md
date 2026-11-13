@@ -159,6 +159,7 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 | B134 | Retire old ticket leftovers and the unused `invoice` / `invoice_item` tables | todo | P3 | S | M3b, after B125 has been on prod a while. Blocked: Ted sign-off (drops tables). Remove the dead price, settle and payment-method code paths (`settle-invoice-dialog`, `payment-method-field`, price math). Drop the legacy `invoice` / `invoice_item` tables after a backup (B01c procedure). Old `invoices` rows stay readable (`kind='legacy'`) |
 | B135 | Pricing and payments inside fbo-manager (card processor, price lists, taxes) | parked | P3 | M | Design only; waits for Ted. Only if fbo-manager ever replaces the outside front-desk software (D18, D20, D23). Nothing is built; real money and a processor need Ted's approval first. Starting point: `product` prices, `invoices` payment columns, PLAN "Fuel-to-billing and POS design" |
 | B136 | Training: duplicate course name shows the generic error (found by B110) | todo | P3 | S | `CourseFormSheet` only shows "already exists" when the error message says duplicate or unique; the repo error does not, so the user sees "Failed to save training". Pinned as KNOWN BUG in `cypress/e2e/training/training.cy.ts`. Line schedule and training also need a legacy `users` row for the signed-in user (a fresh stack's admin has none: chips and Add Shift stay disabled), worth a look. |
+| B137 | Parking: plane shape and size class for every ICAO type from the icao-aircraft-types module (Ted, 2026-11-13; FBO-197) | todo | P1 | M | M4. Waits for Ted: decide how the module at ~/src/icao-aircraft-types reaches the app on Railway (copy its data file into the repo, git submodule, or npm; the module has no commits yet). Use the module (ICAO Doc 8643: designator, class code e.g. L2J, wake category, engine count/type, kind) to classify EVERY type -> silhouette + default size class. Keep B101's metres table for exact wingspan/length where known, class default otherwise (module has no dimensions). Refine our own top-down silhouettes toward the ADS-B Exchange look; tar1090 shapes are GPL v2+ and are NOT copied unless Ted decides to adopt them. Tests: vitest for type -> shape/size (C172, PA18, BE20, C560, GLF6, E75L, B39M, R44); Cypress check that relative marker sizes are right |
 
 ## Milestones to v1 (orchestrator, 2026-11-09)
 
@@ -167,7 +168,7 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 - **M2 Real logins + security:** B59, B59a, B76, B78, B38, B29, B94, B95, B96, B30, B37, B31.
 - **M3 Fuel ops parity:** B69-B71, B84, B85, B87, B88, B90, B80, B68, B51, B52, B77.
 - **M3b Fuel to billing (Ted, 2026-11-11; PLAN "Fuel-to-billing and POS design"):** B120, B68, B121, B122, B123, B52, B124, B125, B126, B127, B128, B129, B130, B131, B51, B132, B133, then B134. B135 parked. Uses B38 (M2) for manager actions and B67 (M4) for the lease waiver. Gate: B120, B122, B123, B133 and B130 carry migrations; each is applied to live with Ted's go-ahead before its code merges to master (master deploys prod).
-- **M4 Parking, equipment, docs:** B54-B58, B70, B27-B28, B56, B59b, B35, B79, B97, B63, B65, B66, B67.
+- **M4 Parking, equipment, docs:** B54-B58, B70, B27-B28, B56, B59b, B35, B79, B97, B63, B65, B66, B67, B137.
 - **Post-v1:** B25, B48, B61, B62, B64, B81, B82, B83, B98.
 
 ## Linear mapping
@@ -205,5 +206,6 @@ Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is prima
 | B80 | FBO-153 | B81 | FBO-154 | B82 | FBO-155 | B83 | FBO-156 |
 | B86 | FBO-157 | B87 | FBO-158 | B88 | FBO-159 | B89 | FBO-160 |
 | B90 | FBO-161 | B91 | FBO-162 | B92 | FBO-163 | B93 | FBO-164 |
+| B137 | FBO-197 | | | | | | |
 
 Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Done, parked and blocked = Backlog. Priority: P0 = Urgent, P1 = High, P2 = Medium, P3 = Low.
