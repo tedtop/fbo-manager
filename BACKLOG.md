@@ -210,6 +210,6 @@ Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is prima
 | B90 | FBO-161 | B91 | FBO-162 | B92 | FBO-163 | B93 | FBO-164 |
 | B137 | FBO-197 | B103 | FBO-174 | B138 | FBO-205 | B104 | FBO-175 |
 | B96 | FBO-167 | | | | | | |
-| B94 | FBO-165 Orchestrator live check 2026-11-13 (read-only): 20261102000400 is already applied and recorded, so do not re-run it. Live anon can still reach 2 tables (parking_area, meter_gap_annotation) and all 43 public sequences (relacl anon=rwU). Only 20261113000400 is needed on live; it waits for Ted's go-ahead. |
+| B94 | FBO-165 | B139 | FBO-210 | | | | |
 
 Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Done, parked and blocked = Backlog. Priority: P0 = Urgent, P1 = High, P2 = Medium, P3 = Low.
