@@ -13,10 +13,12 @@ import {
 } from '@/components/ui/sheet'
 import {
   type ParkedPlane,
+  canRevertHeading,
   headingForScreenDirection,
   toStoredHeading
 } from '@/lib/parking-map'
-import { Plane, Trash2 } from 'lucide-react'
+import { Plane, Trash2, Undo2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { CompassRose } from './compass-rose'
 
 interface AircraftSheetProps {
@@ -48,8 +50,20 @@ export function AircraftSheet({
   onHeadingChange,
   onRemove
 }: AircraftSheetProps) {
+  // The heading the plane had when it was selected, so a change can be reverted before or after it saves.
+  const [start, setStart] = useState<{ tail: string; heading: number } | null>(
+    null
+  )
+  const tail = plane?.tailNumber ?? null
+  // biome-ignore lint/correctness/useExhaustiveDependencies: capture the heading only when the plane or sheet changes
+  useEffect(() => {
+    setStart(plane && open ? { tail: plane.tailNumber, heading: plane.heading } : null)
+  }, [tail, open])
+
   if (!plane) return null
   const heading = toStoredHeading(plane.heading)
+  const original = start?.tail === plane.tailNumber ? start.heading : heading
+  const canRevert = canRevertHeading(original, heading)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
@@ -109,6 +123,18 @@ export function AircraftSheet({
                 </Button>
               ))}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canRevert}
+              onClick={() => onHeadingChange(toStoredHeading(original))}
+            >
+              <Undo2 className="mr-2 size-4" />
+              {canRevert
+                ? `Undo heading change (back to ${toStoredHeading(original)}°)`
+                : 'Undo heading change'}
+            </Button>
             <p className="text-xs text-muted-foreground">
               Click or drag on the compass to point the aircraft (the top of the
               compass is the top of the map). With the compass focused, the

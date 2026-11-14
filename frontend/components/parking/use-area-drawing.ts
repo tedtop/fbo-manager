@@ -59,7 +59,12 @@ type Options = {
   /** The selected area, or null when nothing is selected. */
   area: ParkingAreaRow | null
   /** Persists the area's single polygon, replacing any previous one. Must throw on failure. */
-  onSave: (areaId: number, polygon: GeoJsonPolygon) => Promise<void>
+  onSave: (
+    areaId: number,
+    polygon: GeoJsonPolygon
+  ) => Promise<{ recomputeFailed: boolean }>
+  /** Re-runs only the plane-area recompute after a save whose recompute failed. */
+  onRetryRecompute: () => void
   onNotice: (notice: Notice | null) => void
   /** Esc while editing: the parent clears the selection. */
   onDeselect: () => void
@@ -82,6 +87,7 @@ export function useAreaDrawing({
   enabled,
   area,
   onSave,
+  onRetryRecompute,
   onNotice,
   onDeselect
 }: Options) {
@@ -104,17 +110,20 @@ export function useAreaDrawing({
   const finishedAtRef = useRef<number | null>(null)
   const areaRef = useRef(area)
   const onSaveRef = useRef(onSave)
+  const onRetryRef = useRef(onRetryRecompute)
   const onNoticeRef = useRef(onNotice)
   const onDeselectRef = useRef(onDeselect)
   areaRef.current = area
   onSaveRef.current = onSave
+  onRetryRef.current = onRetryRecompute
   onNoticeRef.current = onNotice
   onDeselectRef.current = onDeselect
 
   const [scheduler] = useState(() =>
     createBoundarySaveQueue(
       () => onSaveRef.current,
-      () => onNoticeRef.current
+      () => onNoticeRef.current,
+      () => onRetryRef.current
     )
   )
 

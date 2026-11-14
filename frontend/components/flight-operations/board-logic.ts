@@ -140,6 +140,15 @@ export function partitionFlights(flights: Flight[]): {
   return { arrivals, departures }
 }
 
+// D6/B24: a flight with only a scheduled departure is a hangar pull, with only a scheduled arrival a return;
+// anything else (both times, or neither) is an ordinary transient flight.
+export type FlightKind = 'hangar_pull' | 'return' | 'transient'
+export function flightKind(flight: Pick<Flight, 'arrivalTime' | 'departureTime'>): FlightKind {
+  if (flight.departureTime && !flight.arrivalTime) return 'hangar_pull'
+  if (flight.arrivalTime && !flight.departureTime) return 'return'
+  return 'transient'
+}
+
 // Each column runs soonest first by its own scheduled time (a TBM leaving at 07:30 sits above a Citation
 // leaving at 12:00). Array.sort is stable, so equal times keep the order the flights came in.
 function compareScheduled(a?: string, b?: string): number {

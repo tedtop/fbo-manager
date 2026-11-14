@@ -1,3 +1,4 @@
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Tables, TablesInsert, TablesUpdate } from '@/types/database'
 
@@ -43,15 +44,24 @@ export async function createShift(
 export async function updateShift(
   db: SupabaseClient<Database>,
   id: number,
-  updates: ScheduleShiftUpdate
+  updates: ScheduleShiftUpdate,
+  expectedUpdatedAt?: string
 ): Promise<ScheduleShiftRow> {
-  const { data, error } = await db
+  // The set_updated_at trigger overrides updated_at; it is also sent here so the column moves even if the trigger is missing.
+  let query = db
     .from('schedule_shift')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
-    .select()
-    .single()
-  if (error) throw error
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt)
+  }
+  const { data, error } = await query.select().single()
+  if (error) {
+    if (expectedUpdatedAt && error.code === 'PGRST116') {
+      throw new ConcurrencyConflictError('schedule_shift', id)
+    }
+    throw error
+  }
   return data
 }
 

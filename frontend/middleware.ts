@@ -22,6 +22,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // /api/docs/* is static (it cannot read the session itself), so it is gated here: any signed-in user
+  // whose account may open /docs (active and holding a module) can read it.
+  if (isRouteOrChild(pathname, '/api/docs')) {
+    if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
+    if (evaluateGate('/docs', await getAccess()).kind === 'redirect') {
+      return NextResponse.json({ error: 'No access' }, { status: 403 })
+    }
+    return updatedResponse
+  }
+
   if (user && pathname === '/login') {
     const homeUrl = request.nextUrl.clone()
     homeUrl.pathname = '/'

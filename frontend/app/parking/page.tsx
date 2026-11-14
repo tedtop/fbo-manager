@@ -39,7 +39,7 @@ export default function ParkingManagementPage() {
   }
 
   return (
-    <div className="space-y-6 h-screen flex flex-col">
+    <div className="space-y-6 h-dvh flex flex-col">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
@@ -54,7 +54,7 @@ export default function ParkingManagementPage() {
 
         {/* Admin Toggle */}
         {isAdmin && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="flex items-center gap-2">
               <Plane className="h-4 w-4 text-muted-foreground" />
               <Switch

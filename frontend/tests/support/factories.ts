@@ -68,6 +68,8 @@ export async function makeParkingLocation(
   const { data, error } = await db
     .from('parking_location')
     .insert({
+      // location_code is NOT NULL and unique since migration 20261109000100
+      location_code: `T${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`.toUpperCase(),
       description: 'Test ramp spot',
       display_order: 1,
       ...overrides,

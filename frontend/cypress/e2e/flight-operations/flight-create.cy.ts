@@ -1,6 +1,6 @@
 // Cypress spec plus departure-only, validation and cancel (BACKLOG B08d).
 // NOT YET tags pin today's behavior; each flips when the matching backlog item lands:
-//   NOT YET: hangar pull preset (B24).
+//   (hangar pull preset: replaced by the times hint in B41; card notes + badge covered by hangar-pull-notes.cy.ts, B24)
 // B09b: QT checkbox (preselected, departure = arrival + 1 h), optional scheduled times, actual times.
 // B10: times are stored as real instants. Expected instants are computed with the browser's own Date from the
 // local date + time ("YYYY-MM-DDTHH:mm:ss" without an offset is local), so they hold in any timezone.
@@ -179,7 +179,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('body').should(($b) => {
       expect($b.find(`:contains("${tailDep}")`).filter((_, el) => el.children.length === 0)).to.have.length(1)
     })
-    // NOT YET (B24): no "hangar pull" preset; a departure-only entry is built by hand like this.
+    // A departure-only entry (hangar pull) is built by hand like this; no preset buttons exist.
   })
 
   it('arrival-only entry (return) stores a NULL departure and shows only in Arrivals', () => {

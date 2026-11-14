@@ -22,14 +22,19 @@ import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { describeError } from '@/lib/error-message'
 import { useSession } from '@/hooks/use-session'
 import { useRouter } from 'next/navigation'
+import { effectiveView } from '@/components/flight-operations/view-mode'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { useEffect, useMemo, useState } from 'react'
 
 export default function FlightOperationsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [view, setView] = useState<
+  const [savedView, setView] = useState<
     'split' | 'calendar' | 'arrivals' | 'departures'
   >('split')
+  // D4: a phone never gets the calendar; a saved calendar preference renders as split there.
+  const isMobile = useIsMobile()
+  const view = effectiveView(savedView, isMobile)
   const [weekOffset, setWeekOffset] = useState(0)
   // The board follows the FBO time zone (or Zulu): day and week boundaries are that zone's midnights.
   const { zone, fboZone, ready: zoneReady } = useDisplayZone()

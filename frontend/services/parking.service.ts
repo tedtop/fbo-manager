@@ -1,8 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { findAreaAtPoint } from '@/lib/parking-geometry'
+import { findAreaAtPoint, recomputeParkedAreas } from '@/lib/parking-geometry'
 import {
   clearAircraftPosition,
+  findParkedAircraft,
+  setAircraftArea,
   setAircraftPosition,
   type AircraftRow,
 } from '@/repositories/aircraft.repo'
@@ -30,16 +32,49 @@ export async function addArea(
   return createParkingArea(db, area)
 }
 
+/**
+ * Outcome of a change that is saved first and then re-resolves parked planes. The save itself
+ * throws on failure; `recomputeFailed` means it was saved but the planes' areas were not updated.
+ */
+export type RecomputeOutcome = { recomputeFailed: boolean }
+
+async function recomputeAfterSave(db: SupabaseClient<Database>): Promise<RecomputeOutcome> {
+  try {
+    await refreshParkedAreas(db)
+    return { recomputeFailed: false }
+  } catch {
+    return { recomputeFailed: true }
+  }
+}
+
 export async function editArea(
   db: SupabaseClient<Database>,
   id: number,
   updates: ParkingAreaUpdate
-): Promise<ParkingAreaRow> {
-  return updateParkingArea(db, id, updates)
+): Promise<RecomputeOutcome & { row: ParkingAreaRow }> {
+  const row = await updateParkingArea(db, id, updates)
+  const outcome = 'polygon' in updates ? await recomputeAfterSave(db) : { recomputeFailed: false }
+  return { row, ...outcome }
 }
 
-export async function archiveArea(db: SupabaseClient<Database>, id: number): Promise<void> {
+/** Re-resolves parked_area_id of every parked plane against the active areas. */
+export async function refreshParkedAreas(db: SupabaseClient<Database>): Promise<number> {
+  const [areas, parked] = await Promise.all([findAllParkingAreas(db), findParkedAircraft(db)])
+  const changes = recomputeParkedAreas(
+    parked.flatMap((p) =>
+      p.parked_lat === null || p.parked_lng === null
+        ? []
+        : [{ tailNumber: p.tail_number, lat: Number(p.parked_lat), lng: Number(p.parked_lng), areaId: p.parked_area_id }]
+    ),
+    areas
+  )
+  await Promise.all(changes.map((c) => setAircraftArea(db, c.tailNumber, c.areaId)))
+  return changes.length
+}
+
+export async function archiveArea(db: SupabaseClient<Database>, id: number): Promise<RecomputeOutcome> {
   await archiveParkingArea(db, id)
+  return recomputeAfterSave(db)
 }
 
 /**

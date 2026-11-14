@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { isUniqueViolation } from '@/lib/unique-violation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -19,6 +20,8 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import { ErrorMessage } from '@/messages/error-message'
 import type {
   TrainingCourseInsert,
@@ -33,7 +36,11 @@ interface CourseFormSheetProps {
   onOpenChange: (open: boolean) => void
   course?: TrainingCourseRow | null
   onCreate: (input: TrainingCourseInsert) => Promise<unknown>
-  onUpdate: (id: number, updates: TrainingCourseUpdate) => Promise<unknown>
+  onUpdate: (
+    id: number,
+    updates: TrainingCourseUpdate,
+    expectedUpdatedAt?: string
+  ) => Promise<unknown>
 }
 
 const VALIDITY_UNITS: { value: ValidityUnit; label: string }[] = [
@@ -71,17 +78,27 @@ export function CourseFormSheet({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const formFromCourse = (c: TrainingCourseRow): FormState => ({
+    name: c.name,
+    url: c.url,
+    instructions: c.instructions,
+    validityAmount: c.validity_amount != null ? String(c.validity_amount) : '',
+    validityUnit: c.validity_unit ?? 'none'
+  })
+
+  const editSession = useRecordEditSession<TrainingCourseRow>({
+    table: 'training_course',
+    recordId: course?.id ?? null,
+    updatedAt: course?.updated_at ?? null,
+    enabled: open && !!course,
+    onReload: (fresh) => setForm(formFromCourse(fresh))
+  })
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: formFromCourse is a pure helper
   useEffect(() => {
     if (!open) return
     if (course) {
-      setForm({
-        name: course.name,
-        url: course.url,
-        instructions: course.instructions,
-        validityAmount:
-          course.validity_amount != null ? String(course.validity_amount) : '',
-        validityUnit: course.validity_unit ?? 'none'
-      })
+      setForm(formFromCourse(course))
     } else {
       setForm(EMPTY_FORM)
     }
@@ -116,14 +133,17 @@ export function CourseFormSheet({
         validity_unit: hasValidity ? (form.validityUnit as ValidityUnit) : null
       }
       if (isEditing) {
-        await onUpdate(course.id, payload)
+        const outcome = await editSession.save((expectedUpdatedAt) =>
+          onUpdate(course.id, payload, expectedUpdatedAt)
+        )
+        if (outcome.status === 'conflict') return
       } else {
         await onCreate(payload)
       }
       onOpenChange(false)
     } catch (err) {
       setError(
-        err instanceof Error && /duplicate|unique/i.test(err.message)
+        isUniqueViolation(err)
           ? 'A training with this name already exists'
           : 'Failed to save training. Please try again.'
       )
@@ -148,6 +168,12 @@ export function CourseFormSheet({
           </SheetHeader>
 
           <div className="flex-1 space-y-5 overflow-y-auto px-4">
+            {isEditing && (
+              <EditSessionStatus
+                editSession={editSession}
+                onOverwriteComplete={() => onOpenChange(false)}
+              />
+            )}
             {error && <ErrorMessage>{error}</ErrorMessage>}
 
             <div className="space-y-2">

@@ -1,3 +1,4 @@
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import type {
   Database,
   Tables,
@@ -44,15 +45,24 @@ export async function createCourse(
 export async function updateCourse(
   db: SupabaseClient<Database>,
   id: number,
-  updates: TrainingCourseUpdate
+  updates: TrainingCourseUpdate,
+  expectedUpdatedAt?: string
 ): Promise<TrainingCourseRow> {
-  const { data, error } = await db
+  // The set_updated_at trigger overrides updated_at; it is also sent here so the column moves even if the trigger is missing.
+  let query = db
     .from('training_course')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
-    .select()
-    .single()
-  if (error) throw error
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt)
+  }
+  const { data, error } = await query.select().single()
+  if (error) {
+    if (expectedUpdatedAt && error.code === 'PGRST116') {
+      throw new ConcurrencyConflictError('training_course', id)
+    }
+    throw error
+  }
   return data
 }
 

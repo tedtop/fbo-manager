@@ -67,6 +67,11 @@ export function toStoredHeading(degrees: number): number {
   return Math.round(normalizeHeading(degrees)) % 360
 }
 
+/** True when the plane's current heading differs from the one it had when it was selected. */
+export function canRevertHeading(original: number, current: number): boolean {
+  return toStoredHeading(original) !== toStoredHeading(current)
+}
+
 /**
  * True heading that makes the nose point in a screen direction (0 = up, 90 = right,
  * 180 = down, 270 = left) given the current map bearing.

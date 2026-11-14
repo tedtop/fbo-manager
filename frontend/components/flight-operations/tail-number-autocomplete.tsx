@@ -4,6 +4,7 @@ import type { AircraftRow as Aircraft } from '@/repositories/aircraft.repo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { shouldFocusTailOnEnable } from '@/lib/flight-form-focus'
 import { cn } from '@/lib/utils'
 import { Check, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -17,6 +18,8 @@ interface TailNumberAutocompleteProps {
   prefix?: string
   className?: string
   disabled?: boolean
+  /** Take focus when the field turns enabled (it was disabled while the sheet auto-focused): see shouldFocusTailOnEnable. */
+  focusWhenEnabled?: boolean
 }
 
 export function TailNumberAutocomplete({
@@ -26,13 +29,31 @@ export function TailNumberAutocomplete({
   onCreateNew,
   prefix,
   className,
-  disabled
+  disabled,
+  focusWhenEnabled
 }: TailNumberAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value)
   const [isOpen, setIsOpen] = useState(false)
   const [filteredAircraft, setFilteredAircraft] = useState<Aircraft[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const wasDisabled = useRef(!!disabled)
+  useEffect(() => {
+    const active = document.activeElement as HTMLElement | null
+    if (
+      focusWhenEnabled &&
+      shouldFocusTailOnEnable(
+        wasDisabled.current,
+        !!disabled,
+        active?.tagName,
+        active?.isContentEditable
+      )
+    ) {
+      inputRef.current?.focus()
+    }
+    wasDisabled.current = !!disabled
+  }, [disabled, focusWhenEnabled])
 
   useEffect(() => {
     setInputValue(value)

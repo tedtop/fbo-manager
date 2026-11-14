@@ -30,7 +30,7 @@ Real bugs:
 - F8 `created_by_id` is NOT NULL with no default in the local test schema (test_schema.sql:175) but `createFlight` never sets it (use-flights.ts:346-361); the generated types mark it optional, implying the live DB has a default. Create may fail on the local stack; the repo test factory must set it. Must verify.
   Status: worked around locally by migration `20261102000500` (default 1 for `created_by_id`, live parity); the schema parity check is still open under B36.
 - F9 Creator info is hard-coded: new flights show "USR/User" and `rowToFlight` falls back to "ADM/Admin" (flight-form-dialog.tsx:268-272, use-flights.ts:303-313).
-  Status: still open (B17). Pinned by `KNOWN BUG F9` in `repositories/__tests__/flights.repo.test.ts`.
+  Status: fixed by B17. The create path sends the signed-in user's `users.id` (matched by email, `lib/flight-creator.ts`); the card shows the joined creator, with a neutral `--` / "Unknown creator" fallback for rows with no creator data. If the account has no `users` row, `created_by_id` is omitted and the DB default (user 1) applies. Tests: `components/flight-operations/__tests__/creator.test.ts`, `lib/__tests__/flight-creator.test.ts`, the F9 case in `repositories/__tests__/flights.repo.test.ts`, `cypress/e2e/flight-operations/flight-creator.cy.ts`.
 - F10 No realtime/refresh on the board list: only `flight-fuel-status` and the edit-session hook subscribe (grep postgres_changes); `flight` is in the realtime publication (20260704000300:35-45) but `useFlights` has no subscription or refetch interval, so two screens drift.
   Status: still open (B16).
 - F11 Loading/empty/error states are coarse: whole page replaced by "Loading flights..." on every refetch key change (page.tsx:155-161), error via `ErrorMessage` with no retry, empty list text only per column (flight-list.tsx:739).
@@ -585,7 +585,7 @@ invoice_slip/<YYYY>/<MM>/<YYYY-MM-DD>/...                                       
 - Never overwrite: uploads use `upsert: false`; an existing object under the same name has the same bytes and is reused. Page numbers on a truck/day only grow (append = max + 1). Cleanup after a failed import removes only objects that call created. Replacing or removing pages is a deliberate manual action (not built).
 - A multi-page PDF is stored once under `original/`; every page row of it points at that path (`original_path`, `original_page`). A photo is its own original. All page images are re-encoded upright JPEGs (quality 0.92, longest side capped at 3000 px, no upscaling, no PNG), so the stored page is always upright whatever the phone did; the original keeps whatever orientation it came in. Each page also gets a 400 px wide thumbnail (JPEG q0.8) stored under `thumbs/` and recorded in `thumb_path`.
 
-Database (migration `20261105000400_truck_sheet_scan_pages.sql`, local only until Ted approves it live):
+Database (migration `20261105000400_truck_sheet_scan_pages.sql`, applied to live and recorded (checked 2026-11-13)):
 
 - `scanned_documents` gains `thumb_path`, `rotation_degrees smallint` (0/90/180/270, clockwise turn applied to make the page upright; default 0), `content_sha256 text` (hash of the upright page bytes), `original_path text`, `original_page smallint`, `original_content_type text`, `fuel_truck_id` (equipment.id, on delete set null), `scan_date date` (the sheet date).
 - `doc_type` check widened to add `schedule_sheet` (rows for schedule sheets are not written yet; the object layout is).

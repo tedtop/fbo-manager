@@ -38,7 +38,7 @@ export function ScanPages({ pages, label }: { pages: PageScan[]; label: string }
       </ul>
 
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="max-h-[95vh] w-[95vw] max-w-4xl overflow-auto">
+        <DialogContent className="max-h-[95dvh] w-[95vw] max-w-4xl overflow-auto">
           <DialogHeader>
             <DialogTitle>
               {label}, page {open?.page_number}
@@ -54,7 +54,7 @@ export function ScanPages({ pages, label }: { pages: PageScan[]; label: string }
           </DialogHeader>
           {open?.url && (
             // biome-ignore lint/performance/noImgElement: signed storage URL
-            <img src={open.url} alt={`${label}, page ${open.page_number}, full size`} data-testid="scan-full" className="mx-auto h-auto max-h-[80vh] w-auto max-w-full" />
+            <img src={open.url} alt={`${label}, page ${open.page_number}, full size`} data-testid="scan-full" className="mx-auto h-auto max-h-[80dvh] w-auto max-w-full" />
           )}
         </DialogContent>
       </Dialog>

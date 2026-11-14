@@ -20,7 +20,7 @@ export function InvoiceDetailDialog({
 }: InvoiceDetailDialogProps) {
   return (
     <Dialog open={invoice != null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
         <DialogHeader className="no-print">
           <DialogTitle className="sr-only">
             Ticket #{invoice?.invoice_number}

@@ -90,28 +90,42 @@ export function AreaPanel({
               key={area.id}
               className={cn(
                 'flex items-start gap-1 p-2',
-                isSelected && 'bg-accent'
+                isSelected &&
+                  'border-l-4 border-l-primary bg-accent text-accent-foreground'
               )}
             >
               <button
                 type="button"
                 onClick={() => onSelect(area)}
                 aria-pressed={isSelected}
-                className="min-w-0 flex-1 rounded-md p-1 text-left hover:bg-accent/60"
+                className={cn(
+                  'min-w-0 flex-1 rounded-md p-1 text-left hover:bg-accent/60',
+                  isSelected && 'text-accent-foreground'
+                )}
               >
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{area.code}</span>
                   <KindBadge kind={area.kind} />
                 </div>
-                <div className="truncate text-sm text-muted-foreground">
+                <div
+                  className={cn(
+                    'truncate text-sm text-muted-foreground',
+                    isSelected && 'text-accent-foreground/85'
+                  )}
+                >
                   {area.name}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
+                <div
+                  className={cn(
+                    'mt-1 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground',
+                    isSelected && 'text-accent-foreground/85'
+                  )}
+                >
                   <span>{count} aircraft inside</span>
                   <span
                     className={cn(
                       'inline-flex items-center gap-1',
-                      !area.polygon && 'text-amber-600 dark:text-amber-400'
+                      !area.polygon && 'text-amber-700 dark:text-amber-300'
                     )}
                   >
                     {area.polygon ? (

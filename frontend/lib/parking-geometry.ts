@@ -92,6 +92,29 @@ export function findAreaAtPoint<T extends { polygon: unknown }>(
   return best
 }
 
+export type ParkedPoint = {
+  tailNumber: string
+  lat: number
+  lng: number
+  areaId: number | null
+}
+
+/**
+ * Planes whose stored area no longer matches the areas they sit in (e.g. after a boundary
+ * edit). Returns only the planes that need a new `areaId`; planes outside every area get null.
+ */
+export function recomputeParkedAreas<A extends { id: number; polygon: unknown }>(
+  planes: readonly ParkedPoint[],
+  areas: readonly A[]
+): { tailNumber: string; areaId: number | null }[] {
+  const changes: { tailNumber: string; areaId: number | null }[] = []
+  for (const plane of planes) {
+    const areaId = findAreaAtPoint([plane.lng, plane.lat], areas)?.id ?? null
+    if (areaId !== plane.areaId) changes.push({ tailNumber: plane.tailNumber, areaId })
+  }
+  return changes
+}
+
 /** Area-weighted centroid [lng, lat]; falls back to the vertex average for degenerate rings. */
 export function polygonCentroid(ring: Ring): LngLat {
   const pts =

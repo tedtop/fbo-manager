@@ -40,6 +40,8 @@ import { CoverageLegend } from '@/components/line-schedule/coverage-strip'
 import { useDepartment, useDepartments } from '@/hooks/use-department'
 import { useSchedule } from '@/hooks/use-schedule'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useMyPermissions } from '@/hooks/use-permissions'
+import { canManageLineSchedule } from '@/lib/edit-rights'
 import type { ScheduleShiftRow } from '@/repositories/schedule.repo'
 import {
   canEditAnyShift,
@@ -64,6 +66,7 @@ export default function LineSchedulePage() {
   const { departments } = useDepartments()
   const { department, members, loading: deptLoading } = useDepartment(deptSlug)
   const { user } = useCurrentUser()
+  const { access } = useMyPermissions()
 
   // Visible range (+1 day back so overnight tails from the prior day render)
   const { rangeStart, rangeEnd, weekDays } = useMemo(() => {
@@ -94,11 +97,12 @@ export default function LineSchedulePage() {
 
   const permission: SchedulePermissionContext = useMemo(
     () => ({
-      currentUser: user ? { id: user.id, role: user.role } : null,
+      currentUser: user ? { id: user.id } : null,
+      canManage: canManageLineSchedule(access),
       membership: members.find((m) => m.user_id === user?.id) ?? null,
       settings: department?.settings ?? {},
     }),
-    [user, members, department]
+    [user, access, members, department]
   )
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -133,7 +137,7 @@ export default function LineSchedulePage() {
   const loading = deptLoading || shiftsLoading
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
+    <div className="min-h-dvh bg-background p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -176,11 +180,11 @@ export default function LineSchedulePage() {
 
         {/* Navigation + view toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="min-w-[12rem] text-center text-sm font-medium tabular-nums">
+            <span className="min-w-[10rem] sm:min-w-[12rem] text-center text-sm font-medium tabular-nums">
               {rangeLabel}
             </span>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(1)}>

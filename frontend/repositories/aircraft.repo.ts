@@ -90,6 +90,14 @@ export async function clearAircraftPosition(
   })
 }
 
+export async function setAircraftArea(
+  db: SupabaseClient<Database>,
+  tailNumber: string,
+  areaId: number | null
+): Promise<AircraftRow> {
+  return updateAircraft(db, tailNumber, { parked_area_id: areaId })
+}
+
 export async function findParkedAircraft(db: SupabaseClient<Database>): Promise<AircraftRow[]> {
   const { data, error } = await db
     .from('aircraft')

@@ -73,6 +73,7 @@ import {
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
 import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal } from 'lucide-react'
+import { HelpButton } from '@/components/docs/help-button'
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 
@@ -439,14 +440,17 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Users</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-foreground">Users</h1>
+            <HelpButton module="users" topic="Manage Users guide" className="size-8" />
+          </div>
           <p className="mt-2 text-sm text-muted-foreground">
             New sign-ups appear here with no role. Pick a role to give them access.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" asChild>
             <Link href="/users/roles">Roles &amp; Permissions</Link>
           </Button>

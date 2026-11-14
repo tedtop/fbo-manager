@@ -130,7 +130,7 @@ export function ComplianceMatrix({ data, onCellClick }: ComplianceMatrixProps) {
       </div>
 
       <Card className="overflow-hidden p-0">
-        <div className="max-h-[70vh] overflow-auto">
+        <div className="max-h-[70dvh] overflow-auto">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr>

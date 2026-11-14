@@ -17,7 +17,7 @@ import {
 import { popPose, pushPose } from '@/lib/parking-undo'
 import { type Map as MapLibreMap, Marker } from 'maplibre-gl'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
-import { aircraftIconUrl, paddedSize } from './aircraft-icon'
+import { aircraftIconUrl, paddedSize, withMinimumSize } from './aircraft-icon'
 
 export const SAVE_DELAY_MS = 1000
 const PUBLISH_INTERVAL_MS = 100
@@ -120,8 +120,10 @@ export function usePlaneMarkers({
       // True scale: the drawn silhouette is the real wingspan x length in metres at this
       // latitude and zoom (a plain DOM style write, no React render per zoom frame).
       const { dims } = entry
-      const width = metersToPixels(dims.wingspanM, lat, zoom)
-      const height = metersToPixels(dims.lengthM, lat, zoom)
+      const { width, height } = withMinimumSize(
+        metersToPixels(dims.wingspanM, lat, zoom),
+        metersToPixels(dims.lengthM, lat, zoom)
+      )
       const padded = paddedSize(width, height)
       entry.img.style.width = `${padded.width}px`
       entry.img.style.height = `${padded.height}px`
@@ -144,8 +146,8 @@ export function usePlaneMarkers({
         entry.selected = selected
         entry.el.style.zIndex = selected ? '1' : ''
         entry.el.style.filter = selected
-          ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.9))'
-          : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))'
+          ? 'drop-shadow(0 0 3px rgba(245, 158, 11, 1)) drop-shadow(0 0 10px rgba(245, 158, 11, 0.9))'
+          : 'drop-shadow(0 0 2px rgba(0, 0, 0, 0.9)) drop-shadow(0 1px 5px rgba(0, 0, 0, 0.6))'
       }
       // Keep the tail number upright on screen however the plane and the map are turned.
       const screenHeading = entry.marker.getRotation() - bearing

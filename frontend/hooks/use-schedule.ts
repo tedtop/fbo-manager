@@ -63,8 +63,15 @@ export function useSchedule(
     onSuccess: invalidate,
   })
   const updateMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: number; updates: ScheduleShiftUpdate }) =>
-      updateShiftRepo(db, id, updates),
+    mutationFn: ({
+      id,
+      updates,
+      expectedUpdatedAt,
+    }: {
+      id: number
+      updates: ScheduleShiftUpdate
+      expectedUpdatedAt?: string
+    }) => updateShiftRepo(db, id, updates, expectedUpdatedAt),
     onSuccess: invalidate,
   })
   const deleteMutation = useMutation({
@@ -77,8 +84,8 @@ export function useSchedule(
     loading: query.isLoading,
     error: query.error,
     createShift: (shift: ScheduleShiftInsert) => createMutation.mutateAsync(shift),
-    updateShift: (id: number, updates: ScheduleShiftUpdate) =>
-      updateMutation.mutateAsync({ id, updates }),
+    updateShift: (id: number, updates: ScheduleShiftUpdate, expectedUpdatedAt?: string) =>
+      updateMutation.mutateAsync({ id, updates, expectedUpdatedAt }),
     deleteShift: (id: number) => deleteMutation.mutateAsync(id),
     mutating:
       createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,

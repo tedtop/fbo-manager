@@ -27,6 +27,11 @@ import { TruckSheetReview } from '@/components/truck-sheets/truck-sheet-review'
 import { ErrorMessage } from '@/messages/error-message'
 import { SuccessMessage } from '@/messages/success-message'
 
+import { runPaced, withRateLimitRetry } from '@/lib/paced-requests'
+
+/** Pause between page reads. */
+const PAGE_DELAY_MS = 750
+
 export default function TruckSheetImportPage() {
   const { status } = useSession()
   const router = useRouter()
@@ -55,27 +60,35 @@ export default function TruckSheetImportPage() {
     setPages(files.map((f) => ({ name: f.name, status: 'queued' as const })))
 
     const results: { file: File; extraction: ExtractedTruckSheet; page: ReviewPage }[] = []
-    for (let i = 0; i < files.length; i++) {
-      setPages((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'extracting' } : p)))
-      try {
-        const extraction = await extract(files[i])
-        // The upright image that will be stored (turned as the reader asked) and its hash, made here so the review
-        // screen shows exactly what gets saved.
-        const page = await prepareReviewPage(files[i], extraction)
-        results.push({ file: files[i], extraction, page })
-        setPages((prev) =>
-          prev.map((p, idx) =>
-            idx === i ? { ...p, status: 'done', truckNumber: extraction.truck_number } : p
+    // One page at a time with a short pause between requests, and a backoff retry on HTTP 429, so a 12-page PDF does
+    // not trip the reader's rate limit.
+    const settled = await runPaced(
+      files,
+      async (file, i) => {
+        setPages((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'extracting' } : p)))
+        try {
+          const extraction = await withRateLimitRetry(() => extract(file))
+          // The upright image that will be stored (turned as the reader asked) and its hash, made here so the review
+          // screen shows exactly what gets saved.
+          const page = await prepareReviewPage(file, extraction)
+          setPages((prev) =>
+            prev.map((p, idx) =>
+              idx === i ? { ...p, status: 'done', truckNumber: extraction.truck_number } : p
+            )
           )
-        )
-      } catch (err) {
-        setPages((prev) =>
-          prev.map((p, idx) =>
-            idx === i ? { ...p, status: 'error', error: (err as Error).message } : p
+          return { file, extraction, page }
+        } catch (err) {
+          setPages((prev) =>
+            prev.map((p, idx) =>
+              idx === i ? { ...p, status: 'error', error: (err as Error).message } : p
+            )
           )
-        )
-      }
-    }
+          throw err
+        }
+      },
+      { concurrency: 1, delayMs: PAGE_DELAY_MS },
+    )
+    for (const r of settled) if (r.status === 'fulfilled') results.push(r.value)
 
     setSheets(mergeExtractions(results))
     if (results.length === 0 && files.length > 0) {

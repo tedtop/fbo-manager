@@ -33,7 +33,7 @@ import {
   updateFlight,
   type FlightWithRelations
 } from '@/repositories/flights.repo'
-import { uploadScheduleSheetScan } from '@/repositories/scanned-documents.repo'
+import { saveScheduleSheetOriginals } from '@/repositories/scanned-documents.repo'
 import { setFlightServices } from '@/repositories/services.repo'
 import { flightKeys } from '@/hooks/use-flights'
 import { aircraftKeys } from '@/hooks/use-aircraft'
@@ -55,6 +55,8 @@ export interface ImportResult {
   updated: number
   skipped: number
   failed: ImportFailure[]
+  /** Why the original sheet could not be stored (flights were still imported), else null. */
+  sheetSaveError: string | null
 }
 
 /** POSTs the photos/PDF to the OCR route. Throws an Error carrying the route's message (400/500/502 all have `error`). */
@@ -286,16 +288,8 @@ export function useScheduleImport() {
       }
     })
 
-    // The original sheet is kept like truck sheets are: best effort, a storage hiccup never undoes the import.
-    if (done.added + done.updated > 0) {
-      for (const file of files) {
-        try {
-          await uploadScheduleSheetScan(db, file, file.name, sheet?.sheet_date)
-        } catch (err) {
-          console.error(`Failed to persist original schedule sheet "${file.name}":`, err)
-        }
-      }
-    }
+    // The original sheet is kept like truck sheets are: best effort, a storage failure never undoes the import but is shown.
+    const sheetSaveError = done.added + done.updated > 0 ? await saveScheduleSheetOriginals(db, files, sheet?.sheet_date) : null
 
     void qc.invalidateQueries({ queryKey: flightKeys.all })
     void qc.invalidateQueries({ queryKey: aircraftKeys.all })
@@ -303,7 +297,8 @@ export function useScheduleImport() {
       added: done.added,
       updated: done.updated,
       skipped: items.length - done.added - done.updated - done.failed.filter((f) => !f.message.includes('services were not saved')).length,
-      failed: done.failed
+      failed: done.failed,
+      sheetSaveError
     }
     setResult(res)
     setPhase('done')

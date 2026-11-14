@@ -91,7 +91,7 @@ export function WingLoadingPanel({ aircraftType, plannedLbs, title, qtDispatchId
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto text-sm">
+        <DialogContent className="max-h-[90dvh] max-w-lg overflow-y-auto text-sm">
           <DialogHeader>
             <DialogTitle>Fuel sheet{title ? `: ${title}` : ''}</DialogTitle>
             <DialogDescription>

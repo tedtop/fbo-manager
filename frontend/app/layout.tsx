@@ -1,6 +1,7 @@
 import { NavigationWrapper } from '@/components/navigation-wrapper'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/providers/auth-provider'
+import { DocsProvider } from '@/providers/docs-provider'
 import { QueryProvider } from '@/providers/query-provider'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono, Source_Serif_4 } from 'next/font/google'
@@ -38,7 +39,9 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            <NavigationWrapper>{children}</NavigationWrapper>
+            <DocsProvider>
+              <NavigationWrapper>{children}</NavigationWrapper>
+            </DocsProvider>
             <Toaster />
           </AuthProvider>
         </QueryProvider>

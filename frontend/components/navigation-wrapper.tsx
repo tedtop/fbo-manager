@@ -2,6 +2,8 @@
 
 import { usePathname } from 'next/navigation'
 import { createContext, useContext, useEffect, useState } from 'react'
+import { DocsPanel } from '@/components/docs/docs-panel'
+import { useDocs } from '@/providers/docs-provider'
 import { Navigation } from './navigation'
 
 const FULL_WIDTH_ROUTES = ['/fuel-farm']
@@ -22,6 +24,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const { open: docsOpen } = useDocs()
 
   // Load theme from localStorage on mount
   useEffect(() => {
@@ -69,7 +72,12 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ theme, setTheme: handleThemeChange }}>
       <main style={{ visibility: mounted ? 'visible' : 'hidden' }}>
-        <div className="min-h-screen bg-background">
+        {/* While docs are open the whole page shifts right (lg and up) instead of being covered. */}
+        <div
+          className={`min-h-dvh bg-background motion-safe:transition-[padding] motion-safe:duration-300 ${
+            docsOpen && !isAuthPage ? 'lg:pl-[420px]' : ''
+          }`}
+        >
           {!isAuthPage && (
             <Navigation theme={theme} onThemeChange={handleThemeChange} />
           )}
@@ -85,6 +93,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </div>
+        {!isAuthPage && <DocsPanel />}
       </main>
     </ThemeContext.Provider>
   )

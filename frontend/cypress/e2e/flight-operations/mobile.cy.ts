@@ -107,4 +107,50 @@ describe('Flight board on a phone (390x844)', () => {
     cy.contains('[role="menuitem"]', 'Delayed').click()
     cy.task('getFlightByTail', tailStatus).its('flight_status').should('eq', 'delayed')
   })
+
+  it('D4: the calendar view is not offered on a phone and the toolbar stays usable', () => {
+    openBoard(tailBoard)
+    cy.get('button[title="Calendar View"]').should('not.be.visible')
+    cy.get('button[title="Split View"]').should('be.visible')
+    cy.contains('button', 'Add Flight').should('be.visible')
+    cy.get('input[placeholder*="Search"]').should('be.visible').type(tailBoard)
+    cy.contains('[data-slot="card"]', tailBoard).should('be.visible')
+    cy.screenshot('mobile-board-390', { capture: 'viewport' })
+  })
+
+  it('cards are not clipped at 390px', () => {
+    openBoard(tailBoard)
+    cy.get('[data-slot="card"]').should('have.length.greaterThan', 0)
+    cy.get('[data-slot="card"]').each(($c) => {
+      const r = $c[0].getBoundingClientRect()
+      expect(r.left, 'card left').to.be.at.least(0)
+      expect(r.right, 'card right').to.be.at.most(390)
+    })
+  })
+
+  it('a saved calendar preference falls back to the list view on a phone', () => {
+    cy.login()
+    cy.visit('/', { onBeforeLoad: (win) => win.localStorage.setItem('flightViewPreference', 'calendar') })
+    cy.contains(tailBoard, { timeout: 15_000 }).should('be.visible')
+    cy.contains('h2', 'Arrivals').should('exist')
+    cy.get('[aria-label="Loading calendar"]').should('not.exist')
+  })
+
+  it('the Add Flight sheet scrolls down to its save button', () => {
+    cy.login()
+    cy.visit('/')
+    cy.contains('button', 'Add Flight').click()
+    cy.contains('h2', 'Add New Flight').should('be.visible')
+    cy.get('[role="dialog"]').contains('button', 'Add Flight').scrollIntoView().should('be.visible').then(($b) => {
+      expect($b[0].getBoundingClientRect().bottom, 'save button bottom').to.be.at.most(844)
+    })
+  })
+
+  it('desktop (1280px) still offers the calendar view', () => {
+    cy.viewport(1280, 800)
+    cy.login()
+    cy.visit('/', { onBeforeLoad: (win) => win.localStorage.removeItem('flightViewPreference') })
+    cy.get('button[title="Calendar View"]').should('be.visible').click()
+    cy.get('button[title="Calendar View"]').should('have.attr', 'aria-pressed', 'true')
+  })
 })

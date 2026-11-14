@@ -64,7 +64,7 @@ export function PendingAccess() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-card border-border">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
@@ -89,6 +89,18 @@ export function PendingAccess() {
             <span className="font-medium text-foreground">
               {session.user.email}
             </span>
+          </CardContent>
+        )}
+        {reason === 'no-role' && (
+          <CardContent>
+            <details className="rounded-md border border-border p-3 text-sm text-muted-foreground" data-testid="pending-explainer">
+              <summary className="cursor-pointer font-medium text-foreground">What does this mean?</summary>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <li>Signing in with Google created your account, but it has no role yet.</li>
+                <li>An administrator picks your role (Administrator, Front Desk, Line Department or Customer) on the Users page.</li>
+                <li>Once they have, press Check again and you will land in the app.</li>
+              </ol>
+            </details>
           </CardContent>
         )}
         <CardFooter className="flex flex-col gap-2 pt-4">

@@ -120,7 +120,10 @@ export function addDaysISO(date: string, days: number): string {
 // ---------- permissions (ACL seam) ----------
 
 export type SchedulePermissionContext = {
-  currentUser: Pick<UserRow, 'id' | 'role'> | null
+  /** Legacy staff row of the signed-in account (matched by email); null when it has none. Only used for self-service. */
+  currentUser: Pick<UserRow, 'id'> | null
+  /** Role-based admin-level edit right on the line_schedule module (see lib/edit-rights.ts). Needs no legacy row. */
+  canManage: boolean
   membership: MemberWithUser | null // current user's membership in this department
   settings: DepartmentSettings
 }
@@ -130,8 +133,8 @@ export function canEditShiftFor(
   ctx: SchedulePermissionContext,
   targetUserId: number
 ): boolean {
+  if (ctx.canManage) return true
   if (!ctx.currentUser) return false
-  if (ctx.currentUser.role === 'admin') return true
 
   const editRoles = ctx.settings.edit_roles ?? ['lead', 'supervisor']
   if (ctx.membership && editRoles.includes(ctx.membership.dept_role)) return true
@@ -142,8 +145,8 @@ export function canEditShiftFor(
 
 /** May the current user edit anything at all on this schedule? */
 export function canEditAnyShift(ctx: SchedulePermissionContext): boolean {
+  if (ctx.canManage) return true
   if (!ctx.currentUser) return false
-  if (ctx.currentUser.role === 'admin') return true
   const editRoles = ctx.settings.edit_roles ?? ['lead', 'supervisor']
   if (ctx.membership && editRoles.includes(ctx.membership.dept_role)) return true
   return (ctx.settings.allow_self_edit ?? true) && !!ctx.membership
@@ -151,8 +154,8 @@ export function canEditAnyShift(ctx: SchedulePermissionContext): boolean {
 
 /** May the current user pick arbitrary employees when creating shifts? */
 export function canEditWholeDepartment(ctx: SchedulePermissionContext): boolean {
+  if (ctx.canManage) return true
   if (!ctx.currentUser) return false
-  if (ctx.currentUser.role === 'admin') return true
   const editRoles = ctx.settings.edit_roles ?? ['lead', 'supervisor']
   return !!ctx.membership && editRoles.includes(ctx.membership.dept_role)
 }

@@ -90,10 +90,43 @@ export async function uploadScannedDocument(
   return data
 }
 
+/** B104: the metadata row recorded for a stored schedule sheet original. Pure, so the payload is unit-testable. */
+export function buildScheduleSheetRow(args: {
+  path: string
+  file: Pick<File, 'name' | 'type' | 'size'>
+  sha256: string
+  sheetDate?: string | null
+}): TablesInsert<'scanned_documents'> {
+  return {
+    doc_type: 'schedule_sheet',
+    storage_bucket: SCANS_BUCKET,
+    storage_path: args.path,
+    original_filename: args.file.name,
+    content_type: args.file.type || 'application/octet-stream',
+    byte_size: args.file.size,
+    content_sha256: args.sha256,
+    original_path: args.path,
+    original_content_type: args.file.type || null,
+    scan_date: args.sheetDate ?? null
+  }
+}
+
+/** The plain-language reason of any thrown value (PostgREST/storage errors are not always Error instances). */
+export function describeScanError(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message
+  if (err && typeof err === 'object') {
+    const e = err as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown }
+    const parts = [e.message, e.details, e.hint].filter((x): x is string => typeof x === 'string' && x.length > 0)
+    if (parts.length > 0) return e.code ? `${parts.join(' - ')} (${String(e.code)})` : parts.join(' - ')
+  }
+  return String(err)
+}
+
 /**
- * B45b: keeps the original photo/PDF of a front-desk schedule sheet in the private bucket, laid out by the sheet's
- * date: schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/original/<date>_schedule_scan-<hash8>.<ext> (scan day when the date is unknown).
- * Object only, no scanned_documents row yet. Returns the storage path.
+ * B45b/B104: keeps the original photo/PDF of a front-desk schedule sheet in the private bucket, laid out by the sheet's
+ * date: schedule_sheet/<YYYY>/<MM>/<YYYY-MM-DD>/original/<date>_schedule_scan-<hash8>.<ext> (scan day when the date is
+ * unknown), and records it in scanned_documents (doc_type schedule_sheet). A row that already exists for the same path
+ * (same bytes scanned again) counts as stored. Returns the storage path.
  */
 export async function uploadScheduleSheetScan(
   db: SupabaseClient<Database>,
@@ -101,10 +134,11 @@ export async function uploadScheduleSheetScan(
   _filename: string,
   sheetDate?: string | null
 ): Promise<string> {
+  const sha256 = await sha256Hex(file)
   const path = buildScheduleSheetPath({
     folder: 'original',
     date: sheetDate ?? null,
-    sha256: await sha256Hex(file),
+    sha256,
     ext: extensionFor(file.type, file.name),
     scanDay: new Date().toISOString().slice(0, 10)
   })
@@ -112,7 +146,31 @@ export async function uploadScheduleSheetScan(
     .from(SCANS_BUCKET)
     .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false })
   if (error && !alreadyExists(error)) throw error // same name = same bytes: already stored
+  const { error: rowError } = await db.from('scanned_documents').insert(buildScheduleSheetRow({ path, file, sha256, sheetDate }))
+  if (rowError && rowError.code !== '23505') throw rowError // 23505: this sheet is already recorded
   return path
+}
+
+/**
+ * B104: stores the original sheet file(s) after a schedule import, best effort. Never throws (the flights are already
+ * saved and stay); returns a plain-language reason when any file could not be kept, else null.
+ */
+export async function saveScheduleSheetOriginals(
+  db: SupabaseClient<Database>,
+  files: File[],
+  sheetDate?: string | null
+): Promise<string | null> {
+  const reasons: string[] = []
+  for (const file of files) {
+    try {
+      await uploadScheduleSheetScan(db, file, file.name, sheetDate)
+    } catch (err) {
+      console.error(`Failed to persist original schedule sheet "${file.name}":`, err)
+      const reason = describeScanError(err)
+      reasons.push(files.length > 1 ? `${file.name}: ${reason}` : reason)
+    }
+  }
+  return reasons.length > 0 ? reasons.join('; ') : null
 }
 
 /** Signed URL for viewing a scan (the bucket is private by design). */

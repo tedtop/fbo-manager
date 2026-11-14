@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/tooltip'
 import type { AirportLabel } from '@/hooks/use-airports'
 import { cn } from '@/lib/utils'
-import { isFlightHidden, type LinkColor } from './board-logic'
+import { flightKind, isFlightHidden, type LinkColor } from './board-logic'
 import { useDisplayZone } from '@/hooks/use-display-zone'
 import { formatBoardTimestamp } from '@/lib/display-zone'
 import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
@@ -170,6 +170,7 @@ export function FlightCard({
   const [localQuantities, setLocalQuantities, resetLocalQuantities] =
     useSyncedDraft<Record<string, number>>(flight.serviceQuantities ?? {})
   const notes = flight.notes || ''
+  const kind = flightKind(flight)
   const [countdown, setCountdown] = useState<{
     text: string
     isUrgent: boolean
@@ -304,6 +305,7 @@ export function FlightCard({
   return (
     <>
       <Card
+        data-testid="flight-card"
         className={cn(
           'bg-card border-border hover:border-primary/20 transition-all relative',
           isLinked && linkColor && `border-l-4 ${linkColor.border}`,
@@ -408,6 +410,15 @@ export function FlightCard({
                   </Tooltip>
                 </TooltipProvider>
               )}
+              {kind !== 'transient' && (
+                <Badge
+                  variant="outline"
+                  data-testid="flight-card-pull-badge"
+                  className="text-[10px] font-semibold px-1.5 py-0"
+                >
+                  {kind === 'hangar_pull' ? 'Hangar pull' : 'Return'}
+                </Badge>
+              )}
               {flight.isQuickTurn && (
                 <Badge
                   variant="outline"
@@ -462,6 +473,17 @@ export function FlightCard({
               </DropdownMenu>
             </div>
           </div>
+
+          {/* Service notes (B24): prominent, right under the header, e.g. "T/O fuel, TKS fluid" */}
+          {notes && (
+            <div
+              data-testid="flight-card-notes"
+              className="flex items-start gap-1.5 rounded border border-amber-500/40 bg-amber-500/15 p-2 text-sm font-medium"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="min-w-0 whitespace-pre-wrap break-words text-foreground">{notes}</span>
+            </div>
+          )}
 
           {/* Origin/Destination */}
           {isArrival && flight.origin && (
@@ -631,14 +653,6 @@ export function FlightCard({
                 </button>
               )}
             </>
-          )}
-
-          {/* Notes */}
-          {notes && (
-            <div className="flex items-start gap-1.5 text-[11px] p-1.5 rounded border bg-yellow-500/10 border-yellow-500/20 mt-1.5">
-              <AlertCircle className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span className="min-w-0 break-words text-foreground">{notes}</span>
-            </div>
           )}
 
           {/* Time Display with Countdown - Above divider, left of badges */}

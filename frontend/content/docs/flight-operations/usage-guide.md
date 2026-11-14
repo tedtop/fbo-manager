@@ -2,7 +2,7 @@
 title: Arrivals and Departures usage guide
 module: flight-operations
 order: 1
-anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
+anchors: [add-flight, times-hint, multi-day, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
 ---
 
 ## Overview
@@ -13,6 +13,10 @@ The Arrivals / Departures board (the home page, "Flight Ops") lists every aircra
 - A quick turn (QT) appears in both columns, because the same aircraft arrives and leaves.
 - The board shows **Today + Future** by default: everything whose stay ends today or later. Finished (Departed) and hidden flights drop off, see "Hide a flight" below.
 - The board updates live: flights added or changed by other people appear without reloading.
+
+### Getting help
+
+This guide opens in a panel on the left. The **?** button in the board toolbar opens it at the top. The **?** buttons in the Add Flight and Edit Flight form open it at the matching section: one in the form title (adding a flight), one by the times and one by the services. The panel sits beside the form, so you can read and type at the same time. Closing the panel does not clear what you typed. If a section does not exist, the guide opens at the top. The **Open module** link at the top of the panel takes you back to the board.
 
 ## Common tasks
 
@@ -27,6 +31,8 @@ Press **Add Flight** in the board toolbar. The form is a panel on the right.
 5. Optional: Origin, Destination, Contact Name and Notes, Services, Notes, Fuel order notes.
 
 New flights have **QT** ticked, so you normally only enter the arrival time. If the aircraft is new, it is created together with the flight.
+
+The flight is recorded as created by **you**: the card's small badge shows your initials, and hovering it shows your full name and department. This needs your login to be linked to a user in **Users** (same email address). If it is not linked, the flight is attributed to the default system user instead, so ask an administrator to add your user. Older flights with no creator on record show `--` and "Unknown creator".
 
 ### Arrival, departure and QT {#times-hint}
 
@@ -58,7 +64,7 @@ Not every flight has both ends.
 - **Arrival only (a return):** leave Departure blank. Used for an aircraft coming in that will leave later or on a different booking.
 - **Departure only (a hangar pull):** leave Arrival blank. Used for an aircraft already in the hangar that is pulled out to depart.
 
-At least one scheduled time is required; saving with neither shows an error under the times. Untick QT (or just type the departure) when there is no arrival, since the +1 hour rule needs an arrival. Notes such as takeoff fuel go in **Fuel order notes**.
+At least one scheduled time is required; saving with neither shows an error under the times. Untick QT (or just type the departure) when there is no arrival, since the +1 hour rule needs an arrival. Put service notes such as takeoff fuel or TKS fluid in **Notes**: they appear in a highlighted box at the top of the flight's card, and a departure-only card also carries a **Hangar pull** badge (an arrival-only card carries **Return**). Notes show on every card that has them, not only pulls.
 
 The home airport pre-fills the end that is known: Destination for an arrival, Origin for a hangar pull. See "Choosing an airport" below.
 
@@ -156,4 +162,6 @@ Two people can open the same flight. The form tells you:
 - **QT got unticked.** Typing a departure time by hand unticks QT. Tick it again to restore arrival + 1 hour.
 - **The departure date is the next day.** A departure time earlier than the arrival time is treated as after midnight.
 - **An airport code finds the wrong place.** Several airports can share a code. Type the full ICAO code (for example KGPI) or pick from the list by name.
+- **Schedule import says "Flights imported, but the original sheet could not be saved".** The flights from the sheet are on the board and stay there. Only the stored copy of the scanned photo or PDF failed to save (the reason follows the message, for example a storage permission error, or a database error from recording the scan in the scanned-documents list; the file and its list entry are saved together). Nothing needs to be re-imported; tell an administrator so the storage problem can be fixed, and keep the paper sheet meanwhile.
 - **Settings shows "Access Restricted".** Changing the home airport, airport code display or tail prefix needs the users-management permission. Ask an administrator.
+- **Using the board on a phone.** The page never scrolls sideways: the navigation links fold into the menu button, the toolbar wraps onto several rows, and buttons are larger (at least 44 px) so they are easy to tap. The Add Flight form and other dialogs fit the screen and scroll inside themselves when the content is taller than the display. The calendar (day/week grid) is built for a mouse, so on a phone its button is hidden and the board shows the split, arrivals and departures lists only; if the calendar was your saved view, a phone shows the split view instead and the calendar returns on a larger screen. Wide tables (for example Users) scroll sideways inside the table, not the page.

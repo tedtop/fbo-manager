@@ -10,6 +10,7 @@ import {
   hasActiveFilters,
   isFlightHidden,
   LINK_COLORS,
+  flightKind,
   linkedFlightIds,
   listFetchWindow,
   partitionFlights,
@@ -837,5 +838,20 @@ describe('flightradarUrl', () => {
     expect(flightradarUrl(' N868CB ')).toBe(
       'https://www.flightradar24.com/data/aircraft/n868cb'
     )
+  })
+})
+
+describe('flightKind (B24, D6)', () => {
+  it('departure only is a hangar pull', () => {
+    expect(flightKind({ departureTime: '2026-11-13T15:00:00Z' })).toBe('hangar_pull')
+  })
+  it('arrival only is a return', () => {
+    expect(flightKind({ arrivalTime: '2026-11-13T15:00:00Z' })).toBe('return')
+  })
+  it('both times, or neither, is transient', () => {
+    expect(
+      flightKind({ arrivalTime: '2026-11-13T15:00:00Z', departureTime: '2026-11-13T16:00:00Z' })
+    ).toBe('transient')
+    expect(flightKind({})).toBe('transient')
   })
 })

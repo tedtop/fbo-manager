@@ -33,7 +33,9 @@ describe('Tail number prefix (Settings)', () => {
   it('a new flight starts with N in the tail field and typing continues after it', () => {
     openAddFlight()
     tailInput().should('have.value', 'N')
-    // No click: the field is focused when the sheet opens, with the caret after the prefix.
+    // No click: the tail field has the focus (B103: it is disabled while aircraft load, and takes the focus when
+    // enabled), with the caret after the prefix.
+    tailInput().should('be.focused')
     cy.focused().type('868cb')
     tailInput().should('have.value', 'N868CB')
   })
