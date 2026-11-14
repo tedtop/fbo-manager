@@ -23,7 +23,6 @@ import {
   ToggleGroup,
   ToggleGroupItem
 } from '@/components/ui/toggle-group'
-import { createClient } from '@/lib/supabase/client'
 import { useEquipment } from '@/hooks/use-equipment'
 import { useFlights } from '@/hooks/use-flights'
 import { useRecordEditSession } from '@/hooks/use-record-edit-session'
@@ -33,7 +32,8 @@ import {
   type TransactionRow,
   type TransactionWithRelations
 } from '@/repositories/transactions.repo'
-import { format } from 'date-fns'
+import { createClient } from '@/lib/supabase/client'
+import { updateFilledOrder } from '@/services/fuel-orders.service'
 import { useEffect, useMemo, useState } from 'react'
 
 type FuelType = 'jet_a' | 'jet_a_plus' | 'avgas' | ''
@@ -82,11 +82,6 @@ const FUEL_OPTIONS: { value: FuelType; label: string }[] = [
   { value: 'avgas', label: 'Avgas' }
 ]
 
-function generateTicketNumber(seq: number): string {
-  const today = format(new Date(), 'yyMMdd')
-  return `TKT-${today}-${String(seq).padStart(4, '0')}`
-}
-
 export function TransactionFormDialog({
   open,
   onOpenChange,
@@ -95,7 +90,6 @@ export function TransactionFormDialog({
   defaultFlightId,
   defaultTailNumber
 }: TransactionFormDialogProps) {
-  const db = useMemo(() => createClient(), [])
   const { flights } = useFlights()
   const { equipment } = useEquipment()
   const fuelTrucks = equipment.filter((e) => e.equipment_type === 'fuel_truck')
@@ -103,7 +97,10 @@ export function TransactionFormDialog({
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<TransactionFormData>(emptyForm)
 
+  const db = useMemo(() => createClient(), [])
   const isEdit = !!transaction
+  // On a filled order the gallons shown are the delivered ones, and edits go through updateFilledOrder.
+  const isFilled = transaction?.status === 'filled'
 
   useEffect(() => {
     if (!open) return
@@ -117,28 +114,22 @@ export function TransactionFormDialog({
         fuel_type: transaction.fuel_type ?? '',
         fuel_truck_id: transaction.fuel_truck_id,
         fuel_request: transaction.fuel_request ?? '',
-        quantity_gallons: transaction.quantity_gallons ?? '',
+        quantity_gallons:
+          (transaction.status === 'filled' ? transaction.gallons_delivered : null) ??
+          transaction.quantity_gallons ??
+          '',
         quantity_lbs: transaction.quantity_lbs ?? ''
       })
       return
     }
 
-    // Auto-generate ticket number for new orders
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-
-    db.from('fuel_transaction')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString())
-      .then(({ count }) => {
-        setForm({
-          ...emptyForm,
-          ticket_number: generateTicketNumber((count ?? 0) + 1),
-          flight_id: defaultFlightId ?? null,
-          tail_number: defaultTailNumber ?? ''
-        })
-      })
-  }, [open, transaction, defaultFlightId, defaultTailNumber, db])
+    // The ticket number (FO-n) comes from the database sequence when the order is saved.
+    setForm({
+      ...emptyForm,
+      flight_id: defaultFlightId ?? null,
+      tail_number: defaultTailNumber ?? ''
+    })
+  }, [open, transaction, defaultFlightId, defaultTailNumber])
 
   const editSession = useRecordEditSession<TransactionRow>({
     table: 'fuel_transaction',
@@ -173,8 +164,7 @@ export function TransactionFormDialog({
       const lbs = form.quantity_lbs ? Number(form.quantity_lbs) : null
 
       const payload: TransactionInsert = {
-        ticket_number: form.ticket_number,
-        progress: 'started',
+        ticket_number: form.ticket_number || undefined,
         qt_sync_status: 'pending',
         flight_id: form.flight_id || null,
         tail_number: form.tail_number || null,
@@ -183,16 +173,20 @@ export function TransactionFormDialog({
         fuel_request: form.fuel_request || null,
         // Best-effort parse only — stays null for 'T/O', lbs requests, etc.
         gallons_requested: parseGallonsRequested(form.fuel_request),
-        quantity_gallons: gal,
+        // A filled order's gallons are saved below through updateFilledOrder (gallons_delivered).
+        ...(isFilled ? {} : { quantity_gallons: gal }),
         quantity_lbs: lbs,
         density: gal && lbs && density ? Number(density) : null,
         source: transaction?.source ?? 'manual',
         charge_flags: undefined
       }
       if (transaction) {
-        const outcome = await editSession.save((expectedUpdatedAt) =>
-          onSubmit(payload, expectedUpdatedAt)
-        )
+        const outcome = await editSession.save(async (expectedUpdatedAt) => {
+          await onSubmit(payload, expectedUpdatedAt)
+          if (isFilled && gal != null && gal !== Number(transaction.gallons_delivered)) {
+            await updateFilledOrder(db, transaction.id, gal)
+          }
+        })
         if (outcome.status === 'conflict') return
       } else {
         await onSubmit(payload)
@@ -243,13 +237,13 @@ export function TransactionFormDialog({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="ticket_number">Ticket Number *</Label>
+              <Label htmlFor="ticket_number">Ticket Number{isEdit ? ' *' : ''}</Label>
               <Input
                 id="ticket_number"
                 value={form.ticket_number}
                 onChange={(e) => setForm({ ...form, ticket_number: e.target.value })}
-                required
-                placeholder="e.g. TKT-260703-0001"
+                required={isEdit}
+                placeholder="Assigned automatically (FO-n)"
               />
             </div>
 

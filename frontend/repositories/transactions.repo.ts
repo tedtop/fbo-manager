@@ -1,5 +1,7 @@
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { handleWriteError } from '@/lib/db-errors'
+import type { FuelOrderStatus } from '@/lib/fuel-orders'
+import type { FlightFuelOrder } from '@/lib/flight-fuel-order'
 import type {
   Database,
   Tables,
@@ -31,10 +33,10 @@ const TX_SELECT = `
 `
 
 export interface TransactionFilters {
-  progress?: 'started' | 'in_progress' | 'completed'
+  status?: FuelOrderStatus
   unassigned?: boolean
   flightId?: number
-  source?: 'qt' | 'flight_card' | 'manual'
+  source?: TransactionRow['source']
 }
 
 export async function findAllTransactions(
@@ -46,8 +48,8 @@ export async function findAllTransactions(
     .select(TX_SELECT)
     .order('created_at', { ascending: false })
 
-  if (filters?.progress) {
-    query = query.eq('progress', filters.progress)
+  if (filters?.status) {
+    query = query.eq('status', filters.status)
   }
   if (filters?.flightId) {
     query = query.eq('flight_id', filters.flightId)
@@ -59,6 +61,31 @@ export async function findAllTransactions(
   const { data, error } = await query
   if (error) throw error
   return data as TransactionWithRelations[]
+}
+
+/** Every fuel order of one flight (any source, any status), shaped for the board card's chip and Fuel sheet. */
+export async function findFlightFuelOrders(
+  db: SupabaseClient<Database>,
+  flightId: number
+): Promise<FlightFuelOrder[]> {
+  const { data, error } = await db
+    .from('fuel_transaction')
+    .select(
+      'id, status, gallons_requested, gallons_delivered, fuel_type, prist, requested_for, fuel_request, created_at, updated_at, fueler_assignment ( assigned_at, fueler:fueler_id ( fueler_name ) )'
+    )
+    .eq('flight_id', flightId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  type Row = Omit<FlightFuelOrder, 'fuelerNames'> & {
+    fueler_assignment: Array<{ assigned_at: string; fueler: { fueler_name: string } | null }> | null
+  }
+  return ((data ?? []) as unknown as Row[]).map(({ fueler_assignment, ...row }) => ({
+    ...row,
+    fuelerNames: [...(fueler_assignment ?? [])]
+      .sort((a, b) => a.assigned_at.localeCompare(b.assigned_at))
+      .map((a) => a.fueler?.fueler_name ?? '')
+      .filter(Boolean)
+  }))
 }
 
 export async function findTransactionById(
@@ -168,7 +195,7 @@ export type UninvoicedTransaction = TransactionWithRelations & {
 }
 
 /**
- * Completed fuelings with no invoice line yet — the front desk's
+ * Filled orders with no invoice line yet — the front desk's
  * "not yet invoiced" queue (and the view a future chatbot-created
  * transaction lands in). PostgREST can't express NOT EXISTS, so the
  * referencing line items are embedded and empties filtered client-side,
@@ -184,7 +211,7 @@ export async function findUninvoicedTransactions(
   const { data, error } = await db
     .from('fuel_transaction')
     .select(`${TX_SELECT}, invoice_line_items ( id )`)
-    .eq('progress', 'completed')
+    .eq('status', 'filled')
     .gte('created_at', since.toISOString())
     .order('created_at', { ascending: false })
   if (error) throw error

@@ -37,7 +37,6 @@ interface FlightBoardProps {
   ) => void | Promise<void>
   // Called once a deleted card has finished its exit animation and can leave the list.
   onDeleteExited?: (id: string) => void
-  onOrderFuel?: (flight: Flight) => void
   filters: FilterType
   // Lets the empty state offer "Clear filters".
   onFiltersChange?: (filters: FilterType) => void
@@ -61,7 +60,6 @@ export function FlightBoard({
   onHideFlight,
   onUnhideFlight,
   onDeleteExited,
-  onOrderFuel,
   filters,
   onFiltersChange,
   loading,
@@ -219,7 +217,6 @@ export function FlightBoard({
               deletePhases={deletePhases}
               loading={loading}
               empty={col.empty}
-              onOrderFuel={onOrderFuel}
               linkedFlightIds={linkedIds}
               flightLinkColors={flightLinkColors}
               hoveredFlightId={hoveredFlightId}

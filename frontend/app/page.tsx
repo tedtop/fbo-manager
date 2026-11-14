@@ -6,7 +6,6 @@ import { listFetchWindow, weekDateParams } from '@/components/flight-operations/
 import { FlightBoard } from '@/components/flight-operations/flight-board'
 import { FlightLoadError } from '@/components/flight-operations/flight-load-error'
 import { FlightFormDialog } from '@/components/flight-operations/flight-form-dialog'
-import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import type {
   Flight,
   FlightFilters
@@ -16,7 +15,6 @@ import { useTheme } from '@/components/navigation-wrapper'
 import { useDisplayZone } from '@/hooks/use-display-zone'
 import { useFlights } from '@/hooks/use-flights'
 import { useQtBoardFlights } from '@/hooks/use-qt-board-flights'
-import { useTransactions } from '@/hooks/use-transactions'
 import { useToast } from '@/hooks/use-toast'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { describeError } from '@/lib/error-message'
@@ -80,12 +78,9 @@ export default function FlightOperationsPage() {
   // Airline flights from QT, merged in live (read-only; not stored).
   const qtFlights = useQtBoardFlights(fboZone, zoneReady)
   const boardFlights = useMemo(() => [...flights, ...qtFlights], [flights, qtFlights])
-  const { createTransaction } = useTransactions()
   const { toast } = useToast()
   const { theme } = useTheme()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [fuelDialogOpen, setFuelDialogOpen] = useState(false)
-  const [fuelFlight, setFuelFlight] = useState<Flight | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -190,27 +185,6 @@ export default function FlightOperationsPage() {
     }
   }
 
-  const handleOrderFuel = (flight: Flight) => {
-    setFuelFlight(flight)
-    setFuelDialogOpen(true)
-  }
-
-  const handleFuelOrderSubmit = async (data: import('@/repositories/transactions.repo').TransactionInsert) => {
-    try {
-      await createTransaction(data)
-      toast({ title: 'Fuel order created' })
-      setFuelDialogOpen(false)
-      setFuelFlight(null)
-    } catch (err) {
-      toast({
-        title: "Couldn't create fuel order",
-        description: describeError(err),
-        variant: 'destructive'
-      })
-      throw err
-    }
-  }
-
   // Show loading while checking auth
   if (status === 'loading') {
     return (
@@ -269,7 +243,6 @@ export default function FlightOperationsPage() {
             handleSetHidden(flight, false, expectedUpdatedAt)
           }
           onDeleteExited={forgetFlight}
-          onOrderFuel={handleOrderFuel}
           loading={boardLoading}
           stale={isPlaceholder}
           filters={filters}
@@ -296,17 +269,6 @@ export default function FlightOperationsPage() {
         onOpenChange={setIsAddDialogOpen}
         onSubmit={handleAddFlight}
         theme={theme}
-      />
-
-      <TransactionFormDialog
-        open={fuelDialogOpen}
-        onOpenChange={(open) => {
-          setFuelDialogOpen(open)
-          if (!open) setFuelFlight(null)
-        }}
-        onSubmit={handleFuelOrderSubmit}
-        defaultFlightId={fuelFlight ? Number(fuelFlight.id.replace('manual-', '')) : null}
-        defaultTailNumber={fuelFlight?.tailNumber}
       />
     </div>
   )

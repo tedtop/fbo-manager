@@ -559,7 +559,7 @@ export type Database = {
           quantity_gallons: string | null
           quantity_lbs: string | null
           density: string | null
-          progress: 'started' | 'in_progress' | 'completed'
+          status: 'requested' | 'assigned' | 'fueling' | 'filled' | 'cancelled'
           charge_flags: Record<string, unknown> | null
           assigned_at: string | null
           completed_at: string | null
@@ -568,7 +568,7 @@ export type Database = {
           fuel_truck_id: number | null
           tail_number: string | null
           fuel_type: 'jet_a' | 'jet_a_plus' | 'avgas' | null
-          source: 'qt' | 'flight_card' | 'manual'
+          source: 'qt' | 'flight_card' | 'manual' | 'phone' | 'scan'
           ordered_by_id: number | null
           fuel_request: string | null
           gallons_requested: string | null
@@ -583,17 +583,21 @@ export type Database = {
           tank_reading_after_center: string | null
           tank_reading_after_total: string | null
           tank_reading_unit: 'lbs' | 'gal' | 'kg'
+          cancel_reason: string | null
+          filled_by: number | null
+          requested_for: string | null
+          prist: boolean
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: number
           flight_id?: number | null
-          ticket_number: string
+          ticket_number?: string
           quantity_gallons?: number | string | null
           quantity_lbs?: number | string | null
           density?: number | string | null
-          progress?: 'started' | 'in_progress' | 'completed'
+          status?: 'requested' | 'assigned' | 'fueling' | 'filled' | 'cancelled'
           charge_flags?: Record<string, unknown>
           assigned_at?: string | null
           completed_at?: string | null
@@ -602,7 +606,7 @@ export type Database = {
           fuel_truck_id?: number | null
           tail_number?: string | null
           fuel_type?: 'jet_a' | 'jet_a_plus' | 'avgas' | null
-          source?: 'qt' | 'flight_card' | 'manual'
+          source?: 'qt' | 'flight_card' | 'manual' | 'phone' | 'scan'
           ordered_by_id?: number | null
           fuel_request?: string | null
           gallons_requested?: number | string | null
@@ -617,6 +621,10 @@ export type Database = {
           tank_reading_after_center?: number | string | null
           tank_reading_after_total?: number | string | null
           tank_reading_unit?: 'lbs' | 'gal' | 'kg'
+          cancel_reason?: string | null
+          filled_by?: number | null
+          requested_for?: string | null
+          prist?: boolean
         }
         Update: Partial<
           Database['public']['Tables']['fuel_transaction']['Insert']

@@ -7,6 +7,7 @@ import { useWeather } from '@/hooks/use-weather'
 import { changeKey, normalizeTail } from '@/lib/dispatch-display'
 import Link from 'next/link'
 import { FuelOrderCard } from '@/components/fuel-dispatch/fuel-order-card'
+import { FillOrderDialog } from '@/components/fuel-dispatch/fill-order-dialog'
 import { FuelerAssignDialog } from '@/components/fuel-dispatch/fueler-assign-dialog'
 import { TransactionFormDialog } from '@/components/fuel-dispatch/transaction-form-dialog'
 import { DispatchCard } from '@/components/fuel-dispatch/dispatch-card'
@@ -15,11 +16,8 @@ import { Button } from '@/components/ui/button'
 import { useQTDispatch } from '@/hooks/use-qt-dispatch'
 import { useSession } from '@/hooks/use-session'
 import { useTransactions } from '@/hooks/use-transactions'
-import {
-  assignFueler,
-  removeFueler,
-  updateProgress
-} from '@/services/transactions.service'
+import { assignFueler, removeFueler } from '@/services/transactions.service'
+import { fillFuelOrder, startFuelOrder } from '@/services/fuel-orders.service'
 import { createClient } from '@/lib/supabase/client'
 import type { TransactionInsert, TransactionWithRelations } from '@/repositories/transactions.repo'
 import { useRouter } from 'next/navigation'
@@ -60,6 +58,7 @@ export default function FuelDispatchMonitorPage() {
   const [editTx, setEditTx] = useState<TransactionWithRelations | null>(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTx, setAssignTx] = useState<TransactionWithRelations | null>(null)
+  const [fillTx, setFillTx] = useState<TransactionWithRelations | null>(null)
 
   // Minuteman keeps QT's own order and only drops flights that have left (status "In Flight").
   const filteredDispatches = hideDeparted
@@ -67,7 +66,7 @@ export default function FuelDispatchMonitorPage() {
     : dispatches
 
   const fuelOrders = transactions.filter(
-    (t) => t.source === 'manual' || t.source === 'flight_card'
+    (t) => t.source !== 'qt'
   )
 
   useEffect(() => {
@@ -112,9 +111,37 @@ export default function FuelDispatchMonitorPage() {
     }
   }
 
-  const handleProgress = async (id: number, progress: 'started' | 'in_progress' | 'completed') => {
-    await updateProgress(db, id, progress)
-    toast({ title: `Order ${progress === 'completed' ? 'completed' : progress === 'in_progress' ? 'started' : 'updated'}` })
+  const handleStatus = async (tx: TransactionWithRelations, action: 'start' | 'fill') => {
+    if (action === 'fill') {
+      setFillTx(tx)
+      return
+    }
+    try {
+      await startFuelOrder(db, tx.id)
+      toast({ title: 'Order started' })
+      await txRefetch()
+    } catch (err) {
+      toast({
+        title: 'Could not start order',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleFill = async (tx: TransactionWithRelations, gallons: number) => {
+    try {
+      await fillFuelOrder(db, tx.id, { gallonsDelivered: gallons })
+      toast({ title: 'Order filled' })
+      await txRefetch()
+    } catch (err) {
+      toast({
+        title: 'Could not fill order',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred',
+        variant: 'destructive'
+      })
+      throw err
+    }
   }
 
   const handleAssign = async (fuelerId: number) => {
@@ -267,7 +294,7 @@ export default function FuelDispatchMonitorPage() {
                     onEdit={openEdit}
                     onDelete={handleDelete}
                     onAssignFuelers={openAssign}
-                    onUpdateProgress={handleProgress}
+                    onUpdateStatus={handleStatus}
                   />
                 ))}
               </div>
@@ -341,6 +368,14 @@ export default function FuelDispatchMonitorPage() {
         }}
         transaction={editTx}
         onSubmit={editTx ? handleUpdate : handleCreate}
+      />
+
+      <FillOrderDialog
+        transaction={fillTx}
+        onOpenChange={(open) => {
+          if (!open) setFillTx(null)
+        }}
+        onFill={handleFill}
       />
 
       {/* Assign Fueler Dialog */}

@@ -94,7 +94,7 @@ describe('Add Flight sheet persists real rows', () => {
     cy.get('#arrivalTime').type('14:30')
     cy.pickAirport('origin', 'KTEB')
     cy.pickAirport('destination', 'KASE')
-    cy.get('button[data-service-key="fuel"]').click()
+    cy.get('button[data-service-key="gpu"]').click()
     cy.get('button[data-service-key="catering"]').click()
     submit()
     cy.contains('h2', 'Add New Flight').should('not.exist')
@@ -104,7 +104,7 @@ describe('Add Flight sheet persists real rows', () => {
       expect(flight.origin).to.eq('KTEB')
       expect(flight.destination).to.eq('KASE')
       expect(flight.flight_status).to.eq('scheduled')
-      expect([...(flight.services ?? [])].sort()).to.deep.eq(['catering', 'fuel'])
+      expect([...(flight.services ?? [])].sort()).to.deep.eq(['catering', 'gpu'])
       // (date read from the sheet)
         expect(new Date(flight.scheduled_arrival_time).toISOString()).to.eq(localInstant(date, '14:30'))
         // QT is preselected: departure = arrival + 1 h (F1: no more fabricated +45 min).

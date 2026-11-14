@@ -3,6 +3,7 @@ import { createE2EDbClient } from './cypress/tasks/db'
 import { seedDevUsers } from './cypress/tasks/seed'
 import { equipmentTasks } from './cypress/tasks/equipment.tasks'
 import { flightCreatorTasks } from './cypress/tasks/flight-creator.tasks'
+import { flightFuelTasks } from './cypress/tasks/flight-fuel.tasks'
 import { fuelDispatchTasks } from './cypress/tasks/fuel-dispatch.tasks'
 import { fuelFarmTasks } from './cypress/tasks/fuel-farm.tasks'
 import { invoicingTasks } from './cypress/tasks/invoicing.tasks'
@@ -49,6 +50,7 @@ export default defineConfig({
       on('task', {
         ...equipmentTasks,
         ...flightCreatorTasks,
+        ...flightFuelTasks,
         ...fuelDispatchTasks,
         ...fuelFarmTasks,
         ...invoicingTasks,
@@ -220,6 +222,9 @@ export default defineConfig({
         /** Removes the flights and aircraft seeded for the given tails. */
         async cleanFlights(tails: string[]) {
           const db = createE2EDbClient()
+          // Fuel orders of these tails first: deleting the flight would only null their flight_id and orphan them.
+          const { error: fuelError } = await db.from('fuel_transaction').delete().in('tail_number', tails)
+          if (fuelError) throw new Error(`cleanFlights: fuel_transaction: ${fuelError.message}`)
           const { error: flightError } = await db.from('flight').delete().in('tail_number', tails)
           if (flightError) throw new Error(`cleanFlights: flight: ${flightError.message}`)
           const { error: aircraftError } = await db.from('aircraft').delete().in('tail_number', tails)
