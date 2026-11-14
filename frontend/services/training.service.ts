@@ -153,7 +153,10 @@ export interface RecordCompletionInput {
   completedOn: string // yyyy-MM-dd
   notes: string
   certificateFile: File | null
+  /** Legacy `users` row of the signed-in account, when it has one (null otherwise; not required). */
   recordedById: number | null
+  /** The signed-in account's profile id (B141): the attribution that needs no legacy row. */
+  recordedByProfileId?: string | null
 }
 
 /**
@@ -194,7 +197,8 @@ export async function recordCompletion(
     certificate_path: certificatePath,
     certificate_name: certificateName,
     notes: input.notes,
-    recorded_by_id: input.recordedById
+    recorded_by_id: input.recordedById,
+    recorded_by_profile_id: input.recordedByProfileId ?? null
   })
 }
 

@@ -14,6 +14,7 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { completionRecorderName } from '@/lib/completion-recorder'
 import { ErrorMessage } from '@/messages/error-message'
 import type { StaffMember } from '@/repositories/staff.repo'
 import { staffDisplayName } from '@/repositories/staff.repo'
@@ -49,7 +50,10 @@ interface CompletionSheetProps {
   course: TrainingCourseRow
   cell: CellState
   canManage: boolean
+  /** Legacy `users` row id of the signed-in account, when it has one. */
   currentUserId: number | null
+  /** Signed-in account's profile id: how a completion is attributed (needs no legacy row). */
+  currentProfileId?: string | null
   onRecord: (input: {
     userId: number
     course: TrainingCourseRow
@@ -57,6 +61,7 @@ interface CompletionSheetProps {
     notes: string
     certificateFile: File | null
     recordedById: number | null
+    recordedByProfileId?: string | null
   }) => Promise<unknown>
   onDeleteCompletion: (id: number) => Promise<unknown>
   onGetCertificateUrl: (path: string) => Promise<string>
@@ -101,6 +106,7 @@ export function CompletionSheet({
   cell,
   canManage,
   currentUserId,
+  currentProfileId,
   onRecord,
   onDeleteCompletion,
   onGetCertificateUrl
@@ -158,7 +164,8 @@ export function CompletionSheet({
         completedOn,
         notes: notes.trim(),
         certificateFile: file,
-        recordedById: currentUserId
+        recordedById: currentUserId,
+        recordedByProfileId: currentProfileId ?? null
       })
       setRecording(false)
     } catch {
@@ -375,12 +382,8 @@ export function CompletionSheet({
                               {formatDate(h.completed_on)}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {h.recorded_by
-                                ? `by ${staffDisplayName({
-                                    firstName: h.recorded_by.first_name,
-                                    lastName: h.recorded_by.last_name,
-                                    username: h.recorded_by.username
-                                  })}`
+                              {completionRecorderName(h)
+                                ? `by ${completionRecorderName(h)}`
                                 : 'Recorded'}
                             </p>
                           </div>
