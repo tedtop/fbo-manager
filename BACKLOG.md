@@ -165,6 +165,7 @@ Authoritative, ordered. Status: `todo` / `doing` / `review` / `done`. Sizes: S (
 | B140 | Line schedule and training edit rights need a legacy `users` row; 3 live Administrators lack one (FBO-213) | | review (branch `feature/b140-edit-rights-from-roles` 1e33496, merged to master dfc05ca) | P1 | M | M2. Found by B136 (2026-11-14). Live read-only check: 14 profiles, 3 without a `users` row by email, including Administrator(s). Confirm whether they can edit /line-schedule and /training on prod; make edit rights come from profiles + roles (B106 admin includes all), not the legacy table; drop the per-run Cypress insert from seedDevUsers. Vitest for the permission helper + Cypress: admin with no legacy row edits a shift and a course. Any live backfill waits for Ted. |
 | B141 | Training completion attribution and department self-service still need a legacy `users` row (FBO-215) | review (branch `feature/b141-profile-attribution` f31741c, NOT merged: waits for live migration go-ahead `20261114000100_training_completion_recorded_by_profile`; verifier PARTIAL-PASS: tsc clean, vitest 33/33, Cypress training 13/13. Training completion attribution done; department self-service NOT moved, needs a profile id on `department_member`/`schedule_shift`, follow-up item proposed) | P2 | S | M2. Follow-up from B140 (dfc05ca, edit rights now from roles via `lib/edit-rights.ts`). Move both onto profiles; keep the legacy link only where old data needs it. Vitest + Cypress with a user that has no legacy row. Any live backfill waits for Ted. |
 | B142 | Department self-service keyed on profiles, not legacy `users` rows (FBO-216) | blocked (needs a live migration: profile id on department_member and schedule_shift; Ted) | P2 | M | M2. Split from B141 (f31741c). Roster "(you)", own-shift edits and lead/supervisor rights key on `department_member.user_id` / `schedule_shift.user_id`. Add a profile id column to both + backfill (live, Ted), then code with a fallback like B141. Vitest + Cypress with a user that has no legacy row. |
+| B143 | Local Supabase storage returns 500 (42P10) on uploads after a reset (FBO-217) | todo | P2 | S | Found by B85a (2026-11-14). Local test setup only. After `supabase db reset` uploads fail, so equipment-detail.cy.ts cannot seed scans. Find the cause (CLI 3.0 vs 3.1, storage image, or a migration's storage policy / ON CONFLICT target), fix it, and get equipment-detail.cy.ts green. |
 
 ## Milestones to v1 (orchestrator, 2026-11-09)
 
@@ -214,6 +215,6 @@ Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is prima
 | B137 | FBO-197 | B103 | FBO-174 | B138 | FBO-205 | B104 | FBO-175 |
 | B96 | FBO-167 | | | | | | |
 | B94 | FBO-165 | B139 | FBO-210 | B140 | FBO-213 | B141 | FBO-215 |
-| B142 | FBO-216 | | | | | | |
+| B142 | FBO-216 | B143 | FBO-217 | | | | |
 
 Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Done, parked and blocked = Backlog. Priority: P0 = Urgent, P1 = High, P2 = Medium, P3 = Low.
