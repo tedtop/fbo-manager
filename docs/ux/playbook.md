@@ -35,12 +35,16 @@
   provisional): for parking, diff every type code in `lib/icao-aircraft-types.ts` and
   `lib/aircraft-dimensions.ts` against `~/src/icao-aircraft-types/data/types.json` (Doc 8643), then
   type the real code a dispatcher would write (E75L, P28A) into the picker and measure the marker.
+- Phone first for line-tech tasks (2026-11-14 run 6, provisional): walk L2/P5/P8 at 390px before
+  desktop, and on the local stack tap every button the phone drawer offers once (including the
+  destructive one), then read the DB row. Desktop-first runs never reached the bottom of the phone
+  drawer; this found FBO-218 (Remove 8px above Done, no undo) and FBO-219 (screen-relative Face buttons).
 - Measure layout on the phone with `getBoundingClientRect` (map canvas height, button sizes,
   `scrollHeight` vs `innerHeight`) in every mode the page has, not only the default mode.
 
 ## Ted's answers
 
-(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13; no comments as of 2026-11-14 run 5; FBO-200..212 all still Backlog)
+(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13; no comments as of 2026-11-14 run 6; FBO-200..214 all still Backlog)
 
 ## Lessons learned
 
@@ -78,6 +82,12 @@
   hold loop under ~30 s and poll the DB from Bash between calls.
 - 2026-11-14 (run 5): my run-3 claim "E75L now goes to the mid-jet nominal" was wrong (the size category is inferred from the
   app's own type list, which has no E75L). Measure the marker, don't infer from code reading.
+- 2026-11-14 (run 6): after `pnpm supabase:start` the "Log in as Admin" button silently does nothing
+  until the dev users exist; run `pnpm cypress:seed` first.
+- 2026-11-14 (run 6): the parking map opens at bearing 40 (`DEFAULT_BEARING`), so "screen right" is
+  130° true. Any heading check must say whether it means true or screen-relative.
+- 2026-11-14 (run 6): revert `frontend/tsconfig.json` with its own `git checkout -- tsconfig.json`;
+  combining it with a missing path in one checkout aborts the whole command.
 - 2026-11-13: the local map takes 8-15 s to show on first dev compile; wait before judging.
 - 2026-11-13: `next dev` adds its dist dir to `frontend/tsconfig.json` include; revert those
   lines in the main checkout after stopping the server.
@@ -86,6 +96,7 @@
 
 | Run | Change tried | Kept? | Why |
 |-----|--------------|-------|-----|
+| 2026-11-14 run 6 | Phone first for line-tech tasks; tap every phone-drawer button once on local and read the DB | kept (provisional) | First walk of L2 on a phone; found FBO-218 (destructive Remove next to Done, position wiped with no undo, DB-verified) and FBO-219 (Face right = 130°), neither seen in 5 desktop-first runs. Still no Ted decisions to judge the accept rate |
 | 2026-11-14 run 5 | Audit lookup tables against their reference source (Doc 8643) before walking P3/P7 | kept (provisional) | Found FBO-214 (5 non-ICAO codes; the same E175 draws at 64 px or 153 px depending on code) with hard evidence, and caught my own wrong run-3 comment on FBO-200. Still no Ted decisions to judge the accept rate |
 | 2026-11-14 run 4 | Verify-the-shipped-fix: turn each B57 claim (min icon size, contrast, heading undo, toasts, dark sheet) into a falsifiable check at prod scale before walking | reverted | Every B57 claim held (icons true-scale at ramp zoom, 36px floor only when zoomed out; undo present; sheet dark), so it produced no findings; the two new findings (FBO-211 door, FBO-212 labels) came from the ordinary cold walk. B57's own verifier already covers this |
 | 2026-11-14 run 3 | Production first at real data scale, local only for saves | kept (provisional) | Found FBO-208 (2 of 26 planes visible on a phone) and FBO-209 (drawer covers zoom), neither visible with a 3-plane local seed; still no Ted decisions on FBO-200..207 to judge accept rate |
