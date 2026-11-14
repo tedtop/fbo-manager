@@ -23,6 +23,13 @@
 - Parking "video game" movement (Ted 2026-11-13): instant response, smooth hold-repeat, sensible
   step, visible selection, keys not stolen by page scroll, easy undo.
 
+- Cold walk first (2026-11-13 run 2, provisional): walk each task as the persona with no code
+  read, scoring as you go; read the code only afterwards to explain each friction point. Layout
+  problems that only show up in a real viewport (map squeezed by drawers and footers) show up this
+  way; reading the code first anchors on handlers and misses them.
+- Measure layout on the phone with `getBoundingClientRect` (map canvas height, button sizes,
+  `scrollHeight` vs `innerHeight`) in every mode the page has, not only the default mode.
+
 ## Ted's answers
 
 (none yet; questions open: FBO-204 arrow-key feel, 2026-11-13)
@@ -36,6 +43,13 @@
 - 2026-11-13: the browser tool's `key` press sends keydown and keyup in the same frame, so a
   single "tap" does not move a plane at all; hold with dispatched KeyboardEvents (keydown, wait,
   keyup) from `javascript_tool` instead.
+- 2026-11-13 (run 2): while the pane is hidden, screenshots lag a few seconds behind the page. A
+  click made from a stale screenshot can toggle a dialog closed, and then Tab/Enter go to the nav
+  logo (once it sent me to Flight Ops). That's the harness, not the app. Read state with
+  `javascript_tool` (dialog present, activeElement, DB row) before each next step, and click by `ref`.
+- 2026-11-13 (run 2): `next dev` only reads `.env.local` for vars that aren't already set, so
+  exporting all four Supabase vars (local demo keys from `cypress/tasks/env.ts`) safely points the
+  :4520 server at the local stack.
 - 2026-11-13: the local map takes 8-15 s to show on first dev compile; wait before judging.
 - 2026-11-13: `next dev` adds its dist dir to `frontend/tsconfig.json` include; revert those
   lines in the main checkout after stopping the server.
@@ -44,4 +58,5 @@
 
 | Run | Change tried | Kept? | Why |
 |-----|--------------|-------|-----|
+| 2026-11-13 run 2 | Cold walk first, code only afterwards; measure layout in every mode at 390px | kept (provisional) | Found the 63px Config Mode map (FBO-206), which code-first reading missed in run 1, plus the missing draw-rectangle path (FBO-207). No Ted decisions yet on FBO-200..204, so the accept rate can't be judged |
 | 2026-11-13 | Baseline method + "read the module's input handlers and constants before walking, then probe the edges they imply" (found the E75L size gap and the tap/hold behaviour fast) | kept (provisional) | First run, no prior score; judge on Ted's accept rate for FBO-200..203 |
