@@ -210,6 +210,6 @@ Mirror in Linear (team FBO, https://linear.app/fbo-manager). BACKLOG.md is prima
 | B90 | FBO-161 | B91 | FBO-162 | B92 | FBO-163 | B93 | FBO-164 |
 | B137 | FBO-197 | B103 | FBO-174 | B138 | FBO-205 | B104 | FBO-175 |
 | B96 | FBO-167 | | | | | | |
-| B94 | FBO-165 | B139 | FBO-210 | | | | |
+| B94 | FBO-165 | B139 | FBO-210 | B136 | FBO-199 | | |
 
 Status mapping: todo = Todo, doing = In Progress, review = In Review, done = Done, parked and blocked = Backlog. Priority: P0 = Urgent, P1 = High, P2 = Medium, P3 = Low.
