@@ -72,7 +72,7 @@ export const DOC_MODULES: readonly DocModule[] = [
     title: 'Manage Users',
     route: '/users',
     docs: ['usage-guide'],
-    helpAnchors: ['sign-in', 'promote', 'assign-roles', 'administrator-includes-all-roles', 'sort-columns', 'edit-in-table', 'phone-format', 'set-real-email', 'link-signup', 'invite']
+    helpAnchors: ['how-access-works', 'roles', 'awaiting-access', 'sign-in', 'promote', 'assign-roles', 'administrator-includes-all-roles', 'sort-columns', 'edit-in-table', 'phone-format', 'set-real-email', 'link-signup', 'invite']
   }
 ]
 

@@ -2,6 +2,7 @@
 
 import type { ProfileWithRoles } from '@/types/domain/users'
 import type { RoleWithPermissions } from '@/types/domain/users'
+import { HelpButton } from '@/components/docs/help-button'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -235,7 +236,10 @@ export function UserSheet({
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium leading-none">Roles</legend>
+            <legend className="flex items-center gap-1 text-sm font-medium leading-none">
+              Roles
+              <HelpButton module="users" anchor="roles" topic="Roles" className="size-5" />
+            </legend>
             <p className="text-xs text-muted-foreground">
               Roles decide which modules this person can open. Pick one or
               more.

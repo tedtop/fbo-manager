@@ -2,7 +2,7 @@
 title: Manage Users usage guide
 module: users
 order: 1
-anchors: [sign-in, promote, assign-roles, administrator-includes-all-roles, sort-columns, edit-in-table, phone-format, set-real-email, link-signup, invite]
+anchors: [how-access-works, roles, awaiting-access, sign-in, promote, assign-roles, administrator-includes-all-roles, sort-columns, edit-in-table, phone-format, set-real-email, link-signup, invite]
 ---
 
 ## Overview
@@ -16,6 +16,32 @@ Line crew were created ahead of time with a placeholder email (`first.last@minut
 - The **⋯** menu on a row has Edit, Set real email, Link to staff account, Deactivate and Delete.
 
 ## Common tasks
+
+### How access works {#how-access-works}
+
+Signing in and getting access are two separate steps.
+
+1. A person presses **Continue with Google** on the login page. This creates their account, with no role.
+2. Until they have a role, the app holds them on **Awaiting access** (the `/pending` page). Nothing else opens for them.
+3. An administrator opens [Users](module:users), finds the new sign-up and gives them a role. Access starts as soon as the role is saved.
+4. The person presses **Check again** on the waiting page (or reloads) and lands on their first page.
+
+A role with no modules, or a deactivated account, is also held on the waiting page, with a message that says which.
+
+### The four roles {#roles}
+
+| Role | What it gives |
+|---|---|
+| Administrator | Everything, including Users. For line managers and management. |
+| Front Desk | Manage flight operations, invoicing and parking. View fuel farm, equipment and the line schedule. |
+| Line Department | Manage equipment, fuel farm and truck sheets. View the flight board, parking, training and the line schedule. |
+| Customer | Can sign in, but sees no modules yet. For aircraft owners. |
+
+The exact levels per module are editable under **Users > Roles & Permissions**. A person can hold more than one role. Change someone's roles from [Users](module:users).
+
+### What "Awaiting access" means {#awaiting-access}
+
+It means the person has an account but no role yet. On the Users page they sit at the top of the list with Awaiting access in the Role column, and the **Awaiting access** card counts them. Click that card to filter the list to them. The page you see when waiting cannot open this guide, so the same explanation is shown on it. Give them a role (see **Give a new sign-up access**) and they are no longer awaiting. If it is someone you do not recognise, leave them waiting or delete the account.
 
 ### How staff sign in {#sign-in}
 
