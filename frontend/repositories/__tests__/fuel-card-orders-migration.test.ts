@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// B121: migration 20261114000100 turns every flight_service 'fuel' row into a requested flight_card order, retires
+// B121: migration 20261114000200 turns every flight_service 'fuel' row into a requested flight_card order, retires
 // the service, and raises when the counts differ. Runs the file's body in a transaction that is always rolled back.
-const MIGRATION = path.resolve(__dirname, '../../supabase/migrations/20261114000100_fuel_card_orders.sql')
+const MIGRATION = path.resolve(__dirname, '../../supabase/migrations/20261114000200_fuel_card_orders.sql')
 const DB_URL =
   process.env.SUPABASE_TEST_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 

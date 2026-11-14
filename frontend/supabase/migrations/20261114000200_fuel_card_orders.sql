@@ -9,10 +9,10 @@
 --   * service 'fuel' is set inactive: it leaves the picker (findActiveServices) and the filters.
 -- All in one transaction. Depends on 20261113000100_fuel_order_status.sql (status, source 'flight_card' kept).
 --
--- Rollback: frontend/supabase/rollbacks/20261114000100_fuel_card_orders.down.sql
+-- Rollback: frontend/supabase/rollbacks/20261114000200_fuel_card_orders.down.sql
 -- Live apply WAITS FOR TED (back up flight_service and fuel_transaction first). When he approves, apply ONLY with
 -- supabase db query --linked -f <this file> (never `supabase db push`), then
--- supabase migration repair --linked --status applied 20261114000100
+-- supabase migration repair --linked --status applied 20261114000200
 
 begin;
 
