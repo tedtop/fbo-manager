@@ -128,7 +128,7 @@ export function CompactToolbar({
           variant={view === 'calendar' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => onViewChange('calendar')}
-          className="h-11 min-w-11 px-3 sm:h-9 sm:min-w-0"
+          className="hidden px-3 md:inline-flex md:h-9"
           title="Calendar View"
           aria-label="Calendar View"
           aria-pressed={view === 'calendar'}
