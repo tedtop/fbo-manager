@@ -36,7 +36,7 @@
 
 ## Ted's answers
 
-(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13; no comments as of 2026-11-14)
+(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13; no comments as of 2026-11-14 run 4)
 
 ## Lessons learned
 
@@ -60,6 +60,12 @@
   and keep clicks well clear of the compass rose and the drawer buttons.
 - 2026-11-14 (run 3): re-read the size code before re-reporting a size issue; B101 changed the
   fallback (E75L now goes to the mid-jet nominal, not a single), and an old finding's wording went stale.
+- 2026-11-14 (run 4): the pane can turn hidden mid-run while `document.visibilityState` still says
+  "visible"; the map then stops drawing markers (looked like a 30 s+ load). Only `tabs_context`
+  tells the truth: call it right before any timing or load measurement, and discard timings taken
+  while hidden.
+- 2026-11-14 (run 4): the drawer's role=dialog exists before the screenshot shows it; read the
+  dialog text with `javascript_tool` rather than waiting for the picture.
 - 2026-11-13: the local map takes 8-15 s to show on first dev compile; wait before judging.
 - 2026-11-13: `next dev` adds its dist dir to `frontend/tsconfig.json` include; revert those
   lines in the main checkout after stopping the server.
@@ -68,6 +74,7 @@
 
 | Run | Change tried | Kept? | Why |
 |-----|--------------|-------|-----|
+| 2026-11-14 run 4 | Verify-the-shipped-fix: turn each B57 claim (min icon size, contrast, heading undo, toasts, dark sheet) into a falsifiable check at prod scale before walking | reverted | Every B57 claim held (icons true-scale at ramp zoom, 36px floor only when zoomed out; undo present; sheet dark), so it produced no findings; the two new findings (FBO-211 door, FBO-212 labels) came from the ordinary cold walk. B57's own verifier already covers this |
 | 2026-11-14 run 3 | Production first at real data scale, local only for saves | kept (provisional) | Found FBO-208 (2 of 26 planes visible on a phone) and FBO-209 (drawer covers zoom), neither visible with a 3-plane local seed; still no Ted decisions on FBO-200..207 to judge accept rate |
 | 2026-11-13 run 2 | Cold walk first, code only afterwards; measure layout in every mode at 390px | kept (provisional) | Found the 63px Config Mode map (FBO-206), which code-first reading missed in run 1, plus the missing draw-rectangle path (FBO-207). No Ted decisions yet on FBO-200..204, so the accept rate can't be judged |
 | 2026-11-13 | Baseline method + "read the module's input handlers and constants before walking, then probe the edges they imply" (found the E75L size gap and the tap/hold behaviour fast) | kept (provisional) | First run, no prior score; judge on Ted's accept rate for FBO-200..203 |
