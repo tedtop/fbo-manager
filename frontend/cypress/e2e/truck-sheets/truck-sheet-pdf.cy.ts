@@ -46,12 +46,26 @@ describe('truck sheet PDF upload', () => {
     })
   })
 
-  it('tells the user when the reader is rate limited (429), page by page', () => {
-    cy.intercept('POST', '/api/ocr/truck-sheet', { statusCode: 429, body: { error: 'Too many requests' } }).as('limited')
+  it('waits and retries a page the reader rate limited (429), then carries on', () => {
+    let calls = 0
+    cy.intercept('POST', '/api/ocr/truck-sheet', (req) => {
+      calls++
+      if (calls === 1) req.reply({ statusCode: 429, headers: { 'Retry-After': '1' }, body: { error: 'Too many requests' } })
+      else req.reply({ statusCode: 200, body: SHEET })
+    }).as('retried')
+    cy.visit('/truck-sheets/new')
+    pickPdf(2)
+    cy.get('@retried.all', { timeout: 20_000 }).should('have.length', 3) // page 1 twice, page 2 once
+    cy.contains('Truck 5282').should('exist')
+    cy.contains('still rate limited').should('not.exist')
+  })
+
+  it('tells the user when the reader stays rate limited (429), page by page', () => {
+    cy.intercept('POST', '/api/ocr/truck-sheet', { statusCode: 429, headers: { 'Retry-After': '1' }, body: { error: 'Too many requests' } }).as('limited')
     cy.visit('/truck-sheets/new')
     cy.viewport(390, 844)
     pickPdf(2)
-    cy.contains('Too many pages read in the last minute').should('be.visible')
+    cy.contains('still rate limited after 4 tries', { timeout: 30_000 }).should('be.visible')
     cy.document().should((doc) => {
       expect(doc.documentElement.scrollWidth - doc.documentElement.clientWidth).to.be.at.most(0)
     })

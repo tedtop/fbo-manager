@@ -17,6 +17,22 @@ export const usersTasks = {
     return data.user.id
   },
 
+  /** Creates a confirmed auth user holding exactly one named role (e.g. 'Front Desk'). Returns the user id; remove with deleteAuthUser. */
+  async createUserWithRole({ email, password, role }: { email: string; password: string; role: string }) {
+    const db = createE2EDbClient()
+    const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true })
+    if (error || !data.user) throw new Error(`createUserWithRole: ${error?.message ?? 'no user returned'}`)
+    const { data: roleRow, error: roleError } = await db.from('roles').select('id').eq('name', role).single()
+    if (roleError) throw new Error(`createUserWithRole: role "${role}" not found: ${roleError.message}`)
+    await waitForDbRow(async () => {
+      const { data: profile } = await db.from('profiles').select('id').eq('id', data.user.id).maybeSingle() // made by the handle_new_auth_user trigger
+      return profile
+    })
+    const { error: grantError } = await db.from('user_roles').upsert({ user_id: data.user.id, role_id: roleRow.id }, { onConflict: 'user_id,role_id' })
+    if (grantError) throw new Error(`createUserWithRole: grant failed: ${grantError.message}`)
+    return data.user.id
+  },
+
   /** The profiles row for a user (waits for the trigger to create it) plus how many user_roles rows they have. */
   async getProfileAndRoleCount(userId: string) {
     const db = createE2EDbClient()

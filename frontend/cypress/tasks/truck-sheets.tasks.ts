@@ -36,7 +36,7 @@ export const truckSheetTasks = {
    * A fuel truck (equipment row) with one Jet A sheet for `date`: a header, two meter readings and one stored page
    * (a 1x1 PNG as page and thumbnail). For the equipment detail page. Undo with resetTruckSheetScans.
    */
-  async seedTruckWithSheet({ truck, date }: { truck: string; date: string }) {
+  async seedTruckWithSheet({ truck, date, withScan = true }: { truck: string; date: string; withScan?: boolean }) {
     const db = createE2EDbClient()
     const fail = (what: string, e: { message: string } | null) => {
       if (e) throw new Error(`seedTruckWithSheet ${what}: ${e.message}`)
@@ -61,6 +61,7 @@ export const truckSheetTasks = {
       { truck_sheet_id: sheet.data!.id, line_number: 2, reading_type: 'fueling', meter: 'rear', meter_start: 5000, meter_end: 5050, gallons_pumped: 50, gallons_remaining: 2850 },
     ])
     fail('readings', readings.error)
+    if (!withScan) return { equipmentId: eq.data!.id, sheetId: sheet.data!.id } // readings only: no storage upload
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
     const dir = `truck_sheet/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}/truck-${truck}`
     const page = `${dir}/pages/${date}_truck-${truck}_p1_e2e00001.png`
