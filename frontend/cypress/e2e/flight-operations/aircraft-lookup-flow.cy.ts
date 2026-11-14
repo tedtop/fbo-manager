@@ -13,6 +13,18 @@ const tails = [tailNew, tailMiss, tailUnknown, tailHover]
 // 1x1 PNG as a data: URI for the stubbed photo, so no photo host is contacted.
 const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 
+// The save follows the form fill asynchronously and cy.task is not retried, so poll the row.
+const waitForType = (tail: string, icao: string, tries = 20): void => {
+  cy.task('getAircraft', tail).then((a: any) => {
+    if (a?.aircraft_type_icao === icao || tries <= 0) {
+      expect(a?.aircraft_type_icao).to.eq(icao)
+      return
+    }
+    cy.wait(250)
+    waitForType(tail, icao, tries - 1)
+  })
+}
+
 const openSheet = () => {
   cy.login()
   cy.visit('/')
@@ -50,9 +62,7 @@ describe('Tail number type lookup and hover card (B79)', () => {
     cy.get('[aria-label="Looking up aircraft type"]').should('not.exist')
     cy.get('#aircraftType').should('contain.text', 'C172')
     cy.contains('No registry match').should('not.exist')
-    cy.task('getAircraft', tailNew).should((a: any) => {
-      expect(a.aircraft_type_icao).to.eq('C172')
-    })
+    waitForType(tailNew, 'C172')
   })
 
   it('on a miss shows the hint and lets the user pick a type by hand', () => {
@@ -78,17 +88,7 @@ describe('Tail number type lookup and hover card (B79)', () => {
     cy.contains('button', tailUnknown).click()
     cy.wait('@lookup').its('request.url').should('contain', `tail=${tailUnknown}`)
     cy.get('#aircraftType').should('contain.text', 'C56X')
-    const waitForType = (tries: number): void => {
-      cy.task('getAircraft', tailUnknown).then((a: any) => {
-        if (a?.aircraft_type_icao === 'C56X' || tries <= 0) {
-          expect(a.aircraft_type_icao).to.eq('C56X')
-          return
-        }
-        cy.wait(250)
-        waitForType(tries - 1)
-      })
-    }
-    waitForType(20)
+    waitForType(tailUnknown, 'C56X')
   })
 
   it('hover card shows photo, type and owner, and the tail links to Flightradar24', () => {
