@@ -129,11 +129,11 @@ Assertions that flip when the fix lands (`grep -rn "KNOWN BUG\|NOT YET" cypress/
 - Training duplicate name (B136): `training/training.cy.ts` expects the specific "already exists" message but the app shows the generic one.
 - Card staleness (B44, no finding id): `flight-operations/flight-edit.cy.ts`. The card seeds notes/services from props once.
 
-Known flaky (kept strict on purpose, not hidden behind retries): `settings/tail-prefix.cy.ts` "an empty prefix means no
-prefill" fails about one run in five. The tail field stays `N` although the saved prefix is empty, so a late-arriving
-prefix is not swapped into an Add Flight sheet that opened while settings were still loading (see the swap effect in
-`components/flight-operations/flight-form-dialog.tsx`). The spec waits for the `app_setting` response before opening the
-sheet, which narrows but does not remove it. Treat a failure as a likely real race, not noise.
+Fixed (B103): `settings/tail-prefix.cy.ts` used to fail about one run in five. Root cause was a real focus race, not
+the prefix swap: the tail field is `disabled` while the aircraft list loads, so the sheet's auto-focus skipped it and
+landed on "Aircraft type", and typing right after opening went to the wrong control. `TailNumberAutocomplete` now takes
+the focus back when it turns enabled (`focusWhenEnabled`, logic in `lib/flight-form-focus.ts`), and the spec asserts
+`be.focused` before typing. 20 of 20 consecutive runs green after the fix. Treat any new failure here as a real race.
 
 Fixed and now asserted as correct behavior: F1 (QT / classification), F2 and F5 (timezone, calendar window), F3 (fuel
 order notes, no en-route status), F4 (date range filter, bounded fetch), F6 and F7 (error toasts, delete confirmation, no

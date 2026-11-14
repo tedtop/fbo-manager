@@ -550,6 +550,7 @@ export function FlightFormDialog({
                   onCreateNew={handleCreateNewAircraft}
                   prefix={initialData ? undefined : tailPrefix}
                   disabled={aircraftLoading}
+                  focusWhenEnabled={!initialData}
                 />
                 {tailError ? (
                   <p
