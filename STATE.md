@@ -14,6 +14,8 @@
 
 Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the orchestrator. Still to archive from the sidebar (Remote Control/queued work blocked it): Fuel Dispatch module integration, Truck sheet scanner, Mobile viewport fixes, Parking areas, Line schedule update, Record fuel sheet meters. Google sign-in and user manager has not reported yet. Minuteman `feature/wing-loading` stays open (B92).
 
+- 2026-11-13 hourly build: B104 merged (1c48f3b). Schedule import warns when the original sheet cannot be saved; live fix needs migration `20261105000400_truck_sheet_scan_pages.sql` applied (Ted).
+
 ## Waiting on Ted
 - **B120 live migration (2026-11-13 hourly build):** `feature/b120-fuel-order-status` (6433ef7) is built and verified (tsc clean, 48 pure tests; DB-backed repo/service tests passed on the builder's throwaway stack, not re-run by the verifier). Before merging: backup, spot-check `select progress, count(*) from fuel_transaction` and `select fuel_type, count(*)` (values outside jet_a/jet_a_plus/avgas abort the migration), then apply `supabase/migrations/20261113000100_fuel_order_status.sql` with `db query --linked -f` + `migration repair`. B121/B122/B127/B129/B130 build on it.
 - **B68 live migration (2026-11-13 hourly build):** `feature/b68-fuelers-as-users` (68bb911) is built and verified (tsc clean, 24 vitest; migration, rollback and re-apply run on the LOCAL stack, partial unique index checked). Apply `frontend/supabase/migrations/20261113000200_profile_initials_fueler_user.sql` (adds `profiles.initials` unique among active users, `truck_sheets.fueler_user_id`) with `db query --linked -f` + `migration repair`, then merge. Independent of B120 (order free). After it is live, set initials (TT, TS, KG...) on the real users in the user manager; until then scans show initials as unresolved with a picker. Not done in B68: dispatch assignment (needs B122's `fuel_order_fueler`), the resolved name on truck-sheet detail/list pages, dropping `fueler`.
@@ -32,5 +34,5 @@ Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the or
 - Test runs use private dist dirs (`NEXT_DIST_DIR=.next-e2e/<name>`) and ports, never :4000.
 
 <!-- usage:start -->
-Usage (tokens, excl. cache reads): this session 80k | last 5h 30.90M | budget not set
+Usage (tokens, excl. cache reads): this session 87k | last 5h 31.98M | budget not set
 <!-- usage:end -->
