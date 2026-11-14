@@ -12,6 +12,25 @@ export const PLANE_SELECTED_STROKE = '#f59e0b'
  */
 export const ICON_PAD = 3
 
+/**
+ * Smallest on-screen length for the longer side of a plane silhouette. True scale makes a
+ * light aircraft a few pixels across at ramp zoom, which vanishes on satellite imagery, so
+ * the drawing never goes below this (aspect ratio kept).
+ */
+export const MIN_ICON_LONG_SIDE_PX = 36
+
+/** Scales (width, height) up, keeping the aspect ratio, so the longer side is at least `minLong`. */
+export function withMinimumSize(
+  width: number,
+  height: number,
+  minLong = MIN_ICON_LONG_SIDE_PX
+): { width: number; height: number } {
+  const long = Math.max(width, height)
+  if (long >= minLong || long <= 0) return { width, height }
+  const k = minLong / long
+  return { width: width * k, height: height * k }
+}
+
 /** Pixel size of the <img> that draws a silhouette at exactly `width` x `height` px. */
 export function paddedSize(
   width: number,
@@ -33,7 +52,7 @@ export function buildAircraftSvg(
   aspect = 1
 ): string {
   const stroke = selected ? PLANE_SELECTED_STROKE : PLANE_STROKE
-  const width = selected ? 3 : 1.5
+  const width = selected ? 4 : 2.5
   const common = `vector-effect="non-scaling-stroke" stroke-linejoin="round"`
   const body = silhouetteParts(category, aspect)
     .map(({ d, role }) => {
@@ -41,7 +60,7 @@ export function buildAircraftSvg(
         case 'canopy':
           return `<path d="${d}" fill="${PLANE_STROKE}" fill-opacity="0.45" stroke="none"/>`
         case 'line':
-          return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-opacity="0.7" ${common}/>`
+          return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="2" stroke-opacity="0.85" ${common}/>`
         case 'disc':
           return `<path d="${d}" fill="${PLANE_FILL}" fill-opacity="0.18" stroke="${stroke}" stroke-width="1" stroke-opacity="0.8" stroke-dasharray="4 3" ${common}/>`
         default:

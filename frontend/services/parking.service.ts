@@ -1,8 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { findAreaAtPoint } from '@/lib/parking-geometry'
+import { findAreaAtPoint, recomputeParkedAreas } from '@/lib/parking-geometry'
 import {
   clearAircraftPosition,
+  findParkedAircraft,
+  setAircraftArea,
   setAircraftPosition,
   type AircraftRow,
 } from '@/repositories/aircraft.repo'
@@ -35,11 +37,29 @@ export async function editArea(
   id: number,
   updates: ParkingAreaUpdate
 ): Promise<ParkingAreaRow> {
-  return updateParkingArea(db, id, updates)
+  const row = await updateParkingArea(db, id, updates)
+  if ('polygon' in updates) await refreshParkedAreas(db)
+  return row
+}
+
+/** Re-resolves parked_area_id of every parked plane against the active areas. */
+export async function refreshParkedAreas(db: SupabaseClient<Database>): Promise<number> {
+  const [areas, parked] = await Promise.all([findAllParkingAreas(db), findParkedAircraft(db)])
+  const changes = recomputeParkedAreas(
+    parked.flatMap((p) =>
+      p.parked_lat === null || p.parked_lng === null
+        ? []
+        : [{ tailNumber: p.tail_number, lat: Number(p.parked_lat), lng: Number(p.parked_lng), areaId: p.parked_area_id }]
+    ),
+    areas
+  )
+  await Promise.all(changes.map((c) => setAircraftArea(db, c.tailNumber, c.areaId)))
+  return changes.length
 }
 
 export async function archiveArea(db: SupabaseClient<Database>, id: number): Promise<void> {
   await archiveParkingArea(db, id)
+  await refreshParkedAreas(db)
 }
 
 /**

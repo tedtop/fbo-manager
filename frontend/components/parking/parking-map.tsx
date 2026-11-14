@@ -105,6 +105,17 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     [toast]
   )
 
+  // Success and error notices also pop up as a toast so a save is noticed even with the panel scrolled away.
+  const showNotice = useCallback(
+    (next: Notice | null) => {
+      setNotice(next)
+      if (next?.kind === 'success') toast({ title: next.text })
+      if (next?.kind === 'error')
+        toast({ title: next.text, variant: 'destructive' })
+    },
+    [toast]
+  )
+
   useEffect(() => {
     if (notice?.kind !== 'success') return
     const timer = setTimeout(() => setNotice(null), 5000)
@@ -124,7 +135,7 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     onSave: async (id, polygon) => {
       await parking.setBoundary(id, polygon)
     },
-    onNotice: setNotice,
+    onNotice: showNotice,
     onDeselect: () => setSelectedAreaId(null)
   })
 

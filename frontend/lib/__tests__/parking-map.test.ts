@@ -1,5 +1,6 @@
 import {
   AREA_FILL_COLORS,
+  canRevertHeading,
   AREA_FILL_OPACITY,
   AREA_KINDS,
   KIND_META,
@@ -264,5 +265,18 @@ describe('AREA_FILL_OPACITY', () => {
     expect(AREA_FILL_OPACITY.solid).toBeGreaterThanOrEqual(0.95)
     expect(AREA_FILL_OPACITY.selected).toBeGreaterThanOrEqual(0.25)
     expect(AREA_FILL_OPACITY.selected).toBeLessThanOrEqual(0.4)
+  })
+})
+
+describe('canRevertHeading', () => {
+  it('is false while the heading is unchanged, including 360 vs 0 and sub-degree noise', () => {
+    expect(canRevertHeading(200, 200)).toBe(false)
+    expect(canRevertHeading(0, 360)).toBe(false)
+    expect(canRevertHeading(200, 200.4)).toBe(false)
+  })
+
+  it('is true once the heading differs from the original', () => {
+    expect(canRevertHeading(200, 130)).toBe(true)
+    expect(canRevertHeading(359, 0)).toBe(true)
   })
 })

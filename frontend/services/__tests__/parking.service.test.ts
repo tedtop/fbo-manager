@@ -57,3 +57,31 @@ describe('parking.service', () => {
     expect((await findAircraftByTailNumber(db, 'N1SVC'))?.parked_lat).toBeNull()
   })
 })
+
+describe('parking.service boundary edits refresh parked_area_id', () => {
+  it('re-resolves planes when a polygon is saved', async () => {
+    const area = await addArea(db, { code: 'RAMP', name: 'Ramp', polygon: tieDownRow })
+    await createAircraft(db, { tail_number: 'N1IN' })
+    await createAircraft(db, { tail_number: 'N1OUT' })
+    const before = await listAreas(db)
+    // Parked while the area was small: N1IN is inside the ramp, N1OUT outside.
+    await placeAircraft(db, 'N1IN', 46.95, -114.05, 0, before)
+    await placeAircraft(db, 'N1OUT', 46.91, -114.09, 0, before)
+    expect((await findAircraftByTailNumber(db, 'N1IN'))?.parked_area_id).toBe(area.id)
+    expect((await findAircraftByTailNumber(db, 'N1OUT'))?.parked_area_id).toBeNull()
+
+    // The boundary grows over N1OUT and shrinks away from N1IN.
+    await editArea(db, area.id, { polygon: toGeoJsonPolygon([[-114.1, 46.9], [-114.08, 46.9], [-114.08, 46.92], [-114.1, 46.92], [-114.1, 46.9]]) })
+    expect((await findAircraftByTailNumber(db, 'N1OUT'))?.parked_area_id).toBe(area.id)
+    expect((await findAircraftByTailNumber(db, 'N1IN'))?.parked_area_id).toBeNull()
+  })
+
+  it('does not touch planes when a non-boundary field changes', async () => {
+    const area = await addArea(db, { code: 'RAMP', name: 'Ramp', polygon: tieDownRow })
+    await createAircraft(db, { tail_number: 'N1IN' })
+    await placeAircraft(db, 'N1IN', 46.95, -114.05, 0, await listAreas(db))
+    const parkedAt = (await findAircraftByTailNumber(db, 'N1IN'))?.parked_area_id
+    await editArea(db, area.id, { name: 'Renamed' })
+    expect((await findAircraftByTailNumber(db, 'N1IN'))?.parked_area_id).toBe(parkedAt)
+  })
+})

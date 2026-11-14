@@ -5,6 +5,7 @@ import {
   pointInArea,
   polygonBounds,
   polygonCentroid,
+  recomputeParkedAreas,
   ringOf,
   squareUpRing,
   toGeoJsonPolygon,
@@ -276,5 +277,42 @@ describe('squareUpRing', () => {
     expect(squareUpRing(collinearOnAxis, 0)).toBe(collinearOnAxis)
     expect(squareUpRing([], 0)).toEqual([])
     expect(squareUpRing(skewedQuad, Number.NaN)).toBe(skewedQuad)
+  })
+})
+
+describe('recomputeParkedAreas', () => {
+  const box = (x0: number, y0: number, x1: number, y1: number) =>
+    toGeoJsonPolygon([[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]])
+  const big = { id: 1, polygon: box(0, 0, 10, 10) }
+  const small = { id: 2, polygon: box(2, 2, 4, 4) }
+  const plane = (tailNumber: string, lng: number, lat: number, areaId: number | null) => ({
+    tailNumber,
+    lat,
+    lng,
+    areaId,
+  })
+
+  it('returns nothing when every stored area already matches', () => {
+    expect(recomputeParkedAreas([plane('N1', 3, 3, 2), plane('N2', 8, 8, 1), plane('N3', 20, 20, null)], [big, small])).toEqual([])
+  })
+
+  it('moves a plane that is now inside a smaller area, and drops one that left every area', () => {
+    const changes = recomputeParkedAreas([plane('N1', 3, 3, 1), plane('N2', 20, 20, 1)], [big, small])
+    expect(changes).toEqual([
+      { tailNumber: 'N1', areaId: 2 },
+      { tailNumber: 'N2', areaId: null },
+    ])
+  })
+
+  it('assigns an area to a plane that had none once a boundary grows over it', () => {
+    expect(recomputeParkedAreas([plane('N1', 12, 5, null)], [{ id: 1, polygon: box(0, 0, 15, 10) }])).toEqual([
+      { tailNumber: 'N1', areaId: 1 },
+    ])
+  })
+
+  it('ignores areas without a usable polygon', () => {
+    expect(recomputeParkedAreas([plane('N1', 3, 3, 1)], [{ id: 1, polygon: null }])).toEqual([
+      { tailNumber: 'N1', areaId: null },
+    ])
   })
 })

@@ -33,6 +33,7 @@ Click an airplane to open its drawer. The **compass** in the drawer shows the ai
 - The red **N** is true north and turns with the map, so if you have rotated the map, north on the compass still matches north on the map. The small purple mark at the top of the compass is "up on your screen".
 - With the compass selected (click it, or Tab to it), the **arrow keys** turn the airplane by 1 degree and **Shift + arrow** by 10. **Home** points it north.
 - The four buttons under the compass turn the airplane to face left, up, right or down as you see them on screen, whatever the map rotation.
+- **Undo heading change** (below the buttons) puts the airplane back to the heading it had when you opened the drawer, before or after the change has saved. It is greyed out while the heading is unchanged.
 
 ### Remove an airplane from the ramp {#remove-airplane}
 
@@ -62,7 +63,7 @@ Select the area, press **Draw boundary**, click each corner on the map and **dou
 
 ### Edit a shape {#edit-shape}
 
-Click an area on the map (or in the list) to edit it directly: there is no separate edit button. Drag the shape to move it. Changes save automatically. Click empty map or press Esc to deselect.
+Click an area on the map (or in the list) to edit it directly: there is no separate edit button. Drag the shape to move it. Changes save automatically, and a small message (a toast) confirms each save or shows the error if it failed. When a boundary is saved, every parked airplane is re-checked: airplanes now inside the shape are attached to it, and airplanes that are no longer inside it are detached (or moved to the smaller or surrounding area that contains them). Click empty map or press Esc to deselect.
 
 - A **rectangle** shows eight handles: dragging a **corner** resizes it with the opposite corner fixed, and dragging a **side handle** moves just that side. It stays a rectangle, whatever direction it faces.
 - Any other shape shows its corners; drag a corner to move it, or drag a midpoint to add a new corner.

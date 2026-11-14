@@ -31,6 +31,7 @@ export const parkingTasks = {
     lat,
     lng,
     heading,
+    areaId = null,
   }: {
     tail: string
     typeIcao: string
@@ -38,6 +39,7 @@ export const parkingTasks = {
     lat: number
     lng: number
     heading: number
+    areaId?: number | null
   }) {
     const db = createE2EDbClient()
     const { error } = await db.from('aircraft').insert({
@@ -47,6 +49,7 @@ export const parkingTasks = {
       parked_lat: lat,
       parked_lng: lng,
       parked_heading: heading,
+      parked_area_id: areaId,
       parked_at: new Date().toISOString(),
     })
     if (error) throw new Error(`seedParkedAircraft: ${error.message}`)
@@ -60,6 +63,14 @@ export const parkingTasks = {
     if (error) throw new Error(`getParkedPose: ${error.message}`)
     if (!data) return null
     return { lat: Number(data.parked_lat), lng: Number(data.parked_lng), heading: data.parked_heading }
+  },
+
+  /** parked_area_id of an aircraft (null when it has none or the aircraft is missing). */
+  async getParkedAreaId(tail: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db.from('aircraft').select('parked_area_id').eq('tail_number', tail).maybeSingle()
+    if (error) throw new Error(`getParkedAreaId: ${error.message}`)
+    return data?.parked_area_id ?? null
   },
 
   /** Removes the aircraft seeded for the given tails. */

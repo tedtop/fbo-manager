@@ -6,7 +6,9 @@ import {
   PLANE_STROKE,
   aircraftIconUrl,
   buildAircraftSvg,
-  paddedSize
+  MIN_ICON_LONG_SIDE_PX,
+  paddedSize,
+  withMinimumSize
 } from '../aircraft-icon'
 
 describe('aircraft icon', () => {
@@ -67,5 +69,21 @@ describe('aircraft icon', () => {
     )
     expect(aircraftIconUrl('light-jet', false)).toBe(url)
     expect(aircraftIconUrl('light-jet', true)).not.toBe(url)
+  })
+})
+
+describe('withMinimumSize', () => {
+  it('scales a tiny silhouette up to the minimum long side, keeping the aspect ratio', () => {
+    const { width, height } = withMinimumSize(6, 4)
+    expect(Math.max(width, height)).toBeCloseTo(MIN_ICON_LONG_SIDE_PX)
+    expect(width / height).toBeCloseTo(1.5)
+  })
+
+  it('leaves a silhouette that is already big enough alone', () => {
+    expect(withMinimumSize(80, 60)).toEqual({ width: 80, height: 60 })
+  })
+
+  it('does not blow up on a zero size', () => {
+    expect(withMinimumSize(0, 0)).toEqual({ width: 0, height: 0 })
   })
 })
