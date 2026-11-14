@@ -56,6 +56,11 @@ Also never create, alter, or drop a table named `fuel_tank_readings`; it belongs
   remotely, so it would replay `test_schema.sql` on live. Apply one reviewed migration at a time, in a
   transaction, with `supabase db query --linked -f <file>`, then
   `supabase migration repair --status applied <version>`.
+- Grants in new migrations: grant to `authenticated, service_role` only, never `anon` (B94; the
+  copy-pasted `grant all on all sequences in schema public to anon, ...` re-opened the B29 lockdown).
+  `frontend/lib/__tests__/migration-grants.test.ts` fails on any `grant ... to anon` in a migration newer
+  than `20261109000100`. `node frontend/scripts/check-anon-sequences.mjs` checks the local stack's actual
+  privileges. `20261113000400_revoke_anon_regrants.sql` goes to live together with B29's `20261102000400`.
 - Back up the affected table first. List the tables a migration touches in its header comment.
 - The local test reset (`frontend/tests/support/reset.ts`) refuses non-local URLs; do not weaken that guard.
 - This list was inferred from row counts and timestamps. Confirm with the owner before treating a table
