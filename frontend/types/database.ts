@@ -513,6 +513,7 @@ export type Database = {
           certificate_name: string | null
           notes: string
           recorded_by_id: number | null
+          recorded_by_profile_id: string | null
           created_at: string
           updated_at: string
         }
@@ -526,6 +527,7 @@ export type Database = {
           certificate_name?: string | null
           notes?: string
           recorded_by_id?: number | null
+          recorded_by_profile_id?: string | null
         }
         Update: Partial<
           Database['public']['Tables']['training_completion']['Insert']
@@ -547,6 +549,12 @@ export type Database = {
             foreignKeyName: 'training_completion_recorded_by_id_fkey'
             columns: ['recorded_by_id']
             referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'training_completion_recorded_by_profile_id_fkey'
+            columns: ['recorded_by_profile_id']
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           }
         ]

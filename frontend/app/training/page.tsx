@@ -6,6 +6,7 @@ import { ManageCoursesPanel } from '@/components/training/manage-courses-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useAuth } from '@/providers/auth-provider'
 import { useMyPermissions } from '@/hooks/use-permissions'
 import { canManageTraining } from '@/lib/edit-rights'
 import { useTrainingMatrix } from '@/hooks/use-training-matrix'
@@ -14,6 +15,7 @@ import { useMemo, useState } from 'react'
 
 export default function TrainingPage() {
   const { user } = useCurrentUser()
+  const { session } = useAuth()
   const { access } = useMyPermissions()
   const isAdmin = canManageTraining(access)
 
@@ -106,6 +108,7 @@ export default function TrainingPage() {
           cell={selectedCell.cell}
           canManage={isAdmin}
           currentUserId={user?.id ?? null}
+          currentProfileId={session?.user?.id ?? null}
           onRecord={recordCompletion}
           onDeleteCompletion={deleteCompletion}
           onGetCertificateUrl={getCertificateUrl}

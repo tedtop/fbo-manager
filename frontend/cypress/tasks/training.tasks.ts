@@ -18,6 +18,30 @@ export const trainingTasks = {
     return null
   },
 
+  /** Inserts a one-year training course (service role) and returns its id. */
+  async createTrainingCourse(name: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db.from('training_course').insert({ name, validity_amount: 1, validity_unit: 'years' }).select('id').single()
+    if (error) throw new Error(`createTrainingCourse: ${error.message}`)
+    return data.id as number
+  },
+
+  /** The profile (id and names) for this email, or null (B141: completion attribution comes from the profile). */
+  async getProfileByEmail(email: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db.from('profiles').select('id, first_name, last_name').eq('email', email).maybeSingle()
+    if (error) throw new Error(`getProfileByEmail: ${error.message}`)
+    return data
+  },
+
+  /** Sets a profile's display name (the spec restores the original afterwards). */
+  async setProfileName({ email, first, last }: { email: string; first: string; last: string }) {
+    const db = createE2EDbClient()
+    const { error } = await db.from('profiles').update({ first_name: first, last_name: last }).eq('email', email)
+    if (error) throw new Error(`setProfileName: ${error.message}`)
+    return null
+  },
+
   /** Removes the courses with these names (their completions go with them). */
   async cleanTrainingCourses(names: string[]) {
     const db = createE2EDbClient()

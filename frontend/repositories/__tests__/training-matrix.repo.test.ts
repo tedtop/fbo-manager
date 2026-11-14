@@ -114,6 +114,27 @@ describe('training-completions.repo', () => {
     expect(byCourse.get(forever.id)?.expires_on).toBeNull()
   })
 
+  it('recordCompletion attributes the completion to the signed-in profile with no legacy users row (B141)', async () => {
+    const u = await makeUser(db)
+    const c = await createCourse(db, { name: 'Annual' })
+    const email = `b141-${Date.now()}@example.test`
+    const { data: created, error } = await db.auth.admin.createUser({ email, password: 'Test-pass-123!', email_confirm: true })
+    if (error) throw error
+    const profileId = created.user.id
+    try {
+      await db.from('profiles').upsert({ id: profileId, email, first_name: 'Pat', last_name: 'Profile' })
+      await recordCompletion(db, { userId: u.id, course: c, completedOn: '2026-11-13', notes: '', certificateFile: null, recordedById: null, recordedByProfileId: profileId })
+      const [row] = await findAllCompletions(db)
+      expect(row.recorded_by_id).toBeNull()
+      expect(row.recorded_by_profile_id).toBe(profileId)
+      expect(row.recorded_by_profile).toMatchObject({ id: profileId, first_name: 'Pat', last_name: 'Profile' })
+      expect(row.recorded_by).toBeNull()
+    } finally {
+      await db.from('training_completion').delete().eq('recorded_by_profile_id', profileId)
+      await db.auth.admin.deleteUser(profileId)
+    }
+  })
+
   it('recordCompletion refuses a certificate that is neither PDF nor image, before writing anything', async () => {
     const u = await makeUser(db)
     const c = await createCourse(db, { name: 'Annual' })
