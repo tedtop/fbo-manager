@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { isUniqueViolation } from '@/lib/unique-violation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -142,7 +143,7 @@ export function CourseFormSheet({
       onOpenChange(false)
     } catch (err) {
       setError(
-        err instanceof Error && /duplicate|unique/i.test(err.message)
+        isUniqueViolation(err)
           ? 'A training with this name already exists'
           : 'Failed to save training. Please try again.'
       )

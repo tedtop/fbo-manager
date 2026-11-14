@@ -61,9 +61,7 @@ describe('Training and compliance', () => {
     cy.contains('button', 'Add training').click()
     cy.get('#course-name').type(COURSE)
     cy.contains('[role="dialog"] button', 'Add training').click()
-    // KNOWN BUG (BACKLOG B136): the form means to say "A training with this name already exists", but the Supabase
-    // error is not an Error instance, so the generic message shows. Flip this assertion when it is fixed.
-    cy.contains('Failed to save training. Please try again.').should('be.visible')
+    cy.contains('A training with this name already exists').should('be.visible')
     cy.get('[role="dialog"]').should('exist') // the sheet stays open
     cy.task('getTrainingCourse', COURSE).should('not.eq', null) // still exactly one course of that name (maybeSingle would throw on two)
   })
