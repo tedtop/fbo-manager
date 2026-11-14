@@ -18,20 +18,6 @@ export const lineScheduleTasks = {
       dept = created.data
       createdDepartment = true
     }
-    // The page decides who may edit from the legacy `users` row matching the signed-in email (useCurrentUser),
-    // which the dev accounts do not have on a fresh stack: add the admin's row for the run.
-    const adminEmail = 'admin@minutemanfbo.local'
-    const { data: existing } = await db.from('users').select('id').eq('email', adminEmail).maybeSingle()
-    let adminRowId: number | null = null
-    if (!existing) {
-      const a = await db
-        .from('users')
-        .insert({ username: 'cy-dev-admin', email: adminEmail, password: 'x', first_name: 'Dev', last_name: 'Admin', role: 'admin' })
-        .select('id')
-        .single()
-      fail('admin row', a.error)
-      adminRowId = a.data!.id
-    }
     const userIds: number[] = []
     for (const [i, who] of ['Alpha', 'Bravo'].entries()) {
       const u = await db
@@ -44,7 +30,15 @@ export const lineScheduleTasks = {
       const m = await db.from('department_member').insert({ department_id: dept!.id, user_id: u.data!.id, display_order: 900 + i })
       fail(`member ${who}`, m.error)
     }
-    return { departmentId: dept!.id as number, createdDepartment, userIds, adminRowId }
+    return { departmentId: dept!.id as number, createdDepartment, userIds }
+  },
+
+  /** True when a legacy `users` row exists for this email (B140: edit rights must not depend on it). */
+  async hasLegacyUserRow(email: string) {
+    const db = createE2EDbClient()
+    const { data, error } = await db.from('users').select('id').eq('email', email).maybeSingle()
+    if (error) throw new Error(`hasLegacyUserRow: ${error.message}`)
+    return !!data
   },
 
   async addShift({ departmentId, userId, date, start, end }: { departmentId: number; userId: number; date: string; start: string; end: string }) {
@@ -69,12 +63,11 @@ export const lineScheduleTasks = {
     return null
   },
 
-  async cleanLineSchedule({ departmentId, createdDepartment, userIds, adminRowId }: { departmentId: number; createdDepartment: boolean; userIds: number[]; adminRowId: number | null }) {
+  async cleanLineSchedule({ departmentId, createdDepartment, userIds }: { departmentId: number; createdDepartment: boolean; userIds: number[] }) {
     const db = createE2EDbClient()
     await db.from('schedule_shift').delete().in('user_id', userIds)
     await db.from('department_member').delete().in('user_id', userIds)
     await db.from('users').delete().in('id', userIds)
-    if (adminRowId) await db.from('users').delete().eq('id', adminRowId)
     if (createdDepartment) await db.from('department').delete().eq('id', departmentId)
     return null
   }

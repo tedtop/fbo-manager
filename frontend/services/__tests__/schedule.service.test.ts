@@ -36,7 +36,8 @@ const member = (dept_role: 'lead' | 'supervisor' | 'member'): MemberWithUser =>
   ({ id: 1, department_id: 1, user_id: 10, dept_role, is_active: true, user: null }) as unknown as MemberWithUser
 
 const ctx = (over: Partial<SchedulePermissionContext>): SchedulePermissionContext => ({
-  currentUser: { id: 10, role: 'line' },
+  currentUser: { id: 10 },
+  canManage: false,
   membership: member('member'),
   settings: {},
   ...over,
@@ -133,8 +134,15 @@ describe('coverageForDate', () => {
 })
 
 describe('permissions', () => {
-  it('lets an admin edit anyone, with or without a membership', () => {
-    const c = ctx({ currentUser: { id: 1, role: 'admin' }, membership: null })
+  it('lets a role-based manager edit anyone, with or without a membership', () => {
+    const c = ctx({ currentUser: { id: 1 }, canManage: true, membership: null })
+    expect(canEditShiftFor(c, 99)).toBe(true)
+    expect(canEditAnyShift(c)).toBe(true)
+    expect(canEditWholeDepartment(c)).toBe(true)
+  })
+
+  it('lets a role-based manager edit with no legacy users row at all (B140)', () => {
+    const c = ctx({ currentUser: null, membership: null, canManage: true })
     expect(canEditShiftFor(c, 99)).toBe(true)
     expect(canEditAnyShift(c)).toBe(true)
     expect(canEditWholeDepartment(c)).toBe(true)

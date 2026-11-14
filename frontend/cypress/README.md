@@ -101,7 +101,8 @@ Write waits as retry-able assertions or `cy.intercept` aliases, not fixed `cy.wa
 | Fuel Farm: tank readings (B110) | `fuel-farm/tank-readings.cy.ts` | Own tank `CYFF`: entry converts inches to gallons with the same table as the app and the DB row proves it |
 | Aircraft FAA lookup on the flight form (B110) | `flight-operations/aircraft-faa-lookup.cy.ts` | Stubbed `source: 'faa'` result fills the type and saves; owner not persisted; "No registry match" case |
 | Tail number hover card (B110) | `flight-operations/aircraft-hover.cy.ts` | No lookup until a tail is focused/hovered, then type and owner; no-match and failure messages; Flightradar24 link |
-| Line schedule (B110) | `line-schedule/line-schedule.cy.ts` | Add, edit, delete a shift, coverage, hourly view; seeds the `line` department and a legacy `users` row for the admin |
+| Line schedule (B110) | `line-schedule/line-schedule.cy.ts` | Add, edit, delete a shift, coverage, hourly view; seeds the `line` department and two staff; the admin needs no legacy `users` row (B140) |
+| Line schedule and training edit rights (B140) | `line-schedule/edit-rights.cy.ts`, `training/edit-rights.cy.ts` | Dev admin has no legacy `users` row (asserted) yet edits a shift / creates a course; the view-only Line Department account gets no Add Shift / shift edit / Manage trainings controls |
 | Training (B110) | `training/training.cy.ts` | Create/edit/retire a training, complete it, matrix status; the duplicate-name message is pinned as KNOWN BUG (B136) |
 | Docs pages (B110) | `docs/docs-pages.cy.ts` | Docs index and pages render and cross-link |
 | Truck daily log (B110) | `equipment/equipment-daily-log.cy.ts` | DPI trend, filter change, notes, out-of-service reason |

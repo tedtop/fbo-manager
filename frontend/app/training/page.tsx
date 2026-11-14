@@ -6,13 +6,16 @@ import { ManageCoursesPanel } from '@/components/training/manage-courses-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useMyPermissions } from '@/hooks/use-permissions'
+import { canManageTraining } from '@/lib/edit-rights'
 import { useTrainingMatrix } from '@/hooks/use-training-matrix'
 import { ErrorMessage } from '@/messages/error-message'
 import { useMemo, useState } from 'react'
 
 export default function TrainingPage() {
   const { user } = useCurrentUser()
-  const isAdmin = user?.role === 'admin'
+  const { access } = useMyPermissions()
+  const isAdmin = canManageTraining(access)
 
   const {
     matrix,

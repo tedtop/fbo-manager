@@ -3,7 +3,7 @@
 // Own staff (CyAlpha / CyBravo on the "line" roster) and an own course; removed afterwards.
 const stamp = Date.now().toString(36).toUpperCase()
 const COURSE = `CY Ramp Safety ${stamp}`
-type Seed = { departmentId: number; createdDepartment: boolean; userIds: number[]; adminRowId: number | null }
+type Seed = { departmentId: number; createdDepartment: boolean; userIds: number[] }
 let seed: Seed
 
 const pad = (n: number) => String(n).padStart(2, '0')

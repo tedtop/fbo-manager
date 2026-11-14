@@ -11,7 +11,7 @@ const dayOfWeek = (n: number) => {
   return iso(d)
 }
 
-type Seed = { departmentId: number; createdDepartment: boolean; userIds: number[]; adminRowId: number | null }
+type Seed = { departmentId: number; createdDepartment: boolean; userIds: number[] }
 type Shift = { id: number; user_id: number; shift_date: string; notes: string; start_time: string; updated_at: string }
 let seed: Seed
 

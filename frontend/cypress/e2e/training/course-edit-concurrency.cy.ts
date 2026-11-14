@@ -2,7 +2,7 @@
 // A course is edited while "someone else" saves it behind the sheet. Own course + staff, removed afterwards.
 const stamp = Date.now().toString(36).toUpperCase()
 const COURSE = `CY Concurrency ${stamp}`
-type Seed = { departmentId: number; createdDepartment: boolean; userIds: number[]; adminRowId: number | null }
+type Seed = { departmentId: number; createdDepartment: boolean; userIds: number[] }
 type Course = { instructions: string; updated_at: string }
 let seed: Seed
 

@@ -40,6 +40,8 @@ import { CoverageLegend } from '@/components/line-schedule/coverage-strip'
 import { useDepartment, useDepartments } from '@/hooks/use-department'
 import { useSchedule } from '@/hooks/use-schedule'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { useMyPermissions } from '@/hooks/use-permissions'
+import { canManageLineSchedule } from '@/lib/edit-rights'
 import type { ScheduleShiftRow } from '@/repositories/schedule.repo'
 import {
   canEditAnyShift,
@@ -64,6 +66,7 @@ export default function LineSchedulePage() {
   const { departments } = useDepartments()
   const { department, members, loading: deptLoading } = useDepartment(deptSlug)
   const { user } = useCurrentUser()
+  const { access } = useMyPermissions()
 
   // Visible range (+1 day back so overnight tails from the prior day render)
   const { rangeStart, rangeEnd, weekDays } = useMemo(() => {
@@ -94,11 +97,12 @@ export default function LineSchedulePage() {
 
   const permission: SchedulePermissionContext = useMemo(
     () => ({
-      currentUser: user ? { id: user.id, role: user.role } : null,
+      currentUser: user ? { id: user.id } : null,
+      canManage: canManageLineSchedule(access),
       membership: members.find((m) => m.user_id === user?.id) ?? null,
       settings: department?.settings ?? {},
     }),
-    [user, members, department]
+    [user, access, members, department]
   )
 
   const [dialogOpen, setDialogOpen] = useState(false)
