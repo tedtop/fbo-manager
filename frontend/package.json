@@ -103,7 +103,7 @@
     "cypress": "^16.2.1",
     "dotenv": "^16.4.5",
     "postcss": "^8.4.49",
-    "supabase": "2.109.0",
+    "supabase": "3.0.0",
     "tailwindcss": "^4.1.9",
     "tsx": "^4.22.5",
     "tw-animate-css": "^1.3.3",

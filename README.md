@@ -124,6 +124,11 @@ pnpm supabase:stop
 ```
 
 (Fine to leave the stack running between sessions too — `supabase start` is idempotent.)
+
+**Supabase CLI version:** always use the pinned CLI (`pnpm supabase:start` / `pnpm supabase:reset`, currently 3.0.0, same as
+the global Homebrew one). Each CLI version ships its own storage-api image and migrates the `storage` schema to match. If a
+stack container was created by a different CLI version, uploads fail with HTTP 500 / Postgres 42P10 (B143). Fix:
+`pnpm supabase:stop && pnpm supabase:start`, then `pnpm supabase:reset`.
 These same suites (vitest repos, Cypress) run in CI (`.github/workflows/test.yml`, currently manual trigger only), so this is
 exactly what a green check on GitHub means. See `frontend/tests/README.md` and
 `frontend/cypress/README.md` for how the isolation/safety guards work and current coverage.
