@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useParking } from '@/hooks/use-parking'
+import { ToastAction } from '@/components/ui/toast'
 import { useToast } from '@/hooks/use-toast'
 import { resolveAreaClick } from '@/lib/area-selection'
 import { BASEMAPS } from '@/lib/basemaps'
@@ -41,6 +42,10 @@ import {
   type Notice,
   useAreaDrawing
 } from './use-area-drawing'
+import {
+  RECOMPUTE_FAILED_ARCHIVE,
+  RECOMPUTE_FAILED_SAVE
+} from './draw-support'
 import { useMapInstance } from './use-map-instance'
 import { usePlaneMarkers } from './use-plane-markers'
 
@@ -111,7 +116,15 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
       setNotice(next)
       if (next?.kind === 'success') toast({ title: next.text })
       if (next?.kind === 'error')
-        toast({ title: next.text, variant: 'destructive' })
+        toast({
+          title: next.text,
+          variant: 'destructive',
+          action: next.retry ? (
+            <ToastAction altText="Retry" onClick={next.retry}>
+              Retry
+            </ToastAction>
+          ) : undefined
+        })
     },
     [toast]
   )
@@ -121,6 +134,20 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     const timer = setTimeout(() => setNotice(null), 5000)
     return () => clearTimeout(timer)
   }, [notice])
+
+  // Retry for a save/archive that went through but whose plane-area recompute failed: re-runs only
+  // the recompute and reports again with the same warning if it keeps failing.
+  const recomputeRetry = (warn: (retry: () => void) => Notice) => {
+    const retry = async (): Promise<void> => {
+      try {
+        await parking.refreshParkedAreas()
+        showNotice({ kind: 'success', text: 'Plane areas updated.' })
+      } catch {
+        showNotice(warn(() => void retry()))
+      }
+    }
+    return () => void retry()
+  }
 
   const selectedArea =
     parking.areas.find((a) => a.id === selectedAreaId) ?? null
@@ -133,8 +160,10 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     enabled: editing,
     area: selectedArea,
     onSave: async (id, polygon) => {
-      await parking.setBoundary(id, polygon)
+      const { recomputeFailed } = await parking.setBoundary(id, polygon)
+      return { recomputeFailed }
     },
+    onRetryRecompute: recomputeRetry(RECOMPUTE_FAILED_SAVE),
     onNotice: showNotice,
     onDeselect: () => setSelectedAreaId(null)
   })
@@ -326,9 +355,13 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     setArchiveTarget(null)
     if (!area) return
     try {
-      await parking.archiveArea(area.id)
+      const { recomputeFailed } = await parking.archiveArea(area.id)
       setSelectedAreaId((current) => (current === area.id ? null : current))
-      setNotice({ kind: 'success', text: `${area.code} archived.` })
+      if (recomputeFailed)
+        showNotice(
+          RECOMPUTE_FAILED_ARCHIVE(recomputeRetry(RECOMPUTE_FAILED_ARCHIVE))
+        )
+      else setNotice({ kind: 'success', text: `${area.code} archived.` })
     } catch (err) {
       reportError(`Could not archive ${area.code}`, err)
     }
@@ -341,11 +374,16 @@ export function ParkingMap({ configMode, isAdmin }: ParkingMapProps) {
     try {
       // A drag still waiting for its debounce must not re-create the boundary afterwards.
       await drawing.flushPending()
-      await parking.setBoundary(area.id, null)
-      setNotice({
-        kind: 'success',
-        text: `Boundary for ${area.code} cleared.`
-      })
+      const { recomputeFailed } = await parking.setBoundary(area.id, null)
+      if (recomputeFailed)
+        showNotice(
+          RECOMPUTE_FAILED_SAVE(recomputeRetry(RECOMPUTE_FAILED_SAVE))
+        )
+      else
+        setNotice({
+          kind: 'success',
+          text: `Boundary for ${area.code} cleared.`
+        })
     } catch (err) {
       reportError(`Could not clear the boundary for ${area.code}`, err)
     }

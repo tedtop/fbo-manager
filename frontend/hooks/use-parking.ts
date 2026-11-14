@@ -21,6 +21,7 @@ import {
   editArea,
   listAreas,
   placeAircraft,
+  refreshParkedAreas,
   unparkAircraft
 } from '@/services/parking.service'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -90,12 +91,16 @@ export function useParking() {
   const editAreaMutation = useMutation({
     mutationFn: ({ id, updates }: { id: number; updates: ParkingAreaUpdate }) =>
       editArea(db, id, updates),
-    onSuccess: invalidateAreas
+    onSuccess: () => Promise.all([invalidateAreas(), invalidatePlanes()])
   })
   const archiveAreaMutation = useMutation({
     mutationFn: (id: number) => archiveArea(db, id),
-    // Planes keep their coordinates; the UI derives membership from the active areas.
-    onSuccess: invalidateAreas
+    onSuccess: () => Promise.all([invalidateAreas(), invalidatePlanes()])
+  })
+  // Retry for a save/archive whose plane-area recompute failed: re-runs only the recompute.
+  const refreshAreasMutation = useMutation({
+    mutationFn: () => refreshParkedAreas(db),
+    onSuccess: invalidatePlanes
   })
   const placeMutation = useMutation({
     mutationFn: ({ tailNumber, lat, lng, heading }: PlaceRequest) =>
@@ -125,6 +130,7 @@ export function useParking() {
     setBoundary: (id: number, polygon: GeoJsonPolygon | null) =>
       editAreaMutation.mutateAsync({ id, updates: { polygon } }),
     archiveArea: archiveAreaMutation.mutateAsync,
+    refreshParkedAreas: refreshAreasMutation.mutateAsync,
     place: placeMutation.mutateAsync,
     unpark: unparkMutation.mutateAsync,
     createAircraft: createAircraftMutation.mutateAsync

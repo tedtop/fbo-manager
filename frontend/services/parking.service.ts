@@ -32,14 +32,29 @@ export async function addArea(
   return createParkingArea(db, area)
 }
 
+/**
+ * Outcome of a change that is saved first and then re-resolves parked planes. The save itself
+ * throws on failure; `recomputeFailed` means it was saved but the planes' areas were not updated.
+ */
+export type RecomputeOutcome = { recomputeFailed: boolean }
+
+async function recomputeAfterSave(db: SupabaseClient<Database>): Promise<RecomputeOutcome> {
+  try {
+    await refreshParkedAreas(db)
+    return { recomputeFailed: false }
+  } catch {
+    return { recomputeFailed: true }
+  }
+}
+
 export async function editArea(
   db: SupabaseClient<Database>,
   id: number,
   updates: ParkingAreaUpdate
-): Promise<ParkingAreaRow> {
+): Promise<RecomputeOutcome & { row: ParkingAreaRow }> {
   const row = await updateParkingArea(db, id, updates)
-  if ('polygon' in updates) await refreshParkedAreas(db)
-  return row
+  const outcome = 'polygon' in updates ? await recomputeAfterSave(db) : { recomputeFailed: false }
+  return { row, ...outcome }
 }
 
 /** Re-resolves parked_area_id of every parked plane against the active areas. */
@@ -57,9 +72,9 @@ export async function refreshParkedAreas(db: SupabaseClient<Database>): Promise<
   return changes.length
 }
 
-export async function archiveArea(db: SupabaseClient<Database>, id: number): Promise<void> {
+export async function archiveArea(db: SupabaseClient<Database>, id: number): Promise<RecomputeOutcome> {
   await archiveParkingArea(db, id)
-  await refreshParkedAreas(db)
+  return recomputeAfterSave(db)
 }
 
 /**

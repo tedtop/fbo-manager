@@ -9,7 +9,23 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw'
 import { DRAW_STYLES } from './draw-styles'
 import { RECT_MODE, RectMode } from './rect-mode'
 
-export type Notice = { kind: 'info' | 'success' | 'error'; text: string }
+export type Notice = {
+  kind: 'info' | 'success' | 'error'
+  text: string
+  /** Shown as a Retry button on the toast. */
+  retry?: () => void
+}
+
+export const RECOMPUTE_FAILED_SAVE = (retry: () => void): Notice => ({
+  kind: 'error',
+  text: 'Boundary saved; plane areas could not be updated',
+  retry
+})
+export const RECOMPUTE_FAILED_ARCHIVE = (retry: () => void): Notice => ({
+  kind: 'error',
+  text: 'Area archived; plane areas could not be updated',
+  retry
+})
 
 export const DRAW_FINISH_HINT = 'Double-click to finish shape · Esc to cancel'
 /** Free polygon editing (any shape). */
@@ -73,15 +89,20 @@ function messageOf(err: unknown): string {
  * each one becomes a notice (the inline error banner on failure).
  */
 export function createBoundarySaveQueue(
-  save: () => (areaId: number, polygon: GeoJsonPolygon) => Promise<void>,
-  notify: () => (notice: Notice) => void
+  save: () => (
+    areaId: number,
+    polygon: GeoJsonPolygon
+  ) => Promise<{ recomputeFailed: boolean }>,
+  notify: () => (notice: Notice) => void,
+  retryRecompute: () => () => void
 ) {
   return createSaveScheduler<SaveJob>({
     delayMs: SAVE_DELAY_MS,
     save: async (job) => {
       try {
-        await save()(job.areaId, toGeoJsonPolygon(job.ring))
-        notify()({ kind: 'success', text: job.message })
+        const { recomputeFailed } = await save()(job.areaId, toGeoJsonPolygon(job.ring))
+        if (recomputeFailed) notify()(RECOMPUTE_FAILED_SAVE(retryRecompute()))
+        else notify()({ kind: 'success', text: job.message })
       } catch (err) {
         notify()({
           kind: 'error',
