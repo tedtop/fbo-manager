@@ -882,13 +882,14 @@ export function FlightFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Notes (shown on the card)</Label>
               <Textarea
                 id="notes"
                 value={formData.notes || ''}
                 onChange={(e) =>
                   setFormData({ ...formData, notes: e.target.value })
                 }
+                placeholder="Service notes, e.g. T/O fuel, TKS fluid"
                 rows={3}
               />
             </div>

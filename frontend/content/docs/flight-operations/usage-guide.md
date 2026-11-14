@@ -60,7 +60,7 @@ Not every flight has both ends.
 - **Arrival only (a return):** leave Departure blank. Used for an aircraft coming in that will leave later or on a different booking.
 - **Departure only (a hangar pull):** leave Arrival blank. Used for an aircraft already in the hangar that is pulled out to depart.
 
-At least one scheduled time is required; saving with neither shows an error under the times. Untick QT (or just type the departure) when there is no arrival, since the +1 hour rule needs an arrival. Notes such as takeoff fuel go in **Fuel order notes**.
+At least one scheduled time is required; saving with neither shows an error under the times. Untick QT (or just type the departure) when there is no arrival, since the +1 hour rule needs an arrival. Put service notes such as takeoff fuel or TKS fluid in **Notes**: they appear in a highlighted box at the top of the flight's card, and a departure-only card also carries a **Hangar pull** badge (an arrival-only card carries **Return**). Notes show on every card that has them, not only pulls.
 
 The home airport pre-fills the end that is known: Destination for an arrival, Origin for a hangar pull. See "Choosing an airport" below.
 
