@@ -63,7 +63,7 @@ Select the area, press **Draw boundary**, click each corner on the map and **dou
 
 ### Edit a shape {#edit-shape}
 
-Click an area on the map (or in the list) to edit it directly: there is no separate edit button. Drag the shape to move it. Changes save automatically, and a small message (a toast) confirms each save or shows the error if it failed. When a boundary is saved, every parked airplane is re-checked: airplanes now inside the shape are attached to it, and airplanes that are no longer inside it are detached (or moved to the smaller or surrounding area that contains them). Click empty map or press Esc to deselect.
+Click an area on the map (or in the list) to edit it directly: there is no separate edit button. Drag the shape to move it. Changes save automatically, and a small message (a toast) confirms each save or shows the error if it failed. When a boundary is saved, every parked airplane is re-checked: airplanes now inside the shape are attached to it, and airplanes that are no longer inside it are detached (or moved to the smaller or surrounding area that contains them). If the boundary or archive saved but the airplanes' areas could not be updated, the message says "plane areas could not be updated" (the boundary itself is saved); press **Retry** in that message to update the airplanes again. Click empty map or press Esc to deselect.
 
 - A **rectangle** shows eight handles: dragging a **corner** resizes it with the opposite corner fixed, and dragging a **side handle** moves just that side. It stays a rectangle, whatever direction it faces.
 - Any other shape shows its corners; drag a corner to move it, or drag a midpoint to add a new corner.
