@@ -188,10 +188,11 @@ BEGIN
   SET LOCAL session_replication_role = replica;
   DELETE FROM user_roles WHERE role_id = (SELECT id FROM roles WHERE name = 'Administrator');
   SET LOCAL session_replication_role = origin;
-  SELECT id INTO uid FROM profiles LIMIT 1;
   SELECT id INTO rid FROM roles WHERE name = 'Administrator';
   SELECT id INTO fd FROM roles WHERE name = 'Front Desk';
-  INSERT INTO user_roles (user_id, role_id) VALUES (uid, fd);
+  SELECT id INTO uid FROM profiles LIMIT 1;
+  -- the profile may already hold Front Desk (shared local data), so the insert must not hit the unique key
+  INSERT INTO user_roles (user_id, role_id) VALUES (uid, fd) ON CONFLICT DO NOTHING;
   DELETE FROM user_roles WHERE user_id = uid AND role_id = fd; -- a non-admin change with zero admins
   INSERT INTO user_roles (user_id, role_id) VALUES (uid, rid); -- bootstrap the first admin
   SET CONSTRAINTS ALL IMMEDIATE;

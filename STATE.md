@@ -50,6 +50,9 @@ Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the or
 - Live `flight` table was emptied 2026-11-04 at Ted's request (backups in ~/backups/fbo-manager/).
 - Test runs use private dist dirs (`NEXT_DIST_DIR=.next-e2e/<name>`) and ports, never :4000.
 
+## 2026-11-14 live migrations batch (orchestrator, Ted: "Yes, all of them")
+Applied to live with `db query --linked --yes -f` + `migration repair`, in version order: 20261113000100 (B120), 000200 (B68), 000300 (B123), 000400 (B94), 000500 (B96), 20261114000100 (B141), 000190 (new: qt_sync_status default 'pending', live drift that made B121 fail with 23502; B121 rolled back cleanly and re-ran), 000200 (B121), 000300 (B63a realtime training_course). Backups: `.omc/backups/live-2026-11-14-migrations/` (11 tables as JSON + the two profile guard functions; schema dump hung and was skipped, rollbacks are in supabase/rollbacks/). Branches b121 (incl. b120), b68, b123, b96, b141 merged to master (40e7240), one conflict in app/users/page.tsx (initials + last-admin error handling, both kept). Live after: 2 board fuel services became 2 flight_card orders, service fuel inactive, anon reaches 0 tables and 0 sequences, 4 admin-guard triggers, realtime has training_course. Prod was on old code (reading `progress`) for the minutes between the B120 apply and the Railway deploy.
+
 <!-- usage:start -->
 Usage (tokens, excl. cache reads): this session 74k | last 5h 34.87M | budget not set
 <!-- usage:end -->
