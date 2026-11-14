@@ -13,7 +13,7 @@ const tails = [tailCreate, tailEdit, tailFilterOn, tailFilterOff, tailNoConflict
 const productName = `Ramp Fee ${stamp}`
 let productId: number | null = null
 
-const LABELS: Record<string, string> = { fuel: 'Fuel', hangar: 'Hangar', gpu: 'GPU', lav: 'Lav', oxygen: 'Oxygen', cleaning: 'Cleaning' }
+const LABELS: Record<string, string> = { hangar: 'Hangar', gpu: 'GPU', lav: 'Lav', oxygen: 'Oxygen', cleaning: 'Cleaning' }
 const labelsOf = (keys: string[]) => keys.map((k) => LABELS[k]).sort()
 
 const card = (tail: string) => cy.contains('[data-slot="card"]', tail)
@@ -42,7 +42,7 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
   before(() => {
     cy.task('seedAircraft', tailCreate)
     cy.task('seedAircraft', tailFail)
-    cy.task('seedFlight', { tail: tailEdit, departureInMin: 360, services: ['fuel', 'lav', 'cleaning'] })
+    cy.task('seedFlight', { tail: tailEdit, departureInMin: 360, services: ['hangar', 'lav', 'cleaning'] })
     cy.task('seedFlight', { tail: tailFilterOn, departureInMin: 360, services: ['gpu'] })
     cy.task('seedFlight', { tail: tailFilterOff, departureInMin: 360 })
     cy.task('seedFlight', { tail: tailNoConflict, departureInMin: 360, services: ['hangar'] })
@@ -59,7 +59,7 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
   })
 
   it('services picked in Add Flight (incl. GPU, Lav, Cleaning) show as the same pills on the card and in the junction', () => {
-    const picked = ['fuel', 'gpu', 'lav', 'cleaning']
+    const picked = ['hangar', 'gpu', 'lav', 'cleaning']
     cy.login()
     cy.visit('/')
     cy.contains('button', 'Add Flight').click()
@@ -90,8 +90,8 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
   it('edit form preselects the flight services; untoggle one, add one, save updates junction and card', () => {
     openBoard(tailEdit)
     openEditSheet(tailEdit)
-    for (const key of ['fuel', 'lav', 'cleaning']) pill(key).should('have.attr', 'aria-pressed', 'true')
-    for (const key of ['gpu', 'oxygen', 'hangar']) pill(key).should('have.attr', 'aria-pressed', 'false')
+    for (const key of ['hangar', 'lav', 'cleaning']) pill(key).should('have.attr', 'aria-pressed', 'true')
+    for (const key of ['gpu', 'oxygen', 'catering']) pill(key).should('have.attr', 'aria-pressed', 'false')
 
     pill('lav').click() // remove
     pill('oxygen').click() // add
@@ -101,7 +101,7 @@ describe('Service catalog on the board, form and toolbar (B26)', () => {
     cy.contains('Edit Flight').should('not.exist')
     cy.contains('[role="status"]', 'Flight updated').should('be.visible')
 
-    const expected = ['cleaning', 'fuel', 'oxygen']
+    const expected = ['cleaning', 'hangar', 'oxygen']
     cy.task('getFlightServiceKeys', tailEdit).should('deep.eq', expected)
     cy.task('getFlightByTail', tailEdit).then((flight: { services: string[] | null }) => {
       expect([...(flight.services ?? [])].sort()).to.deep.eq(expected)

@@ -2,7 +2,7 @@
 title: Arrivals and Departures usage guide
 module: flight-operations
 order: 1
-anchors: [add-flight, times-hint, multi-day, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
+anchors: [add-flight, times-hint, multi-day, quick-turn, times, hangar-pull, services, fuel, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
 ---
 
 ## Overview
@@ -28,7 +28,7 @@ Press **Add Flight** in the board toolbar. The form is a panel on the right.
 2. **Aircraft Type** (required). For an aircraft the app has not seen before, the type is looked up from the tail number and filled in when found; check it and correct it if needed. The lookup asks a public aircraft database first and, for US (N) tails it does not know, the FAA aircraft registry; the FAA answer is matched to the type list only when the make and model are recognised, otherwise the field stays empty for you to pick.
 3. **Status** (required), normally left at Scheduled.
 4. **Date** (required, the arrival day; for a hangar pull, the departure day) and **Scheduled Times** (24-hour). At least one of arrival or departure is needed.
-5. Optional: Origin, Destination, Contact Name and Notes, Services, Notes, Fuel order notes.
+5. Optional: Origin, Destination, Contact Name and Notes, Services, Notes, Fuel order notes. (To order fuel, use the **Fuel** button on the card afterwards.)
 
 New flights have **QT** ticked, so you normally only enter the arrival time. If the aircraft is new, it is created together with the flight.
 
@@ -74,9 +74,31 @@ Services are shown as coloured pills in the form and on the card. Click a pill t
 
 Some services carry a quantity. **TKS Fluid** is sold per gallon: when you select it, a small number field appears next to the pill for the **gallons** (a whole number, at least 1), and the card shows it as, for example, "TKS Fluid · 12 gal". Unselecting the pill clears the quantity.
 
-**Fuel Request** on the card's button row adds the Fuel service to the flight in one tap (shown for scheduled, delayed and arrived flights, not departed or cancelled ones). It saves like any other service change and confirms with "Fuel requested for" and the tail number; once the flight has fuel, the button reads "Fuel requested" and is disabled.
+Fuel is not a service pill any more: it is an order, requested from the card (see the next section).
 
 You can also edit services and notes directly on the card without opening the form. The list of available services is managed centrally, so the pills you see can change over time.
+
+### Request fuel from the card {#fuel}
+
+Press **Fuel** on the card's button row (shown for scheduled, delayed and arrived flights, not departed, cancelled or airline ones). A small sheet opens:
+
+- **Amount**: **Gallons** (type how many) or **Top off**. Gallons must be more than zero.
+- **Fuel type**: **Jet A** or **Avgas 100LL**, and a **Prist** box for Jet A.
+- **Time wanted** (optional): a 24-hour time on the flight's day, in the board's time zone.
+- **Note** (optional): for example "tabs, 150 per side".
+
+**Request fuel** creates the flight's fuel order, which the line then sees on its fuel board. The card shows a chip that follows the order and nothing else (the old "fueled" mark on the flight is ignored):
+
+| Chip | Meaning |
+| --- | --- |
+| Fuel requested | Ordered, nobody has taken it yet. |
+| Fuel assigned TT | Given to a fueler; shows the fueler's initials when known. |
+| Fueling | The fueler is on it. |
+| Filled 312 gal | Done, with the gallons delivered. |
+| Short: filled 250 gal of 300 gal | Filled with less than the gallons requested. |
+| Fuel cancelled | The order was cancelled. |
+
+While the order is still open (requested, assigned or fueling), press **Fuel** again to **edit** it, or press **Cancel this order**, type a reason (required) and confirm. A filled or cancelled order is not edited: **Fuel** starts a new request. The old Fuel Request button and the Fuel service pill are gone; the Fuel service is retired.
 
 ### Change a flight's status {#status}
 

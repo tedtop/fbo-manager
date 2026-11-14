@@ -11,6 +11,7 @@ import {
   type FillInput,
   type FuelOrderPatch
 } from '@/lib/fuel-orders'
+import { assertEditable, type FuelRequestFields } from '@/lib/flight-fuel-order'
 import { assignFuelerToTransaction } from '@/repositories/fueler-assignments.repo'
 import {
   createTransaction,
@@ -116,4 +117,32 @@ export function updateFilledOrder(
   gallonsDelivered: number
 ): Promise<TransactionRow> {
   return applyTransition(db, id, (c) => updateFilledPatch(c.status, gallonsDelivered))
+}
+
+/** Board card "Fuel" action (D25): a requested order for the flight, source `flight_card`. */
+export function requestFlightFuel(
+  db: Db,
+  input: { flightId: number; tailNumber: string; fields: FuelRequestFields }
+): Promise<TransactionRow> {
+  return createFuelOrder(db, {
+    flight_id: input.flightId,
+    tail_number: input.tailNumber,
+    source: 'flight_card',
+    ...input.fields
+  })
+}
+
+/**
+ * Edits the request fields (gallons, type, Prist, time, note) of an open order from the card's sheet. Filled and
+ * cancelled orders are refused (FuelOrderTransitionError). Compare-and-swap on updated_at like the transitions.
+ */
+export async function editFlightFuelOrder(
+  db: Db,
+  id: number,
+  fields: FuelRequestFields
+): Promise<TransactionRow> {
+  const current = await findTransactionById(db, id)
+  if (!current) throw new Error(`Fuel order ${id} not found`)
+  assertEditable(current.status)
+  return updateTransaction(db, id, fields, current.updated_at)
 }

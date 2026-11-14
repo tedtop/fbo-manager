@@ -117,7 +117,8 @@ describe('service catalog seed', () => {
     expect(data).toHaveLength(16)
     expect(new Set(data?.map((s) => s.key)).size).toBe(16)
     expect(data?.map((s) => s.key)).toEqual(SEEDED_KEYS)
-    expect(data?.every((s) => s.product_id === null && s.active)).toBe(true)
+    // B121: the fuel service is retired (the card's Fuel action creates an order instead); all others are active.
+    expect(data?.every((s) => s.product_id === null && s.active === (s.key !== 'fuel'))).toBe(true)
     expect(data?.every((s) => !('default_price' in s))).toBe(true)
     const fuel = data?.find((s) => s.key === 'fuel')
     expect(fuel).toMatchObject({ label: 'Fuel', icon: 'fuel', color: 'blue' })
@@ -189,11 +190,11 @@ describe('set_flight_services', () => {
     const flight = await makeFlight(db)
     const first = await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
-      p_services: ['fuel', 'gpu', 'catering'],
+      p_services: ['hangar', 'gpu', 'catering'],
     })
     expect(first.error).toBeNull()
-    expect(first.data).toEqual(['fuel', 'catering', 'gpu']) // seed sort order
-    expect(await junctionKeys(flight.id)).toEqual(['catering', 'fuel', 'gpu'])
+    expect(first.data).toEqual(['hangar', 'catering', 'gpu']) // seed sort order
+    expect(await junctionKeys(flight.id)).toEqual(['catering', 'gpu', 'hangar'])
 
     const second = await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
@@ -211,7 +212,7 @@ describe('set_flight_services', () => {
     const flight = await makeFlight(db)
     await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
-      p_services: [{ key: 'gpu', quantity: 2, notes: 'two starts', price_override: 80.5 }, 'fuel'],
+      p_services: [{ key: 'gpu', quantity: 2, notes: 'two starts', price_override: 80.5 }, 'hangar'],
     })
     const read = async () => {
       const { data } = await db
@@ -224,26 +225,26 @@ describe('set_flight_services', () => {
     }
     expect(await read()).toEqual({ quantity: 2, notes: 'two starts', price_override: 80.5 })
 
-    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['gpu', 'fuel'] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['gpu', 'hangar'] })
     expect(await read()).toEqual({ quantity: 2, notes: 'two starts', price_override: 80.5 })
 
     await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
-      p_services: [{ key: 'gpu', quantity: 3, price_override: null }, 'fuel'],
+      p_services: [{ key: 'gpu', quantity: 3, price_override: null }, 'hangar'],
     })
     expect(await read()).toEqual({ quantity: 3, notes: 'two starts', price_override: null })
   })
 
   it('raises on an unknown key and leaves the flight untouched', async () => {
     const flight = await makeFlight(db)
-    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel'] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['hangar'] })
     const res = await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
       p_services: ['gpu', 'no_such_service'],
     })
     expect(res.error?.message).toContain('unknown service key(s): no_such_service')
-    expect(await junctionKeys(flight.id)).toEqual(['fuel'])
-    expect(await legacyServices(flight.id)).toEqual(['fuel'])
+    expect(await junctionKeys(flight.id)).toEqual(['hangar'])
+    expect(await legacyServices(flight.id)).toEqual(['hangar'])
   })
 
   it('raises on any inactive key, even one the flight already has', async () => {
@@ -259,17 +260,17 @@ describe('set_flight_services', () => {
     await db.from('service').update({ active: false }).eq('key', 'ice')
     const keep = await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
-      p_services: ['ice', 'fuel'],
+      p_services: ['ice', 'hangar'],
     })
     expect(keep.error?.message).toContain('inactive service key(s): ice')
     expect(await junctionKeys(flight.id)).toEqual(['ice'])
-    const drop = await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel'] })
+    const drop = await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['hangar'] })
     expect(drop.error).toBeNull()
-    expect(await junctionKeys(flight.id)).toEqual(['fuel'])
+    expect(await junctionKeys(flight.id)).toEqual(['hangar'])
   })
 
   it('raises for a missing flight and for malformed input', async () => {
-    const missing = await db.rpc('set_flight_services', { p_flight_id: 987654321, p_services: ['fuel'] })
+    const missing = await db.rpc('set_flight_services', { p_flight_id: 987654321, p_services: ['hangar'] })
     expect(missing.error?.message).toContain('not found')
     const flight = await makeFlight(db)
     const bad = await db.rpc('set_flight_services', {
@@ -283,10 +284,10 @@ describe('set_flight_services', () => {
     const flight = await makeFlight(db)
     const { data: before } = await db.from('flight').select('updated_at').eq('id', flight.id).single()
     await new Promise((r) => setTimeout(r, 20))
-    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['lav', 'fuel'] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['lav', 'hangar'] })
     const { data: after } = await db.from('flight').select('updated_at').eq('id', flight.id).single()
     expect(ts(after?.updated_at)).toBeGreaterThan(ts(before?.updated_at))
-    expect(await legacyServices(flight.id)).toEqual(['fuel', 'lav'])
+    expect(await legacyServices(flight.id)).toEqual(['hangar', 'lav'])
 
     await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['gpu'] })
     expect(await legacyServices(flight.id)).toEqual(['gpu'])
@@ -296,7 +297,7 @@ describe('set_flight_services', () => {
 
   it('embeds through PostgREST (service keys per flight)', async () => {
     const flight = await makeFlight(db)
-    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel', 'cleaning'] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['hangar', 'cleaning'] })
     const { data, error } = await db
       .from('flight')
       .select('id, flight_service(quantity, service:service_id(key, label))')
@@ -304,7 +305,7 @@ describe('set_flight_services', () => {
       .single()
     expect(error).toBeNull()
     const rows = (data as unknown as { flight_service: Array<{ service: { key: string } }> }).flight_service
-    expect(rows.map((r) => r.service.key).sort()).toEqual(['cleaning', 'fuel'])
+    expect(rows.map((r) => r.service.key).sort()).toEqual(['cleaning', 'hangar'])
   })
 })
 
@@ -319,7 +320,7 @@ describe('access control', () => {
       expect(res.data ?? []).toHaveLength(0)
     }
     const flight = await makeFlight(db)
-    const rpc = await anon.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel'] })
+    const rpc = await anon.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['hangar'] })
     expect(rpc.error).not.toBeNull()
     expect(await junctionKeys(flight.id)).toEqual([])
   })
@@ -333,10 +334,10 @@ describe('access control', () => {
     const flight = await makeFlight(db)
     const rpc = await authed.rpc('set_flight_services', {
       p_flight_id: flight.id,
-      p_services: ['fuel', 'oxygen'],
+      p_services: ['hangar', 'oxygen'],
     })
     expect(rpc.error).toBeNull()
-    expect(rpc.data).toEqual(['fuel', 'oxygen'])
+    expect(rpc.data).toEqual(['hangar', 'oxygen'])
 
     const ins = await authed
       .from('flight_service')
@@ -445,12 +446,12 @@ describe('service quantity (TKS fluid)', () => {
     }
     const first = await db.rpc('set_flight_services', {
       p_flight_id: flight.id,
-      p_services: [{ key: 'tks_fluid', quantity: 12 }, 'fuel'],
+      p_services: [{ key: 'tks_fluid', quantity: 12 }, 'hangar'],
     })
     expect(first.error).toBeNull()
     expect(await read()).toBe(12)
 
-    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['tks_fluid', 'fuel'] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['tks_fluid', 'hangar'] })
     expect(await read()).toBe(12)
 
     await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: [{ key: 'tks_fluid', quantity: 20 }] })
@@ -464,7 +465,7 @@ describe('service quantity (TKS fluid)', () => {
 
   it('rejects quantity 0 and a negative quantity and leaves the flight unchanged', async () => {
     const flight = await makeFlight(db)
-    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['fuel'] })
+    await db.rpc('set_flight_services', { p_flight_id: flight.id, p_services: ['hangar'] })
     for (const quantity of [0, -3]) {
       const bad = await db.rpc('set_flight_services', {
         p_flight_id: flight.id,
@@ -472,7 +473,7 @@ describe('service quantity (TKS fluid)', () => {
       })
       expect(bad.error?.code).toBe('23514')
     }
-    expect(await junctionKeys(flight.id)).toEqual(['fuel'])
+    expect(await junctionKeys(flight.id)).toEqual(['hangar'])
   })
 
   it('rejects a blank quantity_unit', async () => {

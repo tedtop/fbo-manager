@@ -5,7 +5,7 @@
 const stamp = Date.now().toString(36).toUpperCase()
 const tailTurn = `CBT${stamp}` // arrival + departure, scheduled, hangar
 const tailDep = `CBD${stamp}` // departure only, scheduled
-const tailDelayed = `CBL${stamp}` // departure only, delayed, fuel
+const tailDelayed = `CBL${stamp}` // departure only, delayed, GPU
 const tailArr = `CBA${stamp}` // arrival only (return), scheduled
 const tailNext = `CBN${stamp}` // departure exactly one week from now (next calendar week)
 const tailPrev = `CBP${stamp}` // departure exactly one week ago (previous calendar week)
@@ -57,7 +57,7 @@ describe('Flight board', () => {
     cy.task('seedFlight', { tail: tailTurn, arrivalInMin: todayMin(60), departureInMin: todayMin(120), services: ['hangar'], isQuickTurn: true })
     cy.task('seedFlight', { tail: tailArr, arrivalInMin: todayMin(90), departureInMin: null })
     cy.task('seedFlight', { tail: tailDep, departureInMin: todayMin(240) })
-    cy.task('seedFlight', { tail: tailDelayed, departureInMin: todayMin(300), status: 'delayed', services: ['fuel'] })
+    cy.task('seedFlight', { tail: tailDelayed, departureInMin: todayMin(300), status: 'delayed', services: ['gpu'] })
     cy.task('seedFlight', { tail: tailNext, departureInMin: 7 * DAY })
     cy.task('seedFlight', { tail: tailPrev, departureInMin: -7 * DAY })
     cy.task('seedFlight', { tail: tailFar, departureInMin: 42 * DAY })

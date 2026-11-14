@@ -7,6 +7,7 @@ import {
   createTransaction,
   deleteTransaction,
   findAllTransactions,
+  findFlightFuelOrders,
   findTransactionById,
   updateTransaction,
 } from '@/repositories/transactions.repo'
@@ -101,5 +102,24 @@ describe('transactions.repo', () => {
 
     await deleteTransaction(db, tx.id)
     expect(await findTransactionById(db, tx.id)).toBeNull()
+  })
+})
+
+describe('findFlightFuelOrders (board card chip)', () => {
+  it('returns only that flight\'s orders, oldest first, with fueler names from the assignments', async () => {
+    const flight = await makeFlight(db)
+    const other = await makeFlight(db)
+    const fueler = await makeFueler(db, { fueler_name: 'Tom Tanner' })
+    const first = await createTransaction(db, { flight_id: flight.id, source: 'flight_card', status: 'requested', gallons_requested: 300 })
+    const second = await createTransaction(db, { flight_id: flight.id, source: 'qt', status: 'filled', gallons_delivered: 120 })
+    await createTransaction(db, { flight_id: other.id, source: 'flight_card' })
+    await assignFuelerToTransaction(db, { transaction_id: first.id, fueler_id: fueler.id })
+
+    const orders = await findFlightFuelOrders(db, flight.id)
+    expect(orders.map((o) => o.id)).toEqual([first.id, second.id])
+    expect(orders[0]).toMatchObject({ status: 'requested', fuelerNames: ['Tom Tanner'] })
+    expect(Number(orders[0].gallons_requested)).toBe(300)
+    expect(orders[1]).toMatchObject({ status: 'filled', fuelerNames: [] })
+    expect(await findFlightFuelOrders(db, 987654321)).toEqual([])
   })
 })

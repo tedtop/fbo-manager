@@ -1,6 +1,7 @@
 import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { handleWriteError } from '@/lib/db-errors'
 import type { FuelOrderStatus } from '@/lib/fuel-orders'
+import type { FlightFuelOrder } from '@/lib/flight-fuel-order'
 import type {
   Database,
   Tables,
@@ -60,6 +61,31 @@ export async function findAllTransactions(
   const { data, error } = await query
   if (error) throw error
   return data as TransactionWithRelations[]
+}
+
+/** Every fuel order of one flight (any source, any status), shaped for the board card's chip and Fuel sheet. */
+export async function findFlightFuelOrders(
+  db: SupabaseClient<Database>,
+  flightId: number
+): Promise<FlightFuelOrder[]> {
+  const { data, error } = await db
+    .from('fuel_transaction')
+    .select(
+      'id, status, gallons_requested, gallons_delivered, fuel_type, prist, requested_for, fuel_request, created_at, updated_at, fueler_assignment ( assigned_at, fueler:fueler_id ( fueler_name ) )'
+    )
+    .eq('flight_id', flightId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  type Row = Omit<FlightFuelOrder, 'fuelerNames'> & {
+    fueler_assignment: Array<{ assigned_at: string; fueler: { fueler_name: string } | null }> | null
+  }
+  return ((data ?? []) as unknown as Row[]).map(({ fueler_assignment, ...row }) => ({
+    ...row,
+    fuelerNames: [...(fueler_assignment ?? [])]
+      .sort((a, b) => a.assigned_at.localeCompare(b.assigned_at))
+      .map((a) => a.fueler?.fueler_name ?? '')
+      .filter(Boolean)
+  }))
 }
 
 export async function findTransactionById(

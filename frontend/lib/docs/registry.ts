@@ -24,6 +24,7 @@ export const DOC_MODULES: readonly DocModule[] = [
       'times',
       'hangar-pull',
       'services',
+      'fuel',
       'status',
       'delete',
       'filters',

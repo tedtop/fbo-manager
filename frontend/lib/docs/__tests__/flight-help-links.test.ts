@@ -31,6 +31,12 @@ describe('flight-operations Help links', () => {
     for (const anchor of form) expect(headingIds.has(anchor), `no heading #${anchor}`).toBe(true)
   })
 
+  it('the Fuel sheet has a Help button whose anchor is a heading in the guide', () => {
+    const anchors = helpAnchorsIn('components/flight-operations/fuel-order-sheet.tsx')
+    expect(anchors).toContain('fuel')
+    for (const anchor of anchors) expect(headingIds.has(anchor), `no heading #${anchor}`).toBe(true)
+  })
+
   it('the toolbar has a Help button that opens the guide at the top', () => {
     expect(read('components/flight-operations/compact-toolbar.tsx')).toMatch(
       /<HelpButton[^>]*module="flight-operations"/
@@ -38,7 +44,7 @@ describe('flight-operations Help links', () => {
   })
 
   it('the guide covers every topic the board documents', () => {
-    for (const id of ['add-flight', 'quick-turn', 'times', 'hangar-pull', 'services', 'status', 'filters', 'conflicts', 'airports'])
+    for (const id of ['add-flight', 'quick-turn', 'times', 'hangar-pull', 'services', 'fuel', 'status', 'filters', 'conflicts', 'airports'])
       expect(headingIds.has(id), `guide lacks #${id}`).toBe(true)
   })
 })

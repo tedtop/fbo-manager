@@ -32,7 +32,9 @@ import { cn } from '@/lib/utils'
 import { flightKind, isFlightHidden, type LinkColor } from './board-logic'
 import { useDisplayZone } from '@/hooks/use-display-zone'
 import { formatBoardTimestamp } from '@/lib/display-zone'
-import { useFlightFuelStatus } from '@/hooks/use-flight-fuel-status'
+import { useFlightFuelOrder } from '@/hooks/use-flight-fuel-order'
+import { FuelOrderSheet } from '@/components/flight-operations/fuel-order-sheet'
+import { isOpenFuelOrder } from '@/lib/fuel-orders'
 import { useSyncedDraft } from '@/hooks/use-synced-draft'
 import { useToast } from '@/hooks/use-toast'
 import { ConcurrencyConflictError } from '@/lib/concurrency'
@@ -100,7 +102,6 @@ interface FlightCardProps {
   // Hide / Unhide button (B43b); same compare-and-swap guard as a status change. Omit to hide the button.
   onHide?: (flight: Flight, expectedUpdatedAt?: string) => void | Promise<void>
   onUnhide?: (flight: Flight, expectedUpdatedAt?: string) => void | Promise<void>
-  onOrderFuel?: (flight: Flight) => void
   isLinked?: boolean
   linkColor?: LinkColor
   isHovered?: boolean
@@ -145,7 +146,6 @@ export function FlightCard({
   onDelete,
   onHide,
   onUnhide,
-  onOrderFuel,
   isLinked,
   linkColor,
   isHovered,
@@ -179,7 +179,8 @@ export function FlightCard({
   // Airline dispatches from QT are merged into the board live and read-only (change them in QT).
   const isQt = flight.source === 'qt'
   const isDbFlight = !flight.id.startsWith('manual-') && !isQt
-  const fuelStatus = useFlightFuelStatus(isDbFlight ? Number(flight.id) : 0)
+  const fuel = useFlightFuelOrder(isDbFlight ? Number(flight.id) : 0)
+  const [isFuelOpen, setIsFuelOpen] = useState(false)
 
   const status = statusConfig[flight.status]
   // Only on the board while "Show hidden" is on: the card is muted, marked Hidden and offers Unhide.
@@ -248,36 +249,10 @@ export function FlightCard({
     })
   }
 
-  // Fuel Request: one tap adds the fuel service through the same onEdit save as the inline service
-  // pills, with the compare-and-swap guard of status changes. Optimistic: the Fuel pill shows at once
-  // and is reverted if the save fails (the page handler toasts non-conflict failures).
-  const hasFuel = localServices.includes('fuel')
-  const canRequestFuel = !isQt && ['scheduled', 'delayed', 'arrived'].includes(flight.status)
-  const [fuelPending, setFuelPending] = useState(false)
-  const requestFuel = () => {
-    if (hasFuel || fuelPending) return
-    setFuelPending(true)
-    setLocalServices([...localServices, 'fuel'])
-    void Promise.resolve(
-      onEdit(
-        { ...flight, services: [...localServices, 'fuel'], serviceQuantities: localQuantities },
-        flight.updatedAt
-      )
-    )
-      .then(() => toast({ title: `Fuel requested for ${flight.tailNumber}` }))
-      .catch((err) => {
-        resetLocalServices()
-        if (err instanceof ConcurrencyConflictError) {
-          toast({
-            title: 'Flight was changed by someone else',
-            description:
-              'Fuel was not requested. Check the latest details and try again.',
-            variant: 'destructive'
-          })
-        }
-      })
-      .finally(() => setFuelPending(false))
-  }
+  // The one Fuel action (D25): opens the sheet that creates or edits the flight's fuel order. Not offered on QT
+  // cards (read-only) or once the flight has left.
+  const canFuel = isDbFlight && ['scheduled', 'delayed', 'arrived'].includes(flight.status)
+  const openFuelOrder = fuel.order && isOpenFuelOrder(fuel.order.status) ? fuel.order : null
 
   const saveChanges = () => {
     // Failures are toasted by the page handler; swallow the rethrow so it isn't unhandled.
@@ -530,36 +505,24 @@ export function FlightCard({
             </div>
           )}
 
-          {/* Fuel Section */}
-          {localServices.includes('fuel') && (
-            <div className="space-y-1.5 pt-1.5 border-t border-border">
-              <div className="flex items-center gap-2">
-                <FuelIcon className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-xs font-semibold text-foreground">
-                  Fuel
-                </span>
-              </div>
-              {fuelStatus.isFueled ? (
-                <div className="flex items-center gap-2 text-xs text-green-500">
-                  <Check className="w-3 h-3" />
-                  Fueled
-                  {fuelStatus.fueledAt && (
-                    <span className="text-muted-foreground">
-                      at {new Date(fuelStatus.fueledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: zone })}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onOrderFuel?.(flight)}
-                  className="h-7 text-xs"
-                >
-                  <FuelIcon className="w-3 h-3 mr-1" />
-                  Fuel Request
-                </Button>
-              )}
+          {/* Fuel order chip (D25): from the order status only, never flight.fueled_at */}
+          {fuel.chip && (
+            <div className="flex items-center gap-2 pt-1.5 border-t border-border">
+              <FuelIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <span
+                data-testid="fuel-chip"
+                data-tone={fuel.chip.tone}
+                className={cn(
+                  'rounded-full border px-2 py-0.5 text-xs font-medium',
+                  fuel.chip.tone === 'done' && 'border-green-500/30 bg-green-500/10 text-green-600',
+                  fuel.chip.tone === 'warn' && 'border-orange-500/30 bg-orange-500/10 text-orange-600',
+                  fuel.chip.tone === 'progress' && 'border-purple-500/30 bg-purple-500/10 text-purple-600',
+                  fuel.chip.tone === 'info' && 'border-blue-500/30 bg-blue-500/10 text-blue-600',
+                  fuel.chip.tone === 'muted' && 'border-border bg-muted text-muted-foreground'
+                )}
+              >
+                {fuel.chip.text}
+              </span>
             </div>
           )}
 
@@ -744,7 +707,7 @@ export function FlightCard({
             <WingLoadingPanel aircraftType={flight.aircraftType} plannedLbs={flight.fuelLbs} title={`${flight.callSign ?? ""} ${flight.tailNumber}`.trim()} qtDispatchId={flight.id.startsWith(QT_FLIGHT_PREFIX) ? flight.id.slice(QT_FLIGHT_PREFIX.length) : undefined} tailNumber={flight.tailNumber} airline={flight.contactName} />
           ) : null}
 
-          {/* Actions: Edit, Hide and Fuel Request share the width equally; Delete stays compact at the end. */}
+          {/* Actions: Edit, Hide and Fuel share the width equally; Delete stays compact at the end. */}
           {isQt ? (
             <p
               data-testid="qt-readonly"
@@ -780,25 +743,16 @@ export function FlightCard({
                 {isHidden ? 'Unhide' : 'Hide'}
               </Button>
             )}
-            {canRequestFuel && (
+            {canFuel && (
               <Button
                 variant="ghost"
                 size="sm"
-                data-testid="card-fuel-request"
-                disabled={hasFuel || fuelPending}
-                aria-label={hasFuel ? 'Fuel requested' : 'Fuel Request'}
-                onClick={requestFuel}
-                className="h-7 min-w-0 flex-1 basis-0 px-1 text-xs disabled:opacity-100"
+                data-testid="card-fuel"
+                onClick={() => setIsFuelOpen(true)}
+                className="h-7 min-w-0 flex-1 basis-0 px-1 text-xs"
               >
-                {hasFuel ? (
-                  <Check className="w-3 h-3 mr-1 shrink-0 text-green-600" />
-                ) : (
-                  <FuelIcon className="w-3 h-3 mr-1 shrink-0" />
-                )}
-                <span className="sm:hidden">Fuel</span>
-                <span className="hidden sm:inline">
-                  {hasFuel ? 'Fuel requested' : 'Fuel Request'}
-                </span>
+                <FuelIcon className="w-3 h-3 mr-1 shrink-0" />
+                Fuel
               </Button>
             )}
             <Button
@@ -819,6 +773,18 @@ export function FlightCard({
           <FlightCardSkeletonBody className="absolute inset-0 animate-in fade-in duration-300" />
         )}
       </Card>
+
+      {canFuel && (
+        <FuelOrderSheet
+          open={isFuelOpen}
+          onOpenChange={setIsFuelOpen}
+          flightId={Number(flight.id)}
+          tailNumber={flight.tailNumber}
+          referenceTime={flight.departureTime ?? flight.arrivalTime}
+          zone={zone}
+          order={openFuelOrder}
+        />
+      )}
 
       <AlertDialog
         open={isDeleteDialogOpen}

@@ -81,16 +81,17 @@ describe('servicesPayload', () => {
 })
 
 describe('findActiveServices', () => {
-  it('returns the 16 seeded services in sort_order and hides inactive ones', async () => {
+  it('returns the 15 active seeded services in sort_order and hides inactive ones (fuel is retired, B121)', async () => {
     const all = await findActiveServices(db)
-    expect(all).toHaveLength(16)
+    expect(all).toHaveLength(15)
+    expect(all.map((s) => s.key)).not.toContain('fuel')
     expect(all.map((s) => s.sort_order)).toEqual([...all.map((s) => s.sort_order)].sort((a, b) => a - b))
-    expect(all[0].key).toBe('fuel')
+    expect(all[0].key).toBe('hangar')
     expect(all.map((s) => s.key)).toContain('ground_transport')
 
     await db.from('service').update({ active: false }).eq('key', 'ice')
     const active = await findActiveServices(db)
-    expect(active).toHaveLength(15)
+    expect(active).toHaveLength(14)
     expect(active.map((s) => s.key)).not.toContain('ice')
   })
 
@@ -107,48 +108,48 @@ describe('findActiveServices', () => {
 describe('setFlightServices quantities + embedded read', () => {
   it('round-trips a quantity through the embed and keeps it when a later save sends the bare key', async () => {
     const flight = await makeFlight(db)
-    await setFlightServices(db, flight.id, ['fuel', 'tks_fluid'], { tks_fluid: 12 })
+    await setFlightServices(db, flight.id, ['hangar', 'tks_fluid'], { tks_fluid: 12 })
     let row = await readFlight(flight.id)
-    expect(serviceKeysFromRow(row)).toEqual(['fuel', 'tks_fluid'])
+    expect(serviceKeysFromRow(row)).toEqual(['hangar', 'tks_fluid'])
     expect(serviceQuantitiesFromRow(row)).toEqual({ tks_fluid: 12 })
 
-    await setFlightServices(db, flight.id, ['fuel', 'tks_fluid'])
+    await setFlightServices(db, flight.id, ['hangar', 'tks_fluid'])
     expect(serviceQuantitiesFromRow(await readFlight(flight.id))).toEqual({ tks_fluid: 12 })
 
-    await setFlightServices(db, flight.id, ['fuel', 'tks_fluid'], { tks_fluid: 20 })
+    await setFlightServices(db, flight.id, ['hangar', 'tks_fluid'], { tks_fluid: 20 })
     expect(serviceQuantitiesFromRow(await readFlight(flight.id))).toEqual({ tks_fluid: 20 })
 
-    await setFlightServices(db, flight.id, ['fuel'])
+    await setFlightServices(db, flight.id, ['hangar'])
     row = await readFlight(flight.id)
     expect(serviceQuantitiesFromRow(row)).toEqual({})
   })
 
   it('rejects quantity 0 and leaves the flight unchanged', async () => {
     const flight = await makeFlight(db)
-    await setFlightServices(db, flight.id, ['fuel'])
-    await expect(setFlightServices(db, flight.id, ['fuel', 'tks_fluid'], { tks_fluid: 0 })).rejects.toBeTruthy()
-    expect(serviceKeysFromRow(await readFlight(flight.id))).toEqual(['fuel'])
+    await setFlightServices(db, flight.id, ['hangar'])
+    await expect(setFlightServices(db, flight.id, ['hangar', 'tks_fluid'], { tks_fluid: 0 })).rejects.toBeTruthy()
+    expect(serviceKeysFromRow(await readFlight(flight.id))).toEqual(['hangar'])
   })
 })
 
 describe('setFlightServices + embedded read', () => {
   it('writes the junction and dual-writes flight.services; the flight read maps to the key array', async () => {
     const flight = await makeFlight(db)
-    const stored = await setFlightServices(db, flight.id, ['lav', 'fuel', 'cleaning', 'fuel'])
-    expect(stored).toEqual(['fuel', 'lav', 'cleaning'])
+    const stored = await setFlightServices(db, flight.id, ['lav', 'hangar', 'cleaning', 'hangar'])
+    expect(stored).toEqual(['hangar', 'lav', 'cleaning'])
 
     const row = await readFlight(flight.id)
-    expect(serviceKeysFromRow(row)).toEqual(['fuel', 'lav', 'cleaning'])
-    expect([...(row.services as unknown as string[])].sort()).toEqual(['cleaning', 'fuel', 'lav'])
+    expect(serviceKeysFromRow(row)).toEqual(['hangar', 'lav', 'cleaning'])
+    expect([...(row.services as unknown as string[])].sort()).toEqual(['cleaning', 'hangar', 'lav'])
 
     const list = await findAllFlights(db, { includeHidden: true })
-    expect(serviceKeysFromRow(list.find((f) => f.id === flight.id) ?? {})).toEqual(['fuel', 'lav', 'cleaning'])
+    expect(serviceKeysFromRow(list.find((f) => f.id === flight.id) ?? {})).toEqual(['hangar', 'lav', 'cleaning'])
   })
 
   it('replaces the set, is idempotent and clears with an empty list', async () => {
     const flight = await makeFlight(db)
-    await setFlightServices(db, flight.id, ['fuel', 'gpu'])
-    await setFlightServices(db, flight.id, ['fuel', 'gpu'])
+    await setFlightServices(db, flight.id, ['hangar', 'gpu'])
+    await setFlightServices(db, flight.id, ['hangar', 'gpu'])
     expect(await setFlightServices(db, flight.id, ['gpu'])).toEqual(['gpu'])
     expect(serviceKeysFromRow((await readFlight(flight.id)))).toEqual(['gpu'])
     expect(await setFlightServices(db, flight.id, [])).toEqual([])
@@ -159,15 +160,15 @@ describe('setFlightServices + embedded read', () => {
 
   it('raises on an unknown key and on an inactive key, leaving the flight unchanged', async () => {
     const flight = await makeFlight(db)
-    await setFlightServices(db, flight.id, ['fuel'])
-    await expect(setFlightServices(db, flight.id, ['fuel', 'nope'])).rejects.toMatchObject({
+    await setFlightServices(db, flight.id, ['hangar'])
+    await expect(setFlightServices(db, flight.id, ['hangar', 'nope'])).rejects.toMatchObject({
       message: expect.stringContaining('unknown service key(s): nope'),
     })
     await db.from('service').update({ active: false }).eq('key', 'ice')
-    await expect(setFlightServices(db, flight.id, ['fuel', 'ice'])).rejects.toMatchObject({
+    await expect(setFlightServices(db, flight.id, ['hangar', 'ice'])).rejects.toMatchObject({
       message: expect.stringContaining('inactive service key(s): ice'),
     })
-    expect(serviceKeysFromRow((await readFlight(flight.id)))).toEqual(['fuel'])
+    expect(serviceKeysFromRow((await readFlight(flight.id)))).toEqual(['hangar'])
   })
 
   it('bumps updated_at, and the edit-concurrency check works against the post-RPC value', async () => {
@@ -176,7 +177,7 @@ describe('setFlightServices + embedded read', () => {
 
     // What the hook does on a normal edit: guarded update, then the RPC, then a re-read.
     await updateFlight(db, flight.id, { notes: 'first edit' }, loaded)
-    await setFlightServices(db, flight.id, ['fuel'])
+    await setFlightServices(db, flight.id, ['hangar'])
     const after = (await readFlight(flight.id))
     expect(new Date(after.updated_at).getTime()).toBeGreaterThan(new Date(loaded).getTime())
 
