@@ -1459,11 +1459,11 @@ export type Database = {
       invoices: {
         Row: {
           id: number
-          invoice_number: string
+          invoice_number: string | null
           invoice_date: string
           status: 'draft' | 'open' | 'paid' | 'void'
           customer_id: number | null
-          customer_name: string
+          customer_name: string | null
           station: string | null
           tail_number: string | null
           aircraft_type: string | null
@@ -1477,17 +1477,19 @@ export type Database = {
           total: number
           notes: string | null
           number_source: 'live' | 'paper_book'
+          kind: 'visit' | 'counter' | 'airline' | 'legacy'
+          void_reason: string | null
           accounting_picked_up_at: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: number
-          invoice_number: string
+          invoice_number?: string | null
           invoice_date?: string
           status?: 'draft' | 'open' | 'paid' | 'void'
           customer_id?: number | null
-          customer_name: string
+          customer_name?: string | null
           station?: string | null
           tail_number?: string | null
           aircraft_type?: string | null
@@ -1501,6 +1503,8 @@ export type Database = {
           total?: number
           notes?: string | null
           number_source?: 'live' | 'paper_book'
+          kind?: 'visit' | 'counter' | 'airline' | 'legacy'
+          void_reason?: string | null
           accounting_picked_up_at?: string | null
           updated_at?: string
         }
@@ -1539,6 +1543,18 @@ export type Database = {
           density: number | null
           requested_amount: string | null
           service_time: string | null
+          service_id: number | null
+          source_key: string | null
+          unit: string | null
+          keyed_in_at: string | null
+          keyed_in_by: number | null
+          keyed_quantity: number | null
+          waived: boolean
+          waiver_reason: 'fuel_minimum' | 'hangar_lease' | 'manual' | null
+          waiver_note: string | null
+          difference_resolved_quantity: number | null
+          difference_note: string | null
+          removed_at: string | null
           created_at: string
           updated_at: string
         }
@@ -1558,6 +1574,18 @@ export type Database = {
           density?: number | null
           requested_amount?: string | null
           service_time?: string | null
+          service_id?: number | null
+          source_key?: string | null
+          unit?: string | null
+          keyed_in_at?: string | null
+          keyed_in_by?: number | null
+          keyed_quantity?: number | null
+          waived?: boolean
+          waiver_reason?: 'fuel_minimum' | 'hangar_lease' | 'manual' | null
+          waiver_note?: string | null
+          difference_resolved_quantity?: number | null
+          difference_note?: string | null
+          removed_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['invoice_line_items']['Insert']>
         Relationships: [

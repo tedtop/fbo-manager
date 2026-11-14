@@ -17,6 +17,7 @@ export type InvoiceStatus = InvoiceRow['status']
 export type PaymentMethod = NonNullable<InvoiceRow['payment_method']>
 export type SettledVia = NonNullable<InvoiceRow['settled_via']>
 export type NumberSource = InvoiceRow['number_source']
+export type InvoiceKind = InvoiceRow['kind']
 
 /**
  * Classifies an invoice number by its shape: a bare 5-digit serial is a
@@ -42,6 +43,7 @@ export type LineItemRow = Tables<'invoice_line_items'>
 export type FuelReadingRow = Tables<'invoice_fuel_readings'>
 export type TicketFuelType = NonNullable<LineItemRow['fuel_type']>
 export type ItemType = LineItemRow['item_type']
+export type WaiverReason = NonNullable<LineItemRow['waiver_reason']>
 
 export type MeterReadingWithSheet = TruckMeterReadingRow & {
   truck_sheet: {
@@ -145,7 +147,7 @@ export async function suggestNextInvoiceNumber(
 
   const max = (data ?? [])
     .map((r) => r.invoice_number)
-    .filter((n) => /^\d+$/.test(n))
+    .filter((n): n is string => n != null && /^\d+$/.test(n))
     .reduce((best, n) => Math.max(best, Number(n)), 0)
   return max > 0 ? String(max + 1) : ''
 }
