@@ -1,6 +1,7 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
+import { HelpButton } from '@/components/docs/help-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -331,6 +332,7 @@ export function CompactToolbar({
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </output>
         )}
+        <HelpButton module="flight-operations" topic="Arrivals and departures guide" className="mr-1 size-8" />
         <Button asChild variant="outline" size="sm" className="h-11 bg-transparent text-foreground sm:h-9 md:mr-2">
           <Link href="/flight-operations/import" title="Import schedule" aria-label="Import schedule">
             <ScanLine className="w-4 h-4 sm:mr-2" />
