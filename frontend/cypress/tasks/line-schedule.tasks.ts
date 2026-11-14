@@ -61,6 +61,14 @@ export const lineScheduleTasks = {
     return data ?? []
   },
 
+  /** Another user's save: changes the shift's notes behind an open dialog (the updated_at trigger bumps the row). */
+  async touchShift({ id, notes }: { id: number; notes: string }) {
+    const db = createE2EDbClient()
+    const { error } = await db.from('schedule_shift').update({ notes }).eq('id', id)
+    if (error) throw new Error(`touchShift: ${error.message}`)
+    return null
+  },
+
   async cleanLineSchedule({ departmentId, createdDepartment, userIds, adminRowId }: { departmentId: number; createdDepartment: boolean; userIds: number[]; adminRowId: number | null }) {
     const db = createE2EDbClient()
     await db.from('schedule_shift').delete().in('user_id', userIds)

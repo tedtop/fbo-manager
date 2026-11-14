@@ -10,6 +10,14 @@ export const trainingTasks = {
     return data
   },
 
+  /** Another user's save: changes the course's instructions behind an open sheet (the updated_at trigger bumps the row). */
+  async touchTrainingCourse({ name, instructions }: { name: string; instructions: string }) {
+    const db = createE2EDbClient()
+    const { error } = await db.from('training_course').update({ instructions }).eq('name', name)
+    if (error) throw new Error(`touchTrainingCourse: ${error.message}`)
+    return null
+  },
+
   /** Removes the courses with these names (their completions go with them). */
   async cleanTrainingCourses(names: string[]) {
     const db = createE2EDbClient()

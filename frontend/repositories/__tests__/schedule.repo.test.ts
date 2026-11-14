@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { createTestClient } from '@/tests/support/client'
 import { resetDatabase } from '@/tests/support/reset'
 import { makeUser } from '@/tests/support/factories'
@@ -111,6 +112,28 @@ describe('schedule.repo', () => {
     const row = await createShift(db, shiftOf(dept.id, user.id))
     const updated = await updateShift(db, row.id, { start_time: '06:00', end_time: '16:00', notes: 'covering', updated_by: user.id })
     expect(updated).toMatchObject({ start_time: '06:00:00', end_time: '16:00:00', notes: 'covering', updated_by: user.id })
+  })
+
+  it('guards the update with expectedUpdatedAt: matches once, then a stale value throws ConcurrencyConflictError and writes nothing', async () => {
+    const { dept, user } = await setup()
+    const row = await createShift(db, shiftOf(dept.id, user.id))
+    const loaded = row.updated_at
+
+    const first = await updateShift(db, row.id, { notes: 'first' }, loaded)
+    expect(first.notes).toBe('first')
+    expect(new Date(first.updated_at).getTime()).toBeGreaterThan(new Date(loaded).getTime())
+
+    // `loaded` is now stale, exactly like another user's save.
+    await expect(updateShift(db, row.id, { notes: 'stale' }, loaded)).rejects.toBeInstanceOf(ConcurrencyConflictError)
+    const { data } = await db.from('schedule_shift').select('notes').eq('id', row.id).single()
+    expect(data?.notes).toBe('first')
+  })
+
+  it('without expectedUpdatedAt the update is unconditional (the Overwrite anyway path)', async () => {
+    const { dept, user } = await setup()
+    const row = await createShift(db, shiftOf(dept.id, user.id))
+    await updateShift(db, row.id, { notes: 'theirs' })
+    await expect(updateShift(db, row.id, { notes: 'ours' })).resolves.toMatchObject({ notes: 'ours' })
   })
 
   it('deletes a shift', async () => {

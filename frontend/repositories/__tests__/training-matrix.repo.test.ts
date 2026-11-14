@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { ConcurrencyConflictError } from '@/lib/concurrency'
 import { createTestClient } from '@/tests/support/client'
 import { resetDatabase } from '@/tests/support/reset'
 import { makeUser } from '@/tests/support/factories'
@@ -41,6 +42,27 @@ describe('training-courses.repo', () => {
     const c = await createCourse(db, { name: 'Hazmat' })
     const updated = await updateCourse(db, c.id, { name: 'Hazmat 2', url: 'https://example.test/hazmat', is_active: false })
     expect(updated).toMatchObject({ name: 'Hazmat 2', url: 'https://example.test/hazmat', is_active: false })
+  })
+
+  it('guards the update with expectedUpdatedAt: matches once, then a stale value throws ConcurrencyConflictError and writes nothing', async () => {
+    const c = await createCourse(db, { name: 'Guarded' })
+    const loaded = c.updated_at
+
+    const first = await updateCourse(db, c.id, { instructions: 'first' }, loaded)
+    expect(first.instructions).toBe('first')
+    expect(new Date(first.updated_at).getTime()).toBeGreaterThan(new Date(loaded).getTime())
+
+    await expect(updateCourse(db, c.id, { instructions: 'stale' }, loaded)).rejects.toBeInstanceOf(
+      ConcurrencyConflictError
+    )
+    const { data } = await db.from('training_course').select('instructions').eq('id', c.id).single()
+    expect(data?.instructions).toBe('first')
+  })
+
+  it('without expectedUpdatedAt the update is unconditional (the Overwrite anyway path)', async () => {
+    const c = await createCourse(db, { name: 'Unguarded' })
+    await updateCourse(db, c.id, { instructions: 'theirs' })
+    await expect(updateCourse(db, c.id, { instructions: 'ours' })).resolves.toMatchObject({ instructions: 'ours' })
   })
 
   it('refuses a validity unit outside days/weeks/months/years', async () => {

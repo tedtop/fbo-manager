@@ -60,9 +60,13 @@ export function useTrainingMatrix() {
   const updateCourseMutation = useMutation({
     mutationFn: ({
       id,
-      updates
-    }: { id: number; updates: TrainingCourseUpdate }) =>
-      updateCourse(db, id, updates),
+      updates,
+      expectedUpdatedAt
+    }: {
+      id: number
+      updates: TrainingCourseUpdate
+      expectedUpdatedAt?: string
+    }) => updateCourse(db, id, updates, expectedUpdatedAt),
     onSuccess: invalidate
   })
 
@@ -112,8 +116,11 @@ export function useTrainingMatrix() {
     },
     createCourse: (course: TrainingCourseInsert) =>
       createCourseMutation.mutateAsync(course),
-    updateCourse: (id: number, updates: TrainingCourseUpdate) =>
-      updateCourseMutation.mutateAsync({ id, updates }),
+    updateCourse: (
+      id: number,
+      updates: TrainingCourseUpdate,
+      expectedUpdatedAt?: string
+    ) => updateCourseMutation.mutateAsync({ id, updates, expectedUpdatedAt }),
     deleteCourse: (id: number) => deleteCourseMutation.mutateAsync(id),
     recordCompletion: (input: RecordCompletionInput) =>
       recordCompletionMutation.mutateAsync(input),

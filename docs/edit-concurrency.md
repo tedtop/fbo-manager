@@ -112,8 +112,21 @@ an `.eq('updated_at', expectedUpdatedAt)` guard, throwing `ConcurrencyConflictEr
 - `frontend/components/fuel-farm/tank-form-dialog.tsx` / `frontend/app/fuel-farm/page.tsx`
 - `frontend/components/fuel-dispatch/transaction-form-dialog.tsx` / `frontend/app/dispatch/page.tsx`
 - `frontend/components/equipment/equipment-form-dialog.tsx` / `frontend/app/equipment/page.tsx`
+- `frontend/components/line-schedule/shift-dialog.tsx` (`schedule_shift`, `updateShift` in `repositories/schedule.repo.ts`; B63a)
+- `frontend/components/training/course-form-sheet.tsx` (`training_course`, `updateCourse` in `repositories/training-courses.repo.ts`; B63a)
 
-This pass intentionally only wires up these three modules so far. Roll the pattern out to other
+B63a added the shift dialog and the training course sheet. Both tables have the `set_updated_at`
+trigger (migrations `20261104001100` / `20261104001200`) but are **not** in the `supabase_realtime`
+publication (adding them is a live schema change, left out on purpose). So on these two forms the
+save-time compare-and-swap and the conflict dialog work, but the live "someone just saved this"
+banner and presence peers do not fire until the tables are published. Skipped on purpose:
+`components/parking/aircraft-sheet.tsx` has no form save (heading changes autosave from the compass
+and map drags, plus a Remove button), so there is nothing to guard, and
+`components/training/completion-sheet.tsx` only inserts and deletes completions (no edit path).
+Cypress coverage: `cypress/e2e/line-schedule/shift-edit-concurrency.cy.ts`,
+`cypress/e2e/training/course-edit-concurrency.cy.ts`.
+
+Earlier passes wired up the first three modules. Roll the pattern out to other
 `Sheet`/`Dialog` edit forms incrementally, checking the `updated_at` trigger situation for each
 table first. Note the equipment status board's single-tap quick status change
 (`handleStatusChange` in `app/equipment/page.tsx`) intentionally does **not** go through

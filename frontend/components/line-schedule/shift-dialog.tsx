@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { EditSessionStatus } from '@/components/shared/edit-session-status'
+import { useRecordEditSession } from '@/hooks/use-record-edit-session'
 import type { MemberWithUser } from '@/repositories/departments.repo'
 import type { ScheduleShiftInsert, ScheduleShiftRow } from '@/repositories/schedule.repo'
 import {
@@ -53,7 +55,11 @@ interface ShiftDialogProps {
   defaultDate?: string
   defaultUserId?: number
   onAdd: (shift: ScheduleShiftInsert) => Promise<unknown>
-  onUpdate: (id: number, updates: Partial<ScheduleShiftInsert>) => Promise<unknown>
+  onUpdate: (
+    id: number,
+    updates: Partial<ScheduleShiftInsert>,
+    expectedUpdatedAt?: string
+  ) => Promise<unknown>
   onDelete: (id: number) => Promise<unknown>
 }
 
@@ -108,6 +114,22 @@ export function ShiftDialog({
     }
   }, [open, shift, defaultDate, defaultUserId, wholeDept, currentUserId, eligibleMembers])
 
+  const fillFromShift = (row: ScheduleShiftRow) => {
+    setUserId(row.user_id)
+    setDate(row.shift_date)
+    setStart(row.start_time.slice(0, 5))
+    setEnd(row.end_time.slice(0, 5))
+    setNotes(row.notes ?? '')
+  }
+
+  const editSession = useRecordEditSession<ScheduleShiftRow>({
+    table: 'schedule_shift',
+    recordId: shift?.id ?? null,
+    updatedAt: shift?.updated_at ?? null,
+    enabled: open && !!shift,
+    onReload: fillFromShift,
+  })
+
   const overnight = start && end ? isOvernight(start, end) : false
   const duration = start && end ? shiftDurationHours(start, end) : 0
 
@@ -120,14 +142,21 @@ export function ShiftDialog({
     setError('')
     try {
       if (shift) {
-        await onUpdate(shift.id, {
-          user_id: userId,
-          shift_date: date,
-          start_time: start,
-          end_time: end,
-          notes,
-          updated_by: currentUserId ?? null,
-        })
+        const outcome = await editSession.save((expectedUpdatedAt) =>
+          onUpdate(
+            shift.id,
+            {
+              user_id: userId,
+              shift_date: date,
+              start_time: start,
+              end_time: end,
+              notes,
+              updated_by: currentUserId ?? null,
+            },
+            expectedUpdatedAt
+          )
+        )
+        if (outcome.status === 'conflict') return
       } else {
         await onAdd({
           department_id: departmentId,
@@ -174,6 +203,12 @@ export function ShiftDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {shift && (
+            <EditSessionStatus
+              editSession={editSession}
+              onOverwriteComplete={() => onOpenChange(false)}
+            />
+          )}
           <div className="space-y-1.5">
             <Label>Employee</Label>
             <Select
