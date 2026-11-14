@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -62,6 +62,12 @@ export default function ScheduleImportPage() {
                 </li>
               ))}
             </ul>
+          )}
+          {imp.result.sheetSaveError && (
+            <p role="status" data-testid="sheet-save-warning" className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Flights imported, but the original sheet could not be saved: {imp.result.sheetSaveError}</span>
+            </p>
           )}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button asChild className="h-11 sm:h-9">

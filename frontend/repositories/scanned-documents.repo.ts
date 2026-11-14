@@ -115,6 +115,28 @@ export async function uploadScheduleSheetScan(
   return path
 }
 
+/**
+ * B104: stores the original sheet file(s) after a schedule import, best effort. Never throws (the flights are already
+ * saved and stay); returns a plain-language reason when any file could not be kept, else null.
+ */
+export async function saveScheduleSheetOriginals(
+  db: SupabaseClient<Database>,
+  files: File[],
+  sheetDate?: string | null
+): Promise<string | null> {
+  const reasons: string[] = []
+  for (const file of files) {
+    try {
+      await uploadScheduleSheetScan(db, file, file.name, sheetDate)
+    } catch (err) {
+      console.error(`Failed to persist original schedule sheet "${file.name}":`, err)
+      const reason = err instanceof Error && err.message ? err.message : String(err)
+      reasons.push(files.length > 1 ? `${file.name}: ${reason}` : reason)
+    }
+  }
+  return reasons.length > 0 ? reasons.join('; ') : null
+}
+
 /** Signed URL for viewing a scan (the bucket is private by design). */
 export async function getScanSignedUrl(
   db: SupabaseClient<Database>,

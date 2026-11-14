@@ -101,6 +101,7 @@ describe('schedule sheet import', () => {
     cy.task('cleanScheduleImport', tails)
   })
   beforeEach(() => {
+    cy.task('removeScheduleSheetOriginals') // the test file's bytes always hash to the same object name
     cy.login('admin')
     stubNetwork()
   })
@@ -167,6 +168,9 @@ describe('schedule sheet import', () => {
     cy.get('[data-testid="import-summary"]').should('contain.text', '4 to add, 0 to update, 0 skipped')
     cy.get('[data-testid="import-button"]').click()
     cy.get('[data-testid="import-result"]', { timeout: 20_000 }).should('contain.text', '4 added, 0 updated, 0 skipped')
+    // B104: the original sheet is kept in the private bucket and no warning is shown
+    cy.get('[data-testid="sheet-save-warning"]').should('not.exist')
+    cy.task('listScheduleSheetOriginals').should('have.length', 1)
 
     cy.task('getImportedFlights', { tails, count: 4 }).then((data) => {
       const rows = data as FlightRow[]
@@ -209,6 +213,27 @@ describe('schedule sheet import', () => {
     cy.get('[data-testid="import-summary"]').should('contain.text', '0 to add, 0 to update, 4 skipped')
     cy.get('[data-testid="import-button"]').should('be.disabled')
     cy.task('countFlightsForTails', tails).should('eq', 4)
+  })
+
+  // B104: a storage failure (RLS, outage) must not undo the import, but the user is told the original was not kept.
+  it('a failed original-sheet upload is shown as a warning while the flights are still imported', () => {
+    cy.task('cleanScheduleImport', tails) // the previous test imported these flights: start from an empty board
+    cy.intercept('POST', '**/storage/v1/object/scans/**', {
+      statusCode: 403,
+      body: { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' }
+    }).as('sheetUpload')
+    cy.visit('/flight-operations/import')
+    upload()
+    cards().should('have.length', 4)
+    cy.get('[data-testid="import-button"]', { timeout: 10_000 }).should('be.enabled')
+    cy.get('[data-testid="import-button"]').click()
+    cy.wait('@sheetUpload')
+    cy.get('[data-testid="import-result"]', { timeout: 20_000 }).should('contain.text', '4 added, 0 updated, 0 skipped')
+    cy.get('[data-testid="sheet-save-warning"]')
+      .should('contain.text', 'Flights imported, but the original sheet could not be saved')
+      .and('contain.text', 'row-level security')
+    cy.task('getImportedFlights', { tails, count: 4 })
+    cy.task('listScheduleSheetOriginals').should('have.length', 0)
   })
 })
 
