@@ -81,6 +81,10 @@ Click a Name, Email, Phone, Joined, Employee ID or Badge ID cell to edit it in p
 
 The Edit User sheet does the same job in a form; both use the same checks.
 
+### Initials for truck sheets {#initials}
+
+In the Edit User (or Invite User) sheet, **Initials** is how a person signs the second-to-last box of a truck sheet (1 to 4 letters, saved in capitals). It is optional: leave it blank for someone who does not fuel. Two **active** users cannot share initials; saving a duplicate shows "Another active user already has those initials". Disable the old account first (or change its initials) when a new person has the same ones. Only Line Department users and Administrators are matched when a truck sheet is scanned.
+
 ### Phone numbers {#phone-format}
 
 Phone fields (in the table and in the Edit User sheet) format as you type: **(555) 555-1234**. Only digits are accepted. Paste a number in any format (`555-555-1234`, `+1 555 555 1234`, `5555551234`) and it is tidied up. Clear the field to remove the number. US numbers only; a leading 1 is dropped.

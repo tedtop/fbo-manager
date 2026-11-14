@@ -17,6 +17,7 @@ import {
   SheetTitle
 } from '@/components/ui/sheet'
 import { ErrorMessage } from '@/messages/error-message'
+import { initialsError, normalizeInitials } from '@/lib/fueler-initials'
 import { ADMIN_ROLE_NAME } from '@/lib/user-guards'
 import { isIncludedWithAdmin, normalizeRoleIds } from '@/lib/role-rules'
 import { displayPhone, phoneError } from '@/lib/phone-mask'
@@ -29,6 +30,7 @@ export interface UserFormData {
   phoneNumber: string
   employeeId: string
   badgeId: string
+  initials: string
   hireDate: string
   roleIds: number[]
 }
@@ -40,6 +42,7 @@ const EMPTY_FORM: UserFormData = {
   phoneNumber: '',
   employeeId: '',
   badgeId: '',
+  initials: '',
   hireDate: '',
   roleIds: []
 }
@@ -74,6 +77,7 @@ export function UserSheet({
         phoneNumber: displayPhone(user.phone_number),
         employeeId: user.employee_id ?? '',
         badgeId: user.badge_id ?? '',
+        initials: user.initials ?? '',
         hireDate: user.hire_date ?? '',
         roleIds: user.roles.map((r) => r.id)
       })
@@ -104,9 +108,14 @@ export function UserSheet({
       setError(phoneProblem)
       return
     }
+    const initialsProblem = initialsError(formData.initials)
+    if (initialsProblem) {
+      setError(initialsProblem)
+      return
+    }
     setLoading(true)
     try {
-      await onSubmit({ ...formData, roleIds: normalizeRoleIds(roles, formData.roleIds) })
+      await onSubmit({ ...formData, initials: normalizeInitials(formData.initials), roleIds: normalizeRoleIds(roles, formData.roleIds) })
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save user')
@@ -217,6 +226,23 @@ export function UserSheet({
                 once a year.
               </p>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="initials">Initials</Label>
+            <Input
+              id="initials"
+              maxLength={4}
+              className="w-24 uppercase"
+              value={formData.initials}
+              onChange={(e) =>
+                setFormData({ ...formData, initials: e.target.value.toUpperCase() })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              How they sign truck sheets (1 to 4 letters). Must be unique among
+              active users; leave blank if they do not fuel.
+            </p>
           </div>
 
           <div className="space-y-2">

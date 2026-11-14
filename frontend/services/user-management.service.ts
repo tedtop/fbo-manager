@@ -1,3 +1,4 @@
+import { initialsConflictMessage, normalizeInitials } from '@/lib/fueler-initials'
 import { normalizePhone } from '@/lib/phone-mask'
 import { updateProfile } from '@/repositories/profiles.repo'
 import { setUserRoles } from '@/repositories/user-roles.repo'
@@ -16,6 +17,7 @@ export interface InviteUserInput {
   phoneNumber: string
   employeeId: string
   badgeId: string
+  initials: string
   hireDate: string
   roleIds: number[]
 }
@@ -64,6 +66,7 @@ export interface UpdateUserInput {
   phoneNumber: string
   employeeId: string
   badgeId: string
+  initials: string
   hireDate: string
   roleIds: number[]
 }
@@ -75,15 +78,22 @@ export async function updateUserWithRoles(
   input: UpdateUserInput,
   updatedBy: string | null
 ): Promise<void> {
-  await updateProfile(db, userId, {
+  try {
+    await updateProfile(db, userId, {
     first_name: input.firstName,
     last_name: input.lastName,
     phone_number: normalizePhoneForSave(input.phoneNumber),
     employee_id: input.employeeId || null,
     badge_id: input.badgeId || null,
+    initials: normalizeInitials(input.initials) || null,
     hire_date: input.hireDate || null,
     updated_by: updatedBy
   })
+  } catch (err) {
+    const message = initialsConflictMessage(err as { code?: string; message?: string })
+    if (message) throw new Error(message)
+    throw err
+  }
   await setUserRoles(db, userId, input.roleIds, updatedBy)
 }
 
@@ -98,10 +108,17 @@ export async function updateUserFields(
     hire_date: string | null
     employee_id: string | null
     badge_id: string | null
+    initials: string | null
   }>,
   updatedBy: string | null
 ): Promise<void> {
-  await updateProfile(db, userId, { ...patch, updated_by: updatedBy })
+  try {
+    await updateProfile(db, userId, { ...patch, updated_by: updatedBy })
+  } catch (err) {
+    const message = initialsConflictMessage(err as { code?: string; message?: string })
+    if (message) throw new Error(message)
+    throw err
+  }
 }
 
 export async function setUserActiveStatus(

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, Loader2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/hooks/use-session'
+import { useFuelerCandidates } from '@/hooks/use-fueler-candidates'
 import { useFuelTrucks } from '@/hooks/use-truck-sheets'
 import {
   mergeExtractions,
@@ -39,6 +40,7 @@ export default function TruckSheetImportPage() {
   const { mutateAsync: extract } = useTruckSheetExtract()
   const { mutateAsync: commit, isPending: committing } = useTruckSheetCommit()
   const { data: trucks = [] } = useFuelTrucks()
+  const { data: fuelers } = useFuelerCandidates()
   const knownTruckNumbers = new Set(trucks.map((t) => t.equipment_id))
 
   const [pages, setPages] = useState<PageProgress[]>([])
@@ -184,6 +186,7 @@ export default function TruckSheetImportPage() {
                 key={sheet.id}
                 sheet={sheet}
                 knownTruckNumbers={knownTruckNumbers}
+                fuelers={fuelers}
                 check={checks.get(sheet.id)}
                 onChange={updateSheet}
                 onRemove={() => setSheets((prev) => prev.filter((s) => s.id !== sheet.id))}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCcw, RotateCw, Trash2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import {
   type ReviewSheet,
   type SheetCheck,
 } from '@/hooks/use-truck-sheet-import'
+import { fuelerLabel, resolveFuelerInitials, type FuelerCandidate } from '@/lib/fueler-initials'
 import { validateReadings, type ReadingIssue } from './reading-validation'
 
 export const READING_TYPE_LABELS: Record<ReviewReading['reading_type'], string> = {
@@ -29,6 +31,8 @@ export const READING_TYPE_LABELS: Record<ReviewReading['reading_type'], string> 
 interface TruckSheetReviewProps {
   sheet: ReviewSheet
   knownTruckNumbers: Set<string>
+  /** Active Line Department users the scanned initials are matched against. */
+  fuelers?: FuelerCandidate[]
   /** Duplicate checks for this sheet (undefined while loading or while truck/date are missing). */
   check?: SheetCheck
   onChange: (sheet: ReviewSheet) => void
@@ -106,6 +110,7 @@ function IssueIcon({ issues }: { issues: ReadingIssue[] | undefined }) {
 export function TruckSheetReview({
   sheet,
   knownTruckNumbers,
+  fuelers = [],
   check,
   onChange,
   onRemove,
@@ -120,6 +125,14 @@ export function TruckSheetReview({
   function patch(p: Partial<ReviewSheet>) {
     onChange({ ...sheet, ...p })
   }
+
+  const resolution = resolveFuelerInitials(sheet.fueler_initials, fuelers)
+  const resolvedId = resolution.status === 'resolved' ? resolution.user.id : ''
+  useEffect(() => {
+    if (resolvedId && sheet.fueler_user_id !== resolvedId) {
+      onChange({ ...sheet, fueler_user_id: resolvedId })
+    }
+  })
 
   function patchReading(id: string, p: Partial<ReviewReading>) {
     patch({ readings: sheet.readings.map((r) => (r.id === id ? { ...r, ...p } : r)) })
@@ -248,9 +261,38 @@ export function TruckSheetReview({
           <Label className="text-xs text-muted-foreground">Initials</Label>
           <Input
             value={sheet.fueler_initials}
-            onChange={(e) => patch({ fueler_initials: e.target.value.toUpperCase() })}
+            data-testid="sheet-initials"
+            onChange={(e) => patch({ fueler_initials: e.target.value.toUpperCase(), fueler_user_id: '' })}
             className="h-8 text-xs"
           />
+          {resolution.status === 'resolved' && (
+            <p className="text-xs text-muted-foreground" data-testid="fueler-resolved">
+              {fuelerLabel(resolution.user)}
+            </p>
+          )}
+          {resolution.status !== 'resolved' && sheet.fueler_initials.trim() !== '' && fuelers.length > 0 && (
+            <p className="text-xs text-amber-600" data-testid="fueler-unresolved">
+              {resolution.status === 'ambiguous'
+                ? 'More than one user has these initials. Pick who fueled.'
+                : 'No active Line user has these initials. Pick who fueled.'}
+            </p>
+          )}
+          {resolution.status !== 'resolved' && fuelers.length > 0 && (
+            <select
+              value={sheet.fueler_user_id}
+              onChange={(e) => patch({ fueler_user_id: e.target.value })}
+              data-testid="fueler-picker"
+              aria-label="Fueler"
+              className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+            >
+              <option value="">Not chosen</option>
+              {(resolution.status === 'ambiguous' ? resolution.candidates : fuelers).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {fuelerLabel(u)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">DPI (psi)</Label>

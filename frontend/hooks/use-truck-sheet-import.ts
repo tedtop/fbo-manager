@@ -69,6 +69,8 @@ export interface ReviewSheet {
   front_meter_start: string
   rear_meter_start: string
   fueler_initials: string
+  /** The Line Department user the initials resolved to (or a human picked); '' when none. Saved with the sheet. */
+  fueler_user_id: string
   /** DPI and nozzle PSI as written on the sheet (psi); empty when not recorded. Saved as an equipment_reading. */
   dpi_psi: string
   nozzle_psi: string
@@ -163,6 +165,7 @@ export function mergeExtractions(
       front_meter_start: first.front_meter_start,
       rear_meter_start: first.rear_meter_start,
       fueler_initials: first.fueler_initials,
+      fueler_user_id: '',
       dpi_psi: '',
       nozzle_psi: '',
       page_count: group.length,
@@ -369,6 +372,7 @@ export function useTruckSheetCommit() {
               front_meter_start: toNumber(sheet.front_meter_start),
               rear_meter_start: toNumber(sheet.rear_meter_start),
               fueler_initials: sheet.fueler_initials || null,
+              fueler_user_id: sheet.fueler_user_id || null,
               page_count: keep.length,
               ocr_raw: sheet.ocr_raw,
             })

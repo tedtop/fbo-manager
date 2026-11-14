@@ -42,6 +42,8 @@ On a fuel truck's page press **Log readings** and enter the differential pressur
 
 When you import a truck sheet (Truck Sheets, then the scan review), fill **DPI (psi)** and **Nozzle PSI** in the sheet header with the values written on the paper sheet; leave them empty when the sheet has none (either one alone is fine). The import saves them as a reading dated midday on the sheet's date, in the same Daily readings history above, so the trend, the latest values on the list card and the days-to-limit projection include them. A value that is not a number stops the import of that sheet until it is corrected. Adding pages to a sheet that already exists adds no readings, so enter a missed value with **Log readings** on the truck's page instead. A scanned sheet is not read for these two values; type them.
 
+The sheet header's **Initials** box is matched to the active Line Department users' initials (set under Users). When exactly one user matches, their name shows under the box and the sheet is saved with that person as the fueler. When no one matches, or two users have the same initials, a note says so and a **Fueler** list appears so you can pick who fueled; if you leave it on "Not chosen" the sheet is still saved with the initials as written. The chosen person is stored on the sheet, so it stays correct even if the initials are reused later.
+
 ### Filter changes {#filter-changes}
 
 Press **Log filter change** when the filters are replaced: when, which filters, and the DPI just before the change. The section and the list card show how many days ago the filters were changed; they are flagged "Due soon" in the last 30 days of the one-year life and "Replace now" after it. Replace sooner if the DPI trend says so.

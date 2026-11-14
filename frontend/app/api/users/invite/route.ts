@@ -1,3 +1,4 @@
+import { initialsConflictMessage, initialsError, normalizeInitials } from '@/lib/fueler-initials'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireUsersAdmin } from '@/lib/supabase/require-users-admin'
 import { setUserRoles } from '@/repositories/user-roles.repo'
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { email, firstName, lastName, phoneNumber, employeeId, badgeId, hireDate, roleIds } =
+  const { email, firstName, lastName, phoneNumber, employeeId, badgeId, initials, hireDate, roleIds } =
     body as {
       email?: string
       firstName?: string
@@ -21,12 +22,18 @@ export async function POST(request: NextRequest) {
       phoneNumber?: string
       employeeId?: string
       badgeId?: string
+      initials?: string
       hireDate?: string
       roleIds?: number[]
     }
 
   if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+  }
+
+  const initialsProblem = initialsError(initials ?? '')
+  if (initialsProblem) {
+    return NextResponse.json({ error: initialsProblem }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -58,6 +65,7 @@ export async function POST(request: NextRequest) {
       phone_number: phoneNumber ?? '',
       employee_id: employeeId || null,
       badge_id: badgeId || null,
+      initials: normalizeInitials(initials ?? '') || null,
       hire_date: hireDate || null,
       created_by: authResult.caller.user.id,
       updated_by: authResult.caller.user.id
@@ -65,7 +73,10 @@ export async function POST(request: NextRequest) {
     .eq('id', newUserId)
 
   if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 400 })
+    return NextResponse.json(
+      { error: initialsConflictMessage(profileError) ?? profileError.message },
+      { status: 400 }
+    )
   }
 
   if (roleIds && roleIds.length > 0) {

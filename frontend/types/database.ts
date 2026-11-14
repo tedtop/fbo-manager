@@ -1140,6 +1140,7 @@ export type Database = {
           front_meter_start: number | null
           rear_meter_start: number | null
           fueler_initials: string | null
+          fueler_user_id: string | null
           page_count: number
           ocr_raw: unknown
           notes: string | null
@@ -1157,6 +1158,7 @@ export type Database = {
           front_meter_start?: number | null
           rear_meter_start?: number | null
           fueler_initials?: string | null
+          fueler_user_id?: string | null
           page_count?: number
           ocr_raw?: unknown
           notes?: string | null
@@ -1284,6 +1286,7 @@ export type Database = {
           employee_id: string | null
           badge_id: string | null
           hire_date: string | null
+          initials: string | null
           status: 'active' | 'disabled'
           created_at: string
           updated_at: string
@@ -1299,6 +1302,7 @@ export type Database = {
           employee_id?: string | null
           badge_id?: string | null
           hire_date?: string | null
+          initials?: string | null
           status?: 'active' | 'disabled'
           created_by?: string | null
           updated_by?: string | null
