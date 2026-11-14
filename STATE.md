@@ -14,6 +14,7 @@
 
 Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the orchestrator. Still to archive from the sidebar (Remote Control/queued work blocked it): Fuel Dispatch module integration, Truck sheet scanner, Mobile viewport fixes, Parking areas, Line schedule update, Record fuel sheet meters. Google sign-in and user manager has not reported yet. Minuteman `feature/wing-loading` stays open (B92).
 
+- 2026-11-13 hourly build: B94 merged (69c54d6). New migrations may no longer grant to anon (vitest guard); revoke migration `20261113000400_revoke_anon_regrants.sql` waits for Ted, apply together with B29.
 - 2026-11-13 hourly build: B104 merged (1c48f3b). Schedule import warns when the original sheet cannot be saved; live fix needs migration `20261105000400_truck_sheet_scan_pages.sql` applied (Ted).
 
 ## Waiting on Ted
@@ -36,5 +37,5 @@ Consolidation 2026-11-09: 11 sessions finalized and merged; 6 archived by the or
 - Test runs use private dist dirs (`NEXT_DIST_DIR=.next-e2e/<name>`) and ports, never :4000.
 
 <!-- usage:start -->
-Usage (tokens, excl. cache reads): this session 78k | last 5h 21.61M | budget not set
+Usage (tokens, excl. cache reads): this session 90k | last 5h 21.60M | budget not set
 <!-- usage:end -->
