@@ -231,6 +231,17 @@ export function ServicePillPicker({
   )
 }
 
+/** Placeholder pill shown while the service catalog loads; carries no data-service-key. */
+export function ServicePillSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn('h-5 w-14 rounded bg-muted animate-pulse', className)}
+      data-service-loading="true"
+      aria-busy="true"
+    />
+  )
+}
+
 interface ServicePillProps {
   serviceKey: string
   /** flight_service.quantity; rendered with the catalog unit, e.g. "TKS Fluid · 12 gal". */
@@ -244,7 +255,10 @@ export function ServicePill({
   quantity,
   className
 }: ServicePillProps) {
-  const { services } = useServices()
+  const { services, loading } = useServices()
+  // Until the catalog arrives a bare key could only be drawn with the derived label ("Gpu"), which flashes
+  // a wrong name on the card (B138). Show a placeholder instead; a failed fetch still falls back to the key label.
+  if (loading) return <ServicePillSkeleton className={className} />
   return (
     <ServicePillView
       serviceKey={serviceKey}

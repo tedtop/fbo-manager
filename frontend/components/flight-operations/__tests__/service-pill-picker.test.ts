@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { ServicePillPickerView, ServicePillView } from '../service-pill-picker'
+import { ServicePillPickerView, ServicePillSkeleton, ServicePillView } from '../service-pill-picker'
 
 const catalog = [
   { key: 'fuel', label: 'Fuel', icon: 'fuel', color: 'blue' },
@@ -122,5 +122,21 @@ describe('ServicePillView', () => {
     const generic = renderToStaticMarkup(createElement(ServicePillView, { serviceKey: 'brand_new' }))
     expect(generic).toContain('Brand New')
     expect(generic).toContain('data-service-key="brand_new"')
+  })
+})
+
+describe('ServicePillSkeleton (B138)', () => {
+  it('is a keyless placeholder, so no derived label like "Gpu" can show while the catalog loads', () => {
+    const html = renderToStaticMarkup(createElement(ServicePillSkeleton))
+    expect(html).toContain('data-service-loading="true"')
+    expect(html).not.toContain('data-service-key')
+    expect(html).not.toMatch(/>[A-Za-z]/)
+  })
+
+  it('ServicePillView still labels from the catalog row as stored', () => {
+    const html = renderToStaticMarkup(
+      createElement(ServicePillView, { serviceKey: 'gpu', service: { key: 'gpu', label: 'GPU', icon: 'zap', color: 'yellow' } })
+    )
+    expect(html).toContain('>GPU<')
   })
 })

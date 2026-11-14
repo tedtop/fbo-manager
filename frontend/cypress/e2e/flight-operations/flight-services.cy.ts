@@ -19,8 +19,11 @@ const labelsOf = (keys: string[]) => keys.map((k) => LABELS[k]).sort()
 const card = (tail: string) => cy.contains('[data-slot="card"]', tail)
 const pill = (key: string) => cy.get(`button[data-service-key="${key}"]`)
 
-const cardPillLabels = (tail: string) =>
-  card(tail).then(($c) => $c.find('[data-service-key]').toArray().map((el) => (el.textContent ?? '').trim()).sort())
+// Waits for the catalog-backed labels: while the service catalog loads the card shows placeholders without a key.
+const cardPillLabels = (tail: string) => {
+  card(tail).find('[data-service-loading]').should('not.exist')
+  return card(tail).then(($c) => $c.find('[data-service-key]').toArray().map((el) => (el.textContent ?? '').trim()).sort())
+}
 
 const openBoard = (tail: string) => {
   cy.login()
