@@ -49,3 +49,28 @@ export function accountRemovalBlocked(
 export function isAwaitingAccess(user: ProfileWithRoles): boolean {
   return user.status === 'active' && user.roles.length === 0
 }
+
+export const LAST_ADMIN_MESSAGE = 'At least one active Administrator is required.'
+
+/** SQLSTATE the B96 database trigger raises when a change would leave no active Administrator. */
+export const LAST_ADMIN_SQLSTATE = 'FBA01'
+
+/**
+ * Friendly message for the database's last-active-Administrator refusal (B96), or null when the error is
+ * something else. Accepts anything thrown: PostgREST errors (`code`/`message`), Errors, route JSON, strings.
+ */
+export function lastAdminDbError(err: unknown): string | null {
+  const obj = typeof err === 'object' && err !== null ? (err as { code?: unknown; message?: unknown }) : null
+  const code = obj?.code != null ? String(obj.code) : ''
+  const message = typeof err === 'string' ? err : obj?.message != null ? String(obj.message) : ''
+  if (code === LAST_ADMIN_SQLSTATE || /active Administrator/i.test(message)) return LAST_ADMIN_MESSAGE
+  return null
+}
+
+/** Message for a failed users-module action: the friendly last-Administrator text, else the error's own message, else the fallback. */
+export function userActionErrorMessage(err: unknown, fallback: string): string {
+  const friendly = lastAdminDbError(err)
+  if (friendly) return friendly
+  const message = err instanceof Error ? err.message : typeof err === 'object' && err !== null && 'message' in err ? String((err as { message: unknown }).message) : ''
+  return message || fallback
+}
