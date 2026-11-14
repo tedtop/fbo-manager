@@ -111,6 +111,53 @@ export const usersTasks = {
     return data
   },
 
+  /** B96: gives a user a role by name (service role). */
+  async assignRoleByName({ userId, roleName }: { userId: string; roleName: string }) {
+    const db = createE2EDbClient()
+    const { data: role, error: roleError } = await db.from('roles').select('id').eq('name', roleName).single()
+    if (roleError || !role) throw new Error(`assignRoleByName: role ${roleName}: ${roleError?.message}`)
+    const { error } = await db.from('user_roles').insert({ user_id: userId, role_id: role.id })
+    if (error) throw new Error(`assignRoleByName: ${error.message}`)
+    return null
+  },
+
+  /**
+   * B96: proves the database refuses every path that would leave no active Administrator. Creates a throwaway
+   * admin, temporarily disables every other active admin (allowed while the throwaway is active), tries to
+   * demote / deactivate / delete the throwaway, then restores everything. Returns the SQLSTATE each attempt got.
+   */
+  async attemptLastAdminChanges() {
+    const db = createE2EDbClient()
+    const { data: adminRole } = await db.from('roles').select('id').eq('name', 'Administrator').single()
+    const { data: frontDesk } = await db.from('roles').select('id').eq('name', 'Front Desk').single()
+    if (!adminRole || !frontDesk) throw new Error('attemptLastAdminChanges: roles missing')
+    const email = `cy-lastadmin-${Date.now().toString(36)}@example.com`
+    const { data, error } = await db.auth.admin.createUser({ email, password: 'pw-lastadmin', email_confirm: true })
+    if (error || !data.user) throw new Error(`attemptLastAdminChanges: ${error?.message}`)
+    const id = data.user.id
+    const disabled: string[] = []
+    try {
+      await waitForDbRow(async () => (await db.from('profiles').select('id').eq('id', id).maybeSingle()).data)
+      const ins = await db.from('user_roles').insert({ user_id: id, role_id: adminRole.id })
+      if (ins.error) throw new Error(`attemptLastAdminChanges: ${ins.error.message}`)
+
+      const { data: others } = await db.from('user_roles').select('user_id, profiles!inner(status)').eq('role_id', adminRole.id).eq('profiles.status', 'active')
+      for (const row of others ?? []) {
+        if (row.user_id === id) continue
+        await db.from('profiles').update({ status: 'disabled' }).eq('id', row.user_id)
+        disabled.push(row.user_id)
+      }
+
+      const demote = await db.from('user_roles').delete().eq('user_id', id).eq('role_id', adminRole.id)
+      const deactivate = await db.from('profiles').update({ status: 'disabled' }).eq('id', id)
+      const removeProfile = await db.from('profiles').delete().eq('id', id)
+      return { demote: demote.error?.code ?? null, deactivate: deactivate.error?.code ?? null, removeProfile: removeProfile.error?.code ?? null }
+    } finally {
+      for (const uid of disabled) await db.from('profiles').update({ status: 'active' }).eq('id', uid)
+      await db.auth.admin.deleteUser(id)
+    }
+  },
+
   /** B78: does this auth user still exist? */
   async authUserExists(userId: string) {
     const db = createE2EDbClient()

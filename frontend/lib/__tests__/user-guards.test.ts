@@ -1,7 +1,9 @@
 import {
   accountRemovalBlocked,
   isAwaitingAccess,
-  roleChangeBlocked
+  lastAdminDbError,
+  roleChangeBlocked,
+  userActionErrorMessage
 } from '@/lib/user-guards'
 import type { ProfileWithRoles, RoleRow } from '@/types/domain/users'
 import { describe, expect, it } from 'vitest'
@@ -98,5 +100,38 @@ describe('isAwaitingAccess', () => {
     expect(isAwaitingAccess(user('a', []))).toBe(true)
     expect(isAwaitingAccess(user('a', [FRONT]))).toBe(false)
     expect(isAwaitingAccess(user('a', [], 'disabled'))).toBe(false)
+  })
+})
+
+describe('lastAdminDbError / userActionErrorMessage (B96)', () => {
+  const FRIENDLY = 'At least one active Administrator is required.'
+
+  it('maps the database SQLSTATE to the friendly message', () => {
+    expect(lastAdminDbError({ code: 'FBA01', message: 'whatever' })).toBe(FRIENDLY)
+  })
+
+  it('maps the trigger message and the route JSON text', () => {
+    expect(
+      lastAdminDbError(
+        new Error(
+          'At least one active Administrator is required: the last active Administrator cannot be demoted, deactivated or deleted.'
+        )
+      )
+    ).toBe(FRIENDLY)
+    expect(lastAdminDbError('At least one active Administrator is required.')).toBe(FRIENDLY)
+  })
+
+  it('returns null for other errors', () => {
+    expect(lastAdminDbError({ code: '23505', message: 'duplicate key' })).toBeNull()
+    expect(lastAdminDbError(new Error('Failed to fetch'))).toBeNull()
+    expect(lastAdminDbError(null)).toBeNull()
+    expect(lastAdminDbError(undefined)).toBeNull()
+  })
+
+  it('userActionErrorMessage prefers friendly, then the error message, then the fallback', () => {
+    expect(userActionErrorMessage({ code: 'FBA01', message: 'x' }, 'fallback')).toBe(FRIENDLY)
+    expect(userActionErrorMessage(new Error('boom'), 'fallback')).toBe('boom')
+    expect(userActionErrorMessage({ message: 'plain object' }, 'fallback')).toBe('plain object')
+    expect(userActionErrorMessage(undefined, 'fallback')).toBe('fallback')
   })
 })

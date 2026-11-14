@@ -42,7 +42,9 @@ import {
   ADMIN_ROLE_NAME,
   accountRemovalBlocked,
   isAwaitingAccess,
-  roleChangeBlocked
+  lastAdminDbError,
+  roleChangeBlocked,
+  userActionErrorMessage
 } from '@/lib/user-guards'
 import { useAuth } from '@/providers/auth-provider'
 import type { ProfileWithRoles } from '@/types/domain/users'
@@ -167,16 +169,22 @@ export default function UsersPage() {
         roles.filter((r) => data.roleIds.includes(r.id)).map((r) => r.name)
       )
       if (blocked) throw new Error(blocked)
-      await updateUser(editingUser.id, {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phoneNumber: data.phoneNumber,
-        employeeId: data.employeeId,
-        badgeId: data.badgeId,
-        initials: data.initials,
-        hireDate: data.hireDate,
-        roleIds: data.roleIds
-      })
+      try {
+        await updateUser(editingUser.id, {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phoneNumber: data.phoneNumber,
+          employeeId: data.employeeId,
+          badgeId: data.badgeId,
+          initials: data.initials,
+          hireDate: data.hireDate,
+          roleIds: data.roleIds
+        })
+      } catch (err) {
+        const friendly = lastAdminDbError(err)
+        if (friendly) throw new Error(friendly)
+        throw err
+      }
       showSuccess('User updated')
     } else {
       await inviteUser({
@@ -214,7 +222,7 @@ export default function UsersPage() {
         role ? `${name} is now ${role.name}` : `${name} no longer has a role`
       )
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to change role')
+      showError(userActionErrorMessage(err, 'Failed to change role'))
     }
   }
 
@@ -235,8 +243,8 @@ export default function UsersPage() {
     try {
       await setUserStatus(user.id, next)
       showSuccess(next === 'active' ? 'User reactivated' : 'User deactivated')
-    } catch {
-      showError('Failed to update user status')
+    } catch (err) {
+      showError(lastAdminDbError(err) ?? 'Failed to update user status')
     }
   }
 
@@ -262,7 +270,7 @@ export default function UsersPage() {
       await deleteUser(user.id)
       showSuccess('User deleted')
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to delete user')
+      showError(userActionErrorMessage(err, 'Failed to delete user'))
     }
   }
 

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { setStaffRealEmail } from '@/lib/staff-email-link'
+import { LAST_ADMIN_MESSAGE, lastAdminDbError } from '@/lib/user-guards'
 import { requireUsersAdmin } from '@/lib/supabase/require-users-admin'
 import { type NextRequest, NextResponse } from 'next/server'
 
@@ -29,7 +30,18 @@ export async function DELETE(
   // Deleting the auth user cascades to profiles/user_roles via FK ON DELETE CASCADE.
   const { error } = await admin.auth.admin.deleteUser(id)
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    // B96: GoTrue hides the database's last-active-Administrator refusal behind a generic message, so
+    // when the delete failed, check whether the target is the last active Administrator and say so.
+    const { data: adminRows } = await admin
+      .from('user_roles')
+      .select('user_id, roles!inner(name), profiles!inner(status)')
+      .eq('roles.name', 'Administrator')
+      .eq('profiles.status', 'active')
+    const activeAdminIds = (adminRows ?? []).map((r) => r.user_id)
+    const friendly =
+      lastAdminDbError(error) ??
+      (activeAdminIds.length === 1 && activeAdminIds[0] === id ? LAST_ADMIN_MESSAGE : null)
+    return NextResponse.json({ error: friendly ?? error.message }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true })

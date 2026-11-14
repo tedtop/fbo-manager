@@ -56,7 +56,7 @@ Open **Users**, find the person under Awaiting access and pick a role in the Rol
 1. In the Role column, pick a role from the list for one-click changes, or open the row menu and choose **Edit** to tick several roles.
 2. In the Edit User sheet, tick the roles the person should have under **Roles** and press **Save Changes**.
 
-The app refuses to remove the last active Administrator, and you cannot remove your own Administrator role or deactivate your own account.
+The app refuses to remove the last active Administrator, and you cannot remove your own Administrator role or deactivate your own account. The database enforces the same rule, so the last active Administrator cannot be demoted, deactivated or deleted by any route.
 
 ### Administrator includes all roles {#administrator-includes-all-roles}
 

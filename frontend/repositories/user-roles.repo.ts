@@ -29,28 +29,47 @@ export async function unassignRole(
   if (error) throw error
 }
 
-/** Replace a user's full set of role assignments in one call. */
+/**
+ * Replace a user's full set of role assignments.
+ * B96: this is two requests (two transactions), so it never deletes a role the user keeps: roles to add are
+ * inserted first, then only the roles actually removed are deleted. A user who keeps Administrator is never
+ * momentarily without it, so the database's last-active-Administrator guard cannot trip on a no-op change.
+ */
 export async function setUserRoles(
   db: SupabaseClient<Database>,
   userId: string,
   roleIds: number[],
   assignedBy: string | null
 ): Promise<void> {
-  const { error: deleteError } = await db
+  const wanted = [...new Set(roleIds)]
+  const { data: current, error: currentError } = await db
     .from('user_roles')
-    .delete()
+    .select('role_id')
     .eq('user_id', userId)
-  if (deleteError) throw deleteError
+  if (currentError) throw currentError
 
-  if (roleIds.length === 0) return
+  const currentIds = (current ?? []).map((r) => r.role_id)
+  const toAdd = wanted.filter((id) => !currentIds.includes(id))
+  const toRemove = currentIds.filter((id) => !wanted.includes(id))
 
-  const rows = roleIds.map((roleId) => ({
-    user_id: userId,
-    role_id: roleId,
-    assigned_by: assignedBy
-  }))
-  const { error: insertError } = await db.from('user_roles').insert(rows)
-  if (insertError) throw insertError
+  if (toAdd.length > 0) {
+    const rows = toAdd.map((roleId) => ({
+      user_id: userId,
+      role_id: roleId,
+      assigned_by: assignedBy
+    }))
+    const { error: insertError } = await db.from('user_roles').insert(rows)
+    if (insertError) throw insertError
+  }
+
+  if (toRemove.length > 0) {
+    const { error: deleteError } = await db
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .in('role_id', toRemove)
+    if (deleteError) throw deleteError
+  }
 }
 
 /** Resolve the effective (most-permissive) per-module access for one user. */
