@@ -2,7 +2,7 @@
 title: Arrivals and Departures usage guide
 module: flight-operations
 order: 1
-anchors: [add-flight, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
+anchors: [add-flight, times-hint, multi-day, quick-turn, times, hangar-pull, services, status, delete, filters, airports, conflicts, hide, time-zone, airlines]
 ---
 
 ## Overview
@@ -13,6 +13,14 @@ The Arrivals / Departures board (the home page, "Flight Ops") lists every aircra
 - A quick turn (QT) appears in both columns, because the same aircraft arrives and leaves.
 - The board shows **Today + Future** by default: everything whose stay ends today or later. Finished (Departed) and hidden flights drop off, see "Hide a flight" below.
 - The board updates live: flights added or changed by other people appear without reloading.
+
+### Getting help
+
+This guide opens in a panel on the left. The **?** button in the board toolbar opens it at the top. The **?** buttons in the Add Flight and Edit Flight form open it at the matching section: one in the form title (adding a flight), one by the times and one by the services. The panel sits beside the form, so you can read and type at the same time. Closing the panel does not clear what you typed. The **Open module** link at the top of the panel takes you back to the board.
+
+### Getting help
+
+This guide opens in a panel on the left. The **?** button in the board toolbar opens it at the top. The **?** buttons in the Add Flight and Edit Flight form open it at the matching section: one in the form title (adding a flight), one by the times and one by the services. The panel sits beside the form, so you can read and type at the same time. Closing the panel does not clear what you typed. If a section does not exist, the guide opens at the top. At the top of the guide, **Open Arrivals / Departures** takes you back to the board.
 
 ## Common tasks
 
