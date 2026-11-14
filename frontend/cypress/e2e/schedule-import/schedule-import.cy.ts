@@ -161,6 +161,7 @@ describe('schedule sheet import', () => {
   })
 
   it('import writes four flights, the looked-up types and services; re-scanning adds nothing', () => {
+    cy.intercept('POST', '**/rest/v1/scanned_documents*').as('sheetRow') // observe only: the request goes through
     cy.visit('/flight-operations/import')
     upload()
     cards().should('have.length', 4)
@@ -171,6 +172,17 @@ describe('schedule sheet import', () => {
     // B104: the original sheet is kept in the private bucket and no warning is shown
     cy.get('[data-testid="sheet-save-warning"]').should('not.exist')
     cy.task('listScheduleSheetOriginals').should('have.length', 1)
+    // B104: and its scanned_documents row is written (request body, then the persisted row)
+    cy.wait('@sheetRow').then(({ request, response }) => {
+      expect(response?.statusCode).to.be.oneOf([200, 201, 204])
+      expect(request.body).to.include({ doc_type: 'schedule_sheet', storage_bucket: 'scans', content_type: 'image/jpeg', original_filename: 'schedule.jpg' })
+      expect(request.body.storage_path).to.match(/^schedule_sheet\/\d{4}\/\d{2}\/[\d-]+\/original\/.*_schedule_scan-[0-9a-f]{8}\.\w+$/)
+      expect(request.body.content_sha256).to.match(/^[0-9a-f]{64}$/)
+    })
+    cy.task('listScheduleSheetRows').then((rows) => {
+      expect(rows).to.have.length(1)
+      expect((rows as { doc_type: string }[])[0].doc_type).to.eq('schedule_sheet')
+    })
 
     cy.task('getImportedFlights', { tails, count: 4 }).then((data) => {
       const rows = data as FlightRow[]
@@ -234,6 +246,28 @@ describe('schedule sheet import', () => {
       .and('contain.text', 'row-level security')
     cy.task('getImportedFlights', { tails, count: 4 })
     cy.task('listScheduleSheetOriginals').should('have.length', 0)
+  })
+
+  // B104 (reopened): the object uploads but the scanned_documents row insert fails: same warning, with the database's own error text.
+  it('a failed scanned_documents insert is shown as a warning with the database error', () => {
+    cy.task('cleanScheduleImport', tails)
+    cy.task('removeScheduleSheetOriginals')
+    cy.intercept('POST', '**/rest/v1/scanned_documents*', {
+      statusCode: 400,
+      body: { code: '23514', message: 'new row for relation "scanned_documents" violates check constraint "scanned_documents_doc_type_check"', details: null, hint: null }
+    }).as('sheetRowFail')
+    cy.visit('/flight-operations/import')
+    upload()
+    cards().should('have.length', 4)
+    cy.get('[data-testid="import-button"]', { timeout: 10_000 }).should('be.enabled')
+    cy.get('[data-testid="import-button"]').click()
+    cy.wait('@sheetRowFail')
+    cy.get('[data-testid="import-result"]', { timeout: 20_000 }).should('contain.text', '4 added, 0 updated, 0 skipped')
+    cy.get('[data-testid="sheet-save-warning"]')
+      .should('contain.text', 'Flights imported, but the original sheet could not be saved')
+      .and('contain.text', 'scanned_documents_doc_type_check')
+    cy.task('getImportedFlights', { tails, count: 4 })
+    cy.task('removeScheduleSheetOriginals')
   })
 })
 

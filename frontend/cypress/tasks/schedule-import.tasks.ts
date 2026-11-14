@@ -28,10 +28,24 @@ export const scheduleImportTasks = {
     return (await listUndatedOriginals(createE2EDbClient())).map((o) => o.name)
   },
 
-  /** Removes those files so a run starts clean (the test file's bytes always hash to the same name). */
+  /** B104: scanned_documents rows (doc_type schedule_sheet) of those originals. */
+  async listScheduleSheetRows() {
+    const db = createE2EDbClient()
+    const { data, error } = await db
+      .from('scanned_documents')
+      .select('doc_type, storage_bucket, storage_path, original_filename, content_type, byte_size, content_sha256, scan_date')
+      .eq('doc_type', 'schedule_sheet')
+      .like('storage_path', `${undatedOriginalsDir()}/%`)
+    if (error) throw new Error(`listScheduleSheetRows: ${error.message}`)
+    return data ?? []
+  },
+
+  /** Removes those files and rows so a run starts clean (the test file's bytes always hash to the same name). */
   async removeScheduleSheetOriginals() {
     const db = createE2EDbClient()
     const dir = undatedOriginalsDir()
+    const { error: rowError } = await db.from('scanned_documents').delete().eq('doc_type', 'schedule_sheet').like('storage_path', `${dir}/%`)
+    if (rowError) throw new Error(`removeScheduleSheetOriginals: ${rowError.message}`)
     const names = (await listUndatedOriginals(db)).map((o) => `${dir}/${o.name}`)
     if (names.length > 0) await db.storage.from('scans').remove(names)
     return null
