@@ -27,12 +27,16 @@
   read, scoring as you go; read the code only afterwards to explain each friction point. Layout
   problems that only show up in a real viewport (map squeezed by drawers and footers) show up this
   way; reading the code first anchors on handlers and misses them.
+- Production first at real data scale (2026-11-14 run 3, provisional): walk every look-only step on
+  production before the local stack. Prod has 26 planes in 5 areas; a 3-plane local seed hides
+  framing, label-collision and "where is everything" problems. Count visible vs total markers
+  (`.maplibregl-marker` rects vs the canvas rect) at both widths.
 - Measure layout on the phone with `getBoundingClientRect` (map canvas height, button sizes,
   `scrollHeight` vs `innerHeight`) in every mode the page has, not only the default mode.
 
 ## Ted's answers
 
-(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13)
+(none yet; questions open: FBO-204 arrow-key feel, 2026-11-13; no comments as of 2026-11-14)
 
 ## Lessons learned
 
@@ -50,6 +54,12 @@
 - 2026-11-13 (run 2): `next dev` only reads `.env.local` for vars that aren't already set, so
   exporting all four Supabase vars (local demo keys from `cypress/tasks/env.ts`) safely points the
   :4520 server at the local stack.
+- 2026-11-14 (run 3): on production, a drawer can slide in between a screenshot and the next click,
+  so a coordinate click can land on drawer content (my "zoom out" clicks hit the plane drawer; the
+  compass was 46px away). Before any coordinate click on prod, check `document.elementFromPoint`
+  and keep clicks well clear of the compass rose and the drawer buttons.
+- 2026-11-14 (run 3): re-read the size code before re-reporting a size issue; B101 changed the
+  fallback (E75L now goes to the mid-jet nominal, not a single), and an old finding's wording went stale.
 - 2026-11-13: the local map takes 8-15 s to show on first dev compile; wait before judging.
 - 2026-11-13: `next dev` adds its dist dir to `frontend/tsconfig.json` include; revert those
   lines in the main checkout after stopping the server.
@@ -58,5 +68,6 @@
 
 | Run | Change tried | Kept? | Why |
 |-----|--------------|-------|-----|
+| 2026-11-14 run 3 | Production first at real data scale, local only for saves | kept (provisional) | Found FBO-208 (2 of 26 planes visible on a phone) and FBO-209 (drawer covers zoom), neither visible with a 3-plane local seed; still no Ted decisions on FBO-200..207 to judge accept rate |
 | 2026-11-13 run 2 | Cold walk first, code only afterwards; measure layout in every mode at 390px | kept (provisional) | Found the 63px Config Mode map (FBO-206), which code-first reading missed in run 1, plus the missing draw-rectangle path (FBO-207). No Ted decisions yet on FBO-200..204, so the accept rate can't be judged |
 | 2026-11-13 | Baseline method + "read the module's input handlers and constants before walking, then probe the edges they imply" (found the E75L size gap and the tap/hold behaviour fast) | kept (provisional) | First run, no prior score; judge on Ted's accept rate for FBO-200..203 |
